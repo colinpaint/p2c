@@ -14,10 +14,11 @@ ReplaceBefore     rename = rename1
 BufferedFile      tokenFile
 BufferedFile      interFile
 BufferedFile      pseudoFile
-BufferedFile      debugfile
-BufferedFile      dumpFile
-BufferedFile      relFile
 BufferedFile      objFile
+BufferedFile      listFile
+BufferedFile      relFile
+BufferedFile      dumpFile
+BufferedFile      debugfile
 
 ExternWords       external      # Words analogous to "forward" for declaring
 ExternWords       extern        # procedures or functions external.

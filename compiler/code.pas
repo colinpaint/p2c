@@ -3987,11 +3987,12 @@ var kludge: integer; {to get around a purposeful range error}
               opndcolumn - opcolumn - 4 + 6);
       if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
         begin
-        writeln(macFile, 'DC.B': opcolumn+3, '''':opndcolumn - opcolumn - 4,
-                sharedPtr^.outputname: 8, '''');
-        write(macFile, 'DC.L':opcolumn + 3, ' ':opndcolumn - opcolumn - 4);
-        if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then writeln(macFile, 'G')
-        else writeln(macFile, '0');
+        writeln (macFile, 'DC.B': opcolumn+3, '''':opndcolumn - opcolumn - 4, sharedPtr^.outputname: 8, '''');
+        write (macFile, 'DC.L':opcolumn + 3, ' ':opndcolumn - opcolumn - 4);
+        if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then 
+          writeln (macFile, 'G')
+        else 
+          writeln (macFile, '0');
         end;
       end;
 
@@ -4008,10 +4009,10 @@ var kludge: integer; {to get around a purposeful range error}
 
       if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
         begin
-        putbuffer(ord(sharedPtr^.outputname[1]) * 256 + ord(sharedPtr^.outputname[2]), false);
-        putbuffer(ord(sharedPtr^.outputname[3]) * 256 + ord(sharedPtr^.outputname[4]), false);
-        putbuffer(ord(sharedPtr^.outputname[5]) * 256 + ord(sharedPtr^.outputname[6]), false);
-        putbuffer(ord(sharedPtr^.outputname[7]) * 256 + ord(sharedPtr^.outputname[8]), false);
+        putbuffer (ord(sharedPtr^.outputname[1]) * 256 + ord(sharedPtr^.outputname[2]), false);
+        putbuffer (ord(sharedPtr^.outputname[3]) * 256 + ord(sharedPtr^.outputname[4]), false);
+        putbuffer (ord(sharedPtr^.outputname[5]) * 256 + ord(sharedPtr^.outputname[6]), false);
+        putbuffer( ord(sharedPtr^.outputname[7]) * 256 + ord(sharedPtr^.outputname[8]), false);
 
         if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
           putbuffer(50B * 256, true)
@@ -4448,9 +4449,9 @@ begin
       WriteSymbolName (linkname);
       end
     else if sharedPtr^.proctable[0].charindex = 0 then
-      writesymbolname(sharedPtr^.outputname)
+      writesymbolname (sharedPtr^.outputname)
     else
-      writeprocname(0, linknameused); {use program name}
+      writeprocname (0, linknameused); {use program name}
 
     reposition(opcolumn);
     writestr('SECTION');
@@ -4781,11 +4782,11 @@ var
 begin
   putbyte(magiclength + sharedPtr^.ident_strlength);
 
-  putbyte(ord('1'));
-  putname(sharedPtr^.outputname);
-  putbyte(sharedPtr^.objversion);
-  putbyte(sharedPtr^.objrevision);
-  putbyte(ord('P')); { Language = Pascal }
+  putbyte (ord('1'));
+  putname (sharedPtr^.outputname);
+  putbyte (sharedPtr^.objversion);
+  putbyte (sharedPtr^.objrevision);
+  putbyte (ord('P')); { Language = Pascal }
   for i := 1 to 4 do { Volume Name }
     putbyte(ord(' '));
 
@@ -24340,7 +24341,7 @@ procedure blockcodex;
 { Generate code for the beginning of a block. If procedure block, standard procedure entry code is generated. }
 
 var
-  I: regindex; {induction var for initializing context stack}
+  I: regindex;
 
   {<<<}
   procedure load_own_reg;
@@ -24541,10 +24542,14 @@ begin
   context[1].lastbranch := lastnode;
   context[1].firstnode := lastnode;
   context[1].keymark := lastkey + 1;
-  for i := 0 to 7 do context[1].abump[i] := false;
-  for i := 0 to 7 do context[1].dbump[i] := false;
-  for i := 0 to 7 do context[1].fpbump[i] := false;
+  for i := 0 to 7 do
+    context[1].abump[i] := false;
+  for i := 0 to 7 do
+    context[1].dbump[i] := false;
+  for i := 0 to 7 do
+    context[1].fpbump[i] := false;
   context[0] := context[1];
+
   lastdreg := 7 - left;
   lastfpreg := 7 - target;
   { if (switchcounters[debugging] > 0) or (switchcounters[profiling] > 0) then
@@ -24565,12 +24570,14 @@ procedure blockentryx;
 
 begin
   initblock;
+
   with pseudoSharedPtr^.pseudoinst do
     begin
     sharedPtr^.blockref := oprnds[1];
     paramsize := oprnds[2];
     blksize := oprnds[3];
     end;
+
   level := sharedPtr^.proctable[sharedPtr^.blockref].level;
   blockusesframe := sharedPtr^.switcheverplus[framepointer];
 end;
@@ -24657,23 +24664,14 @@ var
   i: integer; {general purpose induction variable}
   procno: proctableindex;
 
-  {<<<}
-  function rdup(i: integer): integer;
-
-    begin {rdup}
-      case hostmachine of
-        mc68000: if odd(i) then rdup := i + 1 else rdup := i;
-        iapx86: if odd(i) then rdup := i + 1 else rdup := i; {/nobytealloc}
-        otherwise rdup := i;
-        end;
-    end {rdup} ;
-  {>>>}
-
 begin
   sharedPtr := getSharedPtr;
   pseudoSharedPtr := getPseudoSharedPtr;
 
+  rewrite (relFile, 'rel.tmp');
+
   getOutputName;
+
   if sharedPtr^.switcheverplus[outputmacro] then
     begin
     getFileName (sharedPtr^.macname, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
@@ -24688,43 +24686,37 @@ begin
     rewrite (objFile, 'output.ro');
     end;
 
-  rewrite (relFile, 'rel.tmp');
-
-  { This code checks certain configuration parameters and reports any
-    potential problems. }
+  { This code checks certain configuration parameters and reports any potential problems }
   { End of special configuration checks}
-  monadicinsts :=
-      [fbeq, fbne, fbgt, fbngt, fbge, fbnge, fblt, fbnlt, fble,
-       fbnle, fbgl, fbngl, fbgle, fbngle, ftrap, ftst,
-       beq, bge, bgt, bhi, bhs, ble, blo, bls, blt, bpl, bmi, bne,
-       bra, bsr, bvc, bvs, bfclr, bfset, bftst, clr, ext, extb, jmp,
-       jsr, move_to_ccr, neg, negx,
-       notinst, pea, swap, trap, tst, unlk];
+  monadicinsts := [fbeq, fbne, fbgt, fbngt, fbge, fbnge, fblt, fbnlt, fble,
+                   fbnle, fbgl, fbngl, fbgle, fbngle, ftrap, ftst,
+                   beq, bge, bgt, bhi, bhs, ble, blo, bls, blt, bpl, bmi, bne,
+                   bra, bsr, bvc, bvs, bfclr, bfset, bftst, clr, ext, extb, jmp,
+                   jsr, move_to_ccr, neg, negx,
+                   notinst, pea, swap, trap, tst, unlk];
 
-  dyadicinsts :=
-      [fabs, facos, fadd, fasin, fatan, fatanh, fcmp, fcos, fcosh, fdiv,
-       fetox, fetoxm1, fgetexp, fgetman, fint, fintrz, flog10, flog2,
-       flogn, flognp1, fmod, fmove, fmovecr, fmove_to_fpcr, fmove_from_fpcr,
-       fmovem, fmul,
-       fneg, frem, fscale, fsgldiv, fsglmul, fsin, fsincos, fsinh,
-       fsqrt, fsub, ftan, ftanh, ftentox, ftwotox,
+  dyadicinsts := [fabs, facos, fadd, fasin, fatan, fatanh, fcmp, fcos, fcosh, fdiv,
+                  fetox, fetoxm1, fgetexp, fgetman, fint, fintrz, flog10, flog2,
+                  flogn, flognp1, fmod, fmove, fmovecr, fmove_to_fpcr, fmove_from_fpcr,
+                  fmovem, fmul,
+                  fneg, frem, fscale, fsgldiv, fsglmul, fsin, fsincos, fsinh,
+                  fsqrt, fsub, ftan, ftanh, ftentox, ftwotox,
 
-       add, adda, addi, addq, addx, andinst, andi, asl, asr,
-       bchg, bclr, bfexts, bfextu, bfins,
-       bset, btst, chk, cmp, cmpa, cmpi, cmpm, dbeq,
-       dbge, dbgt, dbhi, dbhs, dble, dblo, dbls, dblt, dbpl, dbmi, dbne,
-       dbra, dbvc, dbvs, divs, divsl, divu, divul, eor, eori, exg, lea, link,
-       lsl, lsr, move, movea, movem, moveq, muls, mulu, orinst,
-       ori, rol, ror, roxl, roxr, sub, suba, subi, subq, subx];
+                  add, adda, addi, addq, addx, andinst, andi, asl, asr,
+                  bchg, bclr, bfexts, bfextu, bfins,
+                  bset, btst, chk, cmp, cmpa, cmpi, cmpm, dbeq,
+                  dbge, dbgt, dbhi, dbhs, dble, dblo, dbls, dblt, dbpl, dbmi, dbne,
+                  dbra, dbvc, dbvs, divs, divsl, divu, divul, eor, eori, exg, lea, link,
+                  lsl, lsr, move, movea, movem, moveq, muls, mulu, orinst,
+                  ori, rol, ror, roxl, roxr, sub, suba, subi, subq, subx];
 
   { note: only "rte", "rts", "trapcc" and "trapv" are not included in the above subsets }
   { The "qualifiedinsts" set lists all instructions that must have a size provided for the assembler }
-  qualifiedinsts :=
-      [adda, add, addi, addq, addx, andinst, andi, asl, asr,
-       chk, chk2, clr, cmpa, cmp, cmpi, cmpm, divs, divsl, divu, divul,
-       eor, eori, exg, ext, extb, lsl, lsr, move, movea, movem, muls, mulu,
-       neg, negx, notinst, orinst, ori, rol, ror, roxl,
-       roxr, suba, sub, subi, subq, subx, tst];
+  qualifiedinsts := [adda, add, addi, addq, addx, andinst, andi, asl, asr,
+                     chk, chk2, clr, cmpa, cmp, cmpi, cmpm, divs, divsl, divu, divul,
+                     eor, eori, exg, ext, extb, lsl, lsr, move, movea, movem, muls, mulu,
+                     neg, negx, notinst, orinst, ori, rol, ror, roxl,
+                     roxr, suba, sub, subi, subq, subx, tst];
 
   shiftinsts := [asl, asr, lsl, lsr, rol, ror, roxl, roxr];
   shortinsts := [moveq, addq, subq, asl, asr, lsl, lsr, rol, ror, roxl, roxr, trap];
@@ -24766,16 +24758,16 @@ begin
 
   {Now initialize file variables}
   nokeydata := [endpseudocode, bad, blockentry, blockexit, jumpf, jumpt, jump,
-               pascallabel, savelabel, clearlabel, joinlabel, restorelabel,
-               sysroutine, caseelt, setfile, closerange, restoreloop, saveactkeys];
+                pascallabel, savelabel, clearlabel, joinlabel, restorelabel,
+                sysroutine, caseelt, setfile, closerange, restoreloop, saveactkeys];
 
   oneoperand := [endpseudocode, bad, blockexit, dovar, dounsvar, doint, doorigin,
-               pseudolabel, savelabel, clearlabel, joinlabel, restorelabel,
-               copyaccess, flt, pshaddr, pshstraddr, pshint, pshptr, pshreal,
-               pshstr, pshstruct, pshset, pshlitint, pshlitptr, pshlitreal,
-               copystack, fmt, wrint, wrreal, wrchar, wrst, wrbool, wrbin, wrxstr,
-               rdbin, rdint, rdchar, rdreal, rdst, rdxstr, stacktarget, ptrchk,
-               chrstr, arraystr, definelazy, setbinfile, setfile, closerange, restoreloop];
+                 pseudolabel, savelabel, clearlabel, joinlabel, restorelabel,
+                 copyaccess, flt, pshaddr, pshstraddr, pshint, pshptr, pshreal,
+                 pshstr, pshstruct, pshset, pshlitint, pshlitptr, pshlitreal,
+                 copystack, fmt, wrint, wrreal, wrchar, wrst, wrbool, wrbin, wrxstr,
+                 rdbin, rdint, rdchar, rdreal, rdst, rdxstr, stacktarget, ptrchk,
+                 chrstr, arraystr, definelazy, setbinfile, setfile, closerange, restoreloop];
 
   bitfieldinsts := [bfclr, bfexts, bfextu, bfins, bfset, bftst];
 

@@ -131,7 +131,7 @@ procedure warnat (error: warning; line: integer; column: columnindex);
   Halt compilation if this is a fatal error, and force fatal error if errortable is filled by this error }
 
 begin
-  Writeln ('warnat ', error, line:3, ' ', column:3);
+  Writeln ('warnat ', error, ' line:', line:3, ' column:', column:3);
 
   if sharedPtr^.lasterror < errortablesize - 1 then
     { enough room, add next table entry }
@@ -355,15 +355,12 @@ procedure getFileName (which: FilenameListPtr; stripdevice: boolean; stripext: b
 { Get a file name with or without the device or extension fields }
 
 var
-  sharedPtr: sharedPtrType;
   start, finish: FilenameIndex; {limits of file name}
   i, j: FilenameIndex;
   scanning: boolean;
   semi: FilenameIndex; {where the semicolon is, if any}
 
 begin
-  sharedPtr := getSharedPtr;
-
   if which = nil then
     begin
     which := sharedPtr^.SourceListHead;
@@ -380,7 +377,8 @@ begin
       if stripdevice then
         begin
         for i := 1 to arglen do
-          if (arg[i] = ':') or (arg[i] = ']') then start := i + 1;
+          if (arg[i] = ':') or (arg[i] = ']') then
+            start := i + 1;
         end;
 
       if stripext then
@@ -420,7 +418,7 @@ end;
 {>>>}
 {<<<}
 procedure getOutputName;
-{ Fill the globals "filename" and "outputname". }
+{ fill global "filename" and "outputname" }
 
 var
   i: FilenameIndex;
@@ -565,7 +563,8 @@ function uc (c: char): char;
 begin
   if (c >= 'a') and (c <= 'z') then
     uc := chr(ord(c) + (ord('A') - ord('a')))
-  else uc := c;
+  else
+    uc := c;
 end;
 {>>>}
 {<<<}
@@ -1640,6 +1639,7 @@ begin
     sharedPtr^.endsec := max (sharedPtr^.endsec - sharedPtr^.startsec +
                               60 * ((sharedPtr^.endmin - sharedPtr^.startmin) +
                                     60 * (sharedPtr^.endhour - sharedPtr^.starthour)), 1);
+
     writeln ('took ', sharedPtr^.endsec:1, 'sec, ',
              sharedPtr^.lastline: 1, ' lines, ',
              (sharedPtr^.lastline * 60) div sharedPtr^.endsec: 1, ' lines/min');

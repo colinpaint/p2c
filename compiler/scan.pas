@@ -194,12 +194,13 @@ var
 
   tokenbufindex: 0..diskbufsize; { next available space in token file block }
 
-  { stringbuf[curstringbuf] is used to buffer the current quoted string (nexttoken),
-    while stringbuf[not curstringbuf] is the buffer for the previous (token) string, if any. }
+  { stringbuf[curstringbuf]     is buffer the current quoted string (nexttoken),
+    stringbuf[not curstringbuf] is buffer for the previous (token) string, if any }
   stringbuf: array [boolean] of packed array [0..linelen] of char;
 
   { hashtable, includes pointer to loc in string table }
   hashtable: array [hashindex] of hashtablerecord;
+
   scanswitchtable: array [scanswitchindex] of scanswitchentry; { table of embedded switch names }
 
   { table of reserved words, by length, and pointers into that table pointers to reswords }
@@ -454,8 +455,7 @@ end;
 {<<<}
 procedure seekstringfile (n: integer);
 { Do the equivalent of a "seek" on the string file.
-  This sets the file and "nextstringfile" to access byte "n" of the stringfile.
-  only meaningful when scan and analys are operating as one pass
+  sets file and "nextstringfile" to access byte "n" of stringfile, only for scan/analysis one pass
 }
 var
   newblock: 1..maxstringblks; { block to which seeking }
@@ -2896,19 +2896,14 @@ procedure scan1;
 { Init scanner, read first char, etc. }
 
   {<<<}
-  procedure initscanner;
+  procedure initScan;
   {<<<}
-  {    Enterstandardid -- builds entries in hashtable and string-}
-  {      table for each standard identifier (i.e. true,false).   }
-  {    Enterresword -- builds entries in reswords and            }
-  {      and reswordtokens for tokens like BEGIN, END.           }
-  {    Initscanswitches -- set up switch name table              }
-  {    Inittokentable -- set up tokentable for all one letter    }
-  {      tokens.                                                 }
-  {    Initreswords -- enter all reserved words, also sets       }
-  {      up reslentable                                          }
-  {    Initstandardids -- uses enterstandardid to enter all      }
-  {      predefined identifiers.                                 }
+  { Enterstandardid  - builds entry in hashtable and string table for each standard identifier (i.e. true,false) }
+  { Enterresword     - builds entry in reswords and and reswordtokens for tokens like BEGIN, END. }
+  { Initscanswitches - set up switchName table }
+  { Inittokentable   - set up tokentable for all one letter tokens }
+  { Initreswords     - reserved words - also sets up reslentable }
+  { Initstandardids  - standardids - predefined identifiers }
   {>>>}
 
   var
@@ -2925,6 +2920,8 @@ procedure scan1;
 
     begin
       sharedPtr^.insertions := sharedPtr^.insertions + 1;
+
+      { calc hash }
       t2 := 0;
       for i := 1 to newlen do
         begin
@@ -2940,6 +2937,7 @@ procedure scan1;
       while hashtable[hash].pos <> 0 do
         hash := (hash + newlen) mod hashtablesize;
 
+      { always add entry with hash }
       with hashtable[hash] do
         begin
         pos := sharedPtr^.stringtabletop + 1;
@@ -3285,10 +3283,8 @@ procedure scan1;
     sharedPtr := getSharedPtr;
     tokenSharedPtr := gettokenSharedPtr;
 
-    { End of special configuration checks}
     sharedPtr^.curstringbuf := true;
     nextswitchread := false;
-
     initscanswitches;
     inittokentable;
 
@@ -3352,7 +3348,7 @@ procedure scan1;
   {>>>}
 
 begin
-  initscanner;
+  initScan;
 
   sharedPtr^.sourcelevel := 1;
   sharedPtr^.curfile := 1;

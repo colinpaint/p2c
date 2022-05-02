@@ -997,7 +997,6 @@ type
     listtable: array [listindex] of listrecord; {OLD listing control entries list}
     lastlist: integer; {last entry in listtable}
     lastline: natural; {last line in program}
-    listing: text;     {listing output file}
 
     stringblkptrtbl: array [1..maxstringblks] of diskblock_ref;
     stringblkptr: diskblock_ref; {pointer to string block}
