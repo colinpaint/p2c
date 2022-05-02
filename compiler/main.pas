@@ -31,7 +31,6 @@
 
 %include 'main.def';
 {>>>}
-
 label 99;
 {<<<}
 const
@@ -264,34 +263,6 @@ end;
 {>>>}
 
 {<<<}
-function getSharedPtr : sharedPtrType;
-
-begin
-  getSharedPtr := sharedPtr;
-end;
-{>>>}
-{<<<}
-function getTokenSharedPtr : tokenSharedPtrType;
-
-begin
-  getTokenSharedPtr := tokenSharedPtr;
-end;
-{>>>}
-{<<<}
-function getInterSharedPtr : interSharedPtrType;
-
-begin
-  getInterSharedPtr := interSharedPtr;
-end;
-{>>>}
-{<<<}
-function getPseudoSharedPtr : pseudoSharedPtrType;
-
-begin
-  getPseudoSharedPtr := pseudoSharedPtr;
-end;
-{>>>}
-{<<<}
 procedure initShared;
 
 var
@@ -346,6 +317,34 @@ begin
 
   tokenSharedPtr^.tokenCount := 0;
   tokenSharedPtr^.nexttoken.baseline := 0;
+end;
+{>>>}
+{<<<}
+function getSharedPtr : sharedPtrType;
+
+begin
+  getSharedPtr := sharedPtr;
+end;
+{>>>}
+{<<<}
+function getTokenSharedPtr : tokenSharedPtrType;
+
+begin
+  getTokenSharedPtr := tokenSharedPtr;
+end;
+{>>>}
+{<<<}
+function getInterSharedPtr : interSharedPtrType;
+
+begin
+  getInterSharedPtr := interSharedPtr;
+end;
+{>>>}
+{<<<}
+function getPseudoSharedPtr : pseudoSharedPtrType;
+
+begin
+  getPseudoSharedPtr := pseudoSharedPtr;
 end;
 {>>>}
 
@@ -588,8 +587,8 @@ end;
 {<<<}
 procedure commandLineError (which: csiErrorName; startind: cmdindex; endind: cmdindex);
 { Print an error message and exit from the compiler with a fatal error status.
-  The offending portion of the command line is printed before the error message. }
-
+  The offending portion of the command line is printed before the error message
+}
 var
   i: integer;
 
@@ -624,7 +623,6 @@ begin
     end;
 
   exitst (exitstatus); {value is opsys dependent}
-
 end;
 {>>>}
 {<<<}
@@ -1359,7 +1357,6 @@ procedure parseCommandLine;
   end;
   {>>>}
 
-
 begin
   sharedPtr := getSharedPtr;
 
@@ -1555,14 +1552,15 @@ begin
 end;
 {>>>}
 
+{ main program }
 begin
   initShared;
-
   {<<<  command line}
   parseCommandLine;
   setoptions;
   sharedPtr^.originalswitches := sharedPtr^.switchcounters;
   {>>>}
+
   TimeStamp (day, month, year, sharedPtr^.starthour, sharedPtr^.startmin, sharedPtr^.startsec);
   settime;
   {<<<  scan/analysis}
@@ -1686,7 +1684,6 @@ begin
       writeln ('Failed - errors:', sharedPtr^.lasterror: 1);
       exitst (exitstatus);
       end;
-
     end;
   {>>>}
 end.
