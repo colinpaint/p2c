@@ -1,5 +1,6 @@
 program test (output);
 { simple test program }
+
 label 99;
   {<<<}
   procedure colin;

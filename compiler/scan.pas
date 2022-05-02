@@ -42,7 +42,6 @@
 
 %include 'scan.def';
 {>>>}
-
 {<<<}
 const
   { Machine Dependent parameters for scanner }
@@ -216,7 +215,7 @@ var
   first_token_seen: boolean; {used to detect error when $case occurs after the first token.}
   curFileIndex: integer; { pointer to current filename }
 
-  {switch buffers used to delay effect of switches processed while reading nexttoken until becomes thistoken }
+  { switch buffers used to delay effect of switches processed while reading nexttoken until becomes thistoken }
   nextswitchread: boolean; {set true when first switch within comment is found}
   nextswitchcounters: switchcounterarray; {buffer for switchcounters}
   nextswitcheverplus: switcheverplusarray; {buffer for switcheverplus}
@@ -237,7 +236,8 @@ procedure puttoken;
         1.  "left" and "right" will fit in a hostfilebyte
         2.  a target character will fit in a hostfilebyte
 
-  These seem likely enough to be true that the speed-up available by making these assumptions is worth taking. }
+  These seem likely enough to be true that the speed-up available by making these assumptions is worth taking
+}
 {>>>}
 
 var
@@ -271,10 +271,10 @@ var
           true: (int: integer);
           false: (byte: packed array [1..32] of hostfilebyte);
       end;
-    j: 1..32; {induction var}
 
+    j: 1..32;
 
-  begin {putint}
+  begin
     if (i >= 0) and (i < hostfilelim) then
       begin
       tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := i;
@@ -437,7 +437,6 @@ procedure puttokenfile;
   to the tokenfile.  A count of tokens is kept and used to indicate the
   place in the file where embedded switches are found.
 }
-
 begin
   { update token count -- two words for small computers }
   if sharedPtr^.putlow = maxint then
@@ -456,8 +455,8 @@ end;
 procedure seekstringfile (n: integer);
 { Do the equivalent of a "seek" on the string file.
   This sets the file and "nextstringfile" to access byte "n" of the stringfile.
-  only meaningful when scan and analys are operating as one pass }
-
+  only meaningful when scan and analys are operating as one pass
+}
 var
   newblock: 1..maxstringblks; { block to which seeking }
 
@@ -479,11 +478,7 @@ end;
 {>>>}
 {<<<}
 procedure putstringfile;
-{ Do the equivalent of a "put" on the stringfile.
-  The file is organized as blocks of bytes, and the next byte to be written is always refered to as:
-    stringfile^[nextstringfile]    if caching is enabled
-    stringblkptr^[nextstringfile]  if caching is disabled
-  This procedure does the bookkeeping to make this scheme work }
+{ Do the equivalent of a "put" on the stringfile }
 
 begin
   if sharedPtr^.nextstringfile = diskbufsize then { string buffer full, write it out }
@@ -592,8 +587,8 @@ procedure getch;
   In the process, the globals "endofinput", "endofline", and "chpos" are updated.
   Formfeed and tab characters are converted to blanks.
   The source files are organized as a stack of files, and input is always from the top of the stack.
-  If end of included file is found, stack popped to including source file }
-
+  If end of included file is found, stack popped to including source file
+}
   {<<<}
   procedure special;
 
@@ -2991,7 +2986,7 @@ procedure scan1;
     begin
       i := 0;
 
-      {must put the checking switches at the beginning}
+      { must put the checking switches at the beginning}
       initoneswitch (rangecheck ,   'rangecheck    ', 1);
       initoneswitch (indexcheck,    'indexcheck    ', 1);
       initoneswitch (nilcheck,      'pointercheck  ', 1);
@@ -3013,9 +3008,9 @@ procedure scan1;
       { ord (switcheverplus[profiling])); }
 
       if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-        initoneswitch(listcount, 'list          ', 0) {ignore list/nolist}
+        initoneswitch (listcount, 'list          ', 0) {ignore list/nolist}
       else
-        initoneswitch(listcount, 'list          ', ord(sharedPtr^.switcheverplus[listcount]));
+        initoneswitch (listcount, 'list          ', ord(sharedPtr^.switcheverplus[listcount]));
 
       initoneswitch (shortintegers, 'shortints     ', 1);
       initoneswitch (fpp,           'fpp           ', 1);
@@ -3102,69 +3097,69 @@ procedure scan1;
     begin
       reslentable[2] := resindex + 1;
 
-      enterresword('do       ', dosym);
-      enterresword('if       ', ifsym);
-      enterresword('in       ', insym);
-      enterresword('of       ', ofsym);
-      enterresword('or       ', orsym);
-      enterresword('to       ', tosym);
+      enterresword ('do       ', dosym);
+      enterresword ('if       ', ifsym);
+      enterresword ('in       ', insym);
+      enterresword ('of       ', ofsym);
+      enterresword ('or       ', orsym);
+      enterresword ('to       ', tosym);
       reslentable[3] := resindex + 1;
 
-      enterresword('and      ', andsym);
-      enterresword('div      ', divsym);
-      enterresword('end      ', endsym);
-      enterresword('for      ', forsym);
-      enterresword('mod      ', modsym);
-      enterresword('nil      ', nilsym);
-      enterresword('not      ', notsym);
-      enterresword('set      ', setsym);
+      enterresword ('and      ', andsym);
+      enterresword ('div      ', divsym);
+      enterresword ('end      ', endsym);
+      enterresword ('for      ', forsym);
+      enterresword ('mod      ', modsym);
+      enterresword ('nil      ', nilsym);
+      enterresword ('not      ', notsym);
+      enterresword ('set      ', setsym);
       if not (sharedPtr^.switcheverplus[standard] or sharedPtr^.switcheverplus[oldreswords]) then
-        enterresword('use      ', usesym);
-      enterresword('var      ', varsym);
+        enterresword ('use      ', usesym);
+      enterresword ('var      ', varsym);
       reslentable[4] := resindex + 1;
 
-      enterresword('case     ', casesym);
-      enterresword('else     ', elsesym);
-      enterresword('file     ', filesym);
-      enterresword('goto     ', gotosym);
-      enterresword('then     ', thensym);
-      enterresword('type     ', typesym);
+      enterresword ('case     ', casesym);
+      enterresword ('else     ', elsesym);
+      enterresword ('file     ', filesym);
+      enterresword ('goto     ', gotosym);
+      enterresword ('then     ', thensym);
+      enterresword ('type     ', typesym);
       if not sharedPtr^.switcheverplus[standard] then
-        enterresword('univ     ', univsym);
-      enterresword('with     ', withsym);
+        enterresword ('univ     ', univsym);
+      enterresword ('with     ', withsym);
       reslentable[5] := resindex + 1;
 
-      enterresword('array    ', arraysym);
-      enterresword('begin    ', beginsym);
-      enterresword('const    ', constsym);
-      enterresword('label    ', labelsym);
-      enterresword('until    ', untilsym);
-      enterresword('while    ', whilesym);
+      enterresword ('array    ', arraysym);
+      enterresword ('begin    ', beginsym);
+      enterresword ('const    ', constsym);
+      enterresword ('label    ', labelsym);
+      enterresword ('until    ', untilsym);
+      enterresword ('while    ', whilesym);
       reslentable[6] := resindex + 1;
 
       if not (sharedPtr^.switcheverplus[standard] or sharedPtr^.switcheverplus[oldreswords]) then
         enterresword('define   ', definesym);
-      enterresword('downto   ', downtosym);
+      enterresword ('downto   ', downtosym);
       if not sharedPtr^.switcheverplus[standard] then
         enterresword('origin   ', originsym);
-      enterresword('packed   ', packedsym);
-      enterresword('record   ', recordsym);
-      enterresword('repeat   ', repeatsym);
+      enterresword ('packed   ', packedsym);
+      enterresword ('record   ', recordsym);
+      enterresword ('repeat   ', repeatsym);
       if not (sharedPtr^.switcheverplus[standard] or sharedPtr^.switcheverplus[oldreswords]) then
-        enterresword('shared   ', sharedsym);
+        enterresword ('shared   ', sharedsym);
       if not sharedPtr^.switcheverplus[standard] then
-        enterresword('string   ', stringsym);
+        enterresword ('string   ', stringsym);
       reslentable[7] := resindex + 1;
 
-      enterresword('program  ', programsym);
+      enterresword ('program  ', programsym);
       reslentable[8] := resindex + 1;
 
-      enterresword('function ', functionsym);
+      enterresword ('function ', functionsym);
       reslentable[9] := resindex + 1;
 
       if not sharedPtr^.switcheverplus[standard] then
-        enterresword('otherwise', otherwisesym);
-      enterresword('procedure', proceduresym);
+        enterresword ('otherwise', otherwisesym);
+      enterresword ('procedure', proceduresym);
       reslentable[10] := resindex + 1;
     end;
     {>>>}
@@ -3172,133 +3167,118 @@ procedure scan1;
     procedure initstandardids;
 
     begin
-      enterstandardid('integer   ', 7, integerid);
-      enterstandardid('real      ', 4, realid);
-      enterstandardid('double    ', 6, doubleid);
-      enterstandardid('char      ', 4, charid);
-      enterstandardid('boolean   ', 7, booleanid);
+      enterstandardid ('integer   ', 7, integerid);
+      enterstandardid ('real      ', 4, realid);
+      enterstandardid ('double    ', 6, doubleid);
+      enterstandardid ('char      ', 4, charid);
+      enterstandardid ('boolean   ', 7, booleanid);
 
-      enterstandardid('true      ', 4, trueid);
-      enterstandardid('false     ', 5, falseid);
+      enterstandardid ('true      ', 4, trueid);
+      enterstandardid ('false     ', 5, falseid);
 
-      enterstandardid('text      ', 4, textid);
-      enterstandardid('input     ', 5, inputid);
-      enterstandardid('output    ', 6, outputid);
-      enterstandardid('write     ', 5, writeid);
-      enterstandardid('writeln   ', 7, writelnid);
-      enterstandardid('read      ', 4, readid);
-      enterstandardid('readln    ', 6, readlnid);
-      enterstandardid('get       ', 3, getid);
-      enterstandardid('put       ', 3, putid);
-      enterstandardid('reset     ', 5, resetid);
-      enterstandardid('rewrite   ', 7, rewriteid);
-      enterstandardid('close     ', 5, closeid);
+      enterstandardid ('text      ', 4, textid);
+      enterstandardid ('input     ', 5, inputid);
+      enterstandardid ('output    ', 6, outputid);
+      enterstandardid ('write     ', 5, writeid);
+      enterstandardid ('writeln   ', 7, writelnid);
+      enterstandardid ('read      ', 4, readid);
+      enterstandardid ('readln    ', 6, readlnid);
+      enterstandardid ('get       ', 3, getid);
+      enterstandardid ('put       ', 3, putid);
+      enterstandardid ('reset     ', 5, resetid);
+      enterstandardid ('rewrite   ', 7, rewriteid);
+      enterstandardid ('close     ', 5, closeid);
 
-      enterstandardid('break     ', 5, breakid);
+      enterstandardid ('break     ', 5, breakid);
 
-      enterstandardid('new       ', 3, newid);
-      enterstandardid('dispose   ', 7, disposeid);
+      enterstandardid ('new       ', 3, newid);
+      enterstandardid ('dispose   ', 7, disposeid);
 
-      enterstandardid('pack      ', 4, packid);
-      enterstandardid('unpack    ', 6, unpackid);
+      enterstandardid ('pack      ', 4, packid);
+      enterstandardid ('unpack    ', 6, unpackid);
 
-      enterstandardid('abs       ', 3, absid);
-      enterstandardid('sqr       ', 3, sqrid);
-      enterstandardid('sin       ', 3, sinid);
-      enterstandardid('cos       ', 3, cosid);
-      enterstandardid('exp       ', 3, expid);
-      enterstandardid('ln        ', 2, lnid);
-      enterstandardid('sqrt      ', 4, sqrtid);
-      enterstandardid('arctan    ', 6, arctanid);
-      enterstandardid('odd       ', 3, oddid);
+      enterstandardid ('abs       ', 3, absid);
+      enterstandardid ('sqr       ', 3, sqrid);
+      enterstandardid ('sin       ', 3, sinid);
+      enterstandardid ('cos       ', 3, cosid);
+      enterstandardid ('exp       ', 3, expid);
+      enterstandardid ('ln        ', 2, lnid);
+      enterstandardid ('sqrt      ', 4, sqrtid);
+      enterstandardid ('arctan    ', 6, arctanid);
+      enterstandardid ('odd       ', 3, oddid);
 
-      enterstandardid('eof       ', 3, eofid);
-      enterstandardid('eoln      ', 4, eolnid);
-      enterstandardid('trunc     ', 5, truncid);
-      enterstandardid('round     ', 5, roundid);
+      enterstandardid ('eof       ', 3, eofid);
+      enterstandardid ('eoln      ', 4, eolnid);
+      enterstandardid ('trunc     ', 5, truncid);
+      enterstandardid ('round     ', 5, roundid);
 
-      enterstandardid('sngl      ', 4, snglid);
-      enterstandardid('dbl       ', 3, dblid);
-      enterstandardid('ord       ', 3, ordid);
-      enterstandardid('chr       ', 3, chrid);
-      enterstandardid('succ      ', 4, succid);
-      enterstandardid('pred      ', 4, predid);
-      enterstandardid('maxint    ', 6, maxintid);
-      enterstandardid('seek      ', 4, seekid);
-      enterstandardid('page      ', 4, pageid);
-      enterstandardid('time      ', 4, timeid);
-      enterstandardid('size      ', 4, sizeid);
-      enterstandardid('bitsize   ', 7, bitsizeid);
-      enterstandardid('upper     ', 5, upperid);
-      enterstandardid('lower     ', 5, lowerid);
+      enterstandardid ('sngl      ', 4, snglid);
+      enterstandardid ('dbl       ', 3, dblid);
+      enterstandardid ('ord       ', 3, ordid);
+      enterstandardid ('chr       ', 3, chrid);
+      enterstandardid ('succ      ', 4, succid);
+      enterstandardid ('pred      ', 4, predid);
+      enterstandardid ('maxint    ', 6, maxintid);
+      enterstandardid ('seek      ', 4, seekid);
+      enterstandardid ('page      ', 4, pageid);
+      enterstandardid ('time      ', 4, timeid);
+      enterstandardid ('size      ', 4, sizeid);
+      enterstandardid ('bitsize   ', 7, bitsizeid);
+      enterstandardid ('upper     ', 5, upperid);
+      enterstandardid ('lower     ', 5, lowerid);
 
-      enterstandardid('loophole  ', 8, loopholeid);
-      enterstandardid('ref       ', 3, refid);
+      enterstandardid ('loophole  ', 8, loopholeid);
+      enterstandardid ('ref       ', 3, refid);
 
-      enterstandardid('noioerror ', 9, noioerrorid);
-      enterstandardid('ioerror   ', 7, ioerrorid);
-      enterstandardid('iostatus  ', 8, iostatusid);
-      enterstandardid('delete    ', 6, deleteid);
-      enterstandardid('rename    ', 6, renameid);
+      enterstandardid ('noioerror ', 9, noioerrorid);
+      enterstandardid ('ioerror   ', 7, ioerrorid);
+      enterstandardid ('iostatus  ', 8, iostatusid);
+      enterstandardid ('delete    ', 6, deleteid);
+      enterstandardid ('rename    ', 6, renameid);
 
-      enterstandardid('forward   ', 7, forwardid);
-      enterstandardid('external  ', 8, externalid);
-      enterstandardid('nonpascal ', 9, nonpascalid);
-      enterstandardid('interrupt ', 9, interruptid);
+      enterstandardid ('forward   ', 7, forwardid);
+      enterstandardid ('external  ', 8, externalid);
+      enterstandardid ('nonpascal ', 9, nonpascalid);
+      enterstandardid ('interrupt ', 9, interruptid);
 
-      enterstandardid('minint    ', 6, minintid);
-      enterstandardid('shortint  ', 8, shortintid);
-      enterstandardid('insert    ', 6, insertid);
-      enterstandardid('str       ', 3, strid);
-      enterstandardid('val       ', 3, valprocid);
-      enterstandardid('copy      ', 4, copyid);
-      enterstandardid('concat    ', 6, concatid);
-      enterstandardid('length    ', 6, lengthid);
-      enterstandardid('pos       ', 3, posid);
-      enterstandardid('deletestr ', 9, deletestrid);
+      enterstandardid ('minint    ', 6, minintid);
+      enterstandardid ('shortint  ', 8, shortintid);
+      enterstandardid ('insert    ', 6, insertid);
+      enterstandardid ('str       ', 3, strid);
+      enterstandardid ('val       ', 3, valprocid);
+      enterstandardid ('copy      ', 4, copyid);
+      enterstandardid ('concat    ', 6, concatid);
+      enterstandardid ('length    ', 6, lengthid);
+      enterstandardid ('pos       ', 3, posid);
+      enterstandardid ('deletestr ', 9, deletestrid);
 
-      enterstandardid('facos     ', 5, facosid);
-      enterstandardid('fasin     ', 5, fasinid);
-      enterstandardid('fatan     ', 5, fatanid);
-      enterstandardid('fatanh    ', 6, fatanhid);
-      enterstandardid('fcosh     ', 5, fcoshid);
-      enterstandardid('fetoxm1   ', 7, fetoxm1id);
-      enterstandardid('fgetexp   ', 7, fgetexpid);
-      enterstandardid('fgetman   ', 7, fgetmanid);
-      enterstandardid('fint      ', 4, fintid);
-      enterstandardid('flog10    ', 6, flog10id);
-      enterstandardid('flog2     ', 5, flog2id);
-      enterstandardid('flognp1   ', 7, flognp1id);
-      enterstandardid('fmod      ', 4, fmodid);
-      enterstandardid('frem      ', 4, fremid);
-      enterstandardid('fscale    ', 6, fscaleid);
-      enterstandardid('fsgldiv   ', 7, fsgldivid);
-      enterstandardid('fsglmul   ', 7, fsglmulid);
-      enterstandardid('fsinh     ', 5, fsinhid);
-      enterstandardid('ftan      ', 4, ftanid);
-      enterstandardid('ftanh     ', 5, ftanhid);
-      enterstandardid('ftentox   ', 7, ftentoxid);
-      enterstandardid('ftwotox   ', 7, ftwotoxid);
-      enterstandardid('fsincos   ', 7, fsincosid);
-      enterstandardid('fmovecr   ', 7, fmovecrid);
-      enterstandardid('setfpcr   ', 7, setfpcrid);
-      enterstandardid('readfpcr  ', 8, readfpcrid);
+      enterstandardid ('facos     ', 5, facosid);
+      enterstandardid ('fasin     ', 5, fasinid);
+      enterstandardid ('fatan     ', 5, fatanid);
+      enterstandardid ('fatanh    ', 6, fatanhid);
+      enterstandardid ('fcosh     ', 5, fcoshid);
+      enterstandardid ('fetoxm1   ', 7, fetoxm1id);
+      enterstandardid ('fgetexp   ', 7, fgetexpid);
+      enterstandardid ('fgetman   ', 7, fgetmanid);
+      enterstandardid ('fint      ', 4, fintid);
+      enterstandardid ('flog10    ', 6, flog10id);
+      enterstandardid ('flog2     ', 5, flog2id);
+      enterstandardid ('flognp1   ', 7, flognp1id);
+      enterstandardid ('fmod      ', 4, fmodid);
+      enterstandardid ('frem      ', 4, fremid);
+      enterstandardid ('fscale    ', 6, fscaleid);
+      enterstandardid ('fsgldiv   ', 7, fsgldivid);
+      enterstandardid ('fsglmul   ', 7, fsglmulid);
+      enterstandardid ('fsinh     ', 5, fsinhid);
+      enterstandardid ('ftan      ', 4, ftanid);
+      enterstandardid ('ftanh     ', 5, ftanhid);
+      enterstandardid ('ftentox   ', 7, ftentoxid);
+      enterstandardid ('ftwotox   ', 7, ftwotoxid);
+      enterstandardid ('fsincos   ', 7, fsincosid);
+      enterstandardid ('fmovecr   ', 7, fmovecrid);
+      enterstandardid ('setfpcr   ', 7, setfpcrid);
+      enterstandardid ('readfpcr  ', 8, readfpcrid);
     end;
-    {>>>}
-    {<<<}
-    function rdup (i: integer): integer;
-    { Round size }
-
-      begin {rdup}
-        case hostmachine of
-          mc68000, i80386:
-            if odd(i) then rdup := i + 1 else rdup := i;
-          iapx86:
-            rdup := i; {alignment only if non-packed structures}
-          otherwise
-            rdup := i;
-          end;
-      end {rdup} ;
     {>>>}
 
   begin
@@ -3320,7 +3300,6 @@ procedure scan1;
 
     resindex := 0;
     initreswords;
-
     initstandardids;
 
     incomment := false;
@@ -3342,7 +3321,7 @@ procedure scan1;
     first_real_seen := false; {used to detect error when $double occurs after first real constant.}
     first_token_seen := false; {used to detect error when $case occurs after first token is scanned.}
 
-    {init the upper to lower case conversion table}
+    { init the upper to lower case conversion table }
     mapchars['A'] := 'a';
     mapchars['B'] := 'b';
     mapchars['C'] := 'c';
@@ -3369,7 +3348,6 @@ procedure scan1;
     mapchars['X'] := 'x';
     mapchars['Y'] := 'y';
     mapchars['Z'] := 'z';
-
   end;
   {>>>}
 
@@ -3412,7 +3390,7 @@ begin
   sharedPtr^.stringtablelimit := sharedPtr^.stringfilecount + sharedPtr^.stringtabletop;
   dispose (sharedPtr^.stringtable);
 
-  Writeln ('scan2 - ', tokenSharedPtr^.tokenCount:3, ' tokens');
+  Writeln ('scan found ', tokenSharedPtr^.tokenCount:3, ' tokens');
 end;
 {>>>}
 {<<<}

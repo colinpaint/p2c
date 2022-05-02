@@ -14657,6 +14657,7 @@ end;
 {<<<}
 procedure block;
 { Syntactic routine to parse a block, contains most of syntax analyzer }
+
 var
   firstsection: boolean; {set if first data declaration at this level}
   firstprocdefined: boolean; {false until a proc/func is defined at this level}

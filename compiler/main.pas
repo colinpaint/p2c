@@ -1447,6 +1447,7 @@ procedure resetswitches;
 begin
   sharedPtr^.switchcounters := sharedPtr^.originalswitches;
   sharedPtr^.currentswitch := 1;
+
   sharedPtr^.putlow := 0;
   sharedPtr^.puthi := 0;
   sharedPtr^.getlow := 0;

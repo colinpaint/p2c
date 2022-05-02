@@ -31,11 +31,6 @@
 %include 'main.def';
 %include 'code.def';
 {>>>}
-
-var
-  sharedPtr: sharedPtrType;
-  pseudoSharedPtr: pseudoSharedPtrType;
-
 {<<<}
 const
   nodesperblock = codemaxnodeinblock; {nodes per physical file block - 1}
@@ -104,6 +99,15 @@ const
   impure_section = - 4; { Apollo only}
   define_section = - 5; { Apollo only}
   min_section = - 5;    { lowest of the above}
+
+  maxstuffnodes = 39; {maximum number of nodes needed to stuff registers}
+  prologuelength = 25; {maximum number of nodes in procedure prologue}
+
+  { tab stops for macro file: }
+  opcolumn = 10;
+  opndcolumn = 19;
+  procnamecolumn = 27;
+  nodecolumn = 45;
 {>>>}
 {<<<}
 type
@@ -700,9 +704,101 @@ type
       param_offset: integer;
     end;
   {>>>}
+
+  bytesize = 0..255;
+
+  section = (codesect, diagsect, datasect); { code sections }
+  supportrange = integer;
+  linknametype = packed array [1..maxprocnamelen] of char;
+
+  fixupptr = ^fixupnode;
+  fixuptype = (fixuplabel, fixupproc, fixupabs, fixupesdid);
+  {<<<}
+  fixupnode = record
+      fixuplink: fixupptr;
+      fixupfileloc: addressrange; { location in relfile }
+      fixupobjpc: addressrange;
+      fixupaddr: addressrange; { relative address when found }
+      fixuplen: 2..4; { word or long fixup -- for 68020 }
+      case fixupkind: fixuptype of
+        fixuplabel: (fixuplabno: integer);
+        fixupproc: (fixupprocno: integer);
+        fixupabs: ();
+        fixupesdid: (vartabindex: integer); { index into vartable }
+    end;
+  {>>>}
+
+  esdrange = firstesd..lastesd;
+  {<<<}
+  esdtype = (esdsupport, esdexternal, esdentry, esdload, esdglobal,
+             esddiag, esdcodestart, esdcodesize,
+             esdcommon, esdbegin, esduse, esddefine, esdshrvar);
+  {>>>}
+  {<<<}
+  esdtabentry = packed record
+      case esdkind: esdtype of
+        esdsupport: (suppno: libroutines); { support number }
+        esdexternal, esdentry:
+          (exproc: proctableindex); { index to proctable }
+        esduse, esddefine: (vartabindex: integer); { index into vartable }
+        esdload: (sect: section);
+        esdglobal, esdcommon, esdbegin: (glbsize: addressrange);
+        esddiag, esdcodestart, esdcodesize: ();
+    end;
+  {>>>}
+
+  { types to support formatted macro output: }
+  longname = packed array [1..max_string_len] of char;
+  columnrange = 0..120;
+
+  bits = 0..16; {counts bits in a word}
+
+  objfiletype = file of record
+                block:  packed array [0..255] of 0..255;
+                end;
+
+  tempreltype = (externrel, forwardrel, backwardrel, textrel,
+                 nonlocalrel, supportrel, commonrel, stackrel);
+  tempreloffset = 0..5000; {max of proctablesize, maxsupport, maxnonlocal}
+  tempnegoffset = 0..15; {offset in words for cross-level procedure calls}
+  {<<<}
+  tempreloc = packed record
+                treltype: tempreltype;
+                treloffset: tempreloffset;
+                tnegoffset: tempnegoffset;
+                trellocn: addressrange;
+              end;
+  {>>>}
+
+  relfiletype = file of record
+                block:  packed array [0..255] of 0..maxusword;
+                end;
+
+  worddiskblock = packed array [0..worddiskbufsize] of 0..maxusword;
+  wordstream = file of worddiskblock;
+
+  {<<<}
+  { Putcode object types. }
+  objtypes =
+    (objnorm, { normal code word }
+     objext, { external symbol reference }
+     objforw, { forward ref--to be fixed up }
+     objsup, { support call }
+     objcom, { common reference }
+     objoff, { offset -- can not be start of relocation group }
+     objpic, { start of long pic relocation }
+     objign, { word containing linker commands which usually follows
+               objpic -- ignore for /test listing }
+     objlong { reserve a longword -- must not be split across records }
+    );
+  {>>>}
+  objtypesx = array [objtypes] of 0..4;
 {>>>}
 {<<<}
 var
+  sharedPtr: sharedPtrType;
+  pseudoSharedPtr: pseudoSharedPtrType;
+
   nextpseudofile: integer; { next byte in the current block of pseudofile}
 
   nokeydata: pseudoset;  { pseudoops without key, length, refcount or copycount}
@@ -927,113 +1023,7 @@ var
   { Modula2 specific variables }
   openarray_base: openarraynodeptr; { pointer to linked list of open array parameters. }
   main_import_offset: integer; { offset to add to main's import table entry to point to return location. }
-{>>>}
 
-{ hdrc2 }
-{<<<}
-const
-  maxstuffnodes = 39; {maximum number of nodes needed to stuff registers}
-  prologuelength = 25; {maximum number of nodes in procedure prologue}
-
-  { tab stops for macro file: }
-  opcolumn = 10;
-  opndcolumn = 19;
-  procnamecolumn = 27;
-  nodecolumn = 45;
-{>>>}
-{<<<}
-type
-  bytesize = 0..255;
-
-  section = (codesect, diagsect, datasect); { code sections }
-  supportrange = integer;
-  linknametype = packed array [1..maxprocnamelen] of char;
-
-  fixupptr = ^fixupnode;
-  fixuptype = (fixuplabel, fixupproc, fixupabs, fixupesdid);
-  {<<<}
-  fixupnode = record
-      fixuplink: fixupptr;
-      fixupfileloc: addressrange; { location in relfile }
-      fixupobjpc: addressrange;
-      fixupaddr: addressrange; { relative address when found }
-      fixuplen: 2..4; { word or long fixup -- for 68020 }
-      case fixupkind: fixuptype of
-        fixuplabel: (fixuplabno: integer);
-        fixupproc: (fixupprocno: integer);
-        fixupabs: ();
-        fixupesdid: (vartabindex: integer); { index into vartable }
-    end;
-  {>>>}
-
-  esdrange = firstesd..lastesd;
-  {<<<}
-  esdtype = (esdsupport, esdexternal, esdentry, esdload, esdglobal,
-             esddiag, esdcodestart, esdcodesize,
-             esdcommon, esdbegin, esduse, esddefine, esdshrvar);
-  {>>>}
-  {<<<}
-  esdtabentry = packed record
-      case esdkind: esdtype of
-        esdsupport: (suppno: libroutines); { support number }
-        esdexternal, esdentry:
-          (exproc: proctableindex); { index to proctable }
-        esduse, esddefine: (vartabindex: integer); { index into vartable }
-        esdload: (sect: section);
-        esdglobal, esdcommon, esdbegin: (glbsize: addressrange);
-        esddiag, esdcodestart, esdcodesize: ();
-    end;
-  {>>>}
-
-  { types to support formatted macro output: }
-  longname = packed array [1..max_string_len] of char;
-  columnrange = 0..120;
-
-  bits = 0..16; {counts bits in a word}
-
-  objfiletype = file of record
-                block:  packed array [0..255] of 0..255;
-                end;
-
-  tempreltype = (externrel, forwardrel, backwardrel, textrel,
-                 nonlocalrel, supportrel, commonrel, stackrel);
-  tempreloffset = 0..5000; {max of proctablesize, maxsupport, maxnonlocal}
-  tempnegoffset = 0..15; {offset in words for cross-level procedure calls}
-  {<<<}
-  tempreloc = packed record
-                treltype: tempreltype;
-                treloffset: tempreloffset;
-                tnegoffset: tempnegoffset;
-                trellocn: addressrange;
-              end;
-  {>>>}
-
-  relfiletype = file of record
-                block:  packed array [0..255] of 0..maxusword;
-                end;
-
-  worddiskblock = packed array [0..worddiskbufsize] of 0..maxusword;
-  wordstream = file of worddiskblock;
-
-  {<<<}
-  { Putcode object types. }
-  objtypes =
-    (objnorm, { normal code word }
-     objext, { external symbol reference }
-     objforw, { forward ref--to be fixed up }
-     objsup, { support call }
-     objcom, { common reference }
-     objoff, { offset -- can not be start of relocation group }
-     objpic, { start of long pic relocation }
-     objign, { word containing linker commands which usually follows
-               objpic -- ignore for /test listing }
-     objlong { reserve a longword -- must not be split across records }
-    );
-  {>>>}
-  objtypesx = array [objtypes] of 0..4;
-{>>>}
-{<<<}
-var
   savedebinst: nodeindex; {debug instruction for fixup}
   profstmtcount: integer; {number of statements being profiled}
 
@@ -1111,7 +1101,7 @@ var
   {>>>}
 {>>>}
 
-{<<<  commc.def}
+{<<<  commc forwards}
 {<<<}
 { Virtual Memory System for Instruction Nodes.
   These routines implement the virtual memory tree used for instructions.
@@ -1145,14 +1135,14 @@ var
 {>>>}
 {<<<}
 function getvartableptr(i: integer {index in vartable}): vartablerecptr;
-  external;
+  forward;
 
 { Returns a pointer to the ith vartable entry.
 }
 {>>>}
 {<<<}
 procedure getpseudobuff;
-  external;
+  forward;
 
 { Get and unpack the next element in the pseudofile, leaving the result
   in "pseudobuff".
@@ -1160,7 +1150,7 @@ procedure getpseudobuff;
 {>>>}
 {<<<}
 procedure unpackpseudofile;
-  external;
+  forward;
 
 { Get the next pseudo-instruction in "pseudobuf" and distribute some
   of the fields into other global variables.
@@ -1169,7 +1159,7 @@ procedure unpackpseudofile;
 
 {<<<}
 procedure getreal(var rval: realarray);
-  external;
+  forward;
 
 { Get a real value from the pseudo instructions.
 }
@@ -1178,7 +1168,7 @@ procedure getreal(var rval: realarray);
 procedure realtoints(rval: realarray; { value to convert }
                      len: unsigned; { length desired }
                      var i1, i2: integer { resulting integers } );
-  external;
+  forward;
 
 { Convert a real number to integers.
 }
@@ -1186,7 +1176,7 @@ procedure realtoints(rval: realarray; { value to convert }
 {>>>}
 {<<<}
 procedure newnode;
-  external;
+  forward;
 
 { Increment "lastnode", checking for instruction table overflow.  Sets
 "lastptr" using cwriteaccess, to allow caller to easily fill in the
@@ -1197,7 +1187,7 @@ node.
 procedure geninst(i: insttype; {instruction to generate}
                   l: operandrange; {number of operands}
                   olen: datarange {length of operands} );
-  external;
+  forward;
 
 { Generate an instruction.
 
@@ -1214,7 +1204,7 @@ zero.
 {>>>}
 {<<<}
 procedure genoprnd(o: operand {operand to generate} );
-  external;
+  forward;
 
 { Generates the given operand.  If the operand contains an offset
 dependent on the stack, tempcount is set appropriately.
@@ -1222,7 +1212,7 @@ dependent on the stack, tempcount is set appropriately.
 {>>>}
 {<<<}
 procedure genlongword(data: unsigned);
-  external;
+  forward;
 
 { Generates a longword of constant data.  Currently only used for mc68881
   double and extended constants that must be must be passed by pointer because
@@ -1231,7 +1221,7 @@ procedure genlongword(data: unsigned);
 {>>>}
 {<<<}
 procedure genlabeldelta(l1, l2: integer {base and offset labels} );
-  external;
+  forward;
 
 { Generates a case table entry label, the 16-bit difference between l1 and
 l2.
@@ -1239,7 +1229,7 @@ l2.
 {>>>}
 {<<<}
 procedure genlabel(l: integer {label number} );
-  external;
+  forward;
 
 {generate a labelnode to label "l".
 }
@@ -1247,7 +1237,7 @@ procedure genlabel(l: integer {label number} );
 {<<<}
 procedure genbr(inst: insttype; {branch to generate}
                 l: integer {label number} );
-  external;
+  forward;
 
 { Generate a branch instruction to label "l".
 
@@ -1260,7 +1250,7 @@ been delayed, it is enabled again at this point.
 {<<<}
 procedure genrelbr(inst: insttype; {branch to generate}
                    reladd: integer {branch over reladd instructions} );
-  external;
+  forward;
 
 { Generate a branch relative to the current location.
 The relative argument is the number of instructions to skip over,
@@ -1271,7 +1261,7 @@ not nodes, to simplify peephole optimization routines.
 procedure gendb(i: insttype; {db-style inst to gen}
                 regkey: keyindex; {contains register portion of inst}
                 l: integer {label to branch to} );
-  external;
+  forward;
 
 {gen a "db" instruction, decrement and branch register.
 }
@@ -1280,7 +1270,7 @@ procedure gendb(i: insttype; {db-style inst to gen}
 Procedure gen1(i: insttype;
                datalen: datarange;
                dst: keyindex);
-  external;
+  forward;
 
 {generate a single operand instruction, using keytable[dst] as
  the destination.
@@ -1290,7 +1280,7 @@ Procedure gen1(i: insttype;
 procedure gen2(i: insttype; {the instruction to generate}
                datalen: datarange; {length of operation in bytes}
                src, dst: keyindex {keytable indices of operands} );
-  external;
+  forward;
 
 {generate double operand instruction, using keytable[dst/src] as
  the two operands.
@@ -1314,14 +1304,14 @@ procedure gen_bf_inst(i: insttype; {the instruction to generate}
 procedure genadcon(m: modes; {what kind of thing we're referring to}
                    what: integer; {which one, or its location}
                    where: commonlong_reloc_type {which section, if known} );
-  external;
+  forward;
 
 { Generate an address constant for the Apollo.
 }
 {>>>}
 {<<<}
 procedure gensymboladcon(n: string8 {symbol name} );
-  external;
+  forward;
 
 { Generate an address constant for a symbol reference for the Apollo.
 }
@@ -1329,7 +1319,7 @@ procedure gensymboladcon(n: string8 {symbol name} );
 {>>>}
 {<<<}
 procedure setcommonkey;
-  external;
+  forward;
 
 { Check the key specified in the pseudoinstruction just read, and if
   it is a new key initialize its fields from the data in the pseudo-
@@ -1347,7 +1337,7 @@ procedure settemp(lth: datarange; {length of data referenced}
                   offset, offset1: integer;
                   scale: scale_range;
                   commonlong_reloc: commonlong_reloc_type);
-  external;
+  forward;
 
 {Set up a temporary key entry with the characteristics specified.  This has
  nothing to do with runtime temp administration.  It strictly sets up a key
@@ -1359,7 +1349,7 @@ procedure settemp(lth: datarange; {length of data referenced}
 procedure settempreg(lth: datarange; {length of data referenced}
                      m: modes; {normally dreg or areg}
                      reg: regindex {associated register} );
-  external;
+  forward;
 
 {shorthand call to settemp when only mode and register fields are
  meaningful.
@@ -1367,14 +1357,14 @@ procedure settempreg(lth: datarange; {length of data referenced}
 {>>>}
 {<<<}
 procedure settempareg(reg: regindex {areg to set new key temp to});
-  external;
+  forward;
 
 {like settempreg, but specific for aregisters}
 {>>>}
 {<<<}
 procedure settempdreg(lth: datarange; {length of data referenced}
                     reg: regindex {associated register} );
-  external;
+  forward;
 
 {shorthand call to settemp when only mode and register fields are
 meaningful.
@@ -1382,7 +1372,7 @@ meaningful.
 {>>>}
 {<<<}
 procedure settempfpreg(reg: regindex {associated register} );
-  external;
+  forward;
 
 {shorthand call to settemp when only mode and register fields are
 meaningful.
@@ -1391,14 +1381,14 @@ meaningful.
 {<<<}
 procedure settempimmediate(lth: datarange; {length of data referenced}
                            value: integer {literal value to set} );
-  external;
+  forward;
 
 { Shorthand call to settemp for literal keytable entries
 }
 {>>>}
 {<<<}
 procedure settempsymbol(sym: string8 {symbol name} );
-  external;
+  forward;
 
 { Shorthand call to settemp for symbol references
 }
@@ -1408,7 +1398,7 @@ procedure settempadcon(m: modes;
                        offset: integer;
                        commonlong_reloc: commonlong_reloc_type);
 
-  external;
+  forward;
 
 { Generate an indirect reference through an address constant, for
   Apollo's weird addressing convention.  Besides being put into
@@ -1419,7 +1409,7 @@ procedure settempadcon(m: modes;
 {<<<}
 procedure delete(m: nodeindex; {first node to delete}
                  n: nodeindex {number of nodes to delete} );
-  external;
+  forward;
 
 { Delete "n" instructions starting at node "m".  This is done by
   converting them to "nop's" which have no length and are not
@@ -1429,14 +1419,14 @@ procedure delete(m: nodeindex; {first node to delete}
 
 {<<<}
 procedure aligntemps;
-  external;
+  forward;
 
 { Make sure run-time stack aligns with the keytable model.
 }
 {>>>}
 {<<<}
 procedure newtemp(size: addressrange {size of temp to allocate} );
-  external;
+  forward;
 
 { Create a new temp. Temps are allocated from the top of the keys,
   while expressions are allocated from the bottom.
@@ -1453,7 +1443,7 @@ procedure newtemp(size: addressrange {size of temp to allocate} );
 {<<<}
 procedure adjustoffsets(firstnode: nodeindex; {first node of scan}
                         change: boolean {true if offset is to change} );
-  external;
+  forward;
 
 { Scan all instructions from "firstnode" to the global "lastnode" and
   adjust any which have any offsets dependent on the stack.  Also
@@ -1486,7 +1476,7 @@ procedure adjustoffsets(firstnode: nodeindex; {first node of scan}
 {<<<}
 procedure zaptemps(cnt: integer; {Number of temps do delete}
                    change: boolean {set if temp was never used} );
-  external;
+  forward;
 
 { Pop "cnt" temps from the temp stack, adjusting instructions emitted
   since the temp was allocated.  If this temp was never used, ("change"
@@ -1505,7 +1495,7 @@ procedure returntemps(cnt: integer {number of temps to return} );
 {>>>}
 {<<<}
 function uselesstemp: boolean;
-  external;
+  forward;
 
 { True if the top temp on the tempstack is no longer needed.
 }
@@ -1532,7 +1522,7 @@ procedure adjusttemps;
 
 {<<<}
 procedure definelabel(l: integer {label number to define} );
-  external;
+  forward;
 
 { Define a label with label number "l" pointing to "lastnode".
 
@@ -1544,7 +1534,7 @@ procedure definelabel(l: integer {label number to define} );
 {>>>}
 {<<<}
 procedure definelastlabel;
-  external;
+  forward;
 
 { Define the label with number "lastlabel".  This is used by the code
   generator to generate new labels as needed.  Such "local" labels are
@@ -1555,7 +1545,7 @@ procedure definelastlabel;
 
 {<<<}
 function findlabel(labno: integer {desired label number} ): labelindex;
-  external;
+  forward;
 
 { Searches the label table for label "labno" and returns the index of
   the entry for that label.
@@ -1564,7 +1554,7 @@ function findlabel(labno: integer {desired label number} ): labelindex;
 {>>>}
 {<<<}
 procedure callsupport(bn: libroutines {support routine to call} );
-  external;
+  forward;
 
 { Call the support library
 }
@@ -1572,20 +1562,20 @@ procedure callsupport(bn: libroutines {support routine to call} );
 {>>>}
 {<<<}
 procedure genprofstmt;
-  external;
+  forward;
 
 {>>>}
 {<<<}
 procedure supname(libroutine: libroutines;
                   var s: packed array[lo..hi: integer] of char);
-  external;
+  forward;
 
 { Generate a string containing the support call name.
 }
 {>>>}
 {<<<}
 function instlength(n: nodeindex {must refer to an instruction} ): integer;
-  external;
+  forward;
 
 { Return the byte length of the given instruction.  This code assumes
   that all relevant instruction optimization has been done (i.e. adds
@@ -1596,7 +1586,7 @@ function instlength(n: nodeindex {must refer to an instruction} ): integer;
 {<<<}
 procedure refglobal(m: modes; {usercall, supportcall, etc.}
                     what: integer {which routine or other global} );
-  external;
+  forward;
 
 { Look up a global reference in the reference list, and if absent,
   append it to the list.
@@ -1604,7 +1594,7 @@ procedure refglobal(m: modes; {usercall, supportcall, etc.}
 {>>>}
 {<<<}
 procedure refsymbol(n: string8 {symbol name} );
-  external;
+  forward;
 
 { Look up a symbol reference in the reference list, and if absent,
   append it to the list.
@@ -1615,7 +1605,7 @@ procedure defglobal(m: modes; {usercall, supportcall, etc.}
                     what: integer; {which routine or other global}
                     sect: commonlong_reloc_type; {which section}
                     where: addressrange {where within the section} );
-  external;
+  forward;
 
 { Append a global definition to the definition list.
 }
@@ -1624,34 +1614,34 @@ procedure defglobal(m: modes; {usercall, supportcall, etc.}
 procedure defsymbol(sym: string8; {symbol name}
                     sect: commonlong_reloc_type; {which section}
                     where: addressrange {where within the section} );
-  external;
+  forward;
 
 { Append a symbol definition to the definition list.
 }
 {>>>}
 
 { These declarations are here so code and putcode may be compiled separately. }
-procedure insertnewESD; external;
-procedure initdiags; external;
-procedure InitMac; external;
-procedure InitObj; external;
-procedure FixMac; external;
-procedure FixObj; external;
-function dump_externals: integer; external;
-procedure fixdiags; external;
-procedure FixDefines; external;
-procedure putdatax; external;
+procedure insertnewESD; forward;
+procedure initdiags; forward;
+procedure InitMac; forward;
+procedure InitObj; forward;
+procedure FixMac; forward;
+procedure FixObj; forward;
+function dump_externals: integer; forward;
+procedure fixdiags; forward;
+procedure FixDefines; forward;
+procedure putdatax; forward;
 
 { This function is in genblk, but it is needed in commc for 24-bit pic. }
-function getareg: regindex; external;
+function getareg: regindex; forward;
 
 { This procedure is in genblk, but it is needed in commc for Apollo support calls. }
-procedure markareg(r: regindex {register to clobber} ); external;
+procedure markareg(r: regindex {register to clobber} ); forward;
 procedure gendouble(i: insttype; {instruction to generate}
-                    src, dst: keyindex {operand descriptors} ); external;
+                    src, dst: keyindex {operand descriptors} ); forward;
 procedure fpgendouble(i: insttype; {instruction to generate}
-                      src, dst: keyindex {operand descriptors} ); external;
-procedure copy_openarrays; external;
+                      src, dst: keyindex {operand descriptors} ); forward;
+procedure copy_openarrays; forward;
 
 { Generate a double operand f.p. instruction.  Like gensingle, calculates
   operand length and calls fixaccess to generate stack pop and push modes. }
@@ -1662,7 +1652,7 @@ procedure fptodouble(x: realarray;         { * temporary definition * }
 { Convert floating point x to IEEE double format.
   If overflow or other error occurs, set err, and d is not valid.
 }
-  external;
+  forward;
 {>>>}
 {<<<}
 procedure fptosingle(x: realarray;         { * temporary definition * }
@@ -1671,7 +1661,7 @@ procedure fptosingle(x: realarray;         { * temporary definition * }
 { Convert floating point x to IEEE single format.
   If overflow or other error occurs, set err, and s is not valid.
 }
-  external;
+  forward;
 {>>>}
 {<<<}
 procedure fptoint(x: realarray;         { * temporary definition * }
@@ -1681,7 +1671,7 @@ procedure fptoint(x: realarray;         { * temporary definition * }
 { Convert floating point x to an integer i, possibly unsigned.
   If overflow or other error occurs, set err, and i is not valid.
 }
-  external;
+  forward;
 {>>>}
 {>>>}
 {<<<  commc}
@@ -3581,6 +3571,7 @@ begin
   column := column + 4;
 end;
 {>>>}
+
 {<<<}
 procedure reposition (col: columnrange);
 
@@ -3600,6 +3591,7 @@ procedure writeline;
     column := 1;
   end {writeline};
 {>>>}
+
 {<<<}
 function uppercase (ch: char): char;
 
@@ -3609,6 +3601,7 @@ function uppercase (ch: char): char;
     else uppercase := ch;
   end; {uppercase}
 {>>>}
+
 {<<<}
 procedure allocfixup;
 
@@ -3651,6 +3644,7 @@ procedure allocfixup;
       end;
   end; {absfixup}
 {>>>}
+
 {<<<}
   procedure insertnewESD;
 
@@ -3725,6 +3719,7 @@ procedure findESDid;
       insertnewESD;   { nextESD bumps, but not ESDid }
   end; { findESDid }
 {>>>}
+
 {<<<}
 procedure putrelfile (data: unsigned);
 
@@ -3779,6 +3774,7 @@ procedure flushtempbuffer;
       end;
   end; {flushtempbuffer}
 {>>>}
+
 {<<<}
 procedure putdata (data: unsigned);
 
@@ -3797,6 +3793,7 @@ procedure putbuffer (data: unsigned; reloc: boolean);
     putdata(data);
   end;  {putbuffer}
 {>>>}
+
 {<<<}
 procedure newsection (newsect: section {section to switch to} );
 
@@ -3823,6 +3820,7 @@ procedure newsection (newsect: section {section to switch to} );
       end;
   end; {newsection}
 {>>>}
+
 {<<<}
 procedure seekstringfile (n: integer {byte to access});
 { Do the equivalent of a "seek" on the string file.  This sets the
@@ -3869,6 +3867,7 @@ begin
   sharedPtr^.nextstringfile := sharedPtr^.nextstringfile + 1;
 end;
 {>>>}
+
 {<<<}
 procedure writeprocname (procn: proctableindex; len: integer);
 { Copy the procedure name for procedure "procn" from the string file to the macro file }
@@ -24181,8 +24180,8 @@ begin
 end;
 {>>>}
 
-{ The following 4 procedures handle the pseudo operators doint, doptr,
-  doreal, and dolevel, where the level is local or global.  Placed here to shorten genblk a bit. }
+{ The following 4 procedures handle the pseudo operators doint, doptr, doreal, and dolevel,
+  where the level is local or global. Placed here to shorten genblk a bit. }
 {<<<}
 procedure dointx;
 { Access a constant integer operand.  The value is in oprnds[1].

@@ -57,15 +57,11 @@
   Oregon Software does not apply to user-modified programs.  All copies
   of this program must display this notice and all copyright notices.
 
-        @(#)travrs.pas  4.4  7/31/90  16:31:36
-
-
   Pascal-2 Compiler Tree Builder
 
- Last modified by KRIS on 21-Nov-1990 15:23:35
- Purpose:
- Update release version for PC-VV0-GS0 at 2.3.0.1
-
+  Last modified by KRIS on 21-Nov-1990 15:23:35
+  Purpose:
+  Update release version for PC-VV0-GS0 at 2.3.0.1
 }
 {>>>}
 {$nomain,nopointercheck}
@@ -89,9 +85,12 @@ var
 {<<<}
 const
   pts = proctablespan; {shorter local name}
+
   debugtree = false;
+
   maxloopdepth = 10;
   maxexprstack = 100;
+
   nodesperblock = travrsmaxnodeinblock; {nodes per physical file block - 1}
   maxblockslow = lowtravrsblocks; { min blocks for node file buffers, allocated statically
                                     to use some otherwise unused space in the global area}
@@ -499,7 +498,7 @@ var
   blocksin: array [1..tmaxblocksin] of blockmap; {map of node blocks in memory}
   blockslow: array [1..maxblockslow] of nodeblock; {fixed blocks in store}
   bignodetable: array [0..bigtnodetablesize] of node;
-  exit_stmtno: integer; {save stmtno of the exit fake statement (VMS)}
+  exitStmtno: integer; {save stmtno of the exit fake statement (VMS)}
 
   { the following are only a convenience when using pdb (setting watch point on a heap based variable, ...) }
   dbgbasicblockptr: basicblockptr;
@@ -3491,7 +3490,7 @@ procedure walkstmtlist (firststmt: nodeindex {start of statement list} );
         begin
           if (targetopsys = vms) and (currentstmt.textline < 0) and
              nowdebugging then
-            exit_stmtno := currentstmt.stmtno
+            exitStmtno := currentstmt.stmtno
           else if currentstmt.stmtno <> 0 then
             if currentstmt.stmtno <> 0 then
               genpseudo(stmtbrk, currentstmt.srcfileindx, 0, 0, 0,
@@ -6624,7 +6623,6 @@ begin
     loopoverflow := loopoverflow + 1;
     blkid^.deadloop := true;
     end
-
   else
     begin
     loopdepth := loopdepth + 1;
@@ -6721,7 +6719,6 @@ begin
     getintreal (realval);
     genrealop (map[drealop, none], len, 0, 0, 0, realval);
     end
-
   else
     begin
     len := 0;
@@ -7825,10 +7822,9 @@ var
                       (sharedPtr^.switchcounters[profiling] > 0) or
                       sharedPtr^.switcheverplus[targdebug];
       nowwalking := (sharedPtr^.switchcounters[walkback] > 0);
-      exit_stmtno := 0;
+      exitStmtno := 0;
 
       { init the local var map }
-
       regvars[0].regid := 0;
       regvars[0].varlife.lonmin := 0;
       regvars[0].varlife.fonmin := 0;
@@ -7857,17 +7853,17 @@ var
       read (sharedPtr^.localFile, localvar);
       while localvar.typ <> none do
         begin
-          { This hashes the var's offset, really should be a function call.
-            However it would be called in several high bandwidth places and
-            places an unneeded speed penalty on this phase.
-            This code is replicated in doreference, killasreg, dodefine
-            and walk:indxnode.
-          }
+        { This hashes the var's offset, really should be a function call.
+          However it would be called in several high bandwidth places and
+          places an unneeded speed penalty on this phase.
+          This code is replicated in doreference, killasreg, dodefine
+          and walk:indxnode. }
         j := (localvar.offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
-        while regvars[j].worth >= 0 do j := (j + 1) mod (regtablelimit + 1);
+        while regvars[j].worth >= 0 
+          do j := (j + 1) mod (regtablelimit + 1);
         with regvars[j] do
           begin
-          {figure out mapping from data type to register type }
+          { figure out mapping from data type to register type }
           registercandidate := true;
           case localvar.typ of
             ptrs, fptrs: regkind := ptrreg;
@@ -7887,10 +7883,10 @@ var
         end;
 
       foncount := 0;
-      loopfactor := 1; {every ref equal 1 ref }
+      loopfactor := 1; { every ref equal 1 ref }
       irreducible := false;
       localparamnode := 0;
-    end {initbuild} ;
+    end;
   {>>>}
   {<<<}
   procedure addopmap(n: nodeindex; {node to add}
@@ -7906,25 +7902,24 @@ var
     not needed.
   }
 
-    var
-      p: nodeptr; {use to access op chain items}
+  var
+    p: nodeptr; {use to access op chain items}
 
-
-    begin
-      if (op >= intop) then
-        with context[contextlevel] do
+  begin
+    if (op >= intop) then
+      with context[contextlevel] do
+        begin
+        p := ref(bignodetable[n]);
+        p^.slink := opmap[hashvalue];
+        { operators at contextlevel 1 are hoisted for free }
+        if contextlevel = 1 then
           begin
-          p := ref(bignodetable[n]);
-          p^.slink := opmap[hashvalue];
-          { operators at contextlevel 1 are hoisted for free }
-          if contextlevel = 1 then
-            begin
-            p^.prelink := p^.slink;
-            p^.hoistedby := root;
-            end;
-          opmap[hashvalue] := n;
+          p^.prelink := p^.slink;
+          p^.hoistedby := root;
           end;
-    end {addopmap} ;
+        opmap[hashvalue] := n;
+        end;
+  end;
   {>>>}
   {<<<}
   procedure savecontext;
@@ -7945,44 +7940,45 @@ var
   }
   {>>>}
 
-    var
-      p: nodeptr; {used for access to nodes}
-      i: shortint; {general purpose induction var}
-      n: nodeindex; {used to trace list of nodes on opmap[0]}
+  var
+    p: nodeptr; {used for access to nodes}
+    i: shortint; {general purpose induction var}
+    n: nodeindex; {used to trace list of nodes on opmap[0]}
 
-
-    begin
-      if contextsp = contextdepth then overflowdepth := overflowdepth + 1
-      else
+  begin
+    if contextsp = contextdepth then 
+      overflowdepth := overflowdepth + 1
+    else
+      begin
+      contextsp := contextsp + 1;
+      context[contextsp] := context[contextsp - 1];
+      with context[contextsp] do
         begin
-        contextsp := contextsp + 1;
-        context[contextsp] := context[contextsp - 1];
-        with context[contextsp] do
+        firstblock := nil;
+        joinflag := false;
+        for i := 0 to nodehashsize do opmap[i] := 0;
+        for i := searchlevel to contextsp do
           begin
-          firstblock := nil;
-          joinflag := false;
-          for i := 0 to nodehashsize do opmap[i] := 0;
-          for i := searchlevel to contextsp do
+          n := context[i].opmap[0];
+          while n <> 0 do
             begin
-            n := context[i].opmap[0];
-            while n <> 0 do
+            p := ref(bignodetable[n]);
+            with p^ do
               begin
-              p := ref(bignodetable[n]);
-              with p^ do
+              if valid then
                 begin
-                if valid then
-                  begin
-                  deepestvalid := contextsp;
-                  end;
-                n := slink;
+                deepestvalid := contextsp;
                 end;
+              n := slink;
               end;
             end;
           end;
         end;
-      { entering a new context, it will not run }
-      context[contextsp].dominates := false;
-    end {savecontext} ;
+      end;
+
+    { entering a new context, it will not run }
+    context[contextsp].dominates := false;
+  end;
   {>>>}
   {<<<}
   procedure restorecontext;
@@ -8004,46 +8000,48 @@ var
   }
   {>>>}
 
-    var
-      p: nodeptr; {used for access to nodes}
-      i: shortint; {Induction var for context level scan}
-      n: nodeindex; {used to trace nodes on opmap[0]}
+  var
+    p: nodeptr; {used for access to nodes}
+    i: shortint; {Induction var for context level scan}
+    n: nodeindex; {used to trace nodes on opmap[0]}
 
 
-    begin
-      if overflowdepth > 0 then
+  begin
+    if overflowdepth > 0 then
+      begin
+      overflowdepth := overflowdepth - 1;
+      { since we've lost track assume the worst }
+      context[contextsp].dominates := false;
+      for i := 0 to nodehashsize do 
+        context[contextdepth].opmap[i] := 0;
+      end
+
+    else
+      begin
+      contextsp := contextsp - 1;
+      with context[contextsp] do
         begin
-        overflowdepth := overflowdepth - 1;
-        { since we've lost track assume the worst }
-        context[contextsp].dominates := false;
-        for i := 0 to nodehashsize do context[contextdepth].opmap[i] := 0;
-        end
-      else
-        begin
-        contextsp := contextsp - 1;
-        with context[contextsp] do
+        for i := searchlevel to contextsp do
           begin
-          for i := searchlevel to contextsp do
+          n := context[i].opmap[0];
+          while n <> 0 do
             begin
-            n := context[i].opmap[0];
-            while n <> 0 do
+            p := ref(bignodetable[n]);
+            with p^ do
               begin
-              p := ref(bignodetable[n]);
-              with p^ do
+              join := join or not valid;
+              if deepestvalid > contextsp then
                 begin
-                join := join or not valid;
-                if deepestvalid > contextsp then
-                  begin
-                  deepestvalid := contextsp;
-                  valid := true;
-                  end;
-                n := slink;
+                deepestvalid := contextsp;
+                valid := true;
                 end;
+              n := slink;
               end;
             end;
           end;
         end;
-    end {restorecontext} ;
+      end;
+  end;
   {>>>}
   {<<<}
   procedure popcontext;
@@ -8057,42 +8055,43 @@ var
   }
   {>>>}
 
-    var
-      p: nodeptr; {used for access to nodes}
-      i: shortint; {Induction var for context level scan}
-      n: nodeindex; {used to trace nodes on opmap[0]}
+  var
+    p: nodeptr; {used for access to nodes}
+    i: shortint; {Induction var for context level scan}
+    n: nodeindex; {used to trace nodes on opmap[0]}
 
+  begin
+    if overflowdepth > 0 then
+      begin
+      overflowdepth := overflowdepth - 1;
+      { since we've lost track assume the worst }
+      context[contextsp].dominates := false;
+      for i := 0 to nodehashsize do 
+        context[contextdepth].opmap[i] := 0;
+      end
 
-    begin
-      if overflowdepth > 0 then
+    else
+      begin
+      contextsp := contextsp - 1;
+      with context[contextsp] do
         begin
-        overflowdepth := overflowdepth - 1;
-        { since we've lost track assume the worst }
-        context[contextsp].dominates := false;
-        for i := 0 to nodehashsize do context[contextdepth].opmap[i] := 0;
-        end
-      else
-        begin
-        contextsp := contextsp - 1;
-        with context[contextsp] do
+        for i := searchlevel to contextsp do
           begin
-          for i := searchlevel to contextsp do
+          n := context[i].opmap[0];
+          while n <> 0 do
             begin
-            n := context[i].opmap[0];
-            while n <> 0 do
+            p := ref(bignodetable[n]);
+            with p^ do
               begin
-              p := ref(bignodetable[n]);
-              with p^ do
-                begin
-                join := join or not valid;
-                if deepestvalid > contextsp then deepestvalid := contextsp;
-                n := slink;
-                end;
+              join := join or not valid;
+              if deepestvalid > contextsp then deepestvalid := contextsp;
+              n := slink;
               end;
             end;
           end;
         end;
-    end; {popcontext}
+      end;
+  end;
   {>>>}
   {<<<}
   procedure clearcontext;
@@ -8113,19 +8112,18 @@ var
   }
   {>>>}
 
-    var
-      i: shortint; {general purpose induction var}
+  var
+    i: shortint; {general purpose induction var}
 
-
-    begin
-      with context[contextsp] do
-        begin
-        for i := 0 to nodehashsize do opmap[i] := 0;
-        if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-          for i := 2 to contextsp - 1 do context[i].joinflag := true;
-        searchlevel := contextsp;
-        end;
-    end {clearcontext} ;
+  begin
+    with context[contextsp] do
+      begin
+      for i := 0 to nodehashsize do opmap[i] := 0;
+      if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
+        for i := 2 to contextsp - 1 do context[i].joinflag := true;
+      searchlevel := contextsp;
+      end;
+  end;
   {>>>}
   {<<<}
   procedure joincontext;
@@ -8146,39 +8144,38 @@ var
   }
   {>>>}
 
-    var
-      p: nodeptr; {used for access to nodes}
-      i: shortint; {Induction var for context level scan}
-      n: nodeindex; {used to trace nodes on opmap[0]}
+  var
+    p: nodeptr; {used for access to nodes}
+    i: shortint; {Induction var for context level scan}
+    n: nodeindex; {used to trace nodes on opmap[0]}
 
-
-    begin
-      with context[contextsp] do
+  begin
+    with context[contextsp] do
+      begin
+      if joinflag then
         begin
-        if joinflag then
+        searchlevel := contextsp;
+        for i := 0 to nodehashsize do opmap[i] := 0;
+        end
+      else
+        begin
+        for i := searchlevel to contextsp do
           begin
-          searchlevel := contextsp;
-          for i := 0 to nodehashsize do opmap[i] := 0;
-          end
-        else
-          begin
-          for i := searchlevel to contextsp do
+          n := context[i].opmap[0];
+          while n <> 0 do
             begin
-            n := context[i].opmap[0];
-            while n <> 0 do
+            p := ref(bignodetable[n]);
+            with p^ do
               begin
-              p := ref(bignodetable[n]);
-              with p^ do
-                begin
-                if deepestvalid > contextsp then deepestvalid := contextsp;
-                if join then valid := false;
-                n := slink;
-                end;
+              if deepestvalid > contextsp then deepestvalid := contextsp;
+              if join then valid := false;
+              n := slink;
               end;
             end;
           end;
         end;
-    end {joincontext} ;
+      end;
+  end;
   {>>>}
   {<<<}
   procedure pushloop(cblock: basicblockptr; {continue block}
@@ -8187,88 +8184,82 @@ var
     so that a break or continue statement can find its loop. The descriptor
     also saves data on blocks important to the loop.
   }
+  var
+    l: loop_descriptor;
 
-    var
-      l: loop_descriptor;
-
-
-    begin
-      new(l);
-      with l^ do
-        begin
-        outer := this_loop;
-        cont_block := cblock;
-        break_block := bblock;
-        cont_found := false;
-        break_found := false;
-        looploop := false;
-        end;
-      this_loop := l;
-    end; {pushloop}
+  begin
+    new(l);
+    with l^ do
+      begin
+      outer := this_loop;
+      cont_block := cblock;
+      break_block := bblock;
+      cont_found := false;
+      break_found := false;
+      looploop := false;
+      end;
+    this_loop := l;
+  end;
   {>>>}
   {<<<}
   procedure poploop;
   { Pop a previously pushed loop }
 
-    var
-      l: loop_descriptor;
+  var
+    l: loop_descriptor;
 
-
-    begin
-      l := this_loop;
-      this_loop := l^.outer;
-      dispose(l);
-    end; {poploop}
+  begin
+    l := this_loop;
+    this_loop := l^.outer;
+    dispose(l);
+  end; 
   {>>>}
   {<<<}
-    procedure updatecontext;
+  procedure updatecontext;
+  {<<<}
+  { Called at the points in expression building where the results of
+    updating a variable must be taken into account.  This is normally
+    the point at which "newvarop"s are converted to "varops".  At
+    this point, nodes which are marked "mustinvalidate" are invalidated,
+    and the "mustinvalidate" flag is removed.  Such nodes are created
+    when a "newvarop" is scanned.
+  }
+  {>>>}
+
+  var
+    i: 0..contextdepth; {induction var on context levels}
+
     {<<<}
-    { Called at the points in expression building where the results of
-      updating a variable must be taken into account.  This is normally
-      the point at which "newvarop"s are converted to "varops".  At
-      this point, nodes which are marked "mustinvalidate" are invalidated,
-      and the "mustinvalidate" flag is removed.  Such nodes are created
-      when a "newvarop" is scanned.
-    }
-    {>>>}
+    procedure clobber(n: nodeindex {start of node chain} );
+    { Scan the chain of nodes beginning with "n" and invalidate any with the "mustinvalidate" flag set }
 
       var
-        i: 0..contextdepth; {induction var on context levels}
-
-
-      procedure clobber(n: nodeindex {start of node chain} );
-
-  { Scan the chain of nodes beginning with "n" and invalidate any with
-    the "mustinvalidate" flag set.
-  }
-
-        var
-          p: nodeptr; {used for access to nodes}
-
-
-        begin
-          while n <> 0 do
-            begin
-            p := ref(bignodetable[n]);
-            with p^ do
-              begin
-              if valid and mustinvalidate then
-                begin
-                if deepestvalid > contextsp then deepestvalid := contextsp;
-                valid := false;
-                mustinvalidate := false;
-                end;
-              n := slink;
-              end;
-            end;
-        end {clobber} ;
-
+        p: nodeptr; {used for access to nodes}
 
       begin
-        if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-          for i := context[contextsp].searchlevel to contextsp do
-            clobber(context[i].opmap[0]);
-      end {updatecontext} ;
+        while n <> 0 do
+          begin
+          p := ref(bignodetable[n]);
+          with p^ do
+            begin
+            if valid and mustinvalidate then
+              begin
+              if deepestvalid > contextsp then deepestvalid := contextsp;
+              valid := false;
+              mustinvalidate := false;
+              end;
+            n := slink;
+            end;
+          end;
+      end {clobber} ;
+    {>>>}
+
+
+  begin
+    if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
+      for i := context[contextsp].searchlevel to contextsp do
+        clobber(context[i].opmap[0]);
+  end;
   {>>>}
   {<<<}
   procedure updatenewvars(root: nodeindex {expression to process} );
@@ -12220,8 +12211,11 @@ var
   begin
     if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
       foncount := foncount + 1;
-    while interSharedPtr^.interFile^.block[nextintcode].s <> lasts do buildstmt;
-    addpredsuccs(currentblock, successorblock);
+
+    while interSharedPtr^.interFile^.block[nextintcode].s <> lasts do 
+      buildstmt;
+
+    addpredsuccs (currentblock, successorblock);
     getintfile;
   end;
   {>>>}
