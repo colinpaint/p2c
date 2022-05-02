@@ -55,7 +55,7 @@ void setup_dir()
 */
 #if 0
 //{{{
-Static void _setup (name, defn)
+Static void _setup(name, defn)
 char *name;
 int defn;
 {
@@ -67,7 +67,7 @@ int defn;
 #define _setup(a,b)
 
 //{{{
-void setup_module (name, defn)
+void setup_module(name, defn)
 char *name;
 int defn;
 {
@@ -112,11 +112,25 @@ void fix_parameters()
    the statement altogether.
 */
 
-Stmt *fix_statement (sp)
+Stmt* fix_statement(sp)
 Stmt *sp;
 {
     return sp;
 }
+//}}}
+//{{{
+/* This is the analogous function for expression traversals.  It is
+   called after the arguments have been (recursively) fixed and all
+   built-in fixes have been performed.
+*/
+
+Expr* fix_expression(ex, env)
+Expr *ex;
+int env;
+{
+    return ex;
+}
+
 //}}}
 //{{{
 /* This procedure is called when fixing an expression of type
@@ -129,14 +143,13 @@ Stmt *sp;
    recognized, the function should return NULL.
 */
 
-Expr *fix_bicall (ex, env)
+Expr* fix_bicall(ex, env)
 Expr *ex;
 int env;
 {
     return NULL;
 }
 //}}}
-
 //{{{
 /* This function returns nonzero if the built-in function "name"
    should be written "if (f(x))" rather than "if (f(x) != 0)"
@@ -144,7 +157,7 @@ int env;
    to return a 1-or-0 value.
 */
 
-int boolean_bicall (name)
+int boolean_bicall(name)
 char *name;
 {
     return (!strcmp(name, "strcmp") ||
@@ -162,7 +175,7 @@ char *name;
    guarantees not to change that object.
 */
 
-unsigned int safemask_bicall (name)
+unsigned int safemask_bicall(name)
 char *name;
 {
     Symbol *sp;
@@ -195,7 +208,7 @@ char *name;
    in the program besides those that are explicitly mentioned.
 */
 
-int sideeffects_bicall (name)
+int sideeffects_bicall(name)
 char *name;
 {
     return 0;
