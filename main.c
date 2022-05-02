@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
 #define define_globals
 #define PROTO_TRANS_C
 #include "main.h"
@@ -450,7 +451,7 @@ Static void postrc() {
     if (sizeof_char < 8 && ansiC > 0)
       fprintf(stderr, "Warning: chars have less than 8 bits\n");
     if (sizeof_char > longbits) {
-      min_schar = LONG_MIN;
+      min_schar = (long)LONG_MIN;
       max_schar = LONG_MAX;
       }
     else {
@@ -472,7 +473,7 @@ Static void postrc() {
     if (sizeof_short < 16 && ansiC > 0)
       fprintf (stderr, "Warning: shorts have less than 16 bits\n");
     if (sizeof_short > longbits) {
-      min_sshort = LONG_MIN;
+      min_sshort = (long)LONG_MIN;
       max_sshort = LONG_MAX;
       }
     else {

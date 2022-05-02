@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
 #define PROTO_LEX_C
 #include "main.h"
 /* Define LEXDEBUG for a token trace */
@@ -1131,7 +1132,7 @@ void include_as_import()
     if (topinput->saveblockkind == TOK_NIL)
       topinput->saveblockkind = blockkind;
     blockkind = TOK_IMPORT;
-    } 
+    }
   else
     warning(format_s("%s ignored except in include files [228]", interfacecomment));
 }
@@ -1148,7 +1149,7 @@ char *fname;
   if (fname) {
     infname = fname;
     inf_lnum = 0;
-    } 
+    }
   else
     inf_lnum--;     /* adjust for extra getaline() */
 
@@ -1638,7 +1639,7 @@ int lnum;
           }
         if (mp) {
           mp->constdefn = ex;
-          } 
+          }
         else {
           sl = strlist_append(&fieldmacros, format_ss("%s.%s", sym->name, sym2->name));
           sl->value = (long)ex;
@@ -1677,7 +1678,7 @@ int lnum;
         for (;;) {
           if (sym->mbase && (sym->mbase->kind == MK_FUNCTION || sym->mbase->kind == MK_SPECIAL)) {
             sym->mbase->constdefn = ex;
-            } 
+            }
           else {
             sl = strlist_append(&funcmacros, sym->name);
             sl->value = (long)ex;
@@ -2307,7 +2308,7 @@ int starparen;    /* 0={ }, 1=(* *), 2=C comments, 3=" " */
       ch = *inbufptr++;
       switch (ch) {
         //{{{
-        case '}': 
+        case '}':
           if ((!starparen || nestedcomments == 0) && starparen < 2 && --nestcount <= 0) {
             *cp = 0;
             if (wasrel && !strcmp(curtokbuf, "\003"))
@@ -2365,7 +2366,7 @@ int starparen;    /* 0={ }, 1=(* *), 2=C comments, 3=" " */
           break;
         //}}}
         //{{{
-        case 0: 
+        case 0:
           *cp = 0;
           if (commenting_flag)
             saveinputcomment(inbufptr-1);
@@ -2380,13 +2381,13 @@ int starparen;    /* 0={ }, 1=(* *), 2=C comments, 3=" " */
             if (*inbufptr == ' ') {
               inbufptr++;
               i++;
-              } 
+              }
             else if (*inbufptr == '\t') {
               inbufptr++;
               i++;
               if (intabsize)
                 i = (i / intabsize + 1) * intabsize;
-              } 
+              }
             else
               break;
             }
@@ -2400,13 +2401,13 @@ int starparen;    /* 0={ }, 1=(* *), 2=C comments, 3=" " */
               *cp++ = '\002';
               i -= cmtindent;
               wasrel = 1;
-              } 
+              }
             else {
               *cp++ = '\003';
               }
             while (--i >= 0)
               *cp++ = ' ';
-            } 
+            }
           else
             *cp++ = (slashslash) ? '\002' : '\003';
 

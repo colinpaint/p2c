@@ -1,5 +1,10 @@
-build
-windowsBuild
+Win32
+x64
+Debug
+Release
+*.suo
+*.ipch
+*.db
 
 *.o
 *.a

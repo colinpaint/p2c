@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
 #define PROTO_PARSE_C
 #include "main.h"
 
@@ -1285,7 +1286,7 @@ int serial;
 }
 //}}}
 //{{{
-Static void out_block(spbase, opts, serial)
+Static void out_block (spbase, opts, serial)
 Stmt *spbase;
 int opts, serial;
 {
@@ -1851,7 +1852,7 @@ int opts, serial;
 //{{{
 /* Should have a way to convert GOTO's to the end of the function to RETURN's */
 /* Convert "_RETV = foo;" at end of function to "return foo" */
-Static int checkreturns(spp, nearret)
+Static int checkreturns (spp, nearret)
 Stmt **spp;
 int nearret;
 {
@@ -1926,7 +1927,7 @@ int nearret;
 //{{{
 /* Replace all occurrences of one expression with another expression */
 
-Expr *replaceexprexpr(ex, oldex, newex, keeptype)
+Expr *replaceexprexpr (ex, oldex, newex, keeptype)
 Expr *ex, *oldex, *newex;
 int keeptype;
 {
@@ -1957,7 +1958,7 @@ int keeptype;
 }
 //}}}
 //{{{
-void replaceexpr(sp, oldex, newex)
+void replaceexpr (sp, oldex, newex)
 Stmt *sp;
 Expr *oldex, *newex;
 {
@@ -1975,7 +1976,7 @@ Expr *oldex, *newex;
 }
 //}}}
 //{{{
-Stmt *mixassignments(sp, mp)
+Stmt *mixassignments (sp, mp)
 Stmt *sp;
 Meaning *mp;
 {
@@ -2029,7 +2030,7 @@ Expr *ex;
 //}}}
 //{{{
 /* check if a block can never exit by falling off the end */
-Static int deadendblock(sp, breaks)
+Static int deadendblock (sp, breaks)
 Stmt *sp;
 int breaks;
 {
@@ -2048,7 +2049,7 @@ int breaks;
 
 //}}}
 //{{{
-int expr_is_bool(ex, want)
+int expr_is_bool (ex, want)
 Expr *ex;
 int want;
 {
@@ -2075,7 +2076,7 @@ int want;
 */
 /* This could be smarter about, e.g., (a>5) -> (a>0) */
 
-int implies(c1, c2, not1, not2)
+int implies (c1, c2, not1, not2)
 Expr *c1, *c2;
 int not1, not2;
 {
@@ -2190,7 +2191,7 @@ int not1, not2;
 }
 //}}}
 //{{{
-void infiniteloop(sp)
+void infiniteloop (sp)
 Stmt *sp;
 {
     switch (infloopstyle) {
@@ -2221,7 +2222,7 @@ Stmt *sp;
 //}}}
 
 //{{{
-Expr *print_func(ex)
+Expr *print_func (ex)
 Expr *ex;
 {
     if (!ex || ex->kind != EK_BICALL)
@@ -2244,7 +2245,7 @@ Expr *ex;
 
 //}}}
 //{{{
-int printnl_func(ex)
+int printnl_func (ex)
 Expr *ex;
 {
     char *cp, ch;
@@ -2280,7 +2281,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr *chg_printf(ex)
+Expr *chg_printf (ex)
 Expr *ex;
 {
     Expr *fex;
@@ -2316,7 +2317,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr *mix_printf(ex, ex2)
+Expr *mix_printf (ex, ex2)
 Expr *ex, *ex2;
 {
     int i;
@@ -2345,7 +2346,7 @@ Static long globalprops, checkelimprops;
 Static int flowbreaks, flowrecord;
 Static int flowuseful;
 //{{{
-Static int propcheckexprokay(ex)
+Static int propcheckexprokay (ex)
 Expr *ex;
 {
     switch (ex->kind) {
@@ -2368,7 +2369,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Static int findpropexpr(ex, prop, add)
+Static int findpropexpr (ex, prop, add)
 Expr *ex;
 int prop, add;
 {
@@ -2392,7 +2393,7 @@ int prop, add;
 }
 //}}}
 //{{{
-Static void findpropchecksexpr(ex)
+Static void findpropchecksexpr (ex)
 Expr *ex;
 {
     int i;
@@ -2425,7 +2426,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Static void findpropchecks(sp)
+Static void findpropchecks (sp)
 Stmt *sp;
 {
     while (sp) {
@@ -2439,7 +2440,7 @@ Stmt *sp;
 }
 //}}}
 //{{{
-int proveexprprop(ex, sp, prop)   /* 0 = false, 1 = true, -1 = unknown */
+int proveexprprop (ex, sp, prop)   /* 0 = false, 1 = true, -1 = unknown */
 Expr *ex;
 Stmt *sp;
 int prop;
@@ -2487,7 +2488,7 @@ int prop;
 }
 //}}}
 //{{{
-Expr *flow_fixexpr(ex, sp, env)
+Expr *flow_fixexpr (ex, sp, env)
 Expr *ex;
 Stmt *sp;
 int env;
@@ -2536,7 +2537,7 @@ int env;
 }
 //}}}
 //{{{
-Static void checkpropzero(ex, truep, falsep, nonzero)
+Static void checkpropzero (ex, truep, falsep, nonzero)
 Expr *ex;
 long *truep, *falsep;
 int nonzero;
@@ -2592,7 +2593,7 @@ int nonzero;
 }
 //}}}
 //{{{
-Static void checkpropsexpr(ex, sp, truep, falsep)
+Static void checkpropsexpr (ex, sp, truep, falsep)
 Expr *ex;
 Stmt *sp;
 long *truep, *falsep;
@@ -2993,7 +2994,7 @@ long *truep, *falsep;
 }
 //}}}
 //{{{
-Static int checkelimexpr(ex, ex2)
+Static int checkelimexpr (ex, ex2)
 Expr *ex, *ex2;
 {
     int i;
@@ -3021,7 +3022,7 @@ Expr *ex, *ex2;
 }
 //}}}
 //{{{
-Static int checkelims(sp, ex, depth, last)
+Static int checkelims (sp, ex, depth, last)
 Stmt *sp;
 Expr *ex;
 int depth, last;
@@ -3114,7 +3115,7 @@ int depth, last;
 //}}}
 
 //{{{
-void flowblock(sp)
+void flowblock (sp)
 Stmt *sp;
 {
     long truep = 0, falsep = 0;
@@ -3171,7 +3172,7 @@ Stmt *sp;
 }
 //}}}
 //{{{
-void eatstmt(spp)
+void eatstmt (spp)
 Stmt **spp;
 {
     Stmt *sp = *spp;
@@ -3183,7 +3184,7 @@ Stmt **spp;
 }
 //}}}
 //{{{
-int haslabels(sp)
+int haslabels (sp)
 Stmt *sp;
 {
     if (!sp)
@@ -3195,7 +3196,7 @@ Stmt *sp;
 //}}}
 
 //{{{
-void fixblock(spp, thereturn)
+void fixblock (spp, thereturn)
 Stmt **spp, *thereturn;
 {
     Stmt *sp, *sp1, *sp2, *sp3, **spp2, *thisreturn;
@@ -3673,7 +3674,7 @@ Stmt **spp, *thereturn;
 //{{{
 /* Convert comma expressions into multiple statements */
 
-Static int checkcomma_expr(spp, exp)
+Static int checkcomma_expr (spp, exp)
 Stmt **spp;
 Expr **exp;
 {
@@ -3747,7 +3748,7 @@ Expr **exp;
 }
 //}}}
 //{{{
-Static void checkcommas(spp)
+Static void checkcommas (spp)
 Stmt **spp;
 {
     Stmt *sp;
@@ -3788,7 +3789,7 @@ Stmt **spp;
 }
 //}}}
 //{{{
-Static int checkvarchangeable(ex, mp)
+Static int checkvarchangeable (ex, mp)
 Expr *ex;
 Meaning *mp;
 {
@@ -3807,7 +3808,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-int checkvarchangedexpr(ex, mp, addrokay)
+int checkvarchangedexpr (ex, mp, addrokay)
 Expr *ex;
 Meaning *mp;
 int addrokay;
@@ -3894,7 +3895,7 @@ int addrokay;
 }
 //}}}
 //{{{
-int checkvarchanged(sp, mp)
+int checkvarchanged (sp, mp)
 Stmt *sp;
 Meaning *mp;
 {
@@ -3918,7 +3919,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-int checkexprchanged(sp, ex)
+int checkexprchanged (sp, ex)
 Stmt *sp;
 Expr *ex;
 {
@@ -3957,7 +3958,7 @@ Expr *ex;
 Static int theoffset, numoffsets, numzerooffsets;
 #define BadOffset  (-999)
 //{{{
-void checkvaroffsetexpr(ex, mp, myoffset)
+void checkvaroffsetexpr (ex, mp, myoffset)
 Expr *ex;
 Meaning *mp;
 int myoffset;
@@ -4009,7 +4010,7 @@ int myoffset;
 }
 //}}}
 //{{{
-void checkvaroffsetstmt(sp, mp)
+void checkvaroffsetstmt (sp, mp)
 Stmt *sp;
 Meaning *mp;
 {
@@ -4024,7 +4025,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-int checkvaroffset(sp, mp)
+int checkvaroffset (sp, mp)
 Stmt *sp;
 Meaning *mp;
 {
@@ -4041,7 +4042,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Expr *initfilevar(ex)
+Expr *initfilevar (ex)
 Expr *ex;
 {
     Expr *ex2;
@@ -4071,7 +4072,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-void initfilevars(mp, sppp, exbase)
+void initfilevars (mp, sppp, exbase)
 Meaning *mp;
 Stmt ***sppp;
 Expr *exbase;
@@ -4123,7 +4124,7 @@ Static Stmt *findinittab[FINDINITMAX];
 Static int findinitstep[FINDINITMAX];
 Static int findinitokay;
 //{{{
-Static void findinitsexpr(ex)
+Static void findinitsexpr (ex)
 Expr *ex;
 {
     int i;
@@ -4135,7 +4136,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Static int findinitscheckexpr(ex, mp)
+Static int findinitscheckexpr (ex, mp)
 Expr *ex;
 Meaning *mp;
 {
@@ -4151,7 +4152,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Static int findinitscheckstmt(sp, mp)
+Static int findinitscheckstmt (sp, mp)
 Stmt *sp;
 Meaning *mp;
 {
@@ -4172,7 +4173,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Static int anygotos(sp)
+Static int anygotos (sp)
 Stmt *sp;
 {
     while (sp) {
@@ -4187,7 +4188,7 @@ Stmt *sp;
 
 //}}}
 //{{{
-Static void findinits(sp, depth, okay)
+Static void findinits (sp, depth, okay)
 Stmt *sp;
 int depth, okay;
 {
@@ -4448,7 +4449,7 @@ Static Stmt *p_body()
 
 #define checkWord()  if (anywords) output(" "); anywords = 1
 //{{{
-Static void out_function(func)
+Static void out_function (func)
 Meaning *func;
 {
     Meaning *mp;
@@ -4564,7 +4565,7 @@ Meaning *func;
 }
 //}}}
 //{{{
-void movetoend(mp)
+void movetoend (mp)
 Meaning *mp;
 {
     Meaning **mpp;
@@ -4591,7 +4592,7 @@ Meaning *mp;
 
 //}}}
 //{{{
-Static void scanfwdparams(mp)
+Static void scanfwdparams (mp)
 Meaning *mp;
 {
   Symbol *sym;
@@ -4605,7 +4606,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Static void p_function(isfunc)
+Static void p_function (isfunc)
 int isfunc;
 {
     Meaning *func;
@@ -4797,7 +4798,7 @@ int isfunc;
 }
 //}}}
 //{{{
-Static void out_include(name, quoted)
+Static void out_include (name, quoted)
 char *name;
 int quoted;
 {
@@ -4810,7 +4811,7 @@ int quoted;
 }
 //}}}
 //{{{
-Static void cleanheadername(dest, name)
+Static void cleanheadername (dest, name)
 char *dest, *name;
 {
     char *cp;
@@ -4830,7 +4831,7 @@ char *dest, *name;
 }
 //}}}
 //{{{
-Static int tryimport(sym, fname, ext, need)
+Static int tryimport (sym, fname, ext, need)
 Symbol *sym;
 char *fname, *ext;
 int need;
@@ -4857,7 +4858,7 @@ int need;
 }
 //}}}
 //{{{
-Static void p_import(inheader)
+Static void p_import (inheader)
 int inheader;
 {
     Strlist *sl;
@@ -4937,7 +4938,7 @@ int inheader;
 }
 //}}}
 //{{{
-void do_include(blkind)
+void do_include (blkind)
 Token blkind;
 {
     FILE *oldfile = outf;
@@ -5003,7 +5004,7 @@ Token blkind;
        TOK_END:         None of the above
 */
 
-void p_block(blkind)
+void p_block (blkind)
 Token blkind;
 {
     Token saveblockkind = blockkind;
@@ -5158,7 +5159,7 @@ Static void skiptomodule()
 
 //}}}
 //{{{
-Static void p_moduleinit(mod)
+Static void p_moduleinit (mod)
 Meaning *mod;
 {
     Stmt *sp;
@@ -5219,7 +5220,7 @@ Static void p_nested_module()
 }
 //}}}
 //{{{
-Static int p_module(ignoreit, isdefn)
+Static int p_module (ignoreit, isdefn)
 int ignoreit;
 int isdefn;    /* Modula-2: 0=local module, 1=DEFINITION, 2=IMPLEMENTATION */
 {
@@ -5371,7 +5372,7 @@ int isdefn;    /* Modula-2: 0=local module, 1=DEFINITION, 2=IMPLEMENTATION */
 }
 //}}}
 //{{{
-int p_search(fname, ext, need)
+int p_search (fname, ext, need)
 char *fname, *ext;
 int need;
 {

@@ -16,11 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
 #define PROTO_PEXPR_C
 #include "main.h"
 
 //{{{
-Expr *dots_n_hats(ex, target)
+Expr *dots_n_hats (ex, target)
 Expr *ex;
 Type *target;
 {
@@ -167,7 +168,7 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_index(ex, ex2)
+Expr *p_index (ex, ex2)
 Expr *ex, *ex2;
 {
     Expr *ex3;
@@ -226,7 +227,7 @@ Expr *ex, *ex2;
 //}}}
 
 //{{{
-Expr *fake_dots_n_hats(ex)
+Expr *fake_dots_n_hats (ex)
 Expr *ex;
 {
     for (;;) {
@@ -275,7 +276,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Static void bindnames(ex)
+Static void bindnames (ex)
 Expr *ex;
 {
     int i;
@@ -302,7 +303,7 @@ Expr *ex;
 //}}}
 
 //{{{
-void var_reference(mp)
+void var_reference (mp)
 Meaning *mp;
 {
     Meaning *mp2;
@@ -341,7 +342,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Expr *expr_reference(ex)
+Expr *expr_reference (ex)
 Expr *ex;
 {
     int i;
@@ -355,7 +356,7 @@ Expr *ex;
 //}}}
 
 //{{{
-Expr *p_variable(target)
+Expr *p_variable (target)
 Type *target;
 {
     Expr *ex, *ex2;
@@ -454,7 +455,7 @@ Expr *p_ord_expr()
 }
 //}}}
 //{{{
-Static Expr *makesmallsetconst(bits, type)
+Static Expr *makesmallsetconst (bits, type)
 long bits;
 Type *type;
 {
@@ -468,7 +469,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr *packset(ex, type)
+Expr *packset (ex, type)
 Expr *ex;
 Type *type;
 {
@@ -523,7 +524,7 @@ Type *type;
 
 #define MAXSETLIT 400
 //{{{
-Expr *p_setfactor(target, sure)
+Expr *p_setfactor (target, sure)
 Type *target;
 int sure;
 {
@@ -692,7 +693,7 @@ int sure;
 }
 //}}}
 //{{{
-Expr *p_funcarglist(ex, args, firstarg, ismacro)
+Expr *p_funcarglist (ex, args, firstarg, ismacro)
 Expr *ex;
 Meaning *args;
 int firstarg, ismacro;
@@ -940,7 +941,7 @@ int firstarg, ismacro;
 }
 //}}}
 //{{{
-Expr *replacemacargs(ex, fex)
+Expr *replacemacargs (ex, fex)
 Expr *ex, *fex;
 {
     int i;
@@ -962,7 +963,7 @@ Expr *ex, *fex;
 }
 //}}}
 //{{{
-Expr *p_noarglist(ex, mp, args)
+Expr *p_noarglist (ex, mp, args)
 Expr *ex;
 Meaning *mp, *args;
 {
@@ -979,7 +980,7 @@ Meaning *mp, *args;
 }
 //}}}
 //{{{
-void func_reference(func)
+void func_reference (func)
 Meaning *func;
 {
     Meaning *mp;
@@ -992,7 +993,7 @@ Meaning *func;
 }
 //}}}
 //{{{
-Expr *p_memcall(expr, mp)
+Expr *p_memcall (expr, mp)
 Expr *expr;
 Meaning *mp;
 {
@@ -1021,7 +1022,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Expr *p_funccall(mp)
+Expr *p_funccall (mp)
 Meaning *mp;
 {
     Meaning *mp2, *tvar;
@@ -1106,7 +1107,7 @@ Expr *accumulate_strlit()
 }
 //}}}
 //{{{
-Expr *pascaltypecast(type, ex2)
+Expr *pascaltypecast (type, ex2)
 Type *type;
 Expr *ex2;
 {
@@ -1141,7 +1142,7 @@ Expr *ex2;
 }
 //}}}
 //{{{
-Static Expr *p_factor(target)
+Static Expr *p_factor (target)
 Type *target;
 {
     Expr *ex, *ex2;
@@ -1474,7 +1475,7 @@ Type *target;
 }
 //}}}
 //{{{
-Static Expr *p_powterm(target)
+Static Expr *p_powterm (target)
 Type *target;
 {
     Expr *ex = p_factor(target);
@@ -1535,7 +1536,7 @@ Type *target;
 }
 //}}}
 //{{{
-Static Expr *p_term(target)
+Static Expr *p_term( target)
 Type *target;
 {
     Expr *ex = p_powterm(target);
@@ -1635,7 +1636,7 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_sexpr(target)
+Expr *p_sexpr (target)
 Type *target;
 {
     Expr *ex, *ex2;
@@ -1744,7 +1745,7 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_rexpr(target)
+Expr *p_rexpr (target)
 Type *target;
 {
     Expr *ex, *ex2, *ex3, *ex4;
@@ -1907,7 +1908,7 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_andexpr(target)
+Expr *p_andexpr (target)
 Type *target;
 {
     Expr *ex = p_rexpr(target);
@@ -1933,7 +1934,7 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_expr(target)
+Expr *p_expr (target)
 Type *target;
 {
     Expr *ex = p_andexpr(target);
@@ -1961,7 +1962,7 @@ Type *target;
 //{{{
 /* Parse a C expression; used by VarMacro, etc. */
 
-Type *nametotype(name)
+Type *nametotype (name)
 char *name;
 {
     if (!strcicmp(name, "malloc") ||
@@ -1972,7 +1973,7 @@ char *name;
 }
 //}}}
 //{{{
-int istypespec(iscast)
+int istypespec (iscast)
 int iscast;
 {
     char *cp;
@@ -2014,7 +2015,7 @@ int iscast;
 }
 //}}}
 //{{{
-Expr *pc_parentype(cp)
+Expr *pc_parentype (cp)
 char *cp;
 {
     Expr *ex;
@@ -2247,7 +2248,7 @@ Expr *pc_factor()
 //}}}
 #define pc_prec(pr)  if (prec > (pr)) return ex; gettok();
 //{{{
-Expr *pc_expr2(prec)
+Expr *pc_expr2 (prec)
 int prec;
 {
     Expr *ex, *ex2;
@@ -2451,7 +2452,7 @@ Expr *pc_expr()
 }
 //}}}
 //{{{
-Expr *pc_expr_str(buf)
+Expr *pc_expr_str (buf)
 char *buf;
 {
     Strlist *defsl, *sl;
@@ -2474,7 +2475,7 @@ char *buf;
 //{{{
 /* Simplify an expression */
 
-Expr *fixexpr(ex, env)
+Expr *fixexpr (ex, env)
 Expr *ex;
 int env;
 {
@@ -2975,7 +2976,7 @@ int num, prec;
 //}}}
 
 //{{{
-Static void outop3(breakbefore, name)
+Static void outop3 (breakbefore, name)
 int breakbefore;
 char *name;
 {
@@ -2995,25 +2996,25 @@ char *name;
 }
 //}}}
 //{{{
-#define outop(name) do { \
+#define outop (name) do { \
     NICESPACE(); outop3(breakflag, name); NICESPACE(); \
 } while (0)
 
 //}}}
 //{{{
-#define outop2(name) do { \
+#define outop2 (name) do { \
     EXTRASPACE(); outop3(breakflag, name); EXTRASPACE(); \
 } while (0)
 
 //}}}
 //{{{
-#define checkbreak(code) do { \
+#define checkbreak (code) do { \
     breakflag=(code); \
     if ((prec != -99) && (breakflag & BRK_ALLNONE)) output("\007"); \
 } while (0)
 //}}}
 //{{{
-Static void out_ctx(ctx, address)
+Static void out_ctx (ctx, address)
 Meaning *ctx;
 int address;
 {
@@ -3059,7 +3060,7 @@ int address;
 }
 //}}}
 //{{{
-void out_var(mp, prec)
+void out_var (mp, prec)
 Meaning *mp;
 int prec;
 {
@@ -3094,7 +3095,7 @@ int prec;
 //}}}
 
 //{{{
-Static int scanfield(variants, unions, lev, mp, field)
+Static int scanfield (variants, unions, lev, mp, field)
 Meaning **variants, *mp, *field;
 short *unions;
 int lev;
@@ -3134,7 +3135,7 @@ int lev;
 }
 //}}}
 //{{{
-void out_field(mp)
+void out_field (mp)
 Meaning *mp;
 {
     Meaning *variants[50];
@@ -3152,7 +3153,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Static void wrexpr(ex, prec)
+Static void wrexpr (ex, prec)
 Expr *ex;
 int prec;
 {
@@ -3909,7 +3910,7 @@ int prec;
 //{{{
 /* will parenthesize assignments and "," operators */
 
-void out_expr(ex)
+void out_expr (ex)
 Expr *ex;
 {
     wrexpr(ex, 2);
@@ -3918,7 +3919,7 @@ Expr *ex;
 //{{{
 /* will not parenthesize anything at top level */
 
-void out_expr_top(ex)
+void out_expr_top (ex)
 Expr *ex;
 {
     wrexpr(ex, 0);
@@ -3927,7 +3928,7 @@ Expr *ex;
 //{{{
 /* will parenthesize unless only writing a factor */
 
-void out_expr_factor(ex)
+void out_expr_factor (ex)
 Expr *ex;
 {
     wrexpr(ex, 15);
@@ -3936,7 +3937,7 @@ Expr *ex;
 //{{{
 /* will parenthesize always */
 
-void out_expr_parens(ex)
+void out_expr_parens (ex)
 Expr *ex;
 {
     output("(");
@@ -3948,7 +3949,7 @@ Expr *ex;
 /* evaluate expression for side effects only */
 /* no top-level parentheses */
 
-void out_expr_stmt(ex)
+void out_expr_stmt (ex)
 Expr *ex;
 {
     wrexpr(ex, 0);
@@ -3959,7 +3960,7 @@ Expr *ex;
 /* evaluate expression for boolean (zero/non-zero) result only */
 /* parenthesizes like out_expr() */
 
-void out_expr_bool(ex)
+void out_expr_bool (ex)
 Expr *ex;
 {
     wrexpr(ex, 2);

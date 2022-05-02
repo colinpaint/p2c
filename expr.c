@@ -16,11 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
 #define PROTO_EXPR_C
 #include "main.h"
 
 //{{{
-void free_value(val)
+void free_value (val)
 Value *val;
 {
     if (!val || !val->type)
@@ -42,7 +43,7 @@ Value *val;
 }
 //}}}
 //{{{
-Value copyvalue(val)
+Value copyvalue (val)
 Value val;
 {
     char *cp;
@@ -73,7 +74,7 @@ Value val;
 }
 //}}}
 //{{{
-int valuesame(a, b)
+int valuesame (a, b)
 Value a, b;
 {
     if (a.type != b.type)
@@ -104,7 +105,7 @@ Value a, b;
 
 //}}}
 //{{{
-char *value_name(val, intfmt, islong)
+char *value_name (val, intfmt, islong)
 Value val;
 char *intfmt;
 int islong;
@@ -186,7 +187,7 @@ int islong;
 }
 //}}}
 //{{{
-Value value_cast(val, type)
+Value value_cast (val, type)
 Value val;
 Type *type;
 {
@@ -236,7 +237,7 @@ Type *type;
 }
 //}}}
 //{{{
-Type *ord_type(tp)
+Type *ord_type (tp)
 Type *tp;
 {
     if (!tp) {
@@ -262,7 +263,7 @@ Type *tp;
 }
 //}}}
 //{{{
-int long_type(tp)
+int long_type (tp)
 Type *tp;
 {
     switch (tp->kind) {
@@ -279,7 +280,7 @@ Type *tp;
 }
 //}}}
 //{{{
-Value make_ord(type, i)
+Value make_ord (type, i)
 Type *type;
 long i;
 {
@@ -296,7 +297,7 @@ long i;
 }
 //}}}
 //{{{
-long ord_value(val)
+long ord_value (val)
 Value val;
 {
     switch (val.type->kind) {
@@ -319,7 +320,7 @@ Value val;
 }
 //}}}
 //{{{
-void ord_range_expr(type, smin, smax)
+void ord_range_expr (type, smin, smax)
 Type *type;
 Expr **smin, **smax;
 {
@@ -349,7 +350,7 @@ Expr **smin, **smax;
 }
 //}}}
 //{{{
-int ord_range(type, smin, smax)
+int ord_range (type, smin, smax)
 Type *type;
 long *smin, *smax;
 {
@@ -374,7 +375,7 @@ long *smin, *smax;
 //}}}
 
 //{{{
-void freeexpr(ex)
+void freeexpr (ex)
 register Expr *ex;
 {
     register int i;
@@ -404,7 +405,7 @@ register Expr *ex;
 }
 //}}}
 //{{{
-Expr *makeexpr(kind, n)
+Expr *makeexpr (kind, n)
 enum exprkind kind;
 int n;
 {
@@ -420,7 +421,7 @@ int n;
 
 //}}}
 //{{{
-Expr *makeexpr_un(kind, type, arg1)
+Expr *makeexpr_un (kind, type, arg1)
 enum exprkind kind;
 Type *type;
 Expr *arg1;
@@ -435,7 +436,7 @@ Expr *arg1;
 }
 //}}}
 //{{{
-Expr *makeexpr_bin(kind, type, arg1, arg2)
+Expr *makeexpr_bin (kind, type, arg1, arg2)
 enum exprkind kind;
 Type *type;
 Expr *arg1, *arg2;
@@ -451,7 +452,7 @@ Expr *arg1, *arg2;
 }
 //}}}
 //{{{
-Expr *makeexpr_val(val)
+Expr *makeexpr_val (val)
 Value val;
 {
     Expr *ex;
@@ -468,21 +469,21 @@ Value val;
 }
 //}}}
 //{{{
-Expr *makeexpr_char(c)
+Expr *makeexpr_char (c)
 int c;
 {
     return makeexpr_val(make_ord(tp_char, c));
 }
 //}}}
 //{{{
-Expr *makeexpr_long(i)
+Expr *makeexpr_long (i)
 long i;
 {
     return makeexpr_val(make_ord(tp_integer, i));
 }
 //}}}
 //{{{
-Expr *makeexpr_real(r)
+Expr *makeexpr_real (r)
 char *r;
 {
     Value val;
@@ -494,7 +495,7 @@ char *r;
 }
 //}}}
 //{{{
-Expr *makeexpr_lstring(msg, len)
+Expr *makeexpr_lstring (msg, len)
 char *msg;
 int len;
 {
@@ -509,7 +510,7 @@ int len;
 }
 //}}}
 //{{{
-Expr *makeexpr_string(msg)
+Expr *makeexpr_string (msg)
 char *msg;
 {
     Value val;
@@ -521,7 +522,7 @@ char *msg;
 }
 //}}}
 //{{{
-int checkstring(ex, msg)
+int checkstring (ex, msg)
 Expr *ex;
 char *msg;
 {
@@ -533,7 +534,7 @@ char *msg;
 }
 //}}}
 //{{{
-Expr *makeexpr_var(mp)
+Expr *makeexpr_var (mp)
 Meaning *mp;
 {
     Expr *ex;
@@ -546,7 +547,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Expr *makeexpr_name(name, type)
+Expr *makeexpr_name (name, type)
 char *name;
 Type *type;
 {
@@ -573,7 +574,7 @@ Expr *makeexpr_setbits()
 /*       Non-ANSI transformations occur while writing the expression. */
 /*              char *sprintf(buf, fmt, ...)   [returns buf]  */
 /*              void *memcpy(dest, src, size)  [returns dest] */
-Expr *makeexpr_bicall_0(name, type)
+Expr *makeexpr_bicall_0 (name, type)
 char *name;
 Type *type;
 {
@@ -591,7 +592,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr *makeexpr_bicall_1(name, type, arg1)
+Expr *makeexpr_bicall_1 (name, type, arg1)
 char *name;
 Type *type;
 Expr *arg1;
@@ -611,7 +612,7 @@ Expr *arg1;
 }
 //}}}
 //{{{
-Expr *makeexpr_bicall_2(name, type, arg1, arg2)
+Expr *makeexpr_bicall_2 (name, type, arg1, arg2)
 char *name;
 Type *type;
 Expr *arg1, *arg2;
@@ -632,7 +633,7 @@ Expr *arg1, *arg2;
 }
 //}}}
 //{{{
-Expr *makeexpr_bicall_3(name, type, arg1, arg2, arg3)
+Expr *makeexpr_bicall_3 (name, type, arg1, arg2, arg3)
 char *name;
 Type *type;
 Expr *arg1, *arg2, *arg3;
@@ -654,7 +655,7 @@ Expr *arg1, *arg2, *arg3;
 }
 //}}}
 //{{{
-Expr *makeexpr_bicall_4(name, type, arg1, arg2, arg3, arg4)
+Expr *makeexpr_bicall_4 (name, type, arg1, arg2, arg3, arg4)
 char *name;
 Type *type;
 Expr *arg1, *arg2, *arg3, *arg4;
@@ -678,7 +679,7 @@ Expr *arg1, *arg2, *arg3, *arg4;
 
 //}}}
 //{{{
-Expr *makeexpr_bicall_5(name, type, arg1, arg2, arg3, arg4, arg5)
+Expr *makeexpr_bicall_5 (name, type, arg1, arg2, arg3, arg4, arg5)
 char *name;
 Type *type;
 Expr *arg1, *arg2, *arg3, *arg4, *arg5;
@@ -732,7 +733,7 @@ Expr *name;
 }
 //}}}
 //{{{
-Expr *copyexpr(ex)
+Expr *copyexpr (ex)
 register Expr *ex;
 {
     register int i;
@@ -768,7 +769,7 @@ register Expr *ex;
 }
 //}}}
 //{{{
-int exprsame(a, b, strict)
+int exprsame (a, b, strict)
 register Expr *a, *b;
 int strict;
 {
@@ -827,7 +828,7 @@ int strict;
 }
 //}}}
 //{{{
-int exprequiv(a, b)
+int exprequiv (a, b)
 register Expr *a, *b;
 {
     register int i, j, k;
@@ -911,7 +912,7 @@ register Expr *a, *b;
 }
 //}}}
 //{{{
-void deletearg(ex, n)
+void deletearg (ex, n)
 Expr **ex;
 register int n;
 {
@@ -935,7 +936,7 @@ register int n;
 }
 //}}}
 //{{{
-void insertarg(ex, n, arg)
+void insertarg (ex, n, arg)
 Expr **ex;
 Expr *arg;
 register int n;
@@ -961,7 +962,7 @@ register int n;
 }
 //}}}
 //{{{
-Expr *grabarg(ex, n)
+Expr *grabarg (ex, n)
 Expr *ex;
 int n;
 {
@@ -978,7 +979,7 @@ int n;
 }
 //}}}
 //{{{
-void delsimparg(ep, n)
+void delsimparg (ep, n)
 Expr **ep;
 int n;
 {
@@ -1003,7 +1004,7 @@ int n;
 }
 //}}}
 //{{{
-Expr *resimplify(ex)
+Expr *resimplify (ex)
 Expr *ex;
 {
     Expr *ex2;
@@ -1063,7 +1064,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int realzero(s)
+int realzero (s)
 register char *s;
 {
     if (*s == '-') s++;
@@ -1091,7 +1092,7 @@ int i;
 //}}}
 
 //{{{
-int checkconst(ex, val)
+int checkconst (ex, val)
 Expr *ex;
 long val;
 {
@@ -1135,7 +1136,7 @@ long val;
 }
 //}}}
 //{{{
-int isliteralconst(ex, valp)
+int isliteralconst (ex, valp)
 Expr *ex;
 Value *valp;
 {
@@ -1173,7 +1174,7 @@ Value *valp;
 }
 //}}}
 //{{{
-int isconstexpr(ex, valp)
+int isconstexpr (ex, valp)
 Expr *ex;
 long *valp;
 {
@@ -1190,7 +1191,7 @@ long *valp;
 }
 //}}}
 //{{{
-int isconstantexpr(ex)
+int isconstantexpr (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -1260,7 +1261,7 @@ Expr *ex;
 //}}}
 
 //{{{
-Static Expr *docast(a, type)
+Static Expr *docast (a, type)
 Expr *a;
 Type *type;
 {
@@ -1324,7 +1325,7 @@ Type *type;
 //}}}
 //{{{
 /* Make an "active" cast, i.e., one that performs an explicit operation */
-Expr *makeexpr_actcast(a, type)
+Expr *makeexpr_actcast (a, type)
 Expr *a;
 Type *type;
 {
@@ -1338,7 +1339,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr *makeexpr_cast(a, type)
+Expr *makeexpr_cast (a, type)
 Expr *a;
 Type *type;
 {
@@ -1368,7 +1369,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr *gentle_cast(a, type)
+Expr *gentle_cast (a, type)
 Expr *a;
 Type *type;
 {
@@ -1431,7 +1432,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr *makeexpr_charcast(ex)
+Expr *makeexpr_charcast (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -1456,7 +1457,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr *makeexpr_stringcast(ex)
+Expr *makeexpr_stringcast (ex)
 Expr *ex;
 {
     char ch;
@@ -1472,7 +1473,7 @@ Expr *ex;
 //{{{
 /* 0/1 = force to int/long, 2/3 = check if int/long */
 
-Static Expr *dolongcast(a, tolong)
+Static Expr *dolongcast (a, tolong)
 Expr *a;
 int tolong;
 {
@@ -1648,7 +1649,7 @@ unary:
 //}}}
 //{{{
 /* Return -1 if short int or plain int, 1 if long, 0 if can't tell */
-int exprlongness(ex)
+int exprlongness (ex)
 Expr *ex;
 {
     if (sizeof_int >= 32)
@@ -1659,7 +1660,7 @@ Expr *ex;
 
 //}}}
 //{{{
-Expr *makeexpr_longcast(a, tolong)
+Expr *makeexpr_longcast (a, tolong)
 Expr *a;
 int tolong;
 {
@@ -1689,7 +1690,7 @@ int tolong;
 }
 //}}}
 //{{{
-Expr *makeexpr_arglong(a, tolong)
+Expr *makeexpr_arglong (a, tolong)
 Expr *a;
 int tolong;
 {
@@ -1703,7 +1704,7 @@ int tolong;
 }
 //}}}
 //{{{
-Expr *makeexpr_unlongcast(a)
+Expr *makeexpr_unlongcast (a)
 Expr *a;
 {
     switch (a->kind) {
@@ -1729,7 +1730,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr *makeexpr_forcelongness(a)    /* force a to have a definite longness */
+Expr *makeexpr_forcelongness (a)    /* force a to have a definite longness */
 Expr *a;
 {
     Expr *ex;
@@ -1747,7 +1748,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr *makeexpr_ord(ex)
+Expr *makeexpr_ord (ex)
 Expr *ex;
 {
     ex = makeexpr_charcast(ex);
@@ -1778,7 +1779,7 @@ Expr *ex;
 //}}}
 //{{{
 /* Tell whether an expression "looks" negative */
-int expr_looks_neg(ex)
+int expr_looks_neg (ex)
 Expr *ex;
 {
     int i;
@@ -1819,7 +1820,7 @@ Expr *ex;
 //}}}
 //{{{
 /* Tell whether an expression is probably negative */
-int expr_is_neg(ex)
+int expr_is_neg (ex)
 Expr *ex;
 {
     int i;
@@ -1834,7 +1835,7 @@ Expr *ex;
 
 //}}}
 //{{{
-int expr_neg_cost(a)
+int expr_neg_cost (a)
 Expr *a;
 {
     int i, c;
@@ -1877,7 +1878,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr *enum_to_int(a)
+Expr *enum_to_int (a)
 Expr *a;
 {
     if (ord_type(a->val.type)->kind == TK_ENUM) {
@@ -1891,7 +1892,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr *neg_inside_sum(a)
+Expr *neg_inside_sum (a)
 Expr *a;
 {
     int i;
@@ -1902,7 +1903,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr *makeexpr_neg(a)
+Expr *makeexpr_neg (a)
 Expr *a;
 {
     int i;
@@ -1981,7 +1982,7 @@ Expr *a;
 #define MOVCONST(ex) (ISCONST((ex)->kind) && (ex)->val.type->kind != TK_STRING)
 #define COMMUTATIVE (kind != EK_COMMA && type->kind != TK_REAL)
 //{{{
-Type *true_type(ex)
+Type *true_type (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -2008,7 +2009,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int ischartype(ex)
+int ischartype (ex)
 Expr *ex;
 {
     if (ord_type(ex->val.type)->kind == TK_CHAR)
@@ -2023,7 +2024,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Static Expr *commute(a, b, kind)
+Static Expr *commute (a, b, kind)
 Expr *a, *b;
 enum exprkind kind;
 {

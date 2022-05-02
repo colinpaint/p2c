@@ -23,6 +23,7 @@ typedef struct S_paren {
   int pos, indent, qmindent, flags;
   } Paren;
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
 #define PROTO_OUT_C
 #include "main.h"
 //{{{
@@ -380,14 +381,14 @@ char *editold, *editnew;
         while (i < outbufpos && *cp == ' ')
           i++, cp++;   /* eat leading spaces */
           spaces = 0;      /* eat trailing spaces */
-        } 
+        }
         //}}}
       else {
         //{{{  handle ch
         ch = *cp++;
         if (ch == ' ') {
           spaces++;
-          } 
+          }
         else if (ch > ' ' || ch == '\f') {
           linelen += spaces;
           while (spaces > 0)
@@ -397,17 +398,17 @@ char *editold, *editnew;
             if (*cp == '[') {
               putc_outf ('{');
               cp++, i++;
-              } 
+              }
             else if (*cp == ']') {
               putc_outf ('}');
               cp++, i++;
-              } 
+              }
             else
               putc_outf (ch);
-            } 
+            }
           else
             putc_outf (ch);
-          } 
+          }
         else if (testinglinebreaker >= 3) {
           linelen += spaces;
           while (spaces > 0)

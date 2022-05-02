@@ -7,6 +7,7 @@
  * by the licence agreement accompanying p2c itself.
  */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
 #include "p2c.h"
 #include <time.h>
 
