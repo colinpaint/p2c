@@ -1,0 +1,61 @@
+{ token.def - tokens  }
+type
+  {<<<}
+  { tokens }
+  tokentype = (programsym, labelsym, constsym, typesym, varsym, sharedsym,
+               proceduresym, functionsym, uparrow, arraysym, filesym,
+               setsym, recordsym, stringsym, univsym, packedsym,
+               originsym, usesym, definesym, beginsym, ifsym, casesym,
+               whilesym, repeatsym, forsym, withsym,
+               gotosym, eql, lss, gtr, neq, leq, geq, insym, plus, minus,
+               orsym, star, slash, divsym, modsym, andsym, ofsym, endsym,
+               elsesym, thensym, otherwisesym, dosym, untilsym, tosym,
+               downtosym, notsym, at, nilsym, colon, dot, dotdot, comma,
+               semicolon, becomes, lpar, rpar, lbrack, rbrack, intconst,
+               realconst, dblrealconst, charconst, stringconst, ident, eofsym,
+               lineinc, lineadd, newfile);
+  {>>>}
+
+  tokenRecordType = packed record
+    case boolean of   { not packed, 4 bytes each, tokentype is unsigned, widens struct union }
+      true:  (byte: hostfilebyte);
+      false: (toke: tokentype);
+    end;
+
+  tokenFileType = file of packed record
+                    block:  packed array [0..diskbufsize] of tokenRecordType;
+                    end;
+
+  {<<<}
+  { interface between scan and analysis }
+  tokenrecord = record
+    baseline: integer;  { line the current file started on}
+    line: integer;      { line this token appeared on }
+    fileindex: integer; { pointer into file name structure }
+    filepos: integer;   { getpos position of this token }
+    left, right: columnindex; { where on the line it appeared }
+
+    case token: tokentype of { the actual token }
+      ident:        (key: hashindex;     { key uniquely identifies us }
+                     keypos: integer);   { location of name in string file }
+
+      intconst,
+      charconst:    (intvalue: integer); { value or ord(value)}
+
+      realconst,
+      dblrealconst: (realvalue: realarray); { value }
+
+      stringconst:  (pos: integer;
+                     len: columnindex) { position and length within stringfile }
+    end;
+  {>>>}
+
+  tokenSharedType = record
+                     tokenCount: integer;
+                     nexttoken: tokenrecord; { token being built by scanner }
+                     tokenFile: tokenFileType;
+                     end;
+  tokenSharedPtrType = ^tokenSharedType;
+
+{ interface }
+function getTokenSharedPtr : tokenSharedPtrType; external;

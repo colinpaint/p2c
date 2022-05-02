@@ -1,0 +1,28 @@
+{ main.def externs }
+
+function min (i, j: integer): integer; external;
+function max (i, j: integer): integer; external;
+
+procedure abort (msg: abortwarning {why we are aborting} ); external;
+procedure warnat (error: warning; line: integer; column: columnindex); external;
+procedure panic; external; {print panic message and abort}
+
+type
+  errortype = (fatal, ioerror, nonfatal);
+  message = packed array [1..1000] of char;
+
+procedure error (class: errortype;
+                 errornumber, errormsglength: integer;
+                 var msg: message;
+                 var xfile: text;
+                 iostatus, userpc: integer;
+                 filenamelength: integer;
+                 var filename: message); external;
+
+{ files }
+procedure getFileName (which: FilenameListPtr; stripdevice: boolean; stripext: boolean;
+                       var result: FilenameBuf; var resultlength: FilenameIndex); external;
+procedure getoutputname; external;
+
+procedure openSource; external;
+procedure openNext; external;

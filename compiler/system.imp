@@ -1,0 +1,41 @@
+{ Declarations for Pascal built-in objects }
+{ Note: All functions with unusual syntaxes are not included here }
+
+{*IgnoreNonAlpha=0}   { If Language=UCSD, make sure we can parse "__module" }
+{*UseRefs=0}
+
+__module SYSTEM;   {PERMANENT}
+
+__export
+
+{ Standard Pascal functions }
+function  arctan(x : longreal) : longreal;
+function  cos(x : longreal) : longreal;
+function  exp(x : longreal) : longreal;
+function  ln(x : longreal) : longreal;
+procedure mark(var p);
+function  odd(i : integer) : boolean;
+procedure release(var p);
+function  round(x : longreal) : integer;
+function  sin(x : longreal) : longreal;
+function  sqrt(x : longreal) : longreal;
+function  trunc(x : longreal) : integer;
+
+{ Oregon Software Pascal-2 extensions }
+{FuncMacro p2_inew(n) = malloc(n)}
+{FuncMacro p2_new(x,n) = (*x = Malloc(n))}
+{FuncMacro p2_dispose(x,n) = Free(*x)}
+
+procedure noioerror(var f);
+function ioerror(var f) : boolean;
+function iostatus(var f) : integer;
+
+{FuncMacro exitst(s) = exit(s)}
+procedure exitst(s : integer);
+
+{FuncMacro P_getcmdline(low,high,line,len)=(*len=P_getcmdline(low,high,line))}
+procedure P_getcmdline(var line : array [low..high : integer] of char; var len : integer);
+
+procedure TimeStamp(var day, month, year, hour, min, sec : integer);
+
+end.

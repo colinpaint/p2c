@@ -1,0 +1,9 @@
+{ scan.def - external procedure defs }
+
+procedure dumpstr (len: columnindex; buf: boolean; dumplen: boolean); external;
+procedure scantoken; external;
+
+procedure scan1; external; { init scanner }
+procedure scan2; external; { terminate scanner }
+
+procedure scan; external; { lexical scanner }

@@ -1,0 +1,201 @@
+Language          OREGON
+AnsiC             1             # 1=use all Ansi C features and definitions
+MainType          int           # Type name to put in front of "main";
+HeaderName        "../p2c.h"
+LibraryFile       system.imp    # Names of import-text files to search
+
+ReplaceBefore     abort = abort1
+ReplaceBefore     unix = unix1
+ReplaceBefore     fmod = fmod1
+ReplaceBefore     fabs = fabs1
+ReplaceBefore     remainder = remainder1
+ReplaceBefore     rename = rename1
+
+BufferedFile      tokenFile
+BufferedFile      interFile
+BufferedFile      pseudoFile
+BufferedFile      debugfile
+BufferedFile      dumpFile
+BufferedFile      relFile
+BufferedFile      objFile
+
+ExternWords       external      # Words analogous to "forward" for declaring
+ExternWords       extern        # procedures or functions external.
+ExternWords       fortran
+CExternWords      nonpascal     # Words like ExternWords but for which any
+
+OneSpecialArg     printf        # List of functions like printf for which the
+TwoSpecialArgs    sprintf       # List of functions like fprintf for which the
+TwoSpecialArgs    fprintf       # first two arguments are "special".
+FixedComment      FIXED         # Comment for fixed upper limit
+PermanentComment  PERMANENT     # Comment for permanently imported modules,
+InterfaceComment  INTF-ONLY     # Comment for include files which are to be
+EmbedComment      EMBED         # Comment for embedded C code in Pascal:
+SkipComment       SKIP          # Comment for code to skip in p2c only:
+NoSkipComment     NOSKIP        # Comment for code to skip except in p2c:
+SignedComment     SIGNED        # Type annotation: var c : {SIGNED} char;
+UnsignedComment   UNSIGNED      # Type annotation: type uc = {UNSIGNED} char;
+TagComment        TAGGED        # Comment for records that need struct tags:
+
+CodeFileName      %Rs.c         # Name of .c output file for a program,
+LogFileName       %RS.log       # Name of log file name for -V mode.
+
+ReturnValueName   Result        # Return value holding variable; [%s=func name]
+UnitInitName      _%s_init      # Turbo Pascal unit initializer; %s=unit name
+HSymbolName       %s_H          # Name of "_H" symbol, if any; %s=unit name
+GSymbolName       %s_G          # Name of "_G" symbol; [%s=unit name]
+StringMaxName     MAX_%s        # VAR STRING hidden variable; %s=param name
+ArrayMinName      %s_LOW        # Lower bound hidden variable; %s=param name
+ArrayMaxName      %s_HIGH       # Upper bound hidden variable; %s=param name
+CopyParName       %s_           # Alternate name for parameter %s
+StaticLinkName    LINK          # Static link parameter name; [%s=func name]
+LocalVarsStruct   LOC_%s        # Name of struct type for locals; %s=func name
+LocalVarsName     V             # Name of struct var for locals; [%s=func name]
+FwdStructName     %s            # Name of forward-used structs; %s=type name
+EnumListName      %s_NAMES      # Name of array to hold names for enum %s
+UnionName         UU            # Name of variant union
+UnionPartName     %s            # Name of variant element; %s=tag value name
+FakeStructName    _REC_%s       # Name of "temporary" structs; %s=base name
+LabelName         _L%s          # Name of GOTO label; %s=label name
+LabelVarName      _JL%s         # Name of GOTO label jmp_buf variable; %s=label
+TempName          TEMP%s        # Name of general temporary vars; %s=unique id
+DummyName         DUMMY%s       # Name of throwaway "dummy" vars; %s=unique id
+WithName          WITH%s        # Name of WITH statement temp ptr; %s=unique id
+ForName           FORLIM%s      # Name of FOR statement temp limit; %s=unique id
+PtrName           PTR%s         # Name of NIL-checking temp ptr; %s=unique id
+StringName        STR%s         # Name of temporary string vars; %s=unique id
+SetName           SET%s         # Name of temporary set vars; %s=unique id
+FNVarName         %s_NAME       # Name of file-name vars; %s=file var
+FNSizeName        _FNSIZE       # Maximum length of file name (macro or integer)
+
+AlternateName1    %s_           # Way to produce a second C symbol for a Pascal
+AvoidName         getc          # If any of these names appear in the code,
+AvoidName         putc          # use an alternate name so as to avoid
+AvoidName         getchar       # library conflicts.
+AvoidName         putchar
+AvoidName         feof          # These are typically macro names whose use
+AvoidName         ferror        # would be disasterous under any
+AvoidName         clearerr      # circumstances.
+AvoidName         fileno
+AvoidName         BUFSIZ    NULL    EOF
+AvoidName         stdin     stdout  stderr
+AvoidName         true false assert
+AvoidName         Anyptr Void Char PP PV
+AvoidName         Signed Const Volatile Register Static Local Inline
+AvoidName         cdecl far near huge
+AvoidName         isalpha isupper islower isdigit isxdigit isspace ispunct
+AvoidName         isalnum isprint isgraph iscntrl isascii toascii
+AvoidName         toupper tolower
+AvoidName         LINK SEXT
+
+AvoidGlobalName   f open  fclose  fseek
+AvoidGlobalName   exit    main
+AvoidGlobalName   strcpy  strcat
+AvoidGlobalName   printf  fprintf sprintf
+AvoidGlobalName   scanf   fscanf  sscanf
+AvoidGlobalName   malloc  realloc free
+AvoidGlobalName   y0 y1 yn j0 j1 jn
+
+IncludeDir  %_s                 # Search list of places to look for the
+IncludeDir  %_s.p               # Pascal include file %s.
+IncludeDir  %_s.pas
+
+StructFunction    sprintf
+StructFunction    memcpy  memmove
+StructFunction    strcpy    strsub   strrtrim    strrpt
+StructFunction    P_addset  P_addsetr  P_remset
+
+StrlapFunction    P_setunion  P_setint   P_setdiff  P_setxor
+StrlapFunction    P_expset    strlower   strupper   strpad
+
+NoSideEffects     strcmp memcmp # Names of functions which have absolutely
+Deterministic     abs sin cos   # Names of functions which satisfy all
+
+UCharName         uchar         # Name of a typedef for "unsigned char";
+SCharName         schar         # Name of a typedef for "signed char";
+BooleanName       boolean       # Name of a typedef for booleans; default=char.
+TrueName          true          # Name of a boolean "true" constant (optional)
+FalseName         false         # Name of a boolean "false" constant (opt.)
+NullName          NULL          # Name of a NULL pointer constant
+ProcTypeName      _PROCEDURE    # Name of procedure-pointer typedef
+
+EscapeCodeName    P_escapecode  # Names of error-handling variables
+IOResultName      P_ioresult
+ArgCName          P_argc        # Name of global copy of argc
+ArgVName          P_argv        # Name of global copy of argv
+MainName          PASCAL_MAIN   # Name of program setup function
+EscapeName        _Escape       # Name of error-generation function
+EscIOName         _EscIO        # Name of I/O-error-generation function
+EscIO2Name        _EscIO2       # Name of named-I/O-error-generation function
+CheckIOName       _CHKIO        # Name of I/O-error-checking function
+SetIOName         _SETIO        # Name of I/O-error-setting function
+
+FileNotFoundName  FileNotFound  # Name or number of "File Not Found" ioresult
+FileNotOpenName   FileNotOpen   # Name or number of "File Not Open" ioresult
+FileWriteErrorName FileWriteError # Name of num of "File Write Error" ioresult
+BadInputFormatName BadInputFormat # Name or num of "Bad Input Format" ioresult
+EndOfFileName     EndOfFile     # Name or number of "End of File" ioresult
+OutMemName        _OutMem       # Name of out-of-memory error function
+CaseCheckName     _CaseCheck    # Name of case-out-of-range error function
+NilCheckName      _NilCheck     # Name of nil-pointer error function
+
+StrCICmpName      strcicmp      # Name of a strcicmp-like function; no default
+StrSubName        strsub        # Name of a strsub-like function; no default
+StrPosName        strpos2       # Name of a strpos2-like function; no default
+StrDeleteName     strdelete     # Name of a strdelete-like function; no default
+StrInsertName     strinsert     # Name of a strinsert-like function; no default
+StrMoveName       strmove       # Name of a strmove-like function; no default
+StrLTrimName      strltrim      # Name of a strltrim-like function; no default
+StrRTrimName      strrtrim      # Name of a strrtrim-like function; no default
+StrRptName        strrpt        # Name of a strrpt-like function; no default
+StrPadName        strpad        # Name of a pad-like function; no default
+
+OFSName           OFS           # Name of an OFS-like function; no default
+SEGName           SEG           # Name of a SEG-like function; no default
+MallocName        Malloc        # Name of a malloc-like function; default=malloc
+FreeName          Free          # Name of a dispose-like function; default=free
+FreeRvalueName    FreeR         # Name of a free-like function; default=free
+RandRealName      _randreal     # Name of a Turbo "random" function; no default
+RandIntName       _randint      # Name of a Turbo "random()" function; no def
+RandomizeName     _randomize    # Name of a Turbo "randomize" procedure
+SkipNLSpaceName   _skipnlspaces # Name of a Turbo seekeof skipper
+SkipSpaceName     _skipspaces   # Name of a Turbo seekeoln skipper
+
+EofName           P_eof         # Name of "feof" with Pascal semantics.
+EolnName          P_eoln        # Name of "eoln" function.
+FilePosName       ftell         # Name of "filepos" function.
+MaxPosName        P_maxpos      # Name of "maxpos" function.
+SetUnionName      P_setunion    # Name of a set "+" function; no default
+SetIntName        P_setint      # Name of a set "*" function; no default
+SetDiffName       P_setdiff     # Name of a set "-" function; no default
+SetXorName        P_setxor      # Name of a set "/" function; no default
+SetInName         P_inset       # Name of a set "IN" function; no default
+SetAddName        P_addset      # Name of a set "a:=a+[x]" function; no default
+SetAddRangeName   P_addsetr     # Name of a set "a:=a+[x..y]" function; no def
+SetRemName        P_remset      # Name of a set "a:=a-[x]" function; no default
+SetEqualName      P_setequal    # Name of a set "=" function; no default
+SubSetName        P_subset      # Name of a set "<=" function; no default
+SetCopyName       P_setcpy      # Name of a set ":=" function; no default
+SetExpandName     P_expset      # Name of small-set-to-set expander; no default
+SetPackName       P_packset     # Name of set-to-small-set packer; no default
+SignExtendName    SEXT          # Name of macro to sign-extend a number.
+GetBitsName       *P_getbits_%s # Name of family of array-unpacking functions.
+PutBitsName       *P_putbits_%s # Name of family of functions which 'OR' a
+ClrBitsName       *P_clrbits_%s # Name of family of functions which zero an
+
+DeclBufName        FILEBUF      # Name of a macro for declaring the file
+DeclBufNCName      FILEBUFNC    # Name of a DeclBufName-like macro with two
+ResetBufName       RESETBUF     # Name of a macro for setting up a file
+SetupBufName       SETUPBUF     # Name of a macro for setting up a file
+GetFBufName        GETFBUF      # Name of a macro for accessing a file
+GetName            GET          # Name of a macro for advancing
+PutFBufName        PUTFBUF      # Name of a macro for storing an element
+PutName            PUT          # Name of a macro for advancing
+CharGetFBufName    P_peek       # A special GetFBuf for text and files of char.
+CharGetName        getc         # A special Get for text and files of char.
+CharPutFBufName    CPUTFBUF     # A special PutFBuf for text and files of char.
+CharPutName        CPUT         # A special Put for text and files of char.
+ArrayGetFBufName   AGETFBUF     # A special GetFBuf for files of arrays.
+ArrayPutFBufName   APUTFBUF     # A special PutFBuf for files of arrays.
+EofBufName         BUFEOF       # Name of a macro for "eof" of a buffered file.
+FilePosBufName     BUFFPOS      # Name of a macro for buffered "filepos".

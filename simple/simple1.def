@@ -1,0 +1,3 @@
+{ simple1.def }
+
+procedure simple1; external;

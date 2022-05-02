@@ -1,0 +1,48 @@
+{ list.def - external procedure defs }
+procedure list; external; { list program with errors }
+procedure close_list; external; {close list control file}
+
+{<<<}
+procedure set_default_ext (var res: packed array [lo..hi: natural] of char;
+                           kind: file_kind {kind of file needed} ); external;
+{>>>}
+{<<<}
+{ Procedure declarations for string table handling }
+procedure default_file (var f: filenamelistptr; {result if not set} kind: file_kind {kind of file} ); external;
+{>>>}
+
+{<<<}
+ { initialize a text table }
+procedure init_text (var base: array [lo..hi: natural] of stringptr); external;
+{>>>}
+{<<<}
+ { get rid of a text table }
+procedure disp_text (var base: array [lo..hi: natural] of stringptr); external;
+
+{>>>}
+
+{<<<}
+ { save a char in a text table }
+procedure put_char (ch: char; {character to save}
+                    where: stringindex; {where to save it}
+                    var base: array [lo..hi: natural] of stringptr); external;
+{>>>}
+{<<<}
+ { get a char from a text table }
+function get_char (where: stringindex; {location of char}
+                   var base: array [lo..hi: natural] of stringptr): char; external;
+{>>>}
+{<<<}
+ { save a string in a text table }
+procedure put_text (where: stringindex; {starting character}
+                    var base: array [lo..hi: natural] of stringptr;
+                    var sample: string_buffer {data to store} ); external;
+{>>>}
+
+{<<<}
+ { match a string with one in a text table }
+function match_text (start: stringindex; {starting character}
+                     len: string_len; {length of target string}
+                     var base: array [lo..hi: natural] of stringptr;
+                     var sample: string_buffer {name to match} ): boolean; external;
+{>>>}

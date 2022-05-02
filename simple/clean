@@ -1,0 +1,8 @@
+set -v
+#
+rm -f -v *.~*
+rm -f -v *.*~
+rm -f -v *.c
+rm -f -v *.log
+rm -f -v *.tmp
+rm simple

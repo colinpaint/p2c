@@ -1,0 +1,2 @@
+{ analys.def - external procedure defs }
+procedure analys; external; { declarations and syntatic driver }

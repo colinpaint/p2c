@@ -1,0 +1,14 @@
+build
+windowsBuild
+
+*.o
+*.a
+*.sa
+*.ro
+*.tmp
+
+p2c
+test
+
+*.~*
+*.*~
