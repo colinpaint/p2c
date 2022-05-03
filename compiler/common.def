@@ -689,11 +689,10 @@ type
   {>>>}
   {<<<}
   { one listrecord is built for each list and nolist switch }
-  listrecord =
-    record
-      start: integer; {line to start listing}
-      count: integer; {number of lines to list}
-    end;
+  listrecord = record
+               start: integer; {line to start listing}
+               count: integer; {number of lines to list}
+               end;
   {>>>}
   {<<<}
   { this describes the local vars suitable for register allocation }

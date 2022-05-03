@@ -3989,9 +3989,9 @@ var kludge: integer; {to get around a purposeful range error}
         begin
         writeln (macFile, 'DC.B': opcolumn+3, '''':opndcolumn - opcolumn - 4, sharedPtr^.outputname: 8, '''');
         write (macFile, 'DC.L':opcolumn + 3, ' ':opndcolumn - opcolumn - 4);
-        if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then 
+        if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
           writeln (macFile, 'G')
-        else 
+        else
           writeln (macFile, '0');
         end;
       end;
@@ -4227,16 +4227,16 @@ procedure InitMac;
     else
       sectiontail := '  ';
 
-    write (macFile, '*  Oregon Software Pascal ', versionstring, ' 68000 Cross Compiler PC');
+    write (macFile, '*  Oregon Software Pascal ', versionstring, ' Cross Compiler ');
     if mc68020 then
       begin
-      write (macFile, 'MC68020');
+      write (macFile, '68020');
       if mc68881 then
-        write(macFile, '/MC68881');
+        write(macFile, '68881');
       writeln (macFile);
       end
     else
-      writeln (macFile, 'MC68000');
+      writeln (macFile, '68000');
 
     write (macFile, '*  File:  ');
     writesymbolname (sharedPtr^.outputname);

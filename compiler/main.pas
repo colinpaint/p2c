@@ -270,7 +270,6 @@ var
   start, finish: FilenameIndex; {limits of file name}
   i, j: FilenameIndex;
   scanning: boolean;
-  semi: FilenameIndex; {where the semicolon is, if any}
 
 begin
   if which = nil then
@@ -305,10 +304,7 @@ begin
       while scanning and (i >= start) do
         {don't use char sets: too much data space used}
         if not ((arg[i] = ':') or (arg[i] = ']') or (arg[i] = '.')) then
-          begin
-          semi := i;
-          i := i - 1;
-          end
+          i := i - 1
         else
           scanning := false;
 
@@ -340,7 +336,6 @@ var
 
 begin
   getFileName (nil, true, true, sharedPtr^.filename, sharedPtr^.filename_length);
-
   limit := min (sharedPtr^.filename_length, maxprocnamelen);
 
   for i := 1 to limit do
