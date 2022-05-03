@@ -73,8 +73,6 @@ type
 var
   sharedPtr: sharedPtrType;
   tokenSharedPtr: tokenSharedPtrType;
-  interSharedPtr: interSharedPtrType;
-  pseudoSharedPtr: pseudoSharedPtrType;
 
   day, month, year: Integer;
 
@@ -262,92 +260,6 @@ begin
 end;
 {>>>}
 
-{<<<}
-procedure initShared;
-
-var
-  i: integer;
-
-begin
-  new (sharedPtr);
-  new (tokenSharedPtr);
-  new (interSharedPtr);
-  new (pseudoSharedPtr);
-
-  sharedPtr^.current_stmt := 0;
-  sharedPtr^.current_line := 0;
-  sharedPtr^.fatalflag := false;
-  sharedPtr^.lasterror := 0;
-  sharedPtr^.sourcelevel := 0;
-  sharedPtr^.currentswitch := 1;
-  sharedPtr^.genoptmask := 0;
-
-  sharedPtr^.lastlist := 0;
-
-  sharedPtr^.stringfilecount := 0;
-  sharedPtr^.stringtablelimit := 0;
-  sharedPtr^.stringtabletop := 0;
-  sharedPtr^.curstringblock := 1;
-  new (sharedPtr^.stringblkptr);
-  sharedPtr^.stringblkptrtbl[1] := sharedPtr^.stringblkptr;
-
-  for i := 2 to maxstringblks do
-    sharedPtr^.stringblkptrtbl[i] := nil;
-  new (sharedPtr^.stringtable);
-
-  sharedPtr^.insertions := 0;
-  sharedPtr^.lastswitch := 0;
-  sharedPtr^.nextstringfile := 0;
-  sharedPtr^.filerememberlist := nil;
-
-  sharedPtr^.shortsection := false;
-  sharedPtr^.codesection := oursection; { default code section }
-  sharedPtr^.identstring := 0;
-  sharedPtr^.identstrlength := 0;
-  sharedPtr^.objversion := 0;
-  sharedPtr^.objrevision := 0;
-  sharedPtr^.codesect_string := 0;    { codesect name }
-  sharedPtr^.codesect_strlength := 0; { length of codesect name }
-  sharedPtr^.module_string :=    0;   { module name }
-  sharedPtr^.module_strlength := 0;   { length of module name }
-  sharedPtr^.ownsect_string := 0;     { ownsect name }
-  sharedPtr^.ownsect_strlength := 0;  { length of ownsect name }
-  sharedPtr^.ident_string := 0;       { ident name}
-  sharedPtr^.ident_strlength := 0;    { length of ident name }
-
-  tokenSharedPtr^.tokenCount := 0;
-  tokenSharedPtr^.nexttoken.baseline := 0;
-end;
-{>>>}
-{<<<}
-function getSharedPtr : sharedPtrType;
-
-begin
-  getSharedPtr := sharedPtr;
-end;
-{>>>}
-{<<<}
-function getTokenSharedPtr : tokenSharedPtrType;
-
-begin
-  getTokenSharedPtr := tokenSharedPtr;
-end;
-{>>>}
-{<<<}
-function getInterSharedPtr : interSharedPtrType;
-
-begin
-  getInterSharedPtr := interSharedPtr;
-end;
-{>>>}
-{<<<}
-function getPseudoSharedPtr : pseudoSharedPtrType;
-
-begin
-  getPseudoSharedPtr := pseudoSharedPtr;
-end;
-{>>>}
-
 { files }
 {<<<}
 procedure getFileName (which: FilenameListPtr; stripdevice: boolean; stripext: boolean;
@@ -372,39 +284,41 @@ begin
 
   with which^ do
     begin
-      start := 1;
-      finish := arglen;
-      if stripdevice then
-        begin
-        for i := 1 to arglen do
-          if (arg[i] = ':') or (arg[i] = ']') then
-            start := i + 1;
-        end;
+    start := 1;
+    finish := arglen;
 
-      if stripext then
-        begin
-        i := arglen;
-        if hostopsys = vms then
-          semi := 0;
-        scanning := true;
-        while scanning and (i >= start) do
-          {don't use char sets: too much data space used}
-          if not ((arg[i] = ':') or (arg[i] = ']') or (arg[i] = '.')) then
-            begin
-            semi := i;
-            i := i - 1;
-            end
-          else
-            scanning := false;
+    if stripdevice then
+      {<<<  strip : device name}
+      begin
+      for i := 1 to arglen do
+        if (arg[i] = ':') or (arg[i] = ']') then
+          start := i + 1;
+      end;
+      {>>>}
 
-        if (i >= start) and (arg[i] = '.') then
-          finish := i - 1
-        else if hostopsys = vms then
-          if semi > i then
-            finish := semi - 1;
-        end;
+    if stripext then
+      {<<<  strip . extension}
+      begin
+      i := arglen;
+      scanning := true;
+
+      while scanning and (i >= start) do
+        {don't use char sets: too much data space used}
+        if not ((arg[i] = ':') or (arg[i] = ']') or (arg[i] = '.')) then
+          begin
+          semi := i;
+          i := i - 1;
+          end
+        else
+          scanning := false;
+
+      if (i >= start) and (arg[i] = '.') then
+        finish := i - 1
+      end;
+      {>>>}
 
     resultlength := finish - start + 1;
+
     i := 0;
     for j := start to finish do
       begin
@@ -423,10 +337,8 @@ procedure getOutputName;
 var
   i: FilenameIndex;
   limit: 1..maxprocnamelen;
-  sharedPtr: sharedPtrType;
 
 begin
-  sharedPtr := getSharedPtr;
   getFileName (nil, true, true, sharedPtr^.filename, sharedPtr^.filename_length);
 
   limit := min (sharedPtr^.filename_length, maxprocnamelen);
@@ -443,31 +355,31 @@ end;
 {>>>}
 {<<<}
 procedure openNext;
-{ Open the next source file at the current level.  If this is not the first input file, the old one is closed. }
+{ Open the next source file at the current level. If this is not the first input file, the old one is closed }
 
 var
   sharedPtr: sharedPtrType;
   i: integer;
-  p: FilenameListPtr;
+  list: FilenameListPtr;
 
 begin
   sharedPtr := getSharedPtr;
 
   i := 1;
-  p := sharedPtr^.SourceListHead;
-  while (i < sharedPtr^.curfile) and (p <> nil) do
+  list := sharedPtr^.SourceListHead;
+  while (i < sharedPtr^.curfile) and (list <> nil) do
     begin
     i := i + 1;
-    p := p^.next;
+    list := list^.next;
     end;
 
-  sharedPtr^.morefiles := (p <> nil);
+  sharedPtr^.morefiles := (list <> nil);
   if sharedPtr^.morefiles then
     begin
     if sharedPtr^.curfile > 1 then
       close (sharedPtr^.source[sharedPtr^.sourcelevel]);
 
-    getFileName (p, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
+    getFileName (list, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
 
     Writeln ('openNext level:', sharedPtr^.sourcelevel:1, ' filename:', sharedPtr^.filename);
     reset (sharedPtr^.source[sharedPtr^.sourcelevel], sharedPtr^.filename);
@@ -1200,7 +1112,7 @@ procedure parseCommandLine;
     the object file will be named "q", and the macro file will be named "x" }
 
   var
-    p: filenamelistptr; {points to the filename of interest at the moment}
+    p: filenamelistptr;
 
   begin
     p := sharedPtr^.sourcelisthead;
@@ -1209,8 +1121,10 @@ procedure parseCommandLine;
       begin
       if (objectq in qualsset) and (sharedPtr^.objname = nil) then
         sharedPtr^.objname := p;
+
       if (macroq in qualsset) and (sharedPtr^.macname = nil) then
         sharedPtr^.macname := p;
+
       sharedPtr^.sourcelisthead := sharedPtr^.sourcelisthead^.next;
       p^.next := nil;
       end;
@@ -1224,12 +1138,11 @@ procedure parseCommandLine;
       p^.next := nil;
       end;
 
-    { *** Here's the place to add a default include list. *** }
   end;
   {>>>}
   {<<<}
   procedure passtocompiler;
-  { Pass the command options from qualsset to the compiler. }
+  { Pass the command options from qualsset to the compiler }
 
   var
     i: quals;
@@ -1554,6 +1467,9 @@ end;
 { main program }
 begin
   initShared;
+  sharedPtr = getSharedPtr;
+  tokenSharedPtr = getTokenSharedPtr;
+
   {<<<  command line}
   parseCommandLine;
   setoptions;
@@ -1570,11 +1486,12 @@ begin
   scan1;
   analys;
   scan2;
-  printtime ('scan/analysis');
 
   close (getSharedPtr^.localFile);
   close (getTokenSharedPtr^.tokenFile);
   close (getInterSharedPtr^.interFile);
+
+  printtime ('scan/analysis');
   {>>>}
 
   if (sharedPtr^.lasterror = 0) and
@@ -1598,6 +1515,7 @@ begin
       close (getSharedPtr^.localFile);
       close (getInterSharedPtr^.interFile);
       close (getPseudoSharedPtr^.pseudoFile);
+
       printtime ('traverse/code');
       end
     else
@@ -1623,6 +1541,7 @@ begin
       reset (getPseudoSharedPtr^.pseudoFile, 'pseudo.tmp');
       code;
       close (getPseudoSharedPtr^.pseudoFile);
+
       printtime ('code');
       end;
       {>>>}

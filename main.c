@@ -105,7 +105,7 @@ Static void initrc() {
     switch (rctable[i].kind) {
       case 'S':
       case 'B':
-        *((short *)rctable[i].ptr) = rctable[i].def;
+        *((short *)rctable[i].ptr) = rctable[i] .def;
         break;
 
       case 'I':
@@ -451,7 +451,7 @@ Static void postrc() {
     if (sizeof_char < 8 && ansiC > 0)
       fprintf(stderr, "Warning: chars have less than 8 bits\n");
     if (sizeof_char > longbits) {
-      min_schar = (long)LONG_MIN;
+      min_schar = LONG_MIN;
       max_schar = LONG_MAX;
       }
     else {
@@ -473,7 +473,7 @@ Static void postrc() {
     if (sizeof_short < 16 && ansiC > 0)
       fprintf (stderr, "Warning: shorts have less than 16 bits\n");
     if (sizeof_short > longbits) {
-      min_sshort = (long)LONG_MIN;
+      min_sshort = LONG_MIN;
       max_sshort = LONG_MAX;
       }
     else {

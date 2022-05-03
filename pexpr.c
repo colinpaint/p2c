@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
-//#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 #define PROTO_PEXPR_C
 #include "main.h"
 
@@ -2081,171 +2081,189 @@ Expr *pc_typename()
     return makeexpr_type(tp);
 }
 //}}}
-Expr *pc_expr2();
+//Expr *pc_expr2();
 //{{{
 Expr *pc_factor()
 {
-    Expr *ex;
-    char *cp;
-    Strlist *sl;
-    int i;
+  Expr* ex;
+  char* cp;
+  Strlist *sl;
+  int i;
 
-    switch (curtok) {
-
-        case TOK_BANG:
-            gettok();
-            return makeexpr_not(pc_expr2(14));
-
-        case TOK_TWIDDLE:
-            gettok();
-            return makeexpr_un(EK_BNOT, tp_integer, pc_expr2(14));
-
-        case TOK_PLPL:
-            gettok();
-            ex = pc_expr2(14);
-            return makeexpr_assign(ex, makeexpr_plus(copyexpr(ex), makeexpr_long(1)));
-
-        case TOK_MIMI:
-            gettok();
-            ex = pc_expr2(14);
-            return makeexpr_assign(ex, makeexpr_minus(copyexpr(ex), makeexpr_long(1)));
-
-        case TOK_STAR:
-            gettok();
-            ex = pc_expr2(14);
-            if (ex->val.type->kind != TK_POINTER)
-                ex->val.type = makepointertype(ex->val.type);
-            return makeexpr_hat(ex, 0);
-
-        case TOK_AMP:
-            gettok();
-            return makeexpr_addr(pc_expr2(14));
-
-        case TOK_PLUS:
-            gettok();
-            return pc_expr2(14);
-
-        case TOK_MINUS:
-            gettok();
-            return makeexpr_neg(pc_expr2(14));
-
-        case TOK_LPAR:
-            cp = inbufptr;
-            gettok();
-            if (istypespec(1)) {
-                ex = pc_parentype(cp);
-                return makeexpr_bin(EK_LITCAST, tp_integer, ex, pc_expr2(14));
-            }
-            ex = pc_expr();
-            skipcloseparen();
-            return ex;
-
-        case TOK_IDENT:
-            if (!strcmp(curtokcase, "sizeof")) {
-                gettok();
-                if (curtok != TOK_LPAR)
-                    return makeexpr_sizeof(pc_expr2(14), 1);
-                cp = inbufptr;
-                gettok();
-                if (istypespec(0)) {
-                    ex = makeexpr_sizeof(pc_parentype(cp), 1);
-                } else {
-                    ex = makeexpr_sizeof(pc_expr(), 1);
-                    skipcloseparen();
-                }
-                return ex;
-            }
-      if (!strcmp(curtokcase, "new") &&
-    (cplus > 0 || isalpha(peeknextchar()))) {
-    gettok();
-    ex = pc_typename();
-    if (curtok == TOK_LBR) {
+  switch (curtok) {
+    //{{{
+    case TOK_BANG:
         gettok();
-        ex = makeexpr_bin(EK_NEW, makepointertype(ex->val.type),
-              ex, pc_expr());
-        wneedtok(TOK_RBR);
-    } else
-        ex = makeexpr_un(EK_NEW, makepointertype(ex->val.type),
-             ex);
-    return ex;
-      }
-      if (!strcmp(curtokcase, "delete") &&
-    (cplus > 0 || isalpha(peeknextchar()) ||
-     peeknextchar() == '[')) {
-    gettok();
-    if (curtok == TOK_LBR) {
+        return makeexpr_not(pc_expr2(14));
+    //}}}
+    //{{{
+    case TOK_TWIDDLE:
         gettok();
-        if (curtok != TOK_RBR)
-      ex = pc_expr();
+        return makeexpr_un(EK_BNOT, tp_integer, pc_expr2(14));
+    //}}}
+    //{{{
+    case TOK_PLPL:
+        gettok();
+        ex = pc_expr2(14);
+        return makeexpr_assign(ex, makeexpr_plus(copyexpr(ex), makeexpr_long(1)));
+    //}}}
+    //{{{
+    case TOK_MIMI:
+        gettok();
+        ex = pc_expr2(14);
+        return makeexpr_assign(ex, makeexpr_minus(copyexpr(ex), makeexpr_long(1)));
+    //}}}
+    //{{{
+    case TOK_STAR:
+        gettok();
+        ex = pc_expr2(14);
+        if (ex->val.type->kind != TK_POINTER)
+            ex->val.type = makepointertype(ex->val.type);
+        return makeexpr_hat(ex, 0);
+    //}}}
+    //{{{
+    case TOK_AMP:
+        gettok();
+        return makeexpr_addr(pc_expr2(14));
+    //}}}
+    //{{{
+    case TOK_PLUS:
+        gettok();
+        return pc_expr2(14);
+    //}}}
+    //{{{
+    case TOK_MINUS:
+        gettok();
+        return makeexpr_neg(pc_expr2(14));
+    //}}}
+    //{{{
+    case TOK_LPAR:
+        cp = inbufptr;
+        gettok();
+        if (istypespec(1)) {
+            ex = pc_parentype(cp);
+            return makeexpr_bin(EK_LITCAST, tp_integer, ex, pc_expr2(14));
+        }
+        ex = pc_expr();
+        skipcloseparen();
+        return ex;
+    //}}}
+    //{{{
+    case TOK_IDENT:
+      if (!strcmp (curtokcase, "sizeof")) {
+        gettok();
+        if (curtok != TOK_LPAR)
+          return makeexpr_sizeof(pc_expr2(14), 1);
+        cp = inbufptr;
+
+        gettok();
+        if (istypespec(0)) {
+          ex = makeexpr_sizeof(pc_parentype(cp), 1);
+          } 
+        else {
+          ex = makeexpr_sizeof(pc_expr(), 1);
+          skipcloseparen();
+          }
+        return ex;
+        }
+
+      if (!strcmp(curtokcase, "new") && (cplus > 0 || isalpha(peeknextchar()))) {
+        gettok();
+        ex = pc_typename();
+        if (curtok == TOK_LBR) {
+          gettok();
+          ex = makeexpr_bin(EK_NEW, makepointertype(ex->val.type), ex, pc_expr());
+          wneedtok(TOK_RBR);
+          } 
         else
-      ex = makeexpr_name("", tp_integer);
-        wneedtok(TOK_RBR);
-        ex = makeexpr_bin(EK_DELETE, makepointertype(ex->val.type),
-              pc_expr(), ex);
-    } else
-        ex = makeexpr_un(EK_DELETE, makepointertype(ex->val.type),
-             pc_expr());
-    return ex;
-      }
-            if (curtoksym->flags & FMACREC) {
-                ex = makeexpr(EK_MACARG, 0);
-                ex->val.type = tp_integer;
-                ex->val.i = 0;
-                for (sl = funcmacroargs, i = 1; sl; sl = sl->next, i++) {
-                    if (sl->value == (long)curtoksym) {
-                        ex->val.i = i;
-                        break;
-                    }
-                }
-            } else
-                ex = makeexpr_name(curtokcase, nametotype(curtokcase));
-            gettok();
-            return ex;
+          ex = makeexpr_un(EK_NEW, makepointertype(ex->val.type), ex);
+        return ex;
+        }
 
-        case TOK_INTLIT:
-            ex = makeexpr_long(curtokint);
-            if (curtokbuf[strlen(curtokbuf)-1] == 'L')
-                ex = makeexpr_longcast(ex, 1);
-            gettok();
-            return ex;
+      if (!strcmp(curtokcase, "delete") && (cplus > 0 || isalpha(peeknextchar()) || peeknextchar() == '[')) {
+        gettok();
+        if (curtok == TOK_LBR) {
+          gettok();
+          if (curtok != TOK_RBR)
+            ex = pc_expr();
+          else
+            ex = makeexpr_name("", tp_integer);
+          wneedtok(TOK_RBR);
+          ex = makeexpr_bin(EK_DELETE, makepointertype(ex->val.type), pc_expr(), ex);
+          }
+        else
+          ex = makeexpr_un(EK_DELETE, makepointertype(ex->val.type), pc_expr());
+        return ex;
+        }
 
-        case TOK_HEXLIT:
-            ex = makeexpr_long(curtokint);
-            insertarg(&ex, 0, makeexpr_name("%#lx", tp_integer));
-            if (curtokbuf[strlen(curtokbuf)-1] == 'L')
-                ex = makeexpr_longcast(ex, 1);
-            gettok();
-            return ex;
+      if (curtoksym->flags & FMACREC) {
+        ex = makeexpr(EK_MACARG, 0);
+        ex->val.type = tp_integer;
+        ex->val.i = 0;
+        for (sl = funcmacroargs, i = 1; sl; sl = sl->next, i++) {
+          if (sl->value == (long)curtoksym) {
+            ex->val.i = i;
+            break;
+            }
+          }
+        }
+      else
+        ex = makeexpr_name(curtokcase, nametotype(curtokcase));
 
-        case TOK_OCTLIT:
-            ex = makeexpr_long(curtokint);
-            insertarg(&ex, 0, makeexpr_name("%#lo", tp_integer));
-            if (curtokbuf[strlen(curtokbuf)-1] == 'L')
-                ex = makeexpr_longcast(ex, 1);
-            gettok();
-            return ex;
-
-        case TOK_REALLIT:
-            ex = makeexpr_real(curtokbuf);
-            gettok();
-            return ex;
-
-        case TOK_STRLIT:
-            ex = makeexpr_lstring(curtokbuf, curtokint);
-            gettok();
-            return ex;
-
-        case TOK_CHARLIT:
-            ex = makeexpr_char(curtokint);
-            gettok();
-            return ex;
-
-        default:
+      gettok();
+      return ex;
+    //}}}
+    //{{{
+    case TOK_INTLIT:
+        ex = makeexpr_long(curtokint);
+        if (curtokbuf[strlen(curtokbuf)-1] == 'L')
+            ex = makeexpr_longcast(ex, 1);
+        gettok();
+        return ex;
+    //}}}
+    //{{{
+    case TOK_HEXLIT:
+        ex = makeexpr_long(curtokint);
+        insertarg(&ex, 0, makeexpr_name("%#lx", tp_integer));
+        if (curtokbuf[strlen(curtokbuf)-1] == 'L')
+            ex = makeexpr_longcast(ex, 1);
+        gettok();
+        return ex;
+    //}}}
+    //{{{
+    case TOK_OCTLIT:
+        ex = makeexpr_long(curtokint);
+        insertarg(&ex, 0, makeexpr_name("%#lo", tp_integer));
+        if (curtokbuf[strlen(curtokbuf)-1] == 'L')
+            ex = makeexpr_longcast(ex, 1);
+        gettok();
+        return ex;
+    //}}}
+    //{{{
+    case TOK_REALLIT:
+        ex = makeexpr_real(curtokbuf);
+        gettok();
+        return ex;
+    //}}}
+    //{{{
+    case TOK_STRLIT:
+        ex = makeexpr_lstring(curtokbuf, curtokint);
+        gettok();
+        return ex;
+    //}}}
+    //{{{
+    case TOK_CHARLIT:
+        ex = makeexpr_char(curtokint);
+        gettok();
+        return ex;
+    //}}}
+    default:
       wexpected("a C expression");
       return makeexpr_long(0);
     }
 }
 //}}}
+
 #define pc_prec(pr)  if (prec > (pr)) return ex; gettok();
 //{{{
 Expr *pc_expr2(prec)
@@ -2889,8 +2907,8 @@ int env;
             break;
     }
     if (debug>4) {
-      fprintf(outf, "fixexpr returns "); 
-      dumpexpr(ex); 
+      fprintf(outf, "fixexpr returns ");
+      dumpexpr(ex);
       fprintf(outf, "\n");
       }
 

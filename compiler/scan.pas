@@ -337,6 +337,7 @@ begin
       begin
       dif := min(line - lasttokenline, hostfilelim);
       if dif = 1 then
+        {<<<  lineinc token}
         begin
         tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := lineinc;
         if tokenbufindex = diskbufsize then
@@ -347,17 +348,21 @@ begin
         else
           tokenbufindex := tokenbufindex + 1;
         end
+        {>>>}
       else
+        {<<<  lineadd token}
         begin
         tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := lineadd;
         puttempfile;
         tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := dif;
         puttempfile;
         end;
+        {>>>}
       lasttokenline := lasttokenline + dif;
       end;
 
     if lastbaseline <> baseline then
+      {<<<  newfile token}
       begin
       tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := newfile;
       puttempfile;
@@ -365,8 +370,10 @@ begin
       putint (fileindex); { filename pointer }
       lastbaseline := baseline;
       end;
+      {>>>}
 
     tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := token;
+    {<<<  save token}
     if tokenbufindex = diskbufsize then
       begin
       tokenbufindex := 0;
@@ -374,8 +381,10 @@ begin
       end
     else
       tokenbufindex := tokenbufindex + 1;
+    {>>>}
 
     tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := left;
+    {<<<  save left token}
     if tokenbufindex = diskbufsize then
       begin
       tokenbufindex := 0;
@@ -383,11 +392,12 @@ begin
       end
     else
       tokenbufindex := tokenbufindex + 1;
+    {>>>}
 
-    if token in [ident, intconst, realconst, dblrealconst, charconst,
-       stringconst] then
+    if token in [ident, intconst, realconst, dblrealconst, charconst, stringconst] then
       begin
       tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := right;
+      {<<<  save righttoken}
       if tokenbufindex = diskbufsize then
         begin
         tokenbufindex := 0;
@@ -395,18 +405,20 @@ begin
         end
       else
         tokenbufindex := tokenbufindex + 1;
+      {>>>}
 
+      { save token params }
       case token of
         {<<<}
         ident:
           begin
-          putint(key);
-          putint(keypos);
+          putint (key);
+          putint (keypos);
           end;
         {>>>}
         {<<<}
         intconst:
-          putint(intvalue);
+          putint (intvalue);
         {>>>}
         {<<<}
         charconst:
@@ -422,8 +434,8 @@ begin
         {<<<}
         stringconst:
           begin
-          putint(pos);
-          putint(len);
+          putint (pos);
+          putint (len);
           end;
         {>>>}
         end
@@ -433,10 +445,9 @@ end;
 {>>>}
 {<<<}
 procedure puttokenfile;
-{ Do the equivalent of a put to the token file.  The value of the global
-  variable "token" is encoded by "puttoken" and written in a packed format
-  to the tokenfile.  A count of tokens is kept and used to indicate the
-  place in the file where embedded switches are found.
+{ Do the equivalent of a put to the token file
+  The value of the global variable "token" is encoded by "puttoken" and written in a packed format to the tokenfile.  
+  A count of tokens is kept and used to indicate the place in the file where embedded switches are found.
 }
 begin
   { update token count -- two words for small computers }

@@ -5,8 +5,8 @@ DEB = -g
 CFLAGS = $(OPT) $(DEB)
 LFLAGS =
 
-OBJ = main.o scan.o analysis.o traverse.o code.o list.o
-SRC = main.c scan.c analysis.c traverse.c code.c list.c dumpToken.c #dumpInter.c dumpPseudo.c
+OBJ = main.o scan.o analysis.o traverse.o code.o list.o common.o
+SRC = main.c scan.c analysis.c traverse.c code.c list.c common.c dumpToken.c #dumpInter.c dumpPseudo.c
 
 DEP = common.def token.def inter.def pseudo.def \
       debug.def list.def main.def scan.def analysis.def traverse.def code.def
@@ -18,13 +18,13 @@ pmt: $(PMT_OBJ)
 	$(CC) $(LFLAGS) pasmat.o ../p2clib.a -o pmt
 
 dumpToken: dumpToken.o $(DEP)
-	$(CC) $(LFLAGS) dumpToken.o shared.o ../p2clib.a -o dumpToken
+	$(CC) $(LFLAGS) dumpToken.o common.o ../p2clib.a -o dumpToken
 
 dumpInter: dumpInter.o $(DEP)
-	$(CC) $(LFLAGS) dumpInter.o shared.o ../p2clib.a -o dumpInter
+	$(CC) $(LFLAGS) dumpInter.o common.o ../p2clib.a -o dumpInter
 
 dumpPseudo: dumpPseudo.o $(DEP)
-	$(CC) $(LFLAGS) dumpPseudo.o shared.o ../p2clib.a -o dumpPseudo
+	$(CC) $(LFLAGS) dumpPseudo.o common.o ../p2clib.a -o dumpPseudo
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<

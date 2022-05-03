@@ -64,7 +64,12 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #ifndef BSD
     #include <malloc.h>
     #include <memory.h>
-    #ifndef _WIN32
+
+    #ifdef _WIN32
+      #include <stdlib.h>
+      #include <stddef.h>
+      #include <limits.h>
+    #else
       #include <values.h>
     #endif
   #endif
