@@ -17,6 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+#define Static
+#include <stdio.h>
+#include <ctype.h>
+
 //{{{
 #ifdef __STDC__
   #define PP(x)  x             /* use true prototypes */
@@ -31,9 +35,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #define __CAT__(a,b)__ID__(a)b
 #endif
 //}}}
-#define Static                /* For debugging purposes */
-#include <stdio.h>
-
 //{{{
 #ifdef FILE       /* a #define in BSD, a typedef in SYSV (hp-ux, at least) */
   #ifndef BSD
@@ -49,10 +50,12 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #endif
 //}}}
 //{{{
-#if defined(__STDC__) && !defined(M_XENIX)
+#if defined(__STDC__)
   #include <stdlib.h>
   #include <stddef.h>
   #include <limits.h>
+  #include <string.h>
+
 #else
   #ifndef BSD
     #include <malloc.h>
@@ -65,21 +68,14 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
     #else
       #include <values.h>
     #endif
+  #else
+    #include <strings.h>
+    #define memcpy(a,b,n) bcopy(b,a,n)
+    #define memcmp(a,b,n) bcmp(a,b,n)
+    char *malloc(), *realloc();
   #endif
 #endif
 //}}}
-//{{{
-#if defined(BSD) && !defined(__STDC__)
-  #include <strings.h>
-  #define memcpy(a,b,n) bcopy(b,a,n)
-  #define memcmp(a,b,n) bcmp(a,b,n)
-  char *malloc(), *realloc();
-#else
-  #include <string.h>
-#endif
-//}}}
-
-#include <ctype.h>
 //{{{
 #ifdef __GNUC__      /* Fast, in-line version of strcmp */
 # define strcmp(a,b) ({ char *_aa = (a), *_bb = (b); int _diff;  \
@@ -118,14 +114,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #ifndef EXIT_SUCCESS
   #define EXIT_SUCCESS  0
   #define EXIT_FAILURE  1
-#endif
-
-#ifndef P2C_HOME
-  #ifdef citPWS
-    #define    P2C_HOME        "/lib/p2c"
-  #else
-    #define    P2C_HOME        "/usr/local/p2c"     /* sounds reasonable... */
-  #endif
 #endif
 
 #define P2C_VERSION  "2.00.Oct.15"
@@ -204,53 +192,59 @@ typedef enum E_token {
 
 #ifdef define_globals
   //{{{
-  char *toknames[(int)TOK_LAST] = { "",
-      "AND", "ARRAY", "BEGIN", "CASE", "CONST",
-      "DIV", "DO", "DOWNTO", "ELSE", "END",
-      "FILE", "FOR", "FUNCTION", "GOTO", "IF",
-      "IN", "LABEL", "MOD", "NIL", "NOT",
-      "OF", "OR", "PACKED", "PROCEDURE", "PROGRAM",
-      "RECORD", "REPEAT", "SET", "THEN", "TO",
-      "TYPE", "UNTIL", "VAR", "WHILE", "WITH",
+  char* toknames[(int)TOK_LAST] = {
+     "",
+     "AND", "ARRAY", "BEGIN", "CASE", "CONST",
+     "DIV", "DO", "DOWNTO", "ELSE", "END",
+     "FILE", "FOR", "FUNCTION", "GOTO", "IF",
+     "IN", "LABEL", "MOD", "NIL", "NOT",
+     "OF", "OR", "PACKED", "PROCEDURE", "PROGRAM",
+     "RECORD", "REPEAT", "SET", "THEN", "TO",
+     "TYPE", "UNTIL", "VAR", "WHILE", "WITH",
 
-      "a '$'", "a string literal", "a '('", "a ')'", "a '*'",
-      "a '+'", "a comma", "a '-'", "a '.'", "'..'",
-      "a '/'", "an integer", "a real number", "a colon", "a ':='",
-      "a semicolon", "a '<>'", "a '<'", "a '>'", "a '<='", "a '>='",
-      "an '='", "a '['", "a ']'", "a '^'",
-      "an \"include\" file", "$end$",
-      "an identifier", "an integer", "end of file",
+     "a '$'", "a string literal", "a '('", "a ')'", "a '*'",
+     "a '+'", "a comma", "a '-'", "a '.'", "'..'",
+     "a '/'", "an integer", "a real number", "a colon", "a ':='",
+     "a semicolon", "a '<>'", "a '<'", "a '>'", "a '<='", "a '>='",
+     "an '='", "a '['", "a ']'", "a '^'",
+     "an \"include\" file", "$end$",
+     "an identifier", "an integer", "end of file",
 
-      "an '->'", "an '&'", "a '|'", "a '!'",
-      "a '~'", "a '%'", "a '?'",
-      "a '<<'", "a '>>'", "a '=='", "a '!='",
-      "a '++'", "a '--'", "a '&&'", "a '||'",
-      "a '{'", "a '}'", "a character literal",
+     "an '->'", "an '&'", "a '|'", "a '!'",
+     "a '~'", "a '%'", "a '?'",
+     "a '<<'", "a '>>'", "a '=='", "a '!='",
+     "a '++'", "a '--'", "a '&&'", "a '||'",
+     "a '{'", "a '}'", "a character literal",
 
-      "ANYVAR", "EXPORT", "IMPLEMENT", "IMPORT", "MODULE",
-      "OTHERWISE", "RECOVER", "TRY",
+     "ANYVAR", "EXPORT", "IMPLEMENT", "IMPORT", "MODULE",
+     "OTHERWISE", "RECOVER", "TRY",
 
-      "SHL", "SHR", "XOR", "INLINE", "ABSOLUTE",
-      "INTERRUPT", "an '@'", "a hex integer", "OBJECT",
-      "CONSTRUCTOR", "DESTRUCTOR", "VIRTUAL", "PRIVATE",
+     "SHL", "SHR", "XOR", "INLINE", "ABSOLUTE",
+     "INTERRUPT", "an '@'", "a hex integer", "OBJECT",
+     "CONSTRUCTOR", "DESTRUCTOR", "VIRTUAL", "PRIVATE",
 
-      "ORIGIN", "INTF-ONLY",
+     "ORIGIN", "INTF-ONLY",
 
-      "REM", "VALUE", "VARYING", "an octal integer", "a '::'",
-      "a '**'",
+     "REM", "VALUE", "VARYING", "an octal integer", "a '::'",
+     "a '**'",
 
-      "BY", "DEFINITION", "ELSIF", "FROM", "LOOP",
-      "POINTER", "QUALIFIED", "RETURN",
+     "BY", "DEFINITION", "ELSIF", "FROM", "LOOP",
+     "POINTER", "QUALIFIED", "RETURN",
 
-      "SEGMENT",
+     "SEGMENT",
 
-      "RANDOM", "COMMON", "ACCESS",
+     "RANDOM", "COMMON", "ACCESS",
 
-      "INHERITED", "OVERRIDE"
-  } ;
+     "INHERITED", "OVERRIDE"
+    };
+  //}}}
+  //{{{
+  char* CMT_NAMES[] = {
+    "DONE", "PRE", "POST", "3", "TRAIL", "5", "BEGIN", "END", "ELSE", "PREELSE" };
   //}}}
 #else
-  extern char *toknames[];
+  extern char* toknames[];
+  extern char* CMT_NAMES[];
 #endif
 
 //{{{
@@ -849,7 +843,7 @@ typedef struct S_expr {
     struct S_expr *args[1];    /* (Actually, variable-sized) */
 } Expr;
 //}}}
-//{{{  Stmt notes.
+//{{{  Stmt notes
  /*
  * Statements form linked lists along the "next" pointers.
  * All other pointers are NULL and unused unless shown below.
@@ -986,6 +980,7 @@ typedef struct S_stmt {
 #define MAC_FUNC    3       /* FuncMacro */
 //}}}
 #define FMACRECname  "<rec>"
+
 //{{{  Kinds of comment lines
 #define CMT_SHIFT   24
 #define CMT_MASK    ((1L<<CMT_SHIFT)-1)
@@ -1000,13 +995,6 @@ typedef struct S_stmt {
 #define CMT_PREELSE 9       /* comment preceding "else" keyword */
 #define CMT_NOT     256     /* negation of above, for searches */
 //}}}
-
-#ifdef define_globals
-  char *CMT_NAMES[] = { "DONE", "PRE", "POST", "3", "TRAIL", "5", "BEGIN", "END", "ELSE", "PREELSE" };
-#else
-  extern char *CMT_NAMES[];
-#endif
-
 #define getcommentkind(cmt)  (((cmt)->value >> CMT_SHIFT) & CMT_KMASK)
 
 //{{{  Kinds of operator line-breaking
@@ -1018,15 +1006,14 @@ typedef struct S_stmt {
 #define BRK_HANG     0x20
 //}}}
 
-/* Translation parameters: */
+//{{{  extern vars
 #ifdef define_parameters
   #define extern
 #endif
 
 extern enum { UNIX_ANY, UNIX_BSD, UNIX_SYSV } which_unix;
-
-extern enum { LANG_HP, LANG_UCSD, LANG_TURBO, LANG_OREGON, LANG_VAX, LANG_MODULA, LANG_MPW, LANG_BERK, LANG_TIP, LANG_APOLLO
-            } which_lang;
+extern enum { LANG_HP, LANG_UCSD, LANG_TURBO, LANG_OREGON, LANG_VAX,
+              LANG_MODULA, LANG_MPW, LANG_BERK, LANG_TIP, LANG_APOLLO } which_lang;
 
 extern short debug, tokentrace, quietmode, cmtdebug, flowdebug, copysource;
 extern int nobanner, showprogress, maxerrors;
@@ -1188,7 +1175,8 @@ extern char alternatename1[40], alternatename2[40], alternatename[40];
 #ifndef define_parameters
   extern
 #endif
-
+//}}}
+//{{{
 struct rcstruct {
   char kind;
   char chgmode;
@@ -1696,7 +1684,7 @@ struct rcstruct {
 }
 #endif /* define_parameters */
     ;
-
+//}}}
 #undef extern
 
 #ifdef define_parameters
@@ -1705,13 +1693,12 @@ struct rcstruct {
 #else
   extern int numparams;
   extern Strlist *rcprevvalues[];
-#endif /* define_parameters */
+#endif
 
-/* Global variables: */
-
+//{{{  global vars 
 #ifdef define_globals
-# define extern
-#endif /* define_globals */
+  #define extern
+#endif 
 
 extern char *charname, *ucharname, *scharname, *integername;
 extern long min_schar, max_schar, max_uchar;
@@ -1805,6 +1792,7 @@ extern Expr *new_array_size;
 #ifndef define_globals
   #undef extern
 #endif
+//}}}
 
 /* Function declarations are created automatically by "makeproto" */
 #include "p2c.hdrs"
@@ -1829,19 +1817,21 @@ int unlink         PP( (char *) );
 
 #define ALLOC(N,TYPE,NAME)  (TYPE*) test_malloc ((unsigned)((N)*sizeof(TYPE)), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
 #define ALLOCV(N,TYPE,NAME) (TYPE*) test_malloc ((unsigned)(N), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
-#define REALLOC(P,N,TYPE)  (TYPE*) test_realloc ((char *)(P), (unsigned)((N)*sizeof(TYPE)))
-#define FREE(P) test_free((char*)(P))
+#define REALLOC(P,N,TYPE)   (TYPE*) test_realloc ((char *)(P), (unsigned)((N)*sizeof(TYPE)))
+#define FREE(P)                     test_free ((char*)(P))
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+//{{{
 #ifdef toupper
   #undef toupper
   #undef tolower
   #define toupper(c)   my_toupper(c)
   #define tolower(c)   my_tolower(c)
 #endif
-
+//}}}
+//{{{
 #ifndef _toupper
   #if 'A' == 65 && 'a' == 97
     #define _toupper(c)  ((c)-'a'+'A')
@@ -1855,3 +1845,4 @@ int unlink         PP( (char *) );
     #define _tolower(c)  tolower(c)
   #endif
 #endif
+//}}}
