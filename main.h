@@ -34,13 +34,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define Static                /* For debugging purposes */
 #include <stdio.h>
 
-/* If the following heuristic fails, compile -DBSD=0 for non-BSD systems,
-   or -DBSD=1 for BSD systems. */
-//{{{
-#ifdef M_XENIX
-  #define BSD 0
-#endif
-//}}}
 //{{{
 #ifdef FILE       /* a #define in BSD, a typedef in SYSV (hp-ux, at least) */
   #ifndef BSD
@@ -133,12 +126,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #else
     #define    P2C_HOME        "/usr/local/p2c"     /* sounds reasonable... */
   #endif
-#endif
-
-#ifdef define_globals
-  char* p2c_home = P2C_HOME;
-#else
-  extern char* p2c_home;
 #endif
 
 #define P2C_VERSION  "2.00.Oct.15"
@@ -1034,15 +1021,12 @@ typedef struct S_stmt {
 /* Translation parameters: */
 #ifdef define_parameters
   #define extern
-#endif /* define_parameters */
+#endif
 
-extern enum {
-  UNIX_ANY, UNIX_BSD, UNIX_SYSV
-  } which_unix;
+extern enum { UNIX_ANY, UNIX_BSD, UNIX_SYSV } which_unix;
 
-extern enum {
-  LANG_HP, LANG_UCSD, LANG_TURBO, LANG_OREGON, LANG_VAX, LANG_MODULA, LANG_MPW, LANG_BERK, LANG_TIP, LANG_APOLLO
-  } which_lang;
+extern enum { LANG_HP, LANG_UCSD, LANG_TURBO, LANG_OREGON, LANG_VAX, LANG_MODULA, LANG_MPW, LANG_BERK, LANG_TIP, LANG_APOLLO
+            } which_lang;
 
 extern short debug, tokentrace, quietmode, cmtdebug, flowdebug, copysource;
 extern int nobanner, showprogress, maxerrors;
@@ -1843,42 +1827,10 @@ int unlink         PP( (char *) );
 #define FCheck(flag)  ((flag) == 1 || (!iocheck_flag && (flag)))
 #define checkeof(fex)  (isvar(fex, mp_input) ? FCheck(checkstdineof) : FCheck(checkfileeof))
 
-#ifdef TEST_MALLOC   /* Memory testing */
-  #define ALLOC(N,TYPE,NAME) \
-      (TYPE *) test_malloc((unsigned)((N)*sizeof(TYPE)),  \
-         &__CAT__(total_,NAME), &__CAT__(final_,NAME))
-  #define ALLOCV(N,TYPE,NAME) \
-      (TYPE *) test_malloc((unsigned)(N),  \
-         &__CAT__(total_,NAME), &__CAT__(final_,NAME))
-  #define REALLOC(P,N,TYPE) \
-      (TYPE *) test_realloc((char *)(P), (unsigned)((N)*sizeof(TYPE)))
-  #define FREE(P) test_free((char*)(P))
-#else
-  /* If p2c always halts immediately with an out-of-memory error, try recompiling all modules with BROKEN_OR defined. */
-  #ifdef BROKEN_OR
-    #define ALLOC(N,TYPE,NAME) \
-        ((alloctemp = malloc((unsigned)((N)*sizeof(TYPE)))), \
-         (alloctemp ? (TYPE *) alloctemp : (TYPE *) outmem()))
-    #define ALLOCV(N,TYPE,NAME) \
-        ((alloctemp = malloc((unsigned)(N))), \
-         (alloctemp ? (TYPE *) alloctemp : (TYPE *) outmem()))
-    #define REALLOC(P,N,TYPE) \
-        ((alloctemp = realloc((char*)(P), (unsigned)((N)*sizeof(TYPE)))), \
-         (alloctemp ? (TYPE *) alloctemp : (TYPE *) outmem()))
-    #define FREE(P) free((char*)(P))
-  #else
-    #define ALLOC(N,TYPE,NAME) \
-        ((alloctemp = malloc((unsigned)((N)*sizeof(TYPE)))) || outmem(), \
-         (TYPE *) alloctemp)
-    #define ALLOCV(N,TYPE,NAME) \
-        ((alloctemp = malloc((unsigned)(N))) || outmem(), \
-         (TYPE *) alloctemp)
-    #define REALLOC(P,N,TYPE) \
-        ((alloctemp = realloc((char*)(P), (unsigned)((N)*sizeof(TYPE)))) || outmem(), \
-         (TYPE *) alloctemp)
-    #define FREE(P) free((char*)(P))
-  #endif
-#endif
+#define ALLOC(N,TYPE,NAME)  (TYPE*) test_malloc ((unsigned)((N)*sizeof(TYPE)), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
+#define ALLOCV(N,TYPE,NAME) (TYPE*) test_malloc ((unsigned)(N), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
+#define REALLOC(P,N,TYPE)  (TYPE*) test_realloc ((char *)(P), (unsigned)((N)*sizeof(TYPE)))
+#define FREE(P) test_free((char*)(P))
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))

@@ -836,7 +836,6 @@ void dumptypename (tp, waddr)
 Type *tp;
 int waddr;
 {
-#ifdef HASDUMPS
   if (!tp) {
     fprintf(outf, "<NULL>");
     return;
@@ -1008,9 +1007,6 @@ int waddr;
       fprintf(outf, "}");
       }
     }
-#else
-  fprintf(outf, "%lX", tp);
-#endif
 }
 //}}}
 //{{{
@@ -1241,51 +1237,47 @@ void mem_summary() {
   printf("\n");
   }
 //}}}
+anyptr memlist;
 //{{{
-#ifdef TEST_MALLOC
-  anyptr memlist;
-  //{{{
-  anyptr test_malloc(size, total, final)
-  int size, *total, *final;
-    {
-    anyptr p;
-
-    p = malloc(size + 3*sizeof(long));
-
-    ((anyptr *)p)[0] = memlist;
-    memlist = p;
-    ((long *)p)[1] = size;
-    ((int **)p)[2] = final;
-    total_bytes += size;
-    final_bytes += size;
-    *total += size;
-    *final += size;
-
-    return (anyptr)((long *)p + 3);
-    }
-  //}}}
-  //{{{
-  void test_free(p)
+anyptr test_malloc(size, total, final)
+int size, *total, *final;
+  {
   anyptr p;
-    {
-    final_bytes -= ((long *)p)[1-3];
-    *((int **)p)[2-3] -= ((long *)p)[1-3];
-    ((long *)p)[1-3] *= -1;
-    }
-  //}}}
-  //{{{
-  anyptr test_realloc(p, size)
-  anyptr p;
-  int size;
-    {
-    anyptr p2;
-    p2 = test_malloc (size, &total_misc, &final_misc);
-    memcpy (p2, p, size);
-    test_free (p);
-    return p2;
-    }
-  //}}}
-#endif
+
+  p = malloc(size + 3*sizeof(long));
+
+  ((anyptr *)p)[0] = memlist;
+  memlist = p;
+  ((long *)p)[1] = size;
+  ((int **)p)[2] = final;
+  total_bytes += size;
+  final_bytes += size;
+  *total += size;
+  *final += size;
+
+  return (anyptr)((long *)p + 3);
+  }
+//}}}
+//{{{
+void test_free(p)
+anyptr p;
+  {
+  final_bytes -= ((long *)p)[1-3];
+  *((int **)p)[2-3] -= ((long *)p)[1-3];
+  ((long *)p)[1-3] *= -1;
+  }
+//}}}
+//{{{
+anyptr test_realloc(p, size)
+anyptr p;
+int size;
+  {
+  anyptr p2;
+  p2 = test_malloc (size, &total_misc, &final_misc);
+  memcpy (p2, p, size);
+  test_free (p);
+  return p2;
+  }
 //}}}
 
 //{{{
@@ -1725,7 +1717,7 @@ int main (int argc, char** argv) {
   closelogfile();
 
   if (!quietmode) {
-    mem_summary();
+    //mem_summary();
     fprintf(stderr, "Translation completed.\n");
     }
 

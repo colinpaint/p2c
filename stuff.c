@@ -449,11 +449,6 @@ char *s1, *s2, *s3;
       *dst++ = '%';
       break;
 
-    case 'H':
-      strcpy(dst, p2c_home);
-      dst = dst + strlen(dst);
-      break;
-
     case 'd':
     case 'i':
     case 'o':
