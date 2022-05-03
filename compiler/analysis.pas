@@ -461,7 +461,7 @@ var
   blockslow: array [1..maxblockslow] of nameblock;
 {>>>}
 
-{<<<  foldcom}
+{<<<  foldcom utils}
 {<<<}
 procedure add (left, right: integer;  var result: integer; var overflow: boolean);
 { Add two target integers.  If the operation overflows, "overflow" will
@@ -750,10 +750,9 @@ procedure compareint (left, right: integer; var result: boolean; op: operator);
   end; {compareint}
 {>>>}
 {>>>}
-{<<<  comma}
+{<<<  utils}
 {<<<  description}
-{
-  Virtual Memory System for Instruction Nodes.
+{ Virtual Memory System for Instruction Nodes.
 
   These routines implement the virtual memory tree used for instructions.
   Nodes are stored on the file "nodefile" in blocks.  A maximum of
@@ -780,19 +779,17 @@ procedure compareint (left, right: integer; var result: boolean; op: operator);
   written (indicated by the global "thrashing"), the system reverts
   to the search of blocksin to locate a buffer.
 
-  At the point where thrashing becomes true,  all blocks are assumed to be written. }
+  At the point where thrashing becomes true,  all blocks are assumed to be written
 
-{ Intermediate File Output
+  Intermediate File Output
 
   The intermediate file is the interface to the next pass (travrs),
   and consists of blocks of undiscriminated variant records.  The
   type of the next record is determined strictly by context.
 
-  The following routines write the different kinds of values to this
-  file.
+  The following routines write the different kinds of values to this file.
 
-  As with all files in the compiler, this one is blocked, and the next
-  element is always accessed as:
+  As with all files in the compiler, this one is blocked, and the next element is always accessed as:
 
     interSharedPotr^.interFile^,block[nextintcode]
 
@@ -875,6 +872,50 @@ begin
   scantoken;
 end;
 {>>>}
+
+{<<<}
+procedure seekstringfile (n: integer);
+{ Do the equivalent of a "seek" on the string file
+  This sets the file and "nextstringfile" to access byte "n" of the stringfile
+}
+var
+  newblock: 1..maxstringblks; { block to which seeking }
+
+begin
+  newblock := n div (diskbufsize + 1) + 1;
+  if newblock <> sharedPtr^.curstringblock then
+    begin
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
+    if sharedPtr^.stringblkptr = nil then
+      begin
+      new (sharedPtr^.stringblkptr);
+      sharedPtr^.stringblkptrtbl[newblock] := sharedPtr^.stringblkptr;
+      end;
+    sharedPtr^.curstringblock := newblock;
+    end;
+
+  sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
+end;
+{>>>}
+{<<<}
+procedure getstringfile;
+{ Do the equivalent of a get on the stringfile.
+  The string file contains constant data collected by SCAN and ANALYS
+  It is organized as blocks containing arrays 0..diskbufsize of bytes
+  The string file is always accessed as stringblkptr^[nextstringfile] if caching is disabled
+}
+begin
+  if sharedPtr^.nextstringfile = diskbufsize then
+    begin
+    sharedPtr^.nextstringfile := 0;
+    sharedPtr^.curstringblock := sharedPtr^.curstringblock + 1;
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+    end
+  else
+    sharedPtr^.nextstringfile := sharedPtr^.nextstringfile + 1;
+end;
+{>>>}
+
 {<<<}
 procedure putintfile;
 { Write intermediate code file.
@@ -898,13 +939,10 @@ end;
 {>>>}
 {<<<}
 procedure putstringfile;
-{ Do the equivalent of a "put" on the stringfile.  The global
-  "nextstringfile" is incremented, and if the buffer is full an
-  actual "put" on the file is done.  The last element is assumed
-  to be placed in:
-    stringblkptr^[nextstringfile]  if caching disabled
+{ Do the equivalent of a "put" on the stringfile.
+  The global "nextstringfile" is incremented, and if the buffer is full an actual "put" on the file is done.
+  The last element is in stringblkptr^[nextstringfile]
 }
-
 begin
   if sharedPtr^.nextstringfile = diskbufsize then
     begin
@@ -919,11 +957,10 @@ end;
 {>>>}
 {<<<}
 procedure putbyte (a: integer);
-{ Write the byte "a" to the next location in the string file.  This
-  is assumed to be added to the constant table, and the global
+{ Write the byte "a" to the next location in the string file.
+  This is assumed to be added to the constant table, and the global
   "consttablelimit" or "stringfilecount" is incremented as a result.
 }
-
 begin
   sharedPtr^.stringfilecount := sharedPtr^.stringfilecount + 1;
   sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] := a;
@@ -959,7 +996,6 @@ var
         false: (byte: packed array [1..32] of hostfilebyte);
     end;
   j: 1..32; {induction var}
-
 
 begin
   if emitflag then
@@ -1244,8 +1280,8 @@ var
 
 begin
   ptr := ref(bigtable[objectindex]);
-  with ptr^ do 
-    if (typ = subranges) then 
+  with ptr^ do
+    if (typ = subranges) then
      objectindex := parenttype;
 end;
 {>>>}
@@ -1349,7 +1385,7 @@ function forcealign (size: addressrange; {value to align}
   Used to overcome limitations built into much contemporary hardware }
 
 begin
-  if packedresult then 
+  if packedresult then
     alignment := alignment * bitsperunit;
   if alignment > 1 then
     size := ((size + alignment - 1) div alignment) * alignment;
@@ -1363,11 +1399,11 @@ function unsigned (f: entryptr; {type to check}
 { Returns true if the values of type "f" are unsigned.
   If "len" is not equal to the space required for the value, it is being
   allocated a space larger than required, and should be treated as signed
-  or unsigned for unpacking, depending on the global "unsignedprefered" 
+  or unsigned for unpacking, depending on the global "unsignedprefered"
 }
 
 begin
-  if not packedelement then 
+  if not packedelement then
     len := len * bitsperunit;
   unsigned := not (f^.typ in [subranges, ints, bools, chars, scalars]) or
               (lower(f) >= 0) and (unsignedprefered or (len = sizeof(f,
@@ -1385,7 +1421,7 @@ var
 begin
   b := bits(i);
   t := 1;
-  while b > t * bitsperunit do 
+  while b > t * bitsperunit do
     t := t + 1;
   simplesize := t;
 end;
@@ -1401,7 +1437,7 @@ const
 begin
   if realbuffer[1] >= halfword then
     realbuffer[1] := realbuffer[1] - halfword
-  else 
+  else
     realbuffer[1] := realbuffer[1] + halfword;
 
   negaterealconst := realbuffer;
@@ -1429,7 +1465,7 @@ procedure constant (follow: tokenset; {legal following symbols}
     t1: entryptr; {Temp for index type for string constant}
     unsvalue: unsignedint; {temp for unsigned operation}
 
-  begin 
+  begin
     { init descriptor }
     with value1, cvalue do
       begin
@@ -1588,7 +1624,7 @@ procedure constant (follow: tokenset; {legal following symbols}
             realvalue.realbuffer := negaterealconst (realvalue.realbuffer)
           else {non real}
             begin
-            if intvalue <> - sharedPtr^.targetmaxint - 1 then 
+            if intvalue <> - sharedPtr^.targetmaxint - 1 then
               intvalue := - intvalue;
             negated := not negated;
             end;
@@ -1602,7 +1638,6 @@ procedure constant (follow: tokenset; {legal following symbols}
         end;
   end;
 {>>>}
-
 {<<<}
 function identical (left, right: tableIndex): boolean;
 { True if two types are identical, or if either is undefined (to avoid redundant messages) }
@@ -1621,7 +1656,7 @@ var
   lptr, rptr: entryptr; { used for access to symbol table }
   c: boolean; {temporary value of compatible}
 
-begin 
+begin
   stripsubrange (left);
   stripsubrange (right);
   if identical(left, right) then compatible := true
@@ -1670,61 +1705,15 @@ function alignmentof (f: entryptr; packedresult: boolean): alignmentrange;
   is to be used in a packed structure. }
 
 begin
-  if packedresult = f^.bitaddress then 
+  if packedresult = f^.bitaddress then
     alignmentof := f^.align
-  else if packedresult then 
+  else if packedresult then
     alignmentof := f^.align * bitsperunit
-  else 
+  else
     alignmentof := (f^.align + bitsperunit - 1) div bitsperunit;
 end;
 {>>>}
 
-{<<<}
-procedure seekstringfile (n: integer);
-{ Do the equivalent of a "seek" on the string file.  This sets the
-  file and "nextstringfile" to access byte "n" of the stringfile.
-}
-var
-  newblock: 1..maxstringblks; { block to which seeking }
-
-begin
-  newblock := n div (diskbufsize + 1) + 1;
-  if newblock <> sharedPtr^.curstringblock then
-    begin
-    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
-    if sharedPtr^.stringblkptr = nil then
-      begin
-      new (sharedPtr^.stringblkptr);
-      sharedPtr^.stringblkptrtbl[newblock] := sharedPtr^.stringblkptr;
-      end;
-    sharedPtr^.curstringblock := newblock;
-    end;
-  sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
-end;
-{>>>}
-{<<<}
-procedure getstringfile;
-{ Do the equivalent of a get on the stringfile.
-  The string file contains constant data collected by SCAN and
-  ANALYS.  It is organized as blocks containing arrays 0..
-  diskbufsize of bytes.  The string file is always accessed
-  as
-    stringblkptr^[nextstringfile]  if caching is disabled
-}
-
-begin
-  if sharedPtr^.nextstringfile = diskbufsize then
-    begin
-    sharedPtr^.nextstringfile := 0;
-    sharedPtr^.curstringblock := sharedPtr^.curstringblock + 1;
-    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-    end
-  else
-    sharedPtr^.nextstringfile := sharedPtr^.nextstringfile + 1;
-end;
-{>>>}
-{>>>}
-{<<<  mda}
 {<<<}
 procedure alloc (align: alignmentrange; {variable alignment}
                  length: addressrange; {length of variable}
@@ -1948,7 +1937,6 @@ begin
     roundpackedsize := spacesize;
 end;
 {>>>}
-
 {<<<}
 procedure possibletemp (off: addressrange; vartype: tableIndex; debugrec: integer);
 {
@@ -3841,10 +3829,10 @@ procedure foldpush;
     if foldedunary then
       begin
       genlit(i);
-      genop(pushlitvalue);
-      genint(olen);
-      genint(ocost);
-      genform(unaryform);
+      genop (pushlitvalue);
+      genint (olen);
+      genint (ocost);
+      genform (unaryform);
       oprndstk[sp].operandkind := exproperand;
       oprndstk[sp].cost := 0;
       end;
@@ -10776,6 +10764,872 @@ end;
 
 procedure gettyp (follow: tokenset; var resulttype: tableIndex); forward;
 {<<<}
+procedure conststructure (follow: tokenset; {legal following symbols}
+                          form: tableIndex; {form found for this constant}
+                          var value1: operand {resulting value } );
+{<<<}
+{ Syntactic routine to parse a constant structure.
+  Productions:
+  structured-constant = type-identifier structured-value  .
+  structured-value = "(" constant-element [* "," constant-element *]
+
+  This routine checks for a legal type, and parses arrays with
+  one routine and records with another.
+
+  The constant value is buffered as it is generated, and is written
+  to the string file if the size cannot be represented as an integer.
+
+  NOTE:
+    In order to understand what is going on in the handling of constants
+    that are being treated as integers (representation = ints), it is
+    necessary to be aware of two inviolate rules:
+
+    (1) All integer constant elements are kept in HOST form within
+        the compiler.  They are changed to target form, if there is
+        a difference, only when they are actually written to the
+        constant buffer.
+
+    (2) If a value is smaller than an integer, the value is kept in
+        the low order bytes of the integer.  For high-to-low packing,
+        this implies that the internal representation of the last or
+        only portion of a packed value must be shifted down to the
+        low order as soon as the constant is complete.
+
+  The values of "reversebytes" and "hostintlowbytefirst" (defined in
+  config) determine the transformations that must take place, if any.
+
+  In some places, there are tests such as:
+    if hostintlowbytefirst <> reversebytes then ...
+  This test, if true, says that TARGET integers have the low byte first.
+
+  The possibilities are:
+    hostintlowbytefirst  reversebytes    Implications
+  =               False         False    Target has high byte first
+  <>              False          True    Target has low byte first
+  <>               True         False    Target has low byte first
+  =                True          True    Target has high byte first
+}
+{>>>}
+
+const
+  cbufsize = 32; {constant buffering, must be big enough to cover a real and an integer}
+
+type
+  constbuffer = {holds and converts constant values}
+    record
+      case integer of
+        1: (b: packed array [1..cbufsize] of hostfilebyte);
+        2: (i: integer);
+        3: (r: realarray {double} );
+        4: (p: integer {targep} );
+    end;
+
+var
+  cbuf: constbuffer; {holds bytes to write}
+  cbytes: 0..cbufsize; {current bytes in cbuf}
+  curloc: addressrange; {current location relative to start of constant}
+  baseloc: addressrange; {start of packed buffers}
+  pbuf1, pbuf2: integer; {packed data buffers}
+  f: entryptr; {for access to form data}
+  packedflag: boolean; {this is a packed form}
+
+{<<<}
+procedure alignpartialint (var int: integer; {integer to be aligned}
+                          bytes: addressrange {actual size in use} );
+{ If the value is in the high order end of the integer, and it hasn't
+  used all bytes of the integer, we need to slide the value down to the
+  low order end, consistent with the rule that all values are kept in the low order end of the integer.
+}
+var
+  kludge: constbuffer; {used to shift left or right}
+  dist: 0..cbufsize; {distance to shift}
+  i: 0..cbufsize; {induction on bytes in integer}
+
+begin
+  if (bytes < hostintsize * hostfileunits) and (bytes > 0) then
+    begin
+    kludge.i := int;
+    dist := hostintsize * hostfileunits - bytes;
+
+    if hostintlowbytefirst then
+      begin {shift left}
+      for i := 1 to bytes do kludge.b[i] := kludge.b[i + dist];
+      for i := bytes + 1 to hostintsize * hostfileunits do
+        kludge.b[i] := 0;
+      end
+    else
+      begin {shift right}
+      for i := bytes downto 1 do kludge.b[i + dist] := kludge.b[i];
+      for i := dist downto 1 do kludge.b[i] := 0;
+      end;
+    int := kludge.i;
+    end;
+end;
+{>>>}
+{<<<}
+procedure reversestructure (var s: constbuffer; {structure to munge}
+                           bytes: integer {number of bytes to flip} );
+{ Reverse the bytes within each integer of a structure.
+}
+
+var
+  i, j: 1..cbufsize; {induction on bytes of an integer}
+  k: 0..cbufsize; {offset of integer in constant buffer}
+  t: hostfilebyte; {temp for flipping structure}
+
+begin
+  if reversebytes then
+    begin
+    k := 0;
+
+    while bytes - k > 0 do
+      begin {reverse the active bytes in each integer}
+      i := k + 1;
+      j := k + hostintsize * hostfileunits;
+      if bytes - k < hostintsize * hostfileunits then
+        if hostintlowbytefirst then
+          j := bytes {do left part}
+        else
+          i := j + 1 - (bytes - k); {do right part}
+
+      while i < j do
+        begin
+        t := s.b[i];
+        s.b[i] := s.b[j];
+        s.b[j] := t;
+        i := i + 1;
+        j := j - 1;
+        end;
+      k := k + hostintsize * hostfileunits;
+      end;
+    end;
+end {reversestructure} ;
+{>>>}
+
+{<<<}
+procedure putcbyte (b: hostfilebyte {constant byte to put} );
+{ Put a byte to the constant buffer, writing the buffer to the string file if it is full. }
+
+var
+  i: 1..cbufsize;
+
+begin
+  if emitflag then
+    begin
+    if cbytes = cbufsize then
+      begin
+      seekstringfile (sharedPtr^.stringfilecount);
+      for i := 1 to cbufsize do
+        putbyte (cbuf.b[i]);
+      cbytes := 0;
+      end;
+    cbytes := cbytes + 1;
+    cbuf.b[cbytes] := b;
+    end;
+end;
+{>>>}
+{<<<}
+procedure putcint (int: integer; {integer to write}
+                  bytes: addressrange {bytes to write} );
+{ Put "bytes" bytes of an integer to the constant buffer.
+  If there are more bytes specified than in an integer, empty bytes are appended to the end.
+}
+var
+  kludge: constbuffer; {used to separate bytes of the integer}
+  datasize: 0..cbufsize; {number of bytes of actual integer}
+  i: addressrange; {induction on "bytes"}
+
+begin
+  if emitflag then
+    begin
+    kludge.i := int;
+    datasize := min(bytes, hostintsize);
+
+    if reversebytes then
+      reversestructure(kludge, hostintsize * hostfileunits);
+
+    if hostintlowbytefirst <> reversebytes {low order first} then
+      for i := 1 to datasize do
+        putcbyte (kludge.b[i])
+    else {high order first}
+      for i := hostintsize * hostfileunits + 1 - datasize to hostintsize * hostfileunits do
+        putcbyte (kludge.b[i]);
+    for i := hostintsize * hostfileunits + 1 to bytes do
+      putcbyte(0);
+    end;
+end;
+{>>>}
+{<<<}
+procedure putcreal (r: realarray; {double} size: integer);
+{ Put a real value to the constant buffer. }
+
+var
+  kludge: constbuffer; {used to separate the bytes of the real}
+  i: 1..cbufsize; {induction on words of the real number}
+  t: hostfilebyte; {temp for switching bytes}
+
+begin
+  kludge.r := r;
+
+  if reversebytes then
+    for i := 1 to (size * hostfileunits) div 2 do
+      begin
+      t := kludge.b[i * 2 - 1];
+      kludge.b[i * 2 - 1] := kludge.b[i * 2];
+      kludge.b[i * 2] := t;
+      end;
+
+  for i := 1 to size * hostfileunits do
+    putcbyte (kludge.b[i]);
+end;
+{>>>}
+{<<<}
+procedure putcptr (p: integer {targep} {pointer to generate} );
+{ Put a pointer value to the constant buffer.  Pointer constants are
+  kept in target form, so there is no need to call reversestructure.
+  NOTE: This routine assumes that a pointer will never be smaller than an integer
+}
+var
+  kludge: constbuffer; {used to separate the bytes of the pointer}
+  i: 1..cbufsize; {induction on bytes of the pointer}
+
+begin
+  for i := 1 to sharedPtr^.ptrsize * hostfileunits do
+    kludge.b[i] := 0;
+  kludge.p := p;
+
+  if hostintsize < sharedPtr^.ptrsize then
+    begin
+    if hostintlowbytefirst = reversebytes {high order first} then
+      for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
+        putcbyte(0);
+
+    for i := 1 to hostintsize * hostfileunits do
+      putcbyte(kludge.b[i]);
+
+    if hostintlowbytefirst <> reversebytes {low order first} then
+      for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
+        putcbyte(0);
+    end
+  else {pointer size = integer size}
+    for i := 1 to sharedPtr^.ptrsize * hostfileunits do putcbyte(kludge.b[i]);
+end;
+{>>>}
+
+{<<<}
+procedure flushpackbuffer;
+{ Flush anything in the packed constant buffer and update baseloc and
+curloc to reflect the new location.
+}
+var
+  bytes: addressrange; {how many bytes it takes to hold the value}
+
+begin
+  if curloc > baseloc then
+    begin
+    bytes := (curloc - baseloc + bitsperunit - 1) div bitsperunit;
+    if packinghightolow then alignpartialint(pbuf1, bytes);
+    putcint(pbuf1, bytes);
+    baseloc := ((baseloc + bitsperunit - 1) div bitsperunit + bytes) *
+               bitsperunit;
+    curloc := baseloc;
+    pbuf1 := 0;
+    end;
+end;
+{>>>}
+{<<<}
+procedure flushbuffer;
+{ Flush any partial value kept as an intvalue thus far. }
+
+var
+  i: 1..cbufsize; {induction var}
+
+begin
+  with value1.cvalue do
+    begin
+    if representation = ints then
+      begin
+      if reversebytes then
+        reversestructure(cbuf, hostintsize * hostfileunits);
+      if hostintlowbytefirst = reversebytes {high order first} then
+        alignpartialint(cbuf.i, cbytes);
+      intvalue := cbuf.i;
+      negated := false; { PJS force init }
+      end
+    else if emitflag then
+      begin
+      for i := 1 to cbytes do putbyte(cbuf.b[i]);
+      cbytes := 0;
+      end;
+    end;
+end;
+{>>>}
+{<<<}
+procedure putvalue (vloc: addressrange; {loc to put value}
+                    eltstring: boolean; {target elt is a string}
+                    whichbuf: boolean; {which string buffer}
+                    packing: boolean; {this is being packed in}
+                    eltsize: addressrange; {size of constant element}
+                    var value1: operand {value to place} );
+{ Put a constant value in "value" into the current structured constant.
+  There is an assumption that only items capable of representation as integers will actually be packed.
+  The packing is done by the routine "packedstore".
+  Strings require some extra work as a length byte must prefix the actual data,
+  as the result might need padding, and it might be a character needing conversion to a string!
+}
+var
+  full: boolean; {a packed word is full}
+  start, finish: addressrange; {start and end of constant in file}
+  bytes: addressrange; {bytes already used in the packing buffer}
+
+  {<<<}
+  procedure putpackedvalue (data: integer; {bits to put}
+                           dataloc: addressrange; {where to put bits}
+                           datasize: addressrange {number of bits to put} );
+  { Put one packed data item.  This code was inline until strings were
+    added, as conversion of a character to a string requires both the
+    length and data bytes to be emitted.
+  }
+  begin
+    { If the value won't fit in this integer, then we need to flush the packing buffer.
+      The VAX and iAPX, however, are a special case, for which packing is done to the maximum extent possible. }
+    if (targetmachine <> iapx86) and (targetmachine <> vax) and
+       (targetmachine <> i80386) or (sharedPtr^.switchcounters[oldpacking] > 0) then
+      begin
+      if dataloc + datasize > baseloc + bitsperunit * hostintsize then
+        begin
+        bytes := (dataloc - baseloc + bitsperunit - 1) div bitsperunit;
+        if packinghightolow then
+          alignpartialint (pbuf1, bytes);
+        putcint (pbuf1, bytes);
+        baseloc := ((dataloc + bitsperunit - 1) div bitsperunit) * bitsperunit;
+        curloc := baseloc;
+        pbuf1 := 0;
+        end;
+      end {not vax} ;
+
+    packedstore (dataloc, datasize, baseloc, data, pbuf1, pbuf2, full);
+
+    if full then
+      begin {we write out the lower buffer}
+      putcint (pbuf1, hostintsize);
+      pbuf1 := pbuf2;
+      pbuf2 := 0;
+      baseloc := baseloc + hostintsize * bitsperunit;
+      end;
+    curloc := dataloc + datasize;
+  end;
+  {>>>}
+
+begin
+  if packing and (value1.cvalue.representation = ints) then
+    begin
+    if eltstring then
+      begin
+      putpackedvalue (1, vloc, bitsperunit); {length of string = 1 char}
+      putpackedvalue (value1.cvalue.intvalue, vloc + bitsperunit, eltsize - bitsperunit);
+      end
+    else
+      putpackedvalue(value1.cvalue.intvalue, vloc, eltsize);
+    end
+
+  else { not packing or (representation <> ints) }
+    begin
+    if packing then
+      begin
+      bytes := (vloc - baseloc + bitsperunit - 1) div bitsperunit;
+      if packinghightolow then
+        alignpartialint (pbuf1, bytes);
+      putcint (pbuf1, bytes);
+      pbuf1 := 0;
+      end
+    else
+      putcint (0, vloc - curloc);
+
+    with value1.cvalue do
+      case representation of
+        {<<<}
+        ints:
+          if eltstring then
+            begin {convert char to string w/length byte then pad}
+            putcbyte (1);
+            putcbyte (value1.cvalue.intvalue);
+            if packing then
+              putcint (0, eltsize div bitsperunit - 2)
+            else
+              putcint (0, eltsize - 2);
+            end
+          else
+            putcint (intvalue, eltsize);
+        {>>>}
+        reals:
+          putcreal (realvalue.realbuffer, sharedPtr^.targetrealsize);
+        doubles:
+          putcreal (realvalue.realbuffer, doublesize);
+        ptrs:
+          putcptr (ptrvalue);
+        otherwise
+          {<<<}
+          begin
+          if packing then
+            bytes := eltsize div bitsperunit
+          else
+            bytes := eltsize;
+
+          if (pos < 0) then {has not been dumped to file at all, yet}
+            begin
+            flushbuffer;
+            dumpstr (bytes, whichbuf, eltstring);
+            end
+
+          else
+            begin
+            start := pos;
+            if start >= sharedPtr^.stringfilecount then
+              start := start + (sharedPtr^.stringtablelimit - sharedPtr^.stringfilecount);
+            finish := start + len;
+
+            if eltstring then
+              putcbyte (len);
+            while start < finish do
+              begin
+              seekstringfile (start);
+              putcbyte (sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile]);
+              start := start + 1;
+              end;
+
+            seekstringfile (sharedPtr^.stringfilecount);
+
+            if eltstring then
+              len := len + 1; {a kludge, the length byte}
+
+            { This fixes structured constant bug tr2158.  Odd-byte length
+              structures actually allocated the next greater even numbered
+              byte worth of space and were not padded correctly.  Putvalue
+              only emitted the actual data bytes but moved the current
+              location counter to the allocated boundary.  This change
+              causes Putvalue to correctly emit the actual data bytes, and
+              eltsize-len (i.e. allocated length - data length) bytes of pad. }
+            if bytes < len then
+              if eltstring then
+                warn (stringoverflowerr)
+              else
+                warn (compilerwritererr);
+
+            putcint (0, bytes - len);
+            end;
+          end;
+          {>>>}
+        end;
+
+    curloc := vloc + eltsize;
+    baseloc := curloc;
+    end;
+end;
+{>>>}
+{<<<}
+procedure initcdump (var value1: operand; {value to initialize}
+                     consttypeindx: tableIndex; {index for this element type}
+                     consttype: entryptr {type of this element} );
+{ Initialize the value of the constant and set up the constant buffer for generating the value. }
+
+var
+  t: addressrange; {aligned value of consttablelimit}
+
+begin
+  cbytes := 0;
+  cbuf.i := 0;
+  pbuf1 := 0;
+  pbuf2 := 0;
+  curloc := 0;
+  baseloc := 0;
+
+  with value1 do
+    begin
+    typeindex := consttypeindx;
+    oprndlen := sizeof(consttype, false);
+    operandkind := constoperand;
+    end;
+
+  t := forcealign (sharedPtr^.stringfilecount, alignmentof(consttype, false) * hostfileunits, false);
+  putcint (0, t - sharedPtr^.stringfilecount);
+
+  curloc := 0;
+  baseloc := 0;
+
+  value1.extended := false;
+  value1.cvalue.representation := consttype^.typ;
+  value1.cvalue.stringconstflag := false;
+  value1.cvalue.pos := t;
+  value1.cvalue.len := value1.oprndlen * hostfileunits;
+  if value1.cvalue.representation = ints then
+    value1.cvalue.negated := false; {PJS force init }
+end;
+{>>>}
+{<<<}
+procedure finishdump(var value1: operand; {value being finished off}
+                     packing: boolean {this is a packed value} );
+{ After the entire constant has been parsed, this forces final output,
+  if necessary, and finishes off the resulting operand
+}
+begin
+  if value1.oprndlen > curloc then
+    if packing then
+      begin
+      flushpackbuffer;
+      if value1.oprndlen > curloc then
+        putcint(0, (value1.oprndlen - curloc) div bitsperunit);
+      end
+    else
+      putcint(0, value1.oprndlen - curloc);
+
+  flushbuffer;
+end;
+{>>>}
+{<<<}
+procedure innercstruct (eltloc: addressrange; {rel loc for this element}
+                       form: tableIndex; {form of this constant}
+                       outerpacked: boolean {outer structure was packed} );
+{ Given a structured value, determine the type and parse it }
+
+var
+  f: entryptr; {for access to form}
+  packedflag: boolean; {form is packed}
+
+  {<<<}
+  procedure constvalue(eltloc: addressrange; {rel loc for this element}
+                       elttype: tableIndex; {desired value type}
+                       eltstring: boolean; {current element is a string}
+                       packing: boolean; {set if packing this element}
+                       var value1: operand; {result, if not written}
+                       var written: boolean {value already written} );
+
+  { Parse a constant value.  If the value is in turn a structured constant,
+    it may be written to the string file as it is scanned.  Otherwise,
+    its value is placed in "value1", and must be written.
+  }
+
+    var
+      tindex: tableIndex; {type name index}
+      p: entryptr; {access to type name block}
+      elp: entryptr; {for access to elttype}
+      kludge: constbuffer; {converts to integer}
+      i: 1..cbufsize; {induction var for conversion}
+      start, finish: addressrange; {start and end of constant in file}
+
+  {<<<}
+  procedure getconstant(follow: tokenset; {legal following symbols}
+                        elttype: tableIndex; {desired value type}
+                        var value1: operand {result} );
+  { Parse a simple constant and make sure it's in range for the field
+    it's being assigned to.
+  }
+
+    var
+      elp: entryptr; {for access to elttype}
+      unsvalue: unsignedint; {for unsigned comparisons}
+
+
+    begin {getconstant}
+      constant(follow, false, value1);
+      with value1, cvalue do
+        if (representation = ints) and (elttype <> noneindex) and
+           compatible(typeindex, elttype) then
+          begin
+          elp := ref(bigtable[elttype]);
+          if extended and not elp^.extendedrange or (intvalue < 0) and
+             negated and elp^.extendedrange then
+            warnbefore(badconsterr)
+          else if elp^.extendedrange then
+            begin
+            unsvalue := intvalue;
+            if (unsvalue < lower(elp)) or
+               (unsvalue > upper(elp)) then
+              warnbefore(badconsterr);
+            end
+          else if (intvalue < lower(elp)) or
+                  (intvalue > upper(elp)) then
+            warnbefore(badconsterr);
+          end;
+    end {getconstant} ;
+  {>>>}
+
+
+  begin {constvalue}
+    written := false;
+    if token = ident then
+      begin
+      search(tindex);
+      p := ref(bigtable[tindex]);
+      with p^ do
+        if namekind = typename then
+          begin
+          if not compatible(typeindex, elttype) then warn(typesincomp);
+          gettoken;
+          innercstruct(eltloc, typeindex, packing);
+          written := true;
+          end
+        else getconstant(follow, elttype, value1);
+      end
+    else if token = lpar then
+      begin
+      elp := ref(bigtable[elttype]);
+      if not (elp^.typ in [arrays, fields, none]) then
+        begin
+        warn(badconsterr);
+        value1.typeindex := noneindex;
+        value1.cvalue.representation := ints;
+        end;
+      innercstruct(eltloc, elttype, packing);
+      written := true;
+      end
+    else getconstant(follow, elttype, value1);
+    if not written then
+      begin
+      elp := ref(bigtable[value1.typeindex]);
+      if not (eltstring and ((elp^.typ = chars) or
+         (elp^.typ = arrays) and (elp^.stringtype)) or
+         compatible(elttype, value1.typeindex)) then
+        warnbefore(typesincomp);
+      end;
+  end {constvalue} ;
+  {>>>}
+  {<<<}
+  procedure constelement (eltloc: addressrange; {loc to for this element}
+                          elttype: tableIndex; {type desired}
+                          eltsize: addressrange; {size of the element}
+                          eltstring: boolean; {current element is a string}
+                          packing: boolean {this is a packed field} );
+  { Read and store a constant element.  The result is written to the string
+    file buffer.
+  }
+    var
+      temp: operand; {holds a value}
+      written: boolean; {value already written}
+      whichbuf: boolean; {which string buf contains thistoken's string if
+                          any}
+
+    begin {constelement}
+      whichbuf := sharedPtr^.curstringbuf;
+      constvalue (eltloc, elttype, eltstring, packing, temp, written);
+      if not written and (temp.typeindex <> noneindex) then
+        putvalue (eltloc, eltstring, whichbuf, packing, eltsize, temp);
+    end {constelement} ;
+  {>>>}
+  {<<<}
+  procedure constarray (eltloc: addressrange; {rel loc for this element}
+                       form: tableIndex {form for this array} );
+  { Syntactic routine to parse a constant array.
+    Each element is identical, and the number must match.
+  }
+    var
+      eltcount: addressrange; {elements defined so far}
+      eltsinarray: addressrange; {total elements in array}
+      elttype: tableIndex; {element type}
+      eltstring: boolean; {element is a string}
+      packing: boolean; {set if packed array}
+      eltsize: addressrange; {size of each element}
+      f: entryptr; {for access to type data}
+
+
+    begin {constarray}
+      eltcount := 1;
+      f := ref(bigtable[form]);
+      elttype := f^.elementtype;
+      packing := f^.packedflag;
+      eltsize := f^.elementsize;
+      eltsinarray := f^.arraymembers;
+      f := ref(bigtable[elttype]);
+      eltstring := f^.typ = strings;
+      constelement(eltloc, elttype, eltsize, eltstring, packing);
+      while token in [lpar, comma] + begconstset do
+        begin
+        verifytoken(comma, nocommaerr);
+        eltloc := eltloc + eltsize;
+        if eltcount = eltsinarray then warnbefore(badconsterr);
+        eltcount := eltcount + 1;
+        constelement(eltloc, elttype, eltsize, eltstring, packing);
+        end;
+
+      if eltcount < eltsinarray then warnbefore(badconsterr);
+    end {constarray} ;
+  {>>>}
+  {<<<}
+  procedure constrecord (eltloc: addressrange; {start of this element}
+                        form: tableIndex {form for this record} );
+  { Syntactic routine to parse a constant record.
+  }
+
+    var
+      currentfield: tableIndex; {name entry for this field}
+      finished: boolean; {we used all of the fields we have}
+
+
+    {<<<}
+    procedure constfield;
+    { Find the next field in this record and get a value for it. }
+
+      var
+        found: boolean; {field was found}
+        p: entryptr; {access to field names}
+        elttype: tableIndex; {form for a variant}
+        temp: operand; {temp value for variant}
+        written: boolean; {dummy argument to constvalue}
+        tagoffset: addressrange; {offset for tag field, if any}
+        localform: tableentry; {local copy of form entry}
+        f, f1: entryptr; {access to form data}
+
+
+      begin {constfield}
+        if finished then
+          constelement(eltloc, noneindex, unitsize, false, false)
+        else
+          begin
+          f := ref(bigtable[form]);
+          localform := f^;
+          found := false;
+          while (currentfield < localform.lastfield) and not found do
+            begin
+            currentfield := currentfield + 1;
+            p := ref(bigtable[currentfield]);
+            if not p^.form then found := p^.name = localform.fieldid;
+            end;
+          if found then
+            begin
+            f1 := ref(bigtable[p^.vartype]);
+            constelement(p^.offset + eltloc, p^.vartype, sizeof(f1,
+                         localform.packedflag), f1^.typ = strings,
+                         localform.packedflag)
+            end
+          else if localform.firstvariant = 0 then
+            begin
+            finished := true;
+            warnbefore(badconsterr);
+            constelement(curloc, noneindex, unitsize, false, false);
+            end
+          else
+            begin
+            tagoffset := 0;
+            if localform.tagfield <> 0 then
+              begin
+              p := ref(bigtable[localform.tagfield]);
+              elttype := p^.vartype;
+              tagoffset := p^.offset;
+              end
+            else if localform.firstvariant <> 0 then
+              begin
+              f := ref(bigtable[localform.firstvariant]);
+              if f^.firstlabel <> 0 then
+                begin
+                f := ref(bigtable[f^.firstlabel]);
+                elttype := f^.varlabtype;
+                end
+              else elttype := noneindex;
+              end
+            else elttype := noneindex;
+            constvalue(tagoffset + eltloc, elttype, false,
+                       localform.packedflag, temp, written);
+            if localform.tagfield <> 0 then
+              begin
+              f := ref(bigtable[elttype]);
+              putvalue(tagoffset + eltloc, false, false,
+                       localform.packedflag, sizeof(f, localform.packedflag), temp);
+              end;
+            searchvariants(form, temp);
+            f := ref(bigtable[form]);
+            currentfield := f^.firstfield - 1;
+            end;
+          end;
+      end {constfield} ;
+    {>>>}
+
+
+    begin {constrecord}
+      finished := false;
+      f := ref(bigtable[form]);
+      currentfield := f^.firstfield - 1;
+
+      constfield;
+      while token in [lpar, comma] + begconstset do
+        begin
+        verifytoken(comma, nocommaerr);
+        constfield;
+        end;
+
+      f := ref(bigtable[form]);
+      if (currentfield < f^.lastfield) or (f^.firstvariant <> 0) then
+        warnbefore(badconsterr);
+    end {constrecord} ;
+  {>>>}
+  {<<<}
+  procedure badconst;
+  { Parse off a bad constant.  Just throws away the values. }
+
+    begin {badconst}
+      warnbefore(badconsterr);
+      constelement(curloc, noneindex, unitsize, false, false);
+      while token in [lpar, comma] + begconstset do
+        begin
+        verifytoken(comma, nocommaerr);
+        constelement(curloc, noneindex, unitsize, false, false);
+        end;
+      value1.typeindex := noneindex;
+      value1.cvalue.representation := ints;
+    end {badconst} ;
+  {>>>}
+
+begin
+  if token = lpar then
+    begin
+    gettoken;
+    f := ref(bigtable[form]);
+    packedflag := f^.packedflag;
+    if outerpacked and not packedflag then
+      begin
+      flushpackbuffer;
+      eltloc := eltloc div bitsperunit;
+      curloc := curloc div bitsperunit;
+      end
+    else if not outerpacked and packedflag then
+      begin
+      eltloc := eltloc * bitsperunit;
+      curloc := curloc * bitsperunit;
+      baseloc := curloc;
+      end;
+    if f^.typ in [strings, arrays] then constarray(eltloc, form)
+    else if f^.typ = fields then constrecord(eltloc, form)
+    else badconst;
+    if not outerpacked and packedflag then
+      begin
+      flushpackbuffer;
+      curloc := curloc div bitsperunit;
+      end
+    else if outerpacked and not packedflag then
+      begin
+      curloc := curloc * bitsperunit;
+      baseloc := curloc;
+      end;
+    verifytoken(rpar, norparerr);
+    end
+  else
+    begin
+    warnbefore(typenotallowed);
+    value1.typeindex := noneindex;
+    value1.cvalue.representation := ints;
+    end;
+end;
+{>>>}
+
+begin
+  gettoken;
+  f := ref (bigtable[form]);
+  packedflag := f^.packedflag;
+  initcdump (value1, form, f);
+  innercstruct (0, form, false);
+  finishdump (value1, packedflag);
+end;
+{>>>}
+{<<<}
 procedure onevar (id: integer; {Scope in which to enter ident}
                  varkind: nametype; {variable kind}
                  var where: tableIndex; {where in symtable it ends up}
@@ -11166,861 +12020,6 @@ begin
       verify (f1, follow + begtypset + [comma, colon, semicolon], nosemiheaderr);
     end;
 end {variablelist} ;
-{>>>}
-{<<<}
-procedure conststructure (follow: tokenset; {legal following symbols}
-                          form: tableIndex; {form found for this constant}
-                          var value1: operand {resulting value } );
-{<<<}
-{ Syntactic routine to parse a constant structure.
-  Productions:
-  structured-constant = type-identifier structured-value  .
-  structured-value = "(" constant-element [* "," constant-element *]
-
-  This routine checks for a legal type, and parses arrays with
-  one routine and records with another.
-
-  The constant value is buffered as it is generated, and is written
-  to the string file if the size cannot be represented as an integer.
-
-  NOTE:
-    In order to understand what is going on in the handling of constants
-    that are being treated as integers (representation = ints), it is
-    necessary to be aware of two inviolate rules:
-
-    (1) All integer constant elements are kept in HOST form within
-        the compiler.  They are changed to target form, if there is
-        a difference, only when they are actually written to the
-        constant buffer.
-
-    (2) If a value is smaller than an integer, the value is kept in
-        the low order bytes of the integer.  For high-to-low packing,
-        this implies that the internal representation of the last or
-        only portion of a packed value must be shifted down to the
-        low order as soon as the constant is complete.
-
-  The values of "reversebytes" and "hostintlowbytefirst" (defined in
-  config) determine the transformations that must take place, if any.
-
-  In some places, there are tests such as:
-    if hostintlowbytefirst <> reversebytes then ...
-  This test, if true, says that TARGET integers have the low byte first.
-
-  The possibilities are:
-    hostintlowbytefirst  reversebytes    Implications
-  =               False         False    Target has high byte first
-  <>              False          True    Target has low byte first
-  <>               True         False    Target has low byte first
-  =                True          True    Target has high byte first
-}
-{>>>}
-
-const
-  cbufsize = 32; {constant buffering, must be big enough to cover a real and an integer}
-
-type
-  constbuffer = {holds and converts constant values}
-    record
-      case integer of
-        1: (b: packed array [1..cbufsize] of hostfilebyte);
-        2: (i: integer);
-        3: (r: realarray {double} );
-        4: (p: integer {targep} );
-    end;
-
-var
-  cbuf: constbuffer; {holds bytes to write}
-  cbytes: 0..cbufsize; {current bytes in cbuf}
-  curloc: addressrange; {current location relative to start of constant}
-  baseloc: addressrange; {start of packed buffers}
-  pbuf1, pbuf2: integer; {packed data buffers}
-  f: entryptr; {for access to form data}
-  packedflag: boolean; {this is a packed form}
-
-{<<<}
-procedure putcbyte(b: hostfilebyte {constant byte to put} );
-{ Put a byte to the constant buffer, writing the buffer to the string file if it is full. }
-  var
-    i: 1..cbufsize; {induction value}
-
-
-  begin {putcbyte}
-    if emitflag then
-      begin
-      if cbytes = cbufsize then
-        begin
-        seekstringfile (sharedPtr^.stringfilecount);
-        for i := 1 to cbufsize do
-          putbyte(cbuf.b[i]);
-        cbytes := 0;
-        end;
-      cbytes := cbytes + 1;
-      cbuf.b[cbytes] := b;
-      end;
-  end {putcbyte} ;
-{>>>}
-{<<<}
-procedure alignpartialint(var int: integer; {integer to be aligned}
-                          bytes: addressrange {actual size in use} );
-{ If the value is in the high order end of the integer, and it hasn't
-  used all bytes of the integer, we need to slide the value down to the
-  low order end, consistent with the rule that all values are kept in
-  the low order end of the integer.
-}
-
-  var
-    kludge: constbuffer; {used to shift left or right}
-    dist: 0..cbufsize; {distance to shift}
-    i: 0..cbufsize; {induction on bytes in integer}
-
-
-  begin {alignpartialint}
-    if (bytes < hostintsize * hostfileunits) and (bytes > 0) then
-      begin
-      kludge.i := int;
-      dist := hostintsize * hostfileunits - bytes;
-      if hostintlowbytefirst then
-        begin {shift left}
-        for i := 1 to bytes do kludge.b[i] := kludge.b[i + dist];
-        for i := bytes + 1 to hostintsize * hostfileunits do
-          kludge.b[i] := 0;
-        end
-      else
-        begin {shift right}
-        for i := bytes downto 1 do kludge.b[i + dist] := kludge.b[i];
-        for i := dist downto 1 do kludge.b[i] := 0;
-        end;
-      int := kludge.i;
-      end;
-  end {alignpartialint} ;
-{>>>}
-{<<<}
-procedure reversestructure(var s: constbuffer; {structure to munge}
-                           bytes: integer {number of bytes to flip} );
-{ Reverse the bytes within each integer of a structure.
-}
-
-  var
-    i, j: 1..cbufsize; {induction on bytes of an integer}
-    k: 0..cbufsize; {offset of integer in constant buffer}
-    t: hostfilebyte; {temp for flipping structure}
-
-
-  begin {reversestructure}
-
-    if reversebytes then
-      begin
-      k := 0;
-
-      while bytes - k > 0 do
-        begin {reverse the active bytes in each integer}
-        i := k + 1;
-        j := k + hostintsize * hostfileunits;
-        if bytes - k < hostintsize * hostfileunits then
-          if hostintlowbytefirst then j := bytes {do left part}
-          else i := j + 1 - (bytes - k); {do right part}
-        while i < j do
-          begin
-          t := s.b[i];
-          s.b[i] := s.b[j];
-          s.b[j] := t;
-          i := i + 1;
-          j := j - 1;
-          end;
-        k := k + hostintsize * hostfileunits;
-        end;
-      end;
-  end {reversestructure} ;
-{>>>}
-{<<<}
-procedure putcint(int: integer; {integer to write}
-                  bytes: addressrange {bytes to write} );
-
-{ Put "bytes" bytes of an integer to the constant buffer.  If
-  there are more bytes specified than in an integer, empty bytes
-  are appended to the end.
-}
-
-  var
-    kludge: constbuffer; {used to separate bytes of the integer}
-    datasize: 0..cbufsize; {number of bytes of actual integer}
-    i: addressrange; {induction on "bytes"}
-
-
-  begin {putcint}
-    if emitflag then
-      begin
-      kludge.i := int;
-      datasize := min(bytes, hostintsize);
-      if reversebytes then
-        reversestructure(kludge, hostintsize * hostfileunits);
-      if hostintlowbytefirst <> reversebytes {low order first} then
-        for i := 1 to datasize do putcbyte(kludge.b[i])
-      else {high order first}
-        for i := hostintsize * hostfileunits + 1 - datasize to hostintsize *
-         hostfileunits do
-          putcbyte(kludge.b[i]);
-      for i := hostintsize * hostfileunits + 1 to bytes do putcbyte(0);
-      end;
-  end {putcint} ;
-{>>>}
-{<<<}
-procedure putcreal(r: realarray; {double} size: integer);
-{ Put a real value to the constant buffer. }
-
-  var
-    kludge: constbuffer; {used to separate the bytes of the real}
-    i: 1..cbufsize; {induction on words of the real number}
-    t: hostfilebyte; {temp for switching bytes}
-
-
-  begin {putcreal}
-    kludge.r := r;
-    if reversebytes then
-      for i := 1 to (size * hostfileunits) div 2 do
-        begin
-        t := kludge.b[i * 2 - 1];
-        kludge.b[i * 2 - 1] := kludge.b[i * 2];
-        kludge.b[i * 2] := t;
-        end;
-    for i := 1 to size * hostfileunits do putcbyte(kludge.b[i]);
-  end {putcreal} ;
-{>>>}
-{<<<}
-procedure putcptr(p: integer {targep} {pointer to generate} );
-{ Put a pointer value to the constant buffer.  Pointer constants are
-  kept in target form, so there is no need to call reversestructure.
-  NOTE: This routine assumes that a pointer will never be smaller than an integer. }
-
-  var
-    kludge: constbuffer; {used to separate the bytes of the pointer}
-    i: 1..cbufsize; {induction on bytes of the pointer}
-
-
-  begin {putcptr}
-    for i := 1 to sharedPtr^.ptrsize * hostfileunits do kludge.b[i] := 0;
-    kludge.p := p;
-    if hostintsize < sharedPtr^.ptrsize then
-      begin
-      if hostintlowbytefirst = reversebytes {high order first} then
-        for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
-          putcbyte(0);
-      for i := 1 to hostintsize * hostfileunits do putcbyte(kludge.b[i]);
-      if hostintlowbytefirst <> reversebytes {low order first} then
-        for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
-          putcbyte(0);
-      end
-    else {pointer size = integer size}
-      for i := 1 to sharedPtr^.ptrsize * hostfileunits do putcbyte(kludge.b[i]);
-  end {putcptr} ;
-{>>>}
-
-{<<<}
-procedure flushpackbuffer;
-{ Flush anything in the packed constant buffer and update baseloc and
-curloc to reflect the new location.
-}
-
-  var
-    bytes: addressrange; {how many bytes it takes to hold the value}
-
-
-  begin {flushpackbuffer}
-    if curloc > baseloc then
-      begin
-      bytes := (curloc - baseloc + bitsperunit - 1) div bitsperunit;
-      if packinghightolow then alignpartialint(pbuf1, bytes);
-      putcint(pbuf1, bytes);
-      baseloc := ((baseloc + bitsperunit - 1) div bitsperunit + bytes) *
-                 bitsperunit;
-      curloc := baseloc;
-      pbuf1 := 0;
-      end;
-  end {flushpackbuffer} ;
-
-{>>>}
-{<<<}
-procedure flushbuffer;
-{ Flush any partial value kept as an intvalue thus far. }
-  var
-    i: 1..cbufsize; {induction var}
-
-  begin {flushbuffer}
-    with value1.cvalue do
-      begin
-      if representation = ints then
-        begin
-        if reversebytes then
-          reversestructure(cbuf, hostintsize * hostfileunits);
-        if hostintlowbytefirst = reversebytes {high order first} then
-          alignpartialint(cbuf.i, cbytes);
-        intvalue := cbuf.i;
-        negated := false; { PJS force init }
-        end
-      else if emitflag then
-        begin
-        for i := 1 to cbytes do putbyte(cbuf.b[i]);
-        cbytes := 0;
-        end;
-      end;
-  end   {flushbuffer};
-{>>>}
-{<<<}
-procedure putvalue(vloc: addressrange; {loc to put value}
-                   eltstring: boolean; {target elt is a string}
-                   whichbuf: boolean; {which string buffer}
-                   packing: boolean; {this is being packed in}
-                   eltsize: addressrange; {size of constant element}
-                   var value1: operand {value to place} );
-{ Put a constant value in "value" into the current structured constant.
-  There is an assumption that only items capable of representation as
-  integers will actually be packed.  The packing is done by the routine "packedstore".
-  Strings require some extra work as a length byte must prefix the
-  actual data, as the result might need padding, and it might be
-  a character needing conversion to a string! }
-
-var
-  full: boolean; {a packed word is full}
-  start, finish: addressrange; {start and end of constant in file}
-  bytes: addressrange; {bytes already used in the packing buffer}
-
-  {<<<}
-  procedure putpackedvalue(data: integer; {bits to put}
-                           dataloc: addressrange; {where to put bits}
-                           datasize: addressrange {number of bits to put} );
-
-  { Put one packed data item.  This code was inline until strings were
-    added, as conversion of a character to a string requires both the
-    length and data bytes to be emitted.
-  }
-
-
-    begin {putpackedvalue}
-      { If the value won't fit in this integer, then we need to
-        flush the packing buffer.
-
-        The VAX and iAPX, however, are a special case, for which packing
-        is done to the maximum extent possible. }
-
-      if (targetmachine <> iapx86) and (targetmachine <> vax) and
-         (targetmachine <> i80386) or
-         (sharedPtr^.switchcounters[oldpacking] > 0) then
-        begin
-        if dataloc + datasize > baseloc + bitsperunit * hostintsize then
-          begin
-          bytes := (dataloc - baseloc + bitsperunit - 1) div bitsperunit;
-          if packinghightolow then alignpartialint(pbuf1, bytes);
-          putcint(pbuf1, bytes);
-          baseloc := ((dataloc + bitsperunit - 1) div bitsperunit) *
-                     bitsperunit;
-          curloc := baseloc;
-          pbuf1 := 0;
-          end;
-        end {not vax} ;
-
-      packedstore(dataloc, datasize, baseloc, data, pbuf1, pbuf2, full);
-
-      if full then
-        begin {we write out the lower buffer}
-        putcint(pbuf1, hostintsize);
-        pbuf1 := pbuf2;
-        pbuf2 := 0;
-        baseloc := baseloc + hostintsize * bitsperunit;
-        end;
-      curloc := dataloc + datasize;
-    end {putpackedvalue} ;
-  {>>>}
-
-begin
-  if packing and (value1.cvalue.representation = ints) then
-    begin
-    if eltstring then
-      begin
-      putpackedvalue(1, vloc, bitsperunit); {length of string = 1 char}
-      putpackedvalue(value1.cvalue.intvalue, vloc + bitsperunit,
-                     eltsize - bitsperunit);
-      end
-    else putpackedvalue(value1.cvalue.intvalue, vloc, eltsize);
-    end
-  else { not packing or (representation <> ints) }
-    begin
-    if packing then
-      begin
-      bytes := (vloc - baseloc + bitsperunit - 1) div bitsperunit;
-      if packinghightolow then alignpartialint(pbuf1, bytes);
-      putcint(pbuf1, bytes);
-      pbuf1 := 0;
-      end
-    else
-      putcint(0, vloc - curloc);
-
-    with value1.cvalue do
-      case representation of
-        ints:
-          if eltstring then
-            begin {convert char to string w/length byte then pad}
-            putcbyte (1);
-            putcbyte (value1.cvalue.intvalue);
-            if packing then
-              putcint (0, eltsize div bitsperunit - 2)
-            else
-              putcint (0, eltsize - 2);
-            end
-          else putcint (intvalue, eltsize);
-        reals: putcreal (realvalue.realbuffer, sharedPtr^.targetrealsize);
-        doubles: putcreal (realvalue.realbuffer, doublesize);
-        ptrs: putcptr (ptrvalue);
-        otherwise
-          begin
-          if packing then
-            bytes := eltsize div bitsperunit
-          else
-            bytes := eltsize;
-          if (pos < 0) then {has not been dumped to file at all, yet}
-            begin
-            flushbuffer;
-            dumpstr (bytes, whichbuf, eltstring);
-            end
-          else
-            begin
-            start := pos;
-            if start >= sharedPtr^.stringfilecount then
-              start := start + (sharedPtr^.stringtablelimit - sharedPtr^.stringfilecount);
-            finish := start + len;
-            if eltstring then
-              putcbyte (len);
-            while start < finish do
-              begin
-              seekstringfile (start);
-              putcbyte (sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile]);
-              start := start + 1;
-              end;
-            seekstringfile (sharedPtr^.stringfilecount);
-
-            if eltstring then
-              len := len + 1; {a kludge, the length byte}
-
-            { This fixes structured constant bug tr2158.  Odd-byte length
-              structures actually allocated the next greater even numbered
-              byte worth of space and were not padded correctly.  Putvalue
-              only emitted the actual data bytes but moved the current
-              location counter to the allocated boundary.  This change
-              causes Putvalue to correctly emit the actual data bytes, and
-              eltsize-len (i.e. allocated length - data length) bytes of pad. }
-            if bytes < len then
-              if eltstring then
-                warn (stringoverflowerr)
-              else
-                warn (compilerwritererr);
-            putcint (0, bytes - len);
-            end;
-          end;
-        end {case} ;
-    curloc := vloc + eltsize;
-    baseloc := curloc;
-    end;
-end;
-{>>>}
-{<<<}
-procedure initcdump (var value1: operand; {value to initialize}
-                     consttypeindx: tableIndex; {index for this element type}
-                     consttype: entryptr {type of this element} );
-{ Initialize the value of the constant and set up the constant buffer for generating the value. }
-
-var
-  t: addressrange; {aligned value of consttablelimit}
-
-begin
-  cbytes := 0;
-  cbuf.i := 0;
-  pbuf1 := 0;
-  pbuf2 := 0;
-  curloc := 0;
-  baseloc := 0;
-  with value1 do
-    begin
-    typeindex := consttypeindx;
-    oprndlen := sizeof(consttype, false);
-    operandkind := constoperand;
-    end;
-
-  t := forcealign (sharedPtr^.stringfilecount, alignmentof(consttype, false) * hostfileunits, false);
-  putcint (0, t - sharedPtr^.stringfilecount);
-
-  curloc := 0;
-  baseloc := 0;
-  value1.extended := false;
-  value1.cvalue.representation := consttype^.typ;
-  value1.cvalue.stringconstflag := false;
-  value1.cvalue.pos := t;
-  value1.cvalue.len := value1.oprndlen * hostfileunits;
-  if value1.cvalue.representation = ints then
-    value1.cvalue.negated := false; {PJS force init }
-end;
-{>>>}
-{<<<}
-procedure finishdump(var value1: operand; {value being finished off}
-                     packing: boolean {this is a packed value} );
-{ After the entire constant has been parsed, this forces final output,
-if necessary, and finishes off the resulting operand
-}
-
-  begin {finishdump}
-    if value1.oprndlen > curloc then
-      if packing then
-        begin
-        flushpackbuffer;
-        if value1.oprndlen > curloc then
-          putcint(0, (value1.oprndlen - curloc) div bitsperunit);
-        end
-      else putcint(0, value1.oprndlen - curloc);
-    flushbuffer;
-  end {finishdump} ;
-{>>>}
-{<<<}
-procedure innercstruct(eltloc: addressrange; {rel loc for this element}
-                       form: tableIndex; {form of this constant}
-                       outerpacked: boolean {outer structure was packed} );
-{ Given a structured value, determine the type and parse it.
-}
-  var
-    f: entryptr; {for access to form}
-    packedflag: boolean; {form is packed}
-
-  {<<<}
-  procedure constvalue(eltloc: addressrange; {rel loc for this element}
-                       elttype: tableIndex; {desired value type}
-                       eltstring: boolean; {current element is a string}
-                       packing: boolean; {set if packing this element}
-                       var value1: operand; {result, if not written}
-                       var written: boolean {value already written} );
-
-  { Parse a constant value.  If the value is in turn a structured constant,
-    it may be written to the string file as it is scanned.  Otherwise,
-    its value is placed in "value1", and must be written.
-  }
-
-    var
-      tindex: tableIndex; {type name index}
-      p: entryptr; {access to type name block}
-      elp: entryptr; {for access to elttype}
-      kludge: constbuffer; {converts to integer}
-      i: 1..cbufsize; {induction var for conversion}
-      start, finish: addressrange; {start and end of constant in file}
-
-  {<<<}
-  procedure getconstant(follow: tokenset; {legal following symbols}
-                        elttype: tableIndex; {desired value type}
-                        var value1: operand {result} );
-  { Parse a simple constant and make sure it's in range for the field
-    it's being assigned to.
-  }
-
-    var
-      elp: entryptr; {for access to elttype}
-      unsvalue: unsignedint; {for unsigned comparisons}
-
-
-    begin {getconstant}
-      constant(follow, false, value1);
-      with value1, cvalue do
-        if (representation = ints) and (elttype <> noneindex) and
-           compatible(typeindex, elttype) then
-          begin
-          elp := ref(bigtable[elttype]);
-          if extended and not elp^.extendedrange or (intvalue < 0) and
-             negated and elp^.extendedrange then
-            warnbefore(badconsterr)
-          else if elp^.extendedrange then
-            begin
-            unsvalue := intvalue;
-            if (unsvalue < lower(elp)) or
-               (unsvalue > upper(elp)) then
-              warnbefore(badconsterr);
-            end
-          else if (intvalue < lower(elp)) or
-                  (intvalue > upper(elp)) then
-            warnbefore(badconsterr);
-          end;
-    end {getconstant} ;
-  {>>>}
-
-
-  begin {constvalue}
-    written := false;
-    if token = ident then
-      begin
-      search(tindex);
-      p := ref(bigtable[tindex]);
-      with p^ do
-        if namekind = typename then
-          begin
-          if not compatible(typeindex, elttype) then warn(typesincomp);
-          gettoken;
-          innercstruct(eltloc, typeindex, packing);
-          written := true;
-          end
-        else getconstant(follow, elttype, value1);
-      end
-    else if token = lpar then
-      begin
-      elp := ref(bigtable[elttype]);
-      if not (elp^.typ in [arrays, fields, none]) then
-        begin
-        warn(badconsterr);
-        value1.typeindex := noneindex;
-        value1.cvalue.representation := ints;
-        end;
-      innercstruct(eltloc, elttype, packing);
-      written := true;
-      end
-    else getconstant(follow, elttype, value1);
-    if not written then
-      begin
-      elp := ref(bigtable[value1.typeindex]);
-      if not (eltstring and ((elp^.typ = chars) or
-         (elp^.typ = arrays) and (elp^.stringtype)) or
-         compatible(elttype, value1.typeindex)) then
-        warnbefore(typesincomp);
-      end;
-  end {constvalue} ;
-  {>>>}
-  {<<<}
-  procedure constelement (eltloc: addressrange; {loc to for this element}
-                          elttype: tableIndex; {type desired}
-                          eltsize: addressrange; {size of the element}
-                          eltstring: boolean; {current element is a string}
-                          packing: boolean {this is a packed field} );
-  { Read and store a constant element.  The result is written to the string
-    file buffer.
-  }
-    var
-      temp: operand; {holds a value}
-      written: boolean; {value already written}
-      whichbuf: boolean; {which string buf contains thistoken's string if
-                          any}
-
-    begin {constelement}
-      whichbuf := sharedPtr^.curstringbuf;
-      constvalue (eltloc, elttype, eltstring, packing, temp, written);
-      if not written and (temp.typeindex <> noneindex) then
-        putvalue (eltloc, eltstring, whichbuf, packing, eltsize, temp);
-    end {constelement} ;
-  {>>>}
-  {<<<}
-  procedure constarray (eltloc: addressrange; {rel loc for this element}
-                       form: tableIndex {form for this array} );
-  { Syntactic routine to parse a constant array.
-    Each element is identical, and the number must match.
-  }
-    var
-      eltcount: addressrange; {elements defined so far}
-      eltsinarray: addressrange; {total elements in array}
-      elttype: tableIndex; {element type}
-      eltstring: boolean; {element is a string}
-      packing: boolean; {set if packed array}
-      eltsize: addressrange; {size of each element}
-      f: entryptr; {for access to type data}
-
-
-    begin {constarray}
-      eltcount := 1;
-      f := ref(bigtable[form]);
-      elttype := f^.elementtype;
-      packing := f^.packedflag;
-      eltsize := f^.elementsize;
-      eltsinarray := f^.arraymembers;
-      f := ref(bigtable[elttype]);
-      eltstring := f^.typ = strings;
-      constelement(eltloc, elttype, eltsize, eltstring, packing);
-      while token in [lpar, comma] + begconstset do
-        begin
-        verifytoken(comma, nocommaerr);
-        eltloc := eltloc + eltsize;
-        if eltcount = eltsinarray then warnbefore(badconsterr);
-        eltcount := eltcount + 1;
-        constelement(eltloc, elttype, eltsize, eltstring, packing);
-        end;
-
-      if eltcount < eltsinarray then warnbefore(badconsterr);
-    end {constarray} ;
-  {>>>}
-  {<<<}
-  procedure constrecord (eltloc: addressrange; {start of this element}
-                        form: tableIndex {form for this record} );
-  { Syntactic routine to parse a constant record.
-  }
-
-    var
-      currentfield: tableIndex; {name entry for this field}
-      finished: boolean; {we used all of the fields we have}
-
-
-    {<<<}
-    procedure constfield;
-    { Find the next field in this record and get a value for it. }
-
-      var
-        found: boolean; {field was found}
-        p: entryptr; {access to field names}
-        elttype: tableIndex; {form for a variant}
-        temp: operand; {temp value for variant}
-        written: boolean; {dummy argument to constvalue}
-        tagoffset: addressrange; {offset for tag field, if any}
-        localform: tableentry; {local copy of form entry}
-        f, f1: entryptr; {access to form data}
-
-
-      begin {constfield}
-        if finished then
-          constelement(eltloc, noneindex, unitsize, false, false)
-        else
-          begin
-          f := ref(bigtable[form]);
-          localform := f^;
-          found := false;
-          while (currentfield < localform.lastfield) and not found do
-            begin
-            currentfield := currentfield + 1;
-            p := ref(bigtable[currentfield]);
-            if not p^.form then found := p^.name = localform.fieldid;
-            end;
-          if found then
-            begin
-            f1 := ref(bigtable[p^.vartype]);
-            constelement(p^.offset + eltloc, p^.vartype, sizeof(f1,
-                         localform.packedflag), f1^.typ = strings,
-                         localform.packedflag)
-            end
-          else if localform.firstvariant = 0 then
-            begin
-            finished := true;
-            warnbefore(badconsterr);
-            constelement(curloc, noneindex, unitsize, false, false);
-            end
-          else
-            begin
-            tagoffset := 0;
-            if localform.tagfield <> 0 then
-              begin
-              p := ref(bigtable[localform.tagfield]);
-              elttype := p^.vartype;
-              tagoffset := p^.offset;
-              end
-            else if localform.firstvariant <> 0 then
-              begin
-              f := ref(bigtable[localform.firstvariant]);
-              if f^.firstlabel <> 0 then
-                begin
-                f := ref(bigtable[f^.firstlabel]);
-                elttype := f^.varlabtype;
-                end
-              else elttype := noneindex;
-              end
-            else elttype := noneindex;
-            constvalue(tagoffset + eltloc, elttype, false,
-                       localform.packedflag, temp, written);
-            if localform.tagfield <> 0 then
-              begin
-              f := ref(bigtable[elttype]);
-              putvalue(tagoffset + eltloc, false, false,
-                       localform.packedflag, sizeof(f, localform.packedflag), temp);
-              end;
-            searchvariants(form, temp);
-            f := ref(bigtable[form]);
-            currentfield := f^.firstfield - 1;
-            end;
-          end;
-      end {constfield} ;
-    {>>>}
-
-
-    begin {constrecord}
-      finished := false;
-      f := ref(bigtable[form]);
-      currentfield := f^.firstfield - 1;
-
-      constfield;
-      while token in [lpar, comma] + begconstset do
-        begin
-        verifytoken(comma, nocommaerr);
-        constfield;
-        end;
-
-      f := ref(bigtable[form]);
-      if (currentfield < f^.lastfield) or (f^.firstvariant <> 0) then
-        warnbefore(badconsterr);
-    end {constrecord} ;
-  {>>>}
-
-  {<<<}
-  procedure badconst;
-  { Parse off a bad constant.  Just throws away the values. }
-
-    begin {badconst}
-      warnbefore(badconsterr);
-      constelement(curloc, noneindex, unitsize, false, false);
-      while token in [lpar, comma] + begconstset do
-        begin
-        verifytoken(comma, nocommaerr);
-        constelement(curloc, noneindex, unitsize, false, false);
-        end;
-      value1.typeindex := noneindex;
-      value1.cvalue.representation := ints;
-    end {badconst} ;
-  {>>>}
-
-
-  begin {innercstruct}
-    if token = lpar then
-      begin
-      gettoken;
-      f := ref(bigtable[form]);
-      packedflag := f^.packedflag;
-      if outerpacked and not packedflag then
-        begin
-        flushpackbuffer;
-        eltloc := eltloc div bitsperunit;
-        curloc := curloc div bitsperunit;
-        end
-      else if not outerpacked and packedflag then
-        begin
-        eltloc := eltloc * bitsperunit;
-        curloc := curloc * bitsperunit;
-        baseloc := curloc;
-        end;
-      if f^.typ in [strings, arrays] then constarray(eltloc, form)
-      else if f^.typ = fields then constrecord(eltloc, form)
-      else badconst;
-      if not outerpacked and packedflag then
-        begin
-        flushpackbuffer;
-        curloc := curloc div bitsperunit;
-        end
-      else if outerpacked and not packedflag then
-        begin
-        curloc := curloc * bitsperunit;
-        baseloc := curloc;
-        end;
-      verifytoken(rpar, norparerr);
-      end
-    else
-      begin
-      warnbefore(typenotallowed);
-      value1.typeindex := noneindex;
-      value1.cvalue.representation := ints;
-      end;
-  end {innercstruct} ;
-{>>>}
-
-begin
-  gettoken;
-  f := ref(bigtable[form]);
-  packedflag := f^.packedflag;
-  initcdump(value1, form, f);
-  innercstruct(0, form, false);
-  finishdump(value1, packedflag);
-end;
 {>>>}
 {<<<}
 procedure gettyp {follow : tokenset; ( legal following symbols )
@@ -14772,11 +14771,9 @@ begin
       end;
 
     case token of
-      {<<<}
-      eofsym:
-        if sharedPtr^.switchcounters[mainbody] > 0 then
-          warnbetween (doteoferr);
-      {>>>}
+      proceduresym,
+      functionsym:
+        warn (extraprocerr);
       {<<<}
       dot:
         begin
@@ -14791,15 +14788,13 @@ begin
         gettoken
         end;
       {>>>}
-      proceduresym,
       {<<<}
-      functionsym:
-        warn (extraprocerr);
+      eofsym:
+        if sharedPtr^.switchcounters[mainbody] > 0 then
+          warnbetween (doteoferr);
       {>>>}
-      {<<<}
       otherwise
         analysFatal (extrastmterr);
-      {>>>}
       end;
 
     if token <> eofsym then

@@ -1254,124 +1254,6 @@ var
   end;
   {>>>}
   {<<<}
-  procedure stringliteral (quotech: char);
-  { Scan a quoted string, building a string or character literal.
-    As the string is read, a copy of it is built up in the string table.
-    If the string length is exactly one, the token is returned as a character constant,
-    otherwise the string is written to the string file and the token is a string constant
-  }
-  var
-    stringpos: lineindex; { start of the string in the stringtable}
-    stringlen: lineindex; { string length}
-    i: lineindex;         { induction var}
-    tempch: char;         { temporary holder for ch}
-
-    {<<<}
-    procedure stuff;
-    { Insert the current character into the stringtable if there is room. }
-
-    begin
-      if stringpos < linelen then
-        begin
-        stringpos := stringpos + 1;
-        stringbuf[sharedPtr^.curstringbuf, stringpos] := ch
-        end
-      else
-        warnat (longstring, sharedPtr^.lastline, chpos);
-    end;
-    {>>>}
-
-  begin
-    { First read in the string and copy to stringtable }
-    sharedPtr^.curstringbuf := not sharedPtr^.curstringbuf;
-    stringpos := 0;
-    repeat
-      convertingcase := false; {we want a literal copy}
-      inliteralstring := true;
-      getch;
-      while (ch <> quotech) and not endofline do
-        begin
-        stuff;
-        getch;
-        end;
-      inliteralstring := false;
-      convertingcase := true;
-      if endofline then
-        warnat (longstring, sharedPtr^.lastline - 1, chpos)
-      else
-        begin
-        getch;
-        stuff;
-        end;
-    until (ch <> quotech) or endofline;
-
-    stringpos := stringpos - 1;
-    stringbuf[sharedPtr^.curstringbuf, 0] := chr(stringpos);
-
-    with tokenSharedPtr^.nexttoken do {check length and set returned token}
-      if (stringpos = 0) and sharedPtr^.switcheverplus[standard] then
-        warnat (zerostring, line, left)
-      else if stringpos = 1 then
-        begin
-        token := charconst;
-        if stringpos = 0 then
-          intvalue := 0
-        else
-          intvalue := ord (stringbuf[sharedPtr^.curstringbuf, 1])
-        end
-      else
-        begin
-        token := stringconst;
-        len := stringpos;
-        pos := - 1 {don't dump yet}
-        end
-  end;
-  {>>>}
-  {<<<}
-  procedure charliteral;
-  { Process a character constant of the form #123. }
-
-  var
-    val: integer;
-    numbers: set of char;
-    ok: boolean;
-
-    {<<<}
-    procedure snumber;
-    { Read a number. }
-
-    begin
-      val := 0;
-      while nextch in numbers do
-        begin
-        val := val * 10 + (ord(nextch) - ord('0'));
-        getch;
-        end;
-    end;
-    {>>>}
-
-  begin
-    numbers := ['0'..'9'];
-    ok := false;
-    if nextch in numbers then
-      begin
-      snumber;
-      if val <= 255 then
-        with tokenSharedPtr^.nexttoken do {check length and set returned token}
-          begin
-          token := charconst;
-          intvalue := val;
-          ok := true;
-          end;
-      end;
-
-    if not ok then
-      warnat (badconsterr, sharedPtr^.lastline, chpos);
-
-    getch;
-  end;
-  {>>>}
-  {<<<}
   procedure scannerdirective (l: integer; c: columnindex);
   { Directives addressed to the scanner and listing pass may be included
     in the source text.  They are flagged by a percent sign (%), and have
@@ -2659,6 +2541,124 @@ var
 
     if sharedPtr^.switcheverplus[caseswitch] then
       convertingcase := true;
+  end;
+  {>>>}
+  {<<<}
+  procedure charliteral;
+  { Process a character constant of the form #123. }
+
+  var
+    val: integer;
+    numbers: set of char;
+    ok: boolean;
+
+    {<<<}
+    procedure snumber;
+    { Read a number. }
+
+    begin
+      val := 0;
+      while nextch in numbers do
+        begin
+        val := val * 10 + (ord(nextch) - ord('0'));
+        getch;
+        end;
+    end;
+    {>>>}
+
+  begin
+    numbers := ['0'..'9'];
+    ok := false;
+    if nextch in numbers then
+      begin
+      snumber;
+      if val <= 255 then
+        with tokenSharedPtr^.nexttoken do {check length and set returned token}
+          begin
+          token := charconst;
+          intvalue := val;
+          ok := true;
+          end;
+      end;
+
+    if not ok then
+      warnat (badconsterr, sharedPtr^.lastline, chpos);
+
+    getch;
+  end;
+  {>>>}
+  {<<<}
+  procedure stringliteral (quotech: char);
+  { Scan a quoted string, building a string or character literal.
+    As the string is read, a copy of it is built up in the string table.
+    If the string length is exactly one, the token is returned as a character constant,
+    otherwise the string is written to the string file and the token is a string constant
+  }
+  var
+    stringpos: lineindex; { start of the string in the stringtable}
+    stringlen: lineindex; { string length}
+    i: lineindex;         { induction var}
+    tempch: char;         { temporary holder for ch}
+
+    {<<<}
+    procedure stuff;
+    { Insert the current character into the stringtable if there is room. }
+
+    begin
+      if stringpos < linelen then
+        begin
+        stringpos := stringpos + 1;
+        stringbuf[sharedPtr^.curstringbuf, stringpos] := ch
+        end
+      else
+        warnat (longstring, sharedPtr^.lastline, chpos);
+    end;
+    {>>>}
+
+  begin
+    { First read in the string and copy to stringtable }
+    sharedPtr^.curstringbuf := not sharedPtr^.curstringbuf;
+    stringpos := 0;
+    repeat
+      convertingcase := false; {we want a literal copy}
+      inliteralstring := true;
+      getch;
+      while (ch <> quotech) and not endofline do
+        begin
+        stuff;
+        getch;
+        end;
+      inliteralstring := false;
+      convertingcase := true;
+      if endofline then
+        warnat (longstring, sharedPtr^.lastline - 1, chpos)
+      else
+        begin
+        getch;
+        stuff;
+        end;
+    until (ch <> quotech) or endofline;
+
+    stringpos := stringpos - 1;
+    stringbuf[sharedPtr^.curstringbuf, 0] := chr(stringpos);
+
+    with tokenSharedPtr^.nexttoken do {check length and set returned token}
+      if (stringpos = 0) and sharedPtr^.switcheverplus[standard] then
+        warnat (zerostring, line, left)
+      else if stringpos = 1 then
+        begin
+        token := charconst;
+        if stringpos = 0 then
+          intvalue := 0
+        else
+          intvalue := ord (stringbuf[sharedPtr^.curstringbuf, 1])
+        end
+      else
+        begin
+        token := stringconst;
+        len := stringpos;
+        pos := - 1 {don't dump yet}
+        end
   end;
   {>>>}
 
