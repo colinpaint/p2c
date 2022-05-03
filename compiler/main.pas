@@ -1,4 +1,3 @@
-{ main.pas- main }
 {<<<}
 {[b+]}
 { NOTICE OF COPYRIGHT AND OWNERSHIP OF SOFTWARE:
@@ -487,7 +486,7 @@ procedure printversion;
 { Print a version message }
 
 begin
-  writeln ('Pascal-2 (tm) ', systemtitle, '- ', versionstring);
+  writeln ('Pascal-2(tm) ', systemtitle, ' ', versionstring);
 end;
 {>>>}
 {<<<}
@@ -1493,16 +1492,15 @@ begin
      (sharedPtr^.switcheverplus[outputmacro] or sharedPtr^.switcheverplus[outputobj]) then
     {<<<  traverse/code}
     begin
-    if travcode then
+    resetswitches;
+    settime;
+
+    reset (getSharedPtr^.localFile, 'local.tmp');
+    reset (getInterSharedPtr^.interFile, 'inter.tmp');
+    rewrite (getPseudoSharedPtr^.pseudoFile, 'pseudo.tmp');
+
+    if travcode then { traverse/code together }
       begin
-      { traverse/code together }
-      resetswitches;
-      settime;
-
-      reset (getSharedPtr^.localFile, 'local.tmp');
-      reset (getInterSharedPtr^.interFile, 'inter.tmp');
-      rewrite (getPseudoSharedPtr^.pseudoFile, 'pseudo.tmp');
-
       initCode;
       traverse;
       exitCode;
@@ -1513,16 +1511,9 @@ begin
 
       printtime ('traverse/code');
       end
-    else
-      {<<<  traverse then code}
+
+    else {  traverse then code}
       begin
-      resetswitches;
-      settime;
-
-      reset (getSharedPtr^.localFile, 'local.tmp');
-      reset (getInterSharedPtr^.interFile, 'inter.tmp');
-      rewrite (getPseudoSharedPtr^.pseudoFile, 'pseudo.tmp');
-
       traverse;
 
       close (getSharedPtr^.localFile);
@@ -1539,11 +1530,11 @@ begin
 
       printtime ('code');
       end;
-      {>>>}
 
     if sharedPtr^.switcheverplus[symboltable] then
       closed;
 
+    { stats }
     writeln (sharedPtr^.proctabletop:1, ' procedures, ', sharedPtr^.insertions:1, ' identifiers');
 
     { timing }

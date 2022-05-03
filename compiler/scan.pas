@@ -446,7 +446,7 @@ end;
 {<<<}
 procedure puttokenfile;
 { Do the equivalent of a put to the token file
-  The value of the global variable "token" is encoded by "puttoken" and written in a packed format to the tokenfile.  
+  The value of the global variable "token" is encoded by "puttoken" and written in a packed format to the tokenfile.
   A count of tokens is kept and used to indicate the place in the file where embedded switches are found.
 }
 begin
@@ -506,8 +506,8 @@ end;
 {<<<}
 procedure dumpidentifiers;
 { Dumpidentifiers -- dumps stringtable into stringfile.
-  Analys and Code occasionally need the character representation of an identifier. }
-
+  Analys and Code occasionally need the character representation of an identifier
+}
 var
   i: stringindex;
 

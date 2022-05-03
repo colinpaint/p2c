@@ -7859,7 +7859,7 @@ var
           This code is replicated in doreference, killasreg, dodefine
           and walk:indxnode. }
         j := (localvar.offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
-        while regvars[j].worth >= 0 
+        while regvars[j].worth >= 0
           do j := (j + 1) mod (regtablelimit + 1);
         with regvars[j] do
           begin
@@ -7946,7 +7946,7 @@ var
     n: nodeindex; {used to trace list of nodes on opmap[0]}
 
   begin
-    if contextsp = contextdepth then 
+    if contextsp = contextdepth then
       overflowdepth := overflowdepth + 1
     else
       begin
@@ -8012,7 +8012,7 @@ var
       overflowdepth := overflowdepth - 1;
       { since we've lost track assume the worst }
       context[contextsp].dominates := false;
-      for i := 0 to nodehashsize do 
+      for i := 0 to nodehashsize do
         context[contextdepth].opmap[i] := 0;
       end
 
@@ -8066,7 +8066,7 @@ var
       overflowdepth := overflowdepth - 1;
       { since we've lost track assume the worst }
       context[contextsp].dominates := false;
-      for i := 0 to nodehashsize do 
+      for i := 0 to nodehashsize do
         context[contextdepth].opmap[i] := 0;
       end
 
@@ -8212,7 +8212,7 @@ var
     l := this_loop;
     this_loop := l^.outer;
     dispose(l);
-  end; 
+  end;
   {>>>}
   {<<<}
   procedure updatecontext;
@@ -12212,7 +12212,7 @@ var
     if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
       foncount := foncount + 1;
 
-    while interSharedPtr^.interFile^.block[nextintcode].s <> lasts do 
+    while interSharedPtr^.interFile^.block[nextintcode].s <> lasts do
       buildstmt;
 
     addpredsuccs (currentblock, successorblock);

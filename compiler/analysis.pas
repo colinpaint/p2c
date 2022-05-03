@@ -1561,7 +1561,7 @@ procedure constant (follow: tokenset; {legal following symbols}
               if (thistoken.pos < 0) and dumpvalue then
                 begin
                 pos := sharedPtr^.stringfilecount + 1;
-                dumpstr(len + 1, sharedPtr^.curstringbuf, true);
+                dumpstr (len + 1, sharedPtr^.curstringbuf, true);
                 end
               else
                 pos := thistoken.pos;
