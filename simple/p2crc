@@ -5,13 +5,6 @@ HeaderName        "../p2c.h"
 
 LibraryFile       system.imp    # Names of import-text files to search
 
-ReplaceBefore     abort = abort1
-ReplaceBefore     unix = unix1
-ReplaceBefore     fmod = fmod1
-ReplaceBefore     fabs = fabs1
-
-BufferedFile      scanFile
-
 ExternWords       external      # Words analogous to "forward" for declaring
 ExternWords       extern        # procedures or functions external.
 ExternWords       fortran

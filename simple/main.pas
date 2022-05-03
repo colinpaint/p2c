@@ -1,78 +1,45 @@
 program simple (output);
 { simple test program}
 
-%include 'shared.def';
-%include 'simple1.def';
-%include 'simple2.def';
+{
+function Len(var s : array [lo..hi:integer] of char) : integer;
+procedure Clear(var s : array [lo..hi:integer] of char); external;
+procedure ReadString(var f : text; var s : array [lo..hi:integer] of char);
+procedure WriteString(var f : text; var s : array [lo..hi:integer] of char);
+procedure Concatenate(var d : array [lod..hid:integer] of char; var s : array [los..his:integer] of char);
+function Search(var s : array [lo..hi:integer] of char; var s2 : array [lo2..hi2:integer] of char; i : integer) : integer;
+procedure Insert(var d : array [lod..hid:integer] of char; var s : array [los..his:integer] of char; i : integer); ;
+procedure Assign(var d : array [lo..hi:integer] of char; var s : array [los..his:integer] of char); external;
+procedure AssChar(var d : array [lo..hi:integer] of char; c : char);
+function Equal(var s1 : array [lo1..hi1:integer] of char; var s2 : array [lo2..hi2:integer] of char) : boolean;
+procedure DelString(var s; i, j : integer);
+procedure SubString(var d; var s; i, j : integer);
+}
+const
+  cmdlinelength = 132; { max length of a command line}
+
+type
+  cmdindex = 1..cmdlinelength; {index into a command line}
+  cmdbuffer = packed array [cmdindex] of char; {holds command line}
+  strType = packed array [1..20] of char;
 
 var
-  cmdLine: packed array [1..255] of char;
-  cmdLineLen: Integer;
-  count: Integer;
-
-  sharedPtr: sharedPtrType;
+  cmdlength: cmdindex; { length of command line }
+  cmdline: cmdbuffer;  { actual command line }
+  first: strType;
+  second: strType;
+  i: integer;
 
 begin
-  P_getcmdline (cmdLine, cmdLineLen);
-  Writeln ('simple p2c - cmdLine - ', cmdLine: cmdLineLen);
+  cmdlength := 1;
+  P_getcmdline (cmdLine, cmdlength);
 
-  for count := 1 to 4 do
-    writeln (output, 'simple', count:4);
+  Writeln ('hello colin - ', cmdline:cmdlength);
 
-  sharedPtr := initShared;
-  writeln ('- simple ', sharedPtr^.value1, ' ', sharedPtr^.value2);
-  sharedPtr^.value1 := 1111;
-  sharedPtr^.value2 := 2222;
-  simple1;
-  simple2;
+  Assign (first, 'first');
+  Assign (second, 'second');
+  writeln ('first - ', first, ' second - ', second);
 
-  { scanFile put test }
-  rewrite (sharedPtr^.scanFile, 'scan.tmp');
-
-  {
-  block[0] := 16#AA;
-  block[1] := 16#BB;
-  block[2] := 16#CC;
-  block[3] := constsym;
-  block[0].byte := 16#AA;
-  block[1].byte := 16#BB;
-  block[2].byte := 16#CC;
-  block[3].byte := constsym;
-  block[3].token := constsym;
-  }
-  with sharedPtr^.scanFile^ do
-    begin
-    block[0].byte := 16#AA;
-    block[1].byte := 16#BB;
-    block[2].byte := 16#CC;
-    block[3].token := constsym;
-    end;
-  put (sharedPtr^.scanFile);
-
-  {
-  block[0] := 16#11;
-  block[1] := 16#22;
-  block[2] := 16#33;
-  block[3] := constsym;
-  block[0].byte := 16#11;
-  block[1].byte := 16#22;
-  block[2].byte := 16#33;
-  block[3].byte := constsym;
-  block[3].token := constsym;
-  }
-  with sharedPtr^.scanFile^ do
-    begin
-    block[0].byte := 16#11;
-    block[1].byte := 16#22;
-    block[2].byte := 16#33;
-    block[3].token := constsym;
-    end;
-  put (sharedPtr^.scanFile);
-
-  close (sharedPtr^.scanFile);
-
-  { atFile put test }
-  rewrite (sharedPtr^.atFile, 'at.tmp');
-  close (sharedPtr^.atFile);
-
-end.
+  Concatenate (first, second);
+  writeln ('first - ', first, ' second - ', second);
+end;

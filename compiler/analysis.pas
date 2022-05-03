@@ -1117,27 +1117,27 @@ procedure searchsection (id: scoperange; {scope id for search}
   a constant or type identifier we will update "lastoccurrence" within
   the symbol table entry to allow enforcement of scope restrictions. }
 
-  var
-    p: entryptr; {used for name table access}
-    twherefound: tableIndex; {temp for wherefound during procedure}
+var
+  p: entryptr; {used for name table access}
+  twherefound: tableIndex; {temp for wherefound during procedure}
 
-  begin {searchsection}
-    twherefound := keymap[thistoken.key];
+begin {searchsection}
+  twherefound := keymap[thistoken.key];
+  p := ref(bigtable[twherefound]);
+  while (twherefound <> 0) and (p^.name <> id) do
+    begin
+    twherefound := p^.nextname;
     p := ref(bigtable[twherefound]);
-    while (twherefound <> 0) and (p^.name <> id) do
-      begin
-      twherefound := p^.nextname;
-      p := ref(bigtable[twherefound]);
-      end;
-    if not probing and (twherefound <> 0) and
-       (p^.lastoccurrence < display[displaytop].scopeid) and
-       (p^.namekind in
-       [procname, funcname, constname, typename, standardproc, standardfunc, undeftypename, fieldname, undefname]) then
-      begin
-      p^.lastoccurrence := display[displaytop].scopeid;
-      end;
-    wherefound := twherefound;
-  end {searchsection} ;
+    end;
+  if not probing and (twherefound <> 0) and
+     (p^.lastoccurrence < display[displaytop].scopeid) and
+     (p^.namekind in
+     [procname, funcname, constname, typename, standardproc, standardfunc, undeftypename, fieldname, undefname]) then
+    begin
+    p^.lastoccurrence := display[displaytop].scopeid;
+    end;
+  wherefound := twherefound;
+end {searchsection} ;
 {>>>}
 {<<<}
 procedure searchlsection (value1: integer; {label value}
@@ -1148,12 +1148,12 @@ procedure searchlsection (value1: integer; {label value}
   is not in the list, the returned entry will be "labelflag".
   "Labelflag" is set to the desired value to simplify the search algorithm. }
 
-  begin {searchlsection}
-    labelflag^.labelvalue := value1;
-    wherefound := labellist;
-    while wherefound^.labelvalue <> value1 do
-      wherefound := wherefound^.nextlabel;
-  end {searchlsection} ;
+begin {searchlsection}
+  labelflag^.labelvalue := value1;
+  wherefound := labellist;
+  while wherefound^.labelvalue <> value1 do
+    wherefound := wherefound^.nextlabel;
+end {searchlsection} ;
 {>>>}
 {<<<}
 procedure searchlabels (value1: integer; {label value}
@@ -1161,17 +1161,17 @@ procedure searchlabels (value1: integer; {label value}
 { Search all available scopes for a label with "value", returning the
   result in "wherefound."  The result will be set to "labelflag" if the label cannot be found. }
 
-  var
-    i: levelindex; {induction var for level search}
+var
+  i: levelindex; {induction var for level search}
 
-  begin {searchlabels}
-    i := level;
-    repeat
-      searchlsection(value1, display[i].labellist, wherefound);
-      i := i - 1;
-    until (i = 0) or (wherefound <> labelflag);
-    lev := i + 1;
-  end {searchlabels} ;
+begin {searchlabels}
+  i := level;
+  repeat
+    searchlsection(value1, display[i].labellist, wherefound);
+    i := i - 1;
+  until (i = 0) or (wherefound <> labelflag);
+  lev := i + 1;
+end {searchlabels} ;
 {>>>}
 {<<<}
 procedure search (var wherefound: tableIndex {result of search} );
@@ -1201,108 +1201,108 @@ procedure searchvariants (var currentrecord: tableIndex; {record to search}
   variant.  If there is no variant with the desired label,
   "currentrecord" is unmodified, and an error message is emitted. }
 
-  var
-    t: tableIndex; {used to trace variant chain}
-    t1: tableIndex; {used to trace label chain}
-    t2: tableIndex; {holds last value of t for later use}
-    ptr, ptr1: entryptr; {used to access variant and label chains}
-    found: boolean; {set if label found, controls search}
+var
+  t: tableIndex; {used to trace variant chain}
+  t1: tableIndex; {used to trace label chain}
+  t2: tableIndex; {holds last value of t for later use}
+  ptr, ptr1: entryptr; {used to access variant and label chains}
+  found: boolean; {set if label found, controls search}
 
-  begin {searchvariants}
-    found := false;
-    ptr := ref(bigtable[currentrecord]);
-    t := ptr^.firstvariant;
-    while (t <> 0) and not found do
+begin {searchvariants}
+  found := false;
+  ptr := ref(bigtable[currentrecord]);
+  t := ptr^.firstvariant;
+  while (t <> 0) and not found do
+    begin
+    ptr := ref(bigtable[t]);
+    with ptr^ do
       begin
-      ptr := ref(bigtable[t]);
-      with ptr^ do
+      t2 := t;
+      t := nextvariant;
+      t1 := firstlabel;
+      while (t1 <> 0) and not found do
         begin
-        t2 := t;
-        t := nextvariant;
-        t1 := firstlabel;
-        while (t1 <> 0) and not found do
+        ptr1 := ref(bigtable[t1]);
+        with ptr1^ do
           begin
-          ptr1 := ref(bigtable[t1]);
-          with ptr1^ do
-            begin
-            found := (labvalue.cvalue.intvalue = varlabvalue);
-            t1 := nextvarlab;
-            end;
+          found := (labvalue.cvalue.intvalue = varlabvalue);
+          t1 := nextvarlab;
           end;
         end;
       end;
-    if found then currentrecord := t2
-    else warnbefore(badtagerr);
-  end {searchvariants} ;
+    end;
+  if found then currentrecord := t2
+  else warnbefore(badtagerr);
+end {searchvariants} ;
 {>>>}
 {<<<}
 procedure stripsubrange (var objectindex: tableIndex {form to be stripped} );
 { Convert a subrange type to the base type for use in an expression. }
 
-  var
-    ptr: entryptr;
+var
+  ptr: entryptr;
 
-
-  begin {stripsubrange}
-    ptr := ref(bigtable[objectindex]);
-    with ptr^ do if (typ = subranges) then objectindex := parenttype;
-  end {stripsubrange} ;
+begin
+  ptr := ref(bigtable[objectindex]);
+  with ptr^ do 
+    if (typ = subranges) then 
+     objectindex := parenttype;
+end;
 {>>>}
 
 {<<<}
 function lower (f: entryptr {form to check} ): integer;
 { Returns the lower bound of "f".  This is meaningful only for scalar types. }
 
-  begin {lower}
-    with f^ do
-      if typ = ints then
-        lower := sharedPtr^.targetminint
-      else if typ = subranges then
-        lower := lowerord
-      else
-        lower := 0;
-  end {lower} ;
+begin
+  with f^ do
+    if typ = ints then
+      lower := sharedPtr^.targetminint
+    else if typ = subranges then
+      lower := lowerord
+    else
+      lower := 0;
+end;
 {>>>}
 {<<<}
 function upper (f: entryptr {form to check} ): integer;
 { Returns the upper bound of "f".  This is meaningful only for scalar types }
 
-  begin {upper}
-    with f^ do
-      case typ of
-        ints: upper := sharedPtr^.targetmaxint;
-        bools: upper := 1;
-        chars: upper := charsetsize - 1;
-        none: upper := 255;
-        scalars: upper := lastord;
-        subranges: upper := upperord;
-        otherwise upper := sharedPtr^.targetmaxint
-        end
-  end {upper} ;
+begin
+  with f^ do
+    case typ of
+      ints: upper := sharedPtr^.targetmaxint;
+      bools: upper := 1;
+      chars: upper := charsetsize - 1;
+      none: upper := 255;
+      scalars: upper := lastord;
+      subranges: upper := upperord;
+      otherwise upper := sharedPtr^.targetmaxint
+      end
+end;
 {>>>}
 {<<<}
 function bits (i: integer {value to find size of} ): integer;
 { Returns the number of bits needed to contain the value of i }
 
-  var
-    b: integer; {Accumulates number of bits}
-    value: unsignedint; {Temp so can use a register and shift inst}
+var
+  b: integer; {Accumulates number of bits}
+  value: unsignedint; {Temp so can use a register and shift inst}
 
-
-  begin {bits}
-    if i < 0 then bits := sharedPtr^.targetintsize * bitsperunit
-    else
+begin
+  if i < 0 then bits := sharedPtr^.targetintsize * bitsperunit
+  else
+    begin
+    value := i;
+    b := 1;
+    while value > 1 do
       begin
-      value := i;
-      b := 1;
-      while value > 1 do
-        begin
-        b := b + 1;
-        value := value div 2;
-        end;
-      bits := b;
+      b := b + 1;
+      value := value div 2;
       end;
-  end {bits} ;
+    bits := b;
+    end;
+end;
 {>>>}
 {<<<}
 function sizeof (f: entryptr; {Form to get size of}
@@ -1310,37 +1310,36 @@ function sizeof (f: entryptr; {Form to get size of}
 { Returns the amount of storage needed to contain a value of the type
   specified by "f".  If "packedresult" is set, this is in bits, otherwise it is in addressing units }
 
-  var
-    lowerf: integer; { temp holding lower(f) }
-    magnitude: addressrange; {absolute value of max number of bits}
+var
+  lowerf: integer; { temp holding lower(f) }
+  magnitude: addressrange; {absolute value of max number of bits}
 
-
-  begin {sizeof}
-    if packedresult = f^.bitaddress then sizeof := f^.size
-    else if packedresult then
-      case f^.typ of
-        chars, bools, scalars, subranges, none:
+begin
+  if packedresult = f^.bitaddress then sizeof := f^.size
+  else if packedresult then
+    case f^.typ of
+      chars, bools, scalars, subranges, none:
+        begin
+        if (targetmachine = iapx86) and (f^.size > wordsize) then
+          sizeof := defaulttargetintsize * bitsperunit
+        else
           begin
-          if (targetmachine = iapx86) and (f^.size > wordsize) then
-            sizeof := defaulttargetintsize * bitsperunit
-          else
+          lowerf := lower(f);
+          if (lowerf < 0) then
             begin
-            lowerf := lower(f);
-            if (lowerf < 0) then
-              begin
-              magnitude := max(abs(upper(f)), abs(lowerf + 1));
-              if magnitude = 0 then sizeof := 1 {handles the case of -1..0}
-              else sizeof := bits(magnitude) + 1; {the normal case}
-              end
-            else sizeof := bits(upper(f));
-            end;
-          end
-        otherwise
-          if maxaddr div bitsperunit < f^.size then sizeof := maxaddr
-          else sizeof := f^.size * bitsperunit;
+            magnitude := max(abs(upper(f)), abs(lowerf + 1));
+            if magnitude = 0 then sizeof := 1 {handles the case of -1..0}
+            else sizeof := bits(magnitude) + 1; {the normal case}
+            end
+          else sizeof := bits(upper(f));
+          end;
         end
-    else sizeof := (f^.size + bitsperunit - 1) div bitsperunit;
-  end {sizeof} ;
+      otherwise
+        if maxaddr div bitsperunit < f^.size then sizeof := maxaddr
+        else sizeof := f^.size * bitsperunit;
+      end
+  else sizeof := (f^.size + bitsperunit - 1) div bitsperunit;
+end;
 {>>>}
 {<<<}
 function forcealign (size: addressrange; {value to align}
@@ -1349,12 +1348,13 @@ function forcealign (size: addressrange; {value to align}
 { Forces "size" to the next higher multiple of "alignment".
   Used to overcome limitations built into much contemporary hardware }
 
-  begin {forcealign}
-    if packedresult then alignment := alignment * bitsperunit;
-    if alignment > 1 then
-      size := ((size + alignment - 1) div alignment) * alignment;
-    forcealign := size;
-  end {forcealign} ;
+begin
+  if packedresult then 
+    alignment := alignment * bitsperunit;
+  if alignment > 1 then
+    size := ((size + alignment - 1) div alignment) * alignment;
+  forcealign := size;
+end;
 {>>>}
 {<<<}
 function unsigned (f: entryptr; {type to check}
@@ -1363,71 +1363,49 @@ function unsigned (f: entryptr; {type to check}
 { Returns true if the values of type "f" are unsigned.
   If "len" is not equal to the space required for the value, it is being
   allocated a space larger than required, and should be treated as signed
-  or unsigned for unpacking, depending on the global "unsignedprefered" }
+  or unsigned for unpacking, depending on the global "unsignedprefered" 
+}
 
-  begin {unsigned}
-    if not packedelement then len := len * bitsperunit;
-    unsigned := not (f^.typ in [subranges, ints, bools, chars, scalars]) or
-                (lower(f) >= 0) and (unsignedprefered or (len = sizeof(f,
-                true))) or f^.extendedrange;
-  end {unsigned} ;
+begin
+  if not packedelement then 
+    len := len * bitsperunit;
+  unsigned := not (f^.typ in [subranges, ints, bools, chars, scalars]) or
+              (lower(f) >= 0) and (unsignedprefered or (len = sizeof(f,
+              true))) or f^.extendedrange;
+end;
 {>>>}
 {<<<}
 function simplesize (i: integer {value to find size of} ): integer;
 { Returns the size in multiples of addressing units needed to contain the value of i. }
 
-  var
-    b: integer; {bits to contain i}
-    t: integer; {used to accumulate size in units}
+var
+  b: integer; {bits to contain i}
+  t: integer; {used to accumulate size in units}
 
-
-  begin {simplesize}
-    b := bits(i);
-    t := 1;
-    while b > t * bitsperunit do t := t + 1;
-    simplesize := t;
-  end {simplesize} ;
+begin
+  b := bits(i);
+  t := 1;
+  while b > t * bitsperunit do 
+    t := t + 1;
+  simplesize := t;
+end;
 {>>>}
 
 {<<<}
 function negaterealconst (realbuffer: realarray {real constant value} ): realarray;
  { function to negate a real constant independent of the host }
 
-  const
-    halfword = 32768; {for constant negating}
+const
+  halfword = 32768; {for constant negating}
 
-  var
-    signidx: 1..maxrealwords; {index to the signpart}
+begin
+  if realbuffer[1] >= halfword then
+    realbuffer[1] := realbuffer[1] - halfword
+  else 
+    realbuffer[1] := realbuffer[1] + halfword;
 
-
-  begin {negaterealconst}
-    case targetmachine of
-      vax, pdp11:
-        begin
-        if realbuffer[1] <> 0 then
-          if realbuffer[1] >= halfword then
-            realbuffer[1] := realbuffer[1] - halfword
-          else realbuffer[1] := realbuffer[1] + halfword;
-        end;
-      mc68000:
-        begin
-        if realbuffer[1] >= halfword then
-          realbuffer[1] := realbuffer[1] - halfword
-        else realbuffer[1] := realbuffer[1] + halfword;
-        end;
-      iapx86, i80386, ns32k:
-        begin
-        if sharedPtr^.switcheverplus[doublereals] then
-          signidx := maxrealwords
-        else
-          signidx := maxrealwords div 2;
-        if realbuffer[signidx] >= halfword then
-          realbuffer[signidx] := realbuffer[signidx] - halfword
-        else realbuffer[signidx] := realbuffer[signidx] + halfword;
-        end;
-      end;
-    negaterealconst := realbuffer;
-  end {negaterealconst} ;
+  negaterealconst := realbuffer;
+end;
 {>>>}
 {<<<}
 procedure constant (follow: tokenset; {legal following symbols}
@@ -1451,8 +1429,8 @@ procedure constant (follow: tokenset; {legal following symbols}
     t1: entryptr; {Temp for index type for string constant}
     unsvalue: unsignedint; {temp for unsigned operation}
 
-  begin {constant}
-    {init the descriptor}
+  begin 
+    { init descriptor }
     with value1, cvalue do
       begin
       typeindex := noneindex;
@@ -1477,7 +1455,8 @@ procedure constant (follow: tokenset; {legal following symbols}
         gettoken
         end
       else if token = ident then
-        begin {either constant or constant structure}
+        {<<<  either constant or constant structure}
+        begin
         structtype := noneindex;
         search(t);
         p := ref(bigtable[t]);
@@ -1511,7 +1490,7 @@ procedure constant (follow: tokenset; {legal following symbols}
               gettoken;
               end;
         end
-
+        {>>>}
       else {not nil or an identifier}
         with value1, cvalue do
           begin
@@ -1554,7 +1533,7 @@ procedure constant (follow: tokenset; {legal following symbols}
             {>>>}
             {<<<}
             stringconst:
-              begin {Must make type entry for the string}
+              begin { Must make type entry for the string}
               representation := arrays;
               stringconstflag := true;
               len := thistoken.len;
@@ -1576,7 +1555,7 @@ procedure constant (follow: tokenset; {legal following symbols}
                 lowerord := 1;
                 upperord := len
                 end;
-              enterform(arrays, typeindex, t1);
+              enterform (arrays, typeindex, t1);
 
               with t1^ do
                 begin
@@ -1597,7 +1576,7 @@ procedure constant (follow: tokenset; {legal following symbols}
                 end;
               end
             {>>>}
-            end {case} ;
+            end;
           gettoken;
           end;
 
@@ -1606,13 +1585,15 @@ procedure constant (follow: tokenset; {legal following symbols}
           warn (badconsterr)
         else if negate then
           if typeindex = realindex then
-            realvalue.realbuffer := negaterealconst(realvalue.realbuffer)
+            realvalue.realbuffer := negaterealconst (realvalue.realbuffer)
           else {non real}
             begin
-            if intvalue <> - sharedPtr^.targetmaxint - 1 then intvalue := - intvalue;
+            if intvalue <> - sharedPtr^.targetmaxint - 1 then 
+              intvalue := - intvalue;
             negated := not negated;
             end;
       end;
+
     with value1, cvalue do
       if representation = ints then
         begin
@@ -1626,10 +1607,9 @@ procedure constant (follow: tokenset; {legal following symbols}
 function identical (left, right: tableIndex): boolean;
 { True if two types are identical, or if either is undefined (to avoid redundant messages) }
 
-  begin {identical}
-    identical := (left = right) or (left = noneindex) or (right = noneindex);
-  end {identical} ;
-
+begin
+  identical := (left = right) or (left = noneindex) or (right = noneindex);
+end;
 {>>>}
 {<<<}
 function compatible (left, right: tableIndex): boolean;
@@ -1637,50 +1617,49 @@ function compatible (left, right: tableIndex): boolean;
   as defined by the Pascal standard.  If either input is undefined,
   they are assumed to be compatible to eliminate redundant error messages. }
 
-  var
-    lptr, rptr: entryptr; { used for access to symbol table }
-    c: boolean; {temporary value of compatible}
+var
+  lptr, rptr: entryptr; { used for access to symbol table }
+  c: boolean; {temporary value of compatible}
 
+begin 
+  stripsubrange (left);
+  stripsubrange (right);
+  if identical(left, right) then compatible := true
+  else
+    begin
+    compatible := false;
+    lptr := ref(bigtable[left]);
+    rptr := ref(bigtable[right]);
+    if lptr^.typ = rptr^.typ then
+      case lptr^.typ of
+        strings: compatible := true;
+        arrays:
+          compatible := lptr^.stringtype and rptr^.stringtype and
+                        (lptr^.arraymembers = rptr^.arraymembers);
+        sets:
+          compatible := compatible(lptr^.basetype, rptr^.basetype) and
+                        ((lptr^.packedflag = rptr^.packedflag) or
+                        lptr^.constructedset or rptr^.constructedset);
+        ptrs:
+          if (left = nilindex) or (right = nilindex) then
+            compatible := true
+          else
+            begin {Allow compatibility between pointer types and pointers
+                   created with the address operator if the base types are
+                   the same. Also forstall error messages if either pointer
+                   base type is undef. }
+            lptr := ref(bigtable[lptr^.ptrtypename]);
+            rptr := ref(bigtable[rptr^.ptrtypename]);
 
-  begin {compatible}
-    stripsubrange (left);
-    stripsubrange (right);
-    if identical(left, right) then compatible := true
-    else
-      begin
-      compatible := false;
-      lptr := ref(bigtable[left]);
-      rptr := ref(bigtable[right]);
-      if lptr^.typ = rptr^.typ then
-        case lptr^.typ of
-          strings: compatible := true;
-          arrays:
-            compatible := lptr^.stringtype and rptr^.stringtype and
-                          (lptr^.arraymembers = rptr^.arraymembers);
-          sets:
-            compatible := compatible(lptr^.basetype, rptr^.basetype) and
-                          ((lptr^.packedflag = rptr^.packedflag) or
-                          lptr^.constructedset or rptr^.constructedset);
-          ptrs:
-            if (left = nilindex) or (right = nilindex) then
-              compatible := true
-            else
-              begin {Allow compatibility between pointer types and pointers
-                     created with the address operator if the base types are
-                     the same. Also forstall error messages if either pointer
-                     base type is undef. }
-              lptr := ref(bigtable[lptr^.ptrtypename]);
-              rptr := ref(bigtable[rptr^.ptrtypename]);
-
-              c := (lptr^.typeindex = noneindex) or
-                   (rptr^.typeindex = noneindex);
-              if rptr^.refdefined or lptr^.refdefined then
-                c := c or compatible(rptr^.typeindex, lptr^.typeindex);
-              compatible := c;
-              end;
-          end;
-      end;
-  end {compatible} ;
+            c := (lptr^.typeindex = noneindex) or
+                 (rptr^.typeindex = noneindex);
+            if rptr^.refdefined or lptr^.refdefined then
+              c := c or compatible(rptr^.typeindex, lptr^.typeindex);
+            compatible := c;
+            end;
+        end;
+    end;
+end;
 {>>>}
 {<<<}
 function alignmentof (f: entryptr; packedresult: boolean): alignmentrange;
@@ -1690,11 +1669,14 @@ function alignmentof (f: entryptr; packedresult: boolean): alignmentrange;
   kluge causes trouble with packed types, so is deleted if the result
   is to be used in a packed structure. }
 
-  begin {alignmentof}
-    if packedresult = f^.bitaddress then alignmentof := f^.align
-    else if packedresult then alignmentof := f^.align * bitsperunit
-    else alignmentof := (f^.align + bitsperunit - 1) div bitsperunit;
-  end {alignmentof} ;
+begin
+  if packedresult = f^.bitaddress then 
+    alignmentof := f^.align
+  else if packedresult then 
+    alignmentof := f^.align * bitsperunit
+  else 
+    alignmentof := (f^.align + bitsperunit - 1) div bitsperunit;
+end;
 {>>>}
 
 {<<<}
@@ -1702,23 +1684,23 @@ procedure seekstringfile (n: integer);
 { Do the equivalent of a "seek" on the string file.  This sets the
   file and "nextstringfile" to access byte "n" of the stringfile.
 }
-  var
-    newblock: 1..maxstringblks; { block to which seeking }
+var
+  newblock: 1..maxstringblks; { block to which seeking }
 
-  begin {seekstringfile}
-    newblock := n div (diskbufsize + 1) + 1;
-    if newblock <> sharedPtr^.curstringblock then
+begin
+  newblock := n div (diskbufsize + 1) + 1;
+  if newblock <> sharedPtr^.curstringblock then
+    begin
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
+    if sharedPtr^.stringblkptr = nil then
       begin
-      sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
-      if sharedPtr^.stringblkptr = nil then
-        begin
-        new (sharedPtr^.stringblkptr);
-        sharedPtr^.stringblkptrtbl[newblock] := sharedPtr^.stringblkptr;
-        end;
-      sharedPtr^.curstringblock := newblock;
+      new (sharedPtr^.stringblkptr);
+      sharedPtr^.stringblkptrtbl[newblock] := sharedPtr^.stringblkptr;
       end;
-    sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
-  end {seekstringfile} ;
+    sharedPtr^.curstringblock := newblock;
+    end;
+  sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
+end;
 {>>>}
 {<<<}
 procedure getstringfile;

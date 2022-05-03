@@ -1,9 +1,0 @@
-set -v
-#
-./../p2c main.pas
-./../p2c shared.pas
-./../p2c simple1.pas
-./../p2c simple2.pas
-gcc -o simple main.c shared.c simple1.c simple2.c ../p2clib.a
-./simple
-hexdump -C scan.tmp

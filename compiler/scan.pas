@@ -3389,7 +3389,6 @@ begin
     left := chpos;
     right := chpos
     end;
-
   puttoken;
   if tokenbufindex > 0 then
     put (tokenSharedPtr^.tokenFile);
