@@ -1473,9 +1473,9 @@ begin
   TimeStamp (day, month, year, sharedPtr^.starthour, sharedPtr^.startmin, sharedPtr^.startsec);
   settime;
   {<<<  scan/analysis}
-  rewrite (getSharedPtr^.localFile, 'local.tmp');
-  rewrite (getTokenSharedPtr^.tokenFile, 'token.tmp');
-  rewrite (getInterSharedPtr^.interFile, 'inter.tmp');
+  rewrite (getSharedPtr^.localFile, 'output.local');
+  rewrite (getTokenSharedPtr^.tokenFile, 'output.token');
+  rewrite (getInterSharedPtr^.interFile, 'output.inter');
 
   scan1;
   analys;
@@ -1495,9 +1495,9 @@ begin
     resetswitches;
     settime;
 
-    reset (getSharedPtr^.localFile, 'local.tmp');
-    reset (getInterSharedPtr^.interFile, 'inter.tmp');
-    rewrite (getPseudoSharedPtr^.pseudoFile, 'pseudo.tmp');
+    reset (getSharedPtr^.localFile, 'output.local');
+    reset (getInterSharedPtr^.interFile, 'output.inter');
+    rewrite (getPseudoSharedPtr^.pseudoFile, 'output.pseudo');
 
     if travcode then { traverse/code together }
       begin
@@ -1524,7 +1524,7 @@ begin
       resetswitches;
       settime;
 
-      reset (getPseudoSharedPtr^.pseudoFile, 'pseudo.tmp');
+      reset (getPseudoSharedPtr^.pseudoFile, 'output.pseudo');
       code;
       close (getPseudoSharedPtr^.pseudoFile);
 

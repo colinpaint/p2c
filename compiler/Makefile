@@ -34,25 +34,37 @@ dumpPseudo: dumpPseudo.o $(DEP)
 
 all: p68
 
+rebuild:
+	make clean
+	make all -j8
+	make run
+
 run: dumpToken
 	./p68 test.pas/mac
 	./dumpToken
+	cat output.sa
 
 .PHONY: clean
 clean:
 	rm -f -v *.~*
 	rm -f -v *.*~
 	rm -f -v *~
+ #
 	rm -f -v *.o
 	rm -f -v *.c
-	rm -f -v *.sa
-	rm -f -v *.ro
+ #
 	rm -f -v p68
 	rm -f -v dumpToken
 	rm -f -v dumpInter
 	rm -f -v dumpPseudo
-	rm -f -v pmt
+ #
 	rm -f -v *.log
+	rm -f -v *.sa
+	rm -f -v *.ro
 	rm -f -v *.tmp
-	rm -f -v formatted.pas
+	rm -f -v *.token
+	rm -f -v *.rel
+	rm -f -v *.psuedo
 #
+	rm -f -v pmt
+	rm -f -v formatted.pas

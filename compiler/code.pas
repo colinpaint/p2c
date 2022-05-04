@@ -24668,21 +24668,18 @@ begin
   sharedPtr := getSharedPtr;
   pseudoSharedPtr := getPseudoSharedPtr;
 
-  rewrite (relFile, 'rel.tmp');
+  rewrite (relFile, 'output.rel');
 
   getOutputName;
-
   if sharedPtr^.switcheverplus[outputmacro] then
     begin
     getFileName (sharedPtr^.macname, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
-    Writeln ('rewrite ', sharedPtr^.filename: sharedPtr^.filename_length, '.sa');
     rewrite (macFile, 'output.sa');
     end;
 
   if sharedPtr^.switcheverplus[outputobj] then
     begin
     getFileName (sharedPtr^.objname, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
-    Writeln ('rewrite ', sharedPtr^.filename: sharedPtr^.filename_length, '.ro');
     rewrite (objFile, 'output.ro');
     end;
 

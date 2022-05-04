@@ -1,24 +1,23 @@
-{ dumpToken.pas - dump tokens from token.tmp file }
+{ dumpToken.pas - dump tokens output.token file }
 %include 'common.def';
 %include 'token.def';
 
 type
-  tokenlengthtable = array [tokentype] of 0..10; {defines token lengths}
+  tokenLengthTable = array [tokentype] of 0..10;
 
 var
   tokenSharedPtr: tokenSharedPtrType;
-  tokencount: integer;
-  listingname: packed array [1..255] of char;
-  toklengths: tokenlengthtable;
+  tokenLengths: tokenLengthTable;
+  tokenCount: integer;
 
   {<<<}
-  procedure getnexttoken;
+  procedure getNextToken;
 
   var
     t: tokentype;
 
     {<<<}
-    function getint: integer;
+    function getInt: integer;
     { Get an integer value from the file }
 
     var
@@ -41,11 +40,11 @@ var
           fudge.byte[j] := tokenSharedPtr^.tokenFile^.byte;
           get (tokenSharedPtr^.tokenFile);
           end;
-      getint := fudge.int;
+      getInt := fudge.int;
     end;
     {>>>}
     {<<<}
-    procedure getreal (var r: realarray);
+    procedure getReal (var r: realarray);
 
     var
       j: 1..32;
@@ -78,8 +77,8 @@ var
         get (tokenSharedPtr^.tokenFile);
         if t = newfile then
           begin
-          baseline := getint;
-          fileIndex := getint; { stringtable index of filename }
+          baseline := getInt;
+          fileIndex := getInt; { stringtable index of filename }
           end
         else if t = lineinc then
           line := line + 1
@@ -103,13 +102,13 @@ var
           {<<<}
           ident:
             begin
-            key := getint;
-            keyPos := getint;
+            key := getInt;
+            keyPos := getInt;
             end;
           {>>>}
           {<<<}
           intconst:
-            intvalue := getint;
+            intvalue := getInt;
           {>>>}
           {<<<}
           charconst:
@@ -121,24 +120,24 @@ var
           realconst,
           {<<<}
           dblrealconst:
-            getreal(realvalue);
+            getReal (realvalue);
           {>>>}
           {<<<}
           stringconst:
             begin
-            pos := getint;
-            len := getint;
+            pos := getInt;
+            len := getInt;
             end;
           {>>>}
           end
         end
       else
-        right := left + toklengths[t];
+        right := left + tokenLengths[t];
       end
   end;
   {>>>}
   {<<<}
-  procedure printreal (r: realarray);
+  procedure printReal (r: realarray);
 
   type
     hexdigit = 0..15;
@@ -156,7 +155,7 @@ var
       end;
 
     {<<<}
-    procedure writehex (i: hexdigit);
+    procedure writeHex (i: hexdigit);
 
     begin
       if i < 10 then
@@ -171,8 +170,8 @@ var
     write (fudge.rr: 21, ' (');
     for j := 1 to size (realarray) do
       begin
-      writehex (fudge.byte[j] div 16);
-      writehex (fudge.byte[j] mod 16);
+      writeHex (fudge.byte[j] div 16);
+      writeHex (fudge.byte[j] mod 16);
       end;
     write(')');
   end;
@@ -182,97 +181,97 @@ begin
   new (tokenSharedPtr);
 
   {<<<  init token lengths}
-  toklengths[programsym] := 6;
-  toklengths[labelsym] := 4;
-  toklengths[constsym] := 4;
-  toklengths[typesym] := 3;
-  toklengths[varsym] := 2;
-  toklengths[proceduresym] := 8;
-  toklengths[functionsym] := 7;
-  toklengths[uparrow] := 0;
-  toklengths[arraysym] := 4;
-  toklengths[filesym] := 3;
-  toklengths[setsym] := 2;
-  toklengths[recordsym] := 5;
-  toklengths[stringsym] := 5;
-  toklengths[univsym] := 3;
-  toklengths[packedsym] := 5;
-  toklengths[originsym] := 5;
-  toklengths[beginsym] := 4;
-  toklengths[ifsym] := 1;
-  toklengths[casesym] := 3;
-  toklengths[whilesym] := 4;
-  toklengths[repeatsym] := 5;
-  toklengths[forsym] := 2;
-  toklengths[withsym] := 3;
-  toklengths[gotosym] := 3;
-  toklengths[usesym] := 2;
-  toklengths[definesym] := 5;
-  toklengths[sharedsym] := 5;
+  tokenLengths[programsym] := 6;
+  tokenLengths[labelsym] := 4;
+  tokenLengths[constsym] := 4;
+  tokenLengths[typesym] := 3;
+  tokenLengths[varsym] := 2;
+  tokenLengths[proceduresym] := 8;
+  tokenLengths[functionsym] := 7;
+  tokenLengths[uparrow] := 0;
+  tokenLengths[arraysym] := 4;
+  tokenLengths[filesym] := 3;
+  tokenLengths[setsym] := 2;
+  tokenLengths[recordsym] := 5;
+  tokenLengths[stringsym] := 5;
+  tokenLengths[univsym] := 3;
+  tokenLengths[packedsym] := 5;
+  tokenLengths[originsym] := 5;
+  tokenLengths[beginsym] := 4;
+  tokenLengths[ifsym] := 1;
+  tokenLengths[casesym] := 3;
+  tokenLengths[whilesym] := 4;
+  tokenLengths[repeatsym] := 5;
+  tokenLengths[forsym] := 2;
+  tokenLengths[withsym] := 3;
+  tokenLengths[gotosym] := 3;
+  tokenLengths[usesym] := 2;
+  tokenLengths[definesym] := 5;
+  tokenLengths[sharedsym] := 5;
 
-  toklengths[eql] := 0;
-  toklengths[lss] := 0;
-  toklengths[gtr] := 0;
-  toklengths[neq] := 1;
-  toklengths[leq] := 1;
-  toklengths[geq] := 1;
-  toklengths[insym] := 1;
-  toklengths[plus] := 0;
-  toklengths[minus] := 0;
-  toklengths[orsym] := 1;
-  toklengths[star] := 0;
-  toklengths[slash] := 0;
-  toklengths[divsym] := 2;
-  toklengths[modsym] := 2;
-  toklengths[andsym] := 2;
-  toklengths[ofsym] := 1;
-  toklengths[endsym] := 2;
-  toklengths[elsesym] := 3;
-  toklengths[thensym] := 3;
-  toklengths[otherwisesym] := 8;
-  toklengths[dosym] := 1;
-  toklengths[untilsym] := 4;
-  toklengths[tosym] := 1;
-  toklengths[downtosym] := 5;
-  toklengths[notsym] := 2;
-  toklengths[at] := 0;
-  toklengths[nilsym] := 2;
-  toklengths[colon] := 0;
-  toklengths[dot] := 0;
-  toklengths[dotdot] := 1;
-  toklengths[comma] := 0;
-  toklengths[semicolon] := 0;
+  tokenLengths[eql] := 0;
+  tokenLengths[lss] := 0;
+  tokenLengths[gtr] := 0;
+  tokenLengths[neq] := 1;
+  tokenLengths[leq] := 1;
+  tokenLengths[geq] := 1;
+  tokenLengths[insym] := 1;
+  tokenLengths[plus] := 0;
+  tokenLengths[minus] := 0;
+  tokenLengths[orsym] := 1;
+  tokenLengths[star] := 0;
+  tokenLengths[slash] := 0;
+  tokenLengths[divsym] := 2;
+  tokenLengths[modsym] := 2;
+  tokenLengths[andsym] := 2;
+  tokenLengths[ofsym] := 1;
+  tokenLengths[endsym] := 2;
+  tokenLengths[elsesym] := 3;
+  tokenLengths[thensym] := 3;
+  tokenLengths[otherwisesym] := 8;
+  tokenLengths[dosym] := 1;
+  tokenLengths[untilsym] := 4;
+  tokenLengths[tosym] := 1;
+  tokenLengths[downtosym] := 5;
+  tokenLengths[notsym] := 2;
+  tokenLengths[at] := 0;
+  tokenLengths[nilsym] := 2;
+  tokenLengths[colon] := 0;
+  tokenLengths[dot] := 0;
+  tokenLengths[dotdot] := 1;
+  tokenLengths[comma] := 0;
+  tokenLengths[semicolon] := 0;
 
-  toklengths[becomes] := 1;
+  tokenLengths[becomes] := 1;
 
-  toklengths[lpar] := 0;
-  toklengths[rpar] := 0;
+  tokenLengths[lpar] := 0;
+  tokenLengths[rpar] := 0;
 
-  toklengths[lbrack] := 0;
-  toklengths[rbrack] := 0;
+  tokenLengths[lbrack] := 0;
+  tokenLengths[rbrack] := 0;
 
-  toklengths[intconst] := 0;
-  toklengths[realconst] := 0;
-  toklengths[dblrealconst] := 0;
-  toklengths[charconst] := 0;
-  toklengths[stringconst] := 0;
+  tokenLengths[intconst] := 0;
+  tokenLengths[realconst] := 0;
+  tokenLengths[dblrealconst] := 0;
+  tokenLengths[charconst] := 0;
+  tokenLengths[stringconst] := 0;
 
-  toklengths[ident] := 0;
-  toklengths[eofsym] := 0;
+  tokenLengths[ident] := 0;
+  tokenLengths[eofsym] := 0;
 
-  toklengths[lineinc] := 0;
-  toklengths[lineadd] := 0;
-  toklengths[newfile] := 0;
+  tokenLengths[lineinc] := 0;
+  tokenLengths[lineadd] := 0;
+  tokenLengths[newfile] := 0;
   {>>>}
-  tokencount := 0;
+  tokenCount := 0;
   tokenSharedPtr^.nexttoken.line := 1;
 
-  reset (tokenSharedPtr^.tokenFile, 'token.tmp');
-  getnexttoken;
+  reset (tokenSharedPtr^.tokenFile, 'output.token');
+  getNextToken;
 
   writeln (' Base  Line Left Right   pos index Id Token');
   repeat
-    tokencount := tokencount + 1;
+    tokenCount := tokenCount + 1;
     with tokenSharedPtr^.nexttoken do
       begin
       write (baseline:5, ' ', line:5, ' ', left:4, ' ', right:5, ' ',filePos:5, ' ', fileIndex:5, ' ', ord(token):2, ' ');
@@ -343,11 +342,11 @@ begin
         intconst:     write ('INTCONST value:', intvalue:1);
         realconst:    begin
                       write ('REALCONST value: ');
-                      printreal (realvalue);
+                      printReal (realvalue);
                       end;
         dblrealconst: begin
                       write ('DBLREALCONST value: ');
-                      printreal (realvalue);
+                      printReal (realvalue);
                       end;
         charconst:    write ('CHARCONST value:', intvalue:1);
         stringconst:  write ('STRINGCONST pos:', pos:1, ' len:',len:1);
@@ -357,14 +356,13 @@ begin
       {>>>}
       writeln;
       end;
-
-    getnexttoken;
+    getNextToken;
   until (tokenSharedPtr^.nexttoken.token = eofsym) or eof (tokenSharedPtr^.tokenFile);
 
   with tokenSharedPtr^.nexttoken do
     writeln (baseline:5, line:5, ' ', left:4, ' ', right:4, filePos:5, fileIndex:5, ord(token):3, ' EOF');
   close (tokenSharedPtr^.tokenFile);
 
-  writeln (tokencount: 1, ' tokens');
+  writeln (tokenCount: 1, ' tokens');
   close (output);
 end.

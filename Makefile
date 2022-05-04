@@ -10,8 +10,11 @@ CFLAGS = $(OPT) $(DEB)
 # File names
 OBJS = main.o stuff.o out.o comment.o lex.o parse.o decl.o expr.o pexpr.o funcs.o dir.o
 
-# all
 all: p2c p2clib.a
+
+rebuild: 
+	make clean
+	make all
 
 # p2c - app
 p2c: $(OBJS)
