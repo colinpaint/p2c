@@ -17,46 +17,35 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+// linux is __STDC__ __GNUC__
+//#define reportPredefined
 #define Static
 #include <stdio.h>
 #include <ctype.h>
 
 //{{{
-#ifdef __STDC__
+#if defined(__STDC__)
+  #ifdef REPORT_PREDEFINED
+    #pragma message("__STDC__")
+  #endif
+
   #define PP(x)  x             /* use true prototypes */
   #define PV()   (void)
   #define Anyptr void
   #define __CAT__(a,b)a##b
-#else
-  #define PP(x)  ()            /* use old-style declarations */
-  #define PV()   ()
-  #define Anyptr char
-  #define __ID__(a)a
-  #define __CAT__(a,b)__ID__(a)b
-#endif
-//}}}
-//{{{
-#ifdef FILE       /* a #define in BSD, a typedef in SYSV (hp-ux, at least) */
-  #ifndef BSD
-    #define BSD 1
-  #endif
-#endif
-//}}}
-//{{{
-#ifdef BSD
-  #if !BSD
-    #undef BSD
-  #endif
-#endif
-//}}}
-//{{{
-#if defined(__STDC__)
+
   #include <stdlib.h>
   #include <stddef.h>
   #include <limits.h>
   #include <string.h>
 
 #else
+  #define PP(x)  ()            /* use old-style declarations */
+  #define PV()   ()
+  #define Anyptr char
+  #define __ID__(a)a
+  #define __CAT__(a,b)__ID__(a)b
+
   #ifndef BSD
     #include <malloc.h>
     #include <memory.h>
@@ -78,17 +67,23 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
 //{{{
 #ifdef __GNUC__      /* Fast, in-line version of strcmp */
-# define strcmp(a,b) ({ char *_aa = (a), *_bb = (b); int _diff;  \
-      for (;;) {    \
-          if (!*_aa && !*_bb) { _diff = 0; break; }   \
-                            if (*_aa++ != *_bb++)    \
-        { _diff = _aa[-1] - _bb[-1]; break; }   \
-      } _diff; })
-#endif
-//}}}
-//{{{
-#if defined(HASDUMPS) && defined(define_globals)
-  #define DEFDUMPS
+  #ifdef REPORT_PREDEFINED
+    #pragma message("__GNUC__")
+  #endif
+
+  #define strcmp(a,b) ({ char *_aa = (a), *_bb = (b); int _diff;  \
+     for (;;) {              \
+       if (!*_aa && !*_bb) { \
+         _diff = 0;          \
+         break;              \
+         }                   \
+                             \
+       if (*_aa++ != *_bb++) {      \
+         _diff = _aa[-1] - _bb[-1]; \
+         break; }                   \
+        } _diff;                    \
+        })
+
 #endif
 //}}}
 
@@ -190,7 +185,7 @@ typedef enum E_token {
 } Token;
 //}}}
 
-#ifdef define_globals
+#ifdef DEFINE_GLOBALS
   //{{{
   char* toknames[(int)TOK_LAST] = {
      "",
@@ -440,17 +435,17 @@ enum meaningkind {
     MK_PARAM, MK_VARPARAM, MK_VARREF, MK_VARMAC,
     MK_SPVAR, MK_SYNONYM,
     MK_LAST
-} ;
+    };
 
-#ifdef DEFDUMPS
-char *meaningkindnames[(int)MK_LAST] = {
+#if defined (DEFINE_GLOBALS)
+  char *meaningkindnames[(int)MK_LAST] = {
     "MK_NONE", "MK_SPECIAL",
     "MK_MODULE", "MK_FUNCTION", "MK_CONST", "MK_VAR", "MK_TYPE",
     "MK_FIELD", "MK_LABEL", "MK_VARIANT",
     "MK_PARAM", "MK_VARPARAM", "MK_VARREF", "MK_VARMAC",
     "MK_SPVAR", "MK_SYNONYM"
-} ;
-#endif /*DEFDUMPS*/
+    };
+#endif
 
 typedef struct S_meaning {
     struct S_meaning *snext;   /* Next meaning for this symbol */
@@ -611,25 +606,25 @@ typedef struct S_meaning {
  */
 
 enum typekind {
-    TK_NONE,
-    TK_INTEGER, TK_CHAR, TK_BOOLEAN, TK_REAL, TK_VOID,
-    TK_SUBR, TK_ENUM, TK_POINTER, TK_STRING,
-    TK_RECORD, TK_ARRAY, TK_SET, TK_FILE, TK_FUNCTION,
-    TK_PROCPTR, TK_SMALLSET, TK_SMALLARRAY, TK_CPROCPTR,
-    TK_SPECIAL, TK_BIGFILE,
-    TK_LAST
-} ;
+  TK_NONE,
+  TK_INTEGER, TK_CHAR, TK_BOOLEAN, TK_REAL, TK_VOID,
+  TK_SUBR, TK_ENUM, TK_POINTER, TK_STRING,
+  TK_RECORD, TK_ARRAY, TK_SET, TK_FILE, TK_FUNCTION,
+  TK_PROCPTR, TK_SMALLSET, TK_SMALLARRAY, TK_CPROCPTR,
+  TK_SPECIAL, TK_BIGFILE,
+  TK_LAST
+  };
 
-#ifdef DEFDUMPS
-char *typekindnames[(int)TK_LAST] = {
+#if defined(DEFINE_GLOBALS)
+  char *typekindnames[(int)TK_LAST] = {
     "TK_NONE",
     "TK_INTEGER", "TK_CHAR", "TK_BOOLEAN", "TK_REAL", "TK_VOID",
     "TK_SUBR", "TK_ENUM", "TK_POINTER", "TK_STRING",
     "TK_RECORD", "TK_ARRAY", "TK_SET", "TK_FILE", "TK_FUNCTION",
     "TK_PROCPTR", "TK_SMALLSET", "TK_SMALLARRAY", "TK_CPROCPTR",
     "TK_SPECIAL", "TK_BIGFILE"
-} ;
-#endif /*DEFDUMPS*/
+    };
+#endif
 
 typedef struct S_type {
     enum typekind kind;        /* Kind of type */
@@ -817,10 +812,10 @@ enum exprkind {
     EK_COMMA, EK_LONGCONST, EK_NAME, EK_CTX, EK_SPCALL,
     EK_LITCAST, EK_TYPENAME, EK_NEW, EK_DELETE,
     EK_LAST
-} ;
+    };
 
-#ifdef DEFDUMPS
-char *exprkindnames[(int)EK_LAST] = {
+#if defined(DEFINE_GLOBALS)
+  char *exprkindnames[(int)EK_LAST] = {
     "EK_EQ", "EK_NE", "EK_LT", "EK_GT", "EK_LE", "EK_GE",
     "EK_PLUS", "EK_NEG", "EK_TIMES", "EK_DIVIDE",
     "EK_DIV", "EK_MOD",
@@ -833,8 +828,8 @@ char *exprkindnames[(int)EK_LAST] = {
     "EK_MACARG", "EK_BICALL", "EK_STRUCTCONST", "EK_STRUCTOF",
     "EK_COMMA", "EK_LONGCONST", "EK_NAME", "EK_CTX", "EK_SPCALL",
     "EK_LITCAST", "EK_TYPENAME", "EK_NEW", "EK_DELETE"
-} ;
-#endif /*DEFDUMPS*/
+    };
+#endif
 
 typedef struct S_expr {
     enum exprkind kind;
@@ -916,31 +911,31 @@ typedef struct S_expr {
  */
 
 enum stmtkind {
-    SK_ASSIGN, SK_RETURN,
-    SK_CASE, SK_CASELABEL, SK_IF,
-    SK_FOR, SK_REPEAT, SK_WHILE, SK_BREAK, SK_CONTINUE,
-    SK_TRY, SK_GOTO, SK_LABEL,
-    SK_HEADER, SK_CASECHECK, SK_BODY,
-    SK_LAST
-} ;
+  SK_ASSIGN, SK_RETURN,
+  SK_CASE, SK_CASELABEL, SK_IF,
+  SK_FOR, SK_REPEAT, SK_WHILE, SK_BREAK, SK_CONTINUE,
+  SK_TRY, SK_GOTO, SK_LABEL,
+  SK_HEADER, SK_CASECHECK, SK_BODY,
+  SK_LAST
+  };
 
-#ifdef DEFDUMPS
-char *stmtkindnames[(int)SK_LAST] = {
+#if defined(DEFINE_GLOBALS)
+  char *stmtkindnames[(int)SK_LAST] = {
     "SK_ASSIGN", "SK_RETURN",
     "SK_CASE", "SK_CASELABEL", "SK_IF",
     "SK_FOR", "SK_REPEAT", "SK_WHILE", "SK_BREAK", "SK_CONTINUE",
     "SK_TRY", "SK_GOTO", "SK_LABEL",
     "SK_HEADER", "SK_CASECHECK", "SK_BODY"
-} ;
-#endif /*DEFDUMPS*/
+    };
+#endif
 
 typedef struct S_stmt {
-    enum stmtkind kind;
-    struct S_stmt *next, *stm1, *stm2;
-    struct S_expr *exp1, *exp2, *exp3;
-    long serial, trueprops, falseprops;
-    unsigned quietelim:1, doinit:1;
-} Stmt;
+  enum stmtkind kind;
+  struct S_stmt *next, *stm1, *stm2;
+  struct S_expr *exp1, *exp2, *exp3;
+  long serial, trueprops, falseprops;
+  unsigned quietelim:1, doinit:1;
+  } Stmt;
 //}}}
 
 //{{{  Flags for out_declarator()
@@ -1695,10 +1690,10 @@ struct rcstruct {
   extern Strlist *rcprevvalues[];
 #endif
 
-//{{{  global vars 
-#ifdef define_globals
+//{{{  global vars
+#ifdef DEFINE_GLOBALS
   #define extern
-#endif 
+#endif
 
 extern char *charname, *ucharname, *scharname, *integername;
 extern long min_schar, max_schar, max_uchar;
@@ -1789,7 +1784,7 @@ extern Expr *ex_input, *ex_output;
 extern Strlist *attrlist;
 extern Expr *new_array_size;
 
-#ifndef define_globals
+#ifndef DEFINE_GLOBALS
   #undef extern
 #endif
 //}}}

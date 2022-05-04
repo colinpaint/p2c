@@ -23,6 +23,8 @@
 #include <string.h>
 
 #if defined(NON_ANSI_CAT) && !defined(ANSI_CAT)
+  #pragma message("NON_ANSI_CAT && !ANSI_CAT")
+
   #ifdef NON_ANSI_CAT_ALTERNATE
     #define __CAT__(a,b)a/**/b
   #else
@@ -30,6 +32,7 @@
     #define __CAT__(a,b)__ID__(a)b
   #endif
 #else
+  //#pragma message("CAT is a##b")
   #define __CAT__(a,b)a##b
 #endif
 //}}}
@@ -48,18 +51,20 @@ typedef struct __p2c_jmp_buf {
 //   but a typical implementation of longjmp will get it right anyway.
 //{{{
 #ifndef FAKE_TRY
-# define TRY(x)         do { __p2c_jmp_buf __try_jb;  \
-           __try_jb.next = __top_jb;  \
-           if (!setjmp((__top_jb = &__try_jb)->jbuf)) {
-# define RECOVER(x) __top_jb = __try_jb.next; } else {
-# define RECOVER2(x,L)  __top_jb = __try_jb.next; } else {  \
-           if (0) { L: __top_jb = __try_jb.next; }
-# define ENDTRY(x)      } } while (0)
+  #define TRY(x)  do { __p2c_jmp_buf __try_jb;  \
+                    __try_jb.next = __top_jb;  \
+                    if (!setjmp((__top_jb = &__try_jb)->jbuf)) {
+
+  #define RECOVER(x) __top_jb = __try_jb.next; } else {
+  #define RECOVER2(x,L)  __top_jb = __try_jb.next; } else { if (0) { L: __top_jb = __try_jb.next; }
+
+  #define ENDTRY(x)      } } while (0)
+
 #else
-# define TRY(x)         if (1) {
-# define RECOVER(x)     } else do {
-# define RECOVER2(x,L)  } else do { L: ;
-# define ENDTRY(x)      } while (0)
+  #define TRY(x)         if (1) {
+  #define RECOVER(x)     } else do {
+  #define RECOVER2(x,L)  } else do { L: ;
+  #define ENDTRY(x)      } while (0)
 #endif
 //}}}
 //{{{
@@ -90,48 +95,32 @@ typedef struct __p2c_jmp_buf {
 //}}}
 //{{{
 #ifndef SUCCESS
-  #ifdef vms
-    #define EXIT_SUCCESS  1
-    #define EXIT_FAILURE  (02000000000L)
-  #else
-    #define EXIT_SUCCESS  0
-    #define EXIT_FAILURE  1
-  #endif
+  #define EXIT_SUCCESS  0
+  #define EXIT_FAILURE  1
 #endif
 //}}}
 
 #define SETBITS  32
 //{{{
 #if defined(__STDC__)
-  #if !defined(vms) && !defined(M_LINT)
-    #define Signed    signed
-  #else
-    #define Signed
-  #endif
-
+  #define Signed   signed
   #define Void       void      /* Void f() = procedure */
 
   #ifndef Const
-    #define Const     const
+    #define Const    const
   #endif
 
   #ifndef Volatile
-    #define Volatile   volatile
+    #define Volatile volatile
   #endif
 
-  #ifdef M_LINT
-    #define PP(x)     ()
-    #define PV()      ()
-    typedef char* Anyptr;
-  #else
-    #define PP(x)     x         /* function prototype */
-    #define PV()      (void)    /* null function prototype */
-    typedef void* Anyptr;
-  #endif
+  #define PP(x)  x         /* function prototype */
+  #define PV()   (void)    /* null function prototype */
+  typedef void*  Anyptr;
 
 #else
   #define Signed
-  #define Void       void
+  #define Void      void
 
   #ifndef Const
     #define Const
@@ -141,8 +130,8 @@ typedef struct __p2c_jmp_buf {
     #define Volatile
   #endif
 
-  #define PP(x)      ()
-  #define PV()       ()
+  #define PP(x) ()
+  #define PV()  ()
   typedef char* Anyptr;
 
 #endif

@@ -17,7 +17,7 @@ along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
 #define _CRT_SECURE_NO_WARNINGS
-#define define_globals
+#define DEFINE_GLOBALS
 #define PROTO_TRANS_C
 #include "main.h"
 #include <time.h>

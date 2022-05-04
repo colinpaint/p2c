@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
+
 //{{{
 /* This needs to go before main.h (and thus p2c.proto) is read */
 typedef struct S_paren {
@@ -23,7 +25,6 @@ typedef struct S_paren {
   int pos, indent, qmindent, flags;
   } Paren;
 //}}}
-#define _CRT_SECURE_NO_WARNINGS
 #define PROTO_OUT_C
 #include "main.h"
 //{{{
