@@ -1134,56 +1134,6 @@ var
 }
 {>>>}
 {<<<}
-function getvartableptr(i: integer {index in vartable}): vartablerecptr;
-  forward;
-
-{ Returns a pointer to the ith vartable entry.
-}
-{>>>}
-{<<<}
-procedure getpseudobuff;
-  forward;
-
-{ Get and unpack the next element in the pseudofile, leaving the result
-  in "pseudobuff".
-}
-{>>>}
-{<<<}
-procedure unpackpseudofile;
-  forward;
-
-{ Get the next pseudo-instruction in "pseudobuf" and distribute some
-  of the fields into other global variables.
-}
-{>>>}
-
-{<<<}
-procedure getreal(var rval: realarray);
-  forward;
-
-{ Get a real value from the pseudo instructions.
-}
-{>>>}
-{<<<}
-procedure realtoints(rval: realarray; { value to convert }
-                     len: unsigned; { length desired }
-                     var i1, i2: integer { resulting integers } );
-  forward;
-
-{ Convert a real number to integers.
-}
-
-{>>>}
-{<<<}
-procedure newnode;
-  forward;
-
-{ Increment "lastnode", checking for instruction table overflow.  Sets
-"lastptr" using cwriteaccess, to allow caller to easily fill in the
-node.
-}
-{>>>}
-{<<<}
 procedure geninst(i: insttype; {instruction to generate}
                   l: operandrange; {number of operands}
                   olen: datarange {length of operands} );
@@ -1301,35 +1251,6 @@ procedure gen_bf_inst(i: insttype; {the instruction to generate}
 }
 {>>>}
 {<<<}
-procedure genadcon(m: modes; {what kind of thing we're referring to}
-                   what: integer; {which one, or its location}
-                   where: commonlong_reloc_type {which section, if known} );
-  forward;
-
-{ Generate an address constant for the Apollo.
-}
-{>>>}
-{<<<}
-procedure gensymboladcon(n: string8 {symbol name} );
-  forward;
-
-{ Generate an address constant for a symbol reference for the Apollo.
-}
-
-{>>>}
-{<<<}
-procedure setcommonkey;
-  forward;
-
-{ Check the key specified in the pseudoinstruction just read, and if
-  it is a new key initialize its fields from the data in the pseudo-
-  instruction.
-
-  This uses the global "key", which is the operand for the latest
-  pseudoinstruction.
-}
-{>>>}
-{<<<}
 procedure settemp(lth: datarange; {length of data referenced}
                   m: modes; {args are the same as for setvalue}
                   reg, indxr: regindex;
@@ -1418,13 +1339,6 @@ procedure delete(m: nodeindex; {first node to delete}
 {>>>}
 
 {<<<}
-procedure aligntemps;
-  forward;
-
-{ Make sure run-time stack aligns with the keytable model.
-}
-{>>>}
-{<<<}
 procedure newtemp(size: addressrange {size of temp to allocate} );
   forward;
 
@@ -1493,32 +1407,6 @@ procedure returntemps(cnt: integer {number of temps to return} );
   any instructions emitted since they were allocated
 }
 {>>>}
-{<<<}
-function uselesstemp: boolean;
-  forward;
-
-{ True if the top temp on the tempstack is no longer needed.
-}
-{>>>}
-{<<<}
-procedure adjusttemps;
-  external;
-
-{ Remove any temps which are no longer required.  In the process, the
-  stack pointer must be adjusted, and any instructions emitted since the
-  temp was allocated must be adjusted if they addressed anything relative
-  to sp.
-
-  If the temp was never used, the instruction which created it is deleted,
-  and intermediate offsets must be modified because the stack pointer
-  was never decremented.  Otherwise, the stack book-keeping field in the
-  node is decremented but the offset itself is left alone.
-
-  The global "adjustdelay" is used to delay adjusting temps by one instruction
-  when the next instruction is going to be a "savecontext".  This avoids much
-  useless stack adjustment in multi-branch statements.
-}
-{>>>}
 
 {<<<}
 procedure definelabel(l: integer {label number to define} );
@@ -1533,13 +1421,10 @@ procedure definelabel(l: integer {label number to define} );
 }
 {>>>}
 {<<<}
-procedure definelastlabel;
+function uselesstemp: boolean;
   forward;
 
-{ Define the label with number "lastlabel".  This is used by the code
-  generator to generate new labels as needed.  Such "local" labels are
-  defined from "maxint" down, while labels emitted by travrs are defined
-  from 1 up.
+{ True if the top temp on the tempstack is no longer needed.
 }
 {>>>}
 
@@ -1561,11 +1446,6 @@ procedure callsupport(bn: libroutines {support routine to call} );
 
 {>>>}
 {<<<}
-procedure genprofstmt;
-  forward;
-
-{>>>}
-{<<<}
 procedure supname(libroutine: libroutines;
                   var s: packed array[lo..hi: integer] of char);
   forward;
@@ -1583,54 +1463,9 @@ function instlength(n: nodeindex {must refer to an instruction} ): integer;
 }
 {>>>}
 
-{<<<}
-procedure refglobal(m: modes; {usercall, supportcall, etc.}
-                    what: integer {which routine or other global} );
-  forward;
-
-{ Look up a global reference in the reference list, and if absent,
-  append it to the list.
-}
-{>>>}
-{<<<}
-procedure refsymbol(n: string8 {symbol name} );
-  forward;
-
-{ Look up a symbol reference in the reference list, and if absent,
-  append it to the list.
-}
-{>>>}
-{<<<}
-procedure defglobal(m: modes; {usercall, supportcall, etc.}
-                    what: integer; {which routine or other global}
-                    sect: commonlong_reloc_type; {which section}
-                    where: addressrange {where within the section} );
-  forward;
-
-{ Append a global definition to the definition list.
-}
-{>>>}
-{<<<}
-procedure defsymbol(sym: string8; {symbol name}
-                    sect: commonlong_reloc_type; {which section}
-                    where: addressrange {where within the section} );
-  forward;
-
-{ Append a symbol definition to the definition list.
-}
-{>>>}
 
 { These declarations are here so code and putcode may be compiled separately. }
-procedure insertnewESD; forward;
-procedure initdiags; forward;
-procedure InitMac; forward;
-procedure InitObj; forward;
-procedure FixMac; forward;
-procedure FixObj; forward;
 function dump_externals: integer; forward;
-procedure fixdiags; forward;
-procedure FixDefines; forward;
-procedure putdatax; forward;
 
 { This function is in genblk, but it is needed in commc for 24-bit pic. }
 function getareg: regindex; forward;
@@ -1641,12 +1476,11 @@ procedure gendouble(i: insttype; {instruction to generate}
                     src, dst: keyindex {operand descriptors} ); forward;
 procedure fpgendouble(i: insttype; {instruction to generate}
                       src, dst: keyindex {operand descriptors} ); forward;
-procedure copy_openarrays; forward;
 
 { Generate a double operand f.p. instruction.  Like gensingle, calculates
   operand length and calls fixaccess to generate stack pop and push modes. }
 {<<<}
-procedure fptodouble(x: realarray;         { * temporary definition * }
+procedure fptodouble (x: realarray;         { * temporary definition * }
                      var d: realarray;
                      var err: boolean);
 { Convert floating point x to IEEE double format.
@@ -1655,7 +1489,7 @@ procedure fptodouble(x: realarray;         { * temporary definition * }
   forward;
 {>>>}
 {<<<}
-procedure fptosingle(x: realarray;         { * temporary definition * }
+procedure fptosingle (x: realarray;         { * temporary definition * }
                      var s: realarray;
                      var err: boolean);
 { Convert floating point x to IEEE single format.
@@ -1664,7 +1498,7 @@ procedure fptosingle(x: realarray;         { * temporary definition * }
   forward;
 {>>>}
 {<<<}
-procedure fptoint(x: realarray;         { * temporary definition * }
+procedure fptoint (x: realarray;         { * temporary definition * }
                   var i: integer;
                   tounsigned: boolean;
                   var err: boolean);
@@ -1674,17 +1508,15 @@ procedure fptoint(x: realarray;         { * temporary definition * }
   forward;
 {>>>}
 {>>>}
+
 {<<<  commc}
 {<<<}
-function getvartableptr{(i: integer (index in vartable)): vartablerecptr};
+function getvartableptr (i: integer): vartablerecptr};
+{ Returns a pointer to the ith vartable entry }
 
-{ Returns a pointer to the ith vartable entry.
-}
-
-  begin {getvartableptr}
-  getvartableptr := ref(sharedPtr^.vartable[i div (maxvarentries + 1) + 1]^
-                                           [i mod (maxvarentries + 1)]);
-  end {getvartableptr} ;
+begin
+  getvartableptr := ref(sharedPtr^.vartable[i div (maxvarentries + 1) + 1]^[i mod (maxvarentries + 1)]);
+end;
 {>>>}
 
 {<<<}
@@ -1821,32 +1653,27 @@ procedure unpackpseudofile;
 {>>>}
 
 {<<<}
-procedure getreal {var rval: realarray};
-
+procedure getreal (var rval: realarray);
 { Get a real number from the pseudo instruction.  We are making the assumption
   here (as elsewhere) that integers are at least 32 bits long so we can
   fit the entire real into one pseudoinstruction.
 }
+var
+  kluge:
+    record case boolean of
+      true: (rval: realarray);
+      false: (ival: packed array [1..3] of integer;);
+      end;
 
-  var
-    kluge:
-      record case boolean of
-        true: (rval: realarray);
-        false: (ival: packed array [1..3] of integer;);
-        end;
-  begin
-    kluge.ival[1] := pseudoSharedPtr^.pseudoinst.oprnds[1];
-    kluge.ival[2] := pseudoSharedPtr^.pseudoinst.oprnds[2];
-    kluge.ival[3] := pseudoSharedPtr^.pseudoinst.oprnds[3];
-    rval := kluge.rval;
-  end;
+begin
+   kluge.ival[1] := pseudoSharedPtr^.pseudoinst.oprnds[1];
+  kluge.ival[2] := pseudoSharedPtr^.pseudoinst.oprnds[2];
+  kluge.ival[3] := pseudoSharedPtr^.pseudoinst.oprnds[3];
+  rval := kluge.rval;
+end;
 {>>>}
 {<<<}
-procedure realtoints
-                    {rval: realarray; (value to convert)
-                     len: natural; (length desired)
-                     var i1, i2: integer (resulting integers)} ;
-
+procedure realtoints (rval: realarray; len: natural; var i1, i2: integer);
 { Convert a real value, stored as an extended value, into two
   integers.  This assumes (obviously) that all real values will
   fit into two integers.  It further assumes that integers are
@@ -1854,238 +1681,48 @@ procedure realtoints
   a single 32 bit value easily.  However, it makes no assumptions
   about the order in which these values are stored.
 }
-    var
-      dumm: boolean; {dummy error flag}
-      tr: unsigned;
+var
+  dumm: boolean; {dummy error flag}
+  tr: unsigned;
 
-    begin
-{      if len = quad then fptodouble(rval, rval, dumm)
-      else fptosingle(rval, rval, dumm); }
-      tr := rval[1];
-      i1 := tr * 65536 + rval[2];
-      tr := rval[3];
-      i2 := tr * 65536 + rval[4];
-    end; {realtoints}
+begin
+  {if len = quad then fptodouble(rval, rval, dumm)
+  else fptosingle(rval, rval, dumm); }
+  tr := rval[1];
+  i1 := tr * 65536 + rval[2];
+  tr := rval[3];
+  i2 := tr * 65536 + rval[4];
+end;
 {>>>}
 
-{<<<}
-procedure refglobal
-                   {m: modes; (usercall, supportcall, etc.)
-                    what: integer (which routine or other global) };
-
-{ Look up a global reference in the reference list, and if absent,
-  append it to the list.  Apollo only.
-}
-
-  var
-    g: globalentryptr; {used to find or create the entry}
-    found: boolean; {this one's already in the list}
-
-
-  begin {refglobal}
-    if targetopsys = apollo then
-      begin
-      g := firstref;
-      found := false;
-      while g <> nil do
-        with g^ do
-          if (m = mode) then
-            if m = commonlong then
-              if what = reloc then
-                begin
-                found := true;
-                g := nil;
-                end
-              else g := nextglobal
-            else if what = offset then
-              begin
-              found := true;
-              g := nil;
-              end
-            else g := nextglobal
-          else g := nextglobal;
-
-      if not found then
-        begin
-        new(g);
-        with g^ do
-          begin
-          nextglobal := nil;
-          done := false;
-          mode := m;
-          if m = commonlong then
-            begin
-            offset := 0;
-            reloc := what;
-            end
-          else
-            begin
-            offset := what;
-            reloc := unknown;
-            end;
-          addr := 0;
-          end {with} ;
-        if lastref = nil then
-          begin
-          firstref := g;
-          nextref := g;
-          end
-        else lastref^.nextglobal := g;
-        lastref := g;
-        end;
-      end;
-  end {refglobal} ;
-{>>>}
-{<<<}
-procedure refsymbol
-                   {n: string8 (symbol name) };
-
-{ Look up a symbol reference in the reference list, and if absent,
-  append it to the list.  Apollo only.
-}
-
-  var
-    g: globalentryptr; {used to find or create the entry}
-    found: boolean; {this one's already in the list}
-
-
-  begin {refsymbol}
-    if targetopsys = apollo then
-      begin
-      g := firstref;
-      found := false;
-      while g <> nil do
-        with g^ do
-          if (mode = symbol) and (n = name) then
-            begin
-            found := true;
-            g := nil;
-            end
-          else g := nextglobal;
-      if not found then
-        begin
-        new(g);
-        with g^ do
-          begin
-          nextglobal := nil;
-          done := false;
-          mode := symbol;
-          name := n;
-          reloc := unknown;
-          addr := 0;
-          end {with} ;
-        if lastref = nil then
-          begin
-          firstref := g;
-          nextref := g;
-          end
-        else lastref^.nextglobal := g;
-        lastref := g;
-        end;
-      end;
-  end {refsymbol} ;
-{>>>}
-{<<<}
-procedure defglobal
-                   {m: modes; (usercall, supportcall, etc.)
-                    what: integer; (which routine or other global)
-                    sect: commonlong_reloc_type; (which section)
-                    where: addressrange (where within the section) };
-
-{ Append a global definition to the definition list.  Apollo only.
-}
-
-  var
-    g: globalentryptr; {used to create the new entry}
-
-
-  begin {defglobal}
-    if targetopsys = apollo then
-      begin
-      new(g);
-      with g^ do
-        begin
-        nextglobal := nil;
-        done := false;
-        mode := m;
-        offset := what;
-        reloc := sect;
-        addr := where;
-        end {with} ;
-      if lastdef = nil then firstdef := g
-      else lastdef^.nextglobal := g;
-      lastdef := g;
-      end;
-  end {defglobal} ;
-{>>>}
-{<<<}
-procedure defsymbol{sym: string8; (symbol name)
-                    sect: commonlong_reloc_type; (which section)
-                    where: addressrange (where within the section) };
-
-{ Append a symbol definition to the definition list.  Apollo only.
-}
-
-  var
-    g: globalentryptr; {used to create the new entry}
-
-
-  begin {defsymbol}
-    if targetopsys = apollo then
-      begin
-      new(g);
-      with g^ do
-        begin
-        nextglobal := nil;
-        done := false;
-        mode := symbol;
-        reloc := sect;
-        name := sym;
-        addr := where;
-        end {with} ;
-      if lastdef = nil then firstdef := g
-      else lastdef^.nextglobal := g;
-      lastdef := g;
-      end;
-  end {defsymbol} ;
-{>>>}
 {<<<}
 procedure newnode;
-
 { Increment "lastnode", checking for instruction table overflow.  Sets
-"lastptr" using cwriteaccess, to allow caller to easily fill in the
-node.
+"lastptr" using cwriteaccess, to allow caller to easily fill in the node.
 }
-
-
-  begin {newnode}
-    lastnode := lastnode + 1;
-    if lastnode = cnodetablesize then
-      abort (manynodes)
-    else
-      lastptr := ref(bignodetable[lastnode]);
-  end {newnode} ;
+begin {newnode}
+  lastnode := lastnode + 1;
+  if lastnode = cnodetablesize then
+    abort (manynodes)
+  else
+    lastptr := ref(bignodetable[lastnode]);
+end;
 {>>>}
 
 {<<<}
 procedure geninst{i: insttype; (instruction to generate)
                   l: operandrange; (number of operands)
                   olen: datarange (length of operands) };
-
 { Generate an instruction.
+  Actually, this creates a new node in the "nodefile" and initializes the
+  contents of the node according to data provided in the calling line.  The
+  actual instruction emission is done later from the node file.
 
-Actually, this creates a new node in the "nodefile" and initializes the
-contents of the node according to data provided in the calling line.  The
-actual instruction emission is done later from the node file.
+  If this instruction has been labeled, the "labelled" field is set.
 
-If this instruction has been labeled, the "labelled" field is set.
-
-All other fields not specified are cleared to zero, and will normally be
-filled in by the calling procedure.  In particular, tempcount is set to
-zero.
+  All other fields not specified are cleared to zero, and will normally be
+  filled in by the calling procedure.  In particular, tempcount is set to zero
 }
-
-
   begin {geninst}
     newnode;
     with lastptr^ do
@@ -2150,26 +1787,6 @@ dependent on the stack, tempcount is set appropriately.
                      indexed, bitindexed, pcindexed, absshort,
                      immediate, pcrelative, twodregs, twofpregs] then
         oprnd.offset1 := 0;
-      if targetopsys = apollo then
-        with oprnd do
-          if m in [supportcall, usercall, symbol, commonlong] then
-            if m = supportcall then
-              refglobal(supportcall, offset)
-            else if m = usercall then
-              begin
-              if sharedPtr^.proctable[offset].externallinkage and
-                    not sharedPtr^.proctable[offset].bodydefined then
-                refglobal(usercall, offset);
-              end
-            else if m = symbol then
-              refsymbol(name)
-            else {must be commonlong}
-            if commonlong_reloc > 0 then
-              begin
-              vtptr := getvartableptr(commonlong_reloc);
-              if vtptr^.extvaralloc = usealloc then
-                refglobal(commonlong, commonlong_reloc);
-              end;
       end {with lastptr^} ;
   end {genoprnd} ;
 {>>>}
@@ -2349,76 +1966,6 @@ procedure gen_bf_inst{i: insttype; (the instruction to generate)
       genoprnd(keytable[offset].oprnd);
       end;
   end {gen_bf_inst} ;
-{>>>}
-{<<<}
-procedure genadcon
-                  {m: modes; (what kind of thing we're referring to)
-                   what: integer; (which one, or its location)
-                   where: commonlong_reloc_type (which section, if known) };
-
-{ Generate an address constant.  Apollo only.
-}
-
-  var
-    vtptr: vartablerecptr; {used to access vartable entries}
-
-
-  begin {genadcon}
-    if targetopsys = apollo then
-      begin
-      newnode;
-      with lastptr^ do
-        begin
-        tempcount := 0;
-        kind := adconnode;
-        mode := m;
-        sect := where;
-        offset := what;
-        if m in [supportcall, usercall, symbol, commonlong] then
-          if m = supportcall then
-            refglobal(supportcall, what)
-          else if m = usercall then
-            begin
-            if sharedPtr^.proctable[what].externallinkage and
-                  not sharedPtr^.proctable[what].bodydefined then
-              refglobal(usercall, what);
-            end
-          else if m = symbol then
-            refsymbol(name)
-          else {must be commonlong}
-          if where > 0 then
-            begin
-            vtptr := getvartableptr(where);
-            if vtptr^.extvaralloc = usealloc then
-              refglobal(commonlong, where);
-            end;
-        end {with lastptr^} ;
-      end;
-  end {genadcon} ;
-{>>>}
-{<<<}
-procedure gensymboladcon
-                        {n: string8 (symbol name) };
-
-{ Generate an address constant for a symbol reference.  Apollo only.
-}
-
-
-  begin {gensymboladcon}
-    if targetopsys = apollo then
-      begin
-      newnode;
-      with lastptr^ do
-        begin
-        tempcount := 0;
-        kind := adconnode;
-        mode := symbol;
-        sect := unknown;
-        name := n;
-        refsymbol(n);
-        end {with lastptr^} ;
-      end;
-  end {gensymboladcon} ;
 {>>>}
 
 {<<<}

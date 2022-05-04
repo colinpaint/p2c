@@ -734,7 +734,7 @@ procedure parseCommandLine;
           filefinish := filefinish - 1
         end;
 
-      addtofilelist(list, filestart, filefinish, isinclude);
+      addtofilelist (list, filestart, filefinish, isinclude);
       end;
 
   end;
@@ -756,96 +756,99 @@ procedure parseCommandLine;
     procedure findqual (target: qualifier; {candidate Qual name}
                        var result: quals; {result of lookup}
                        var ambiguous: boolean {more than one match} );
-
     { Look up "target" in the Qualindex and set "result" to the appropriate
       qualifier.  If there is a full match, this is always taken.  Otherwise,
       a single partial match will be accepted.  Multiple partial matches cause
       "ambiguous" to be set.
     }
+    var
+      partialmatch: boolean; {partially matches the Qual so far}
+      partialresult: quals; {where the match was}
+      partials: 0..maxint; {counter of partial matches}
+      effectivelength: 0..qualifierlength; {significant chars in target}
+      i: 1..qualifierlength; {induction var}
 
-      var
-        partialmatch: boolean; {partially matches the Qual so far}
-        partialresult: quals; {where the match was}
-        partials: 0..maxint; {counter of partial matches}
-        effectivelength: 0..qualifierlength; {significant chars in target}
-        i: 1..qualifierlength; {induction var}
+    begin
+      partials := 0;
+      effectivelength := 0;
+      for i := 1 to qualifierlength do
+        if target[i] <> ' ' then effectivelength := i;
+      result := blanks;
+      qualindex[notfound] := target; {to terminate search}
 
-
-      begin {findqual}
-        partials := 0;
-        effectivelength := 0;
-        for i := 1 to qualifierlength do
-          if target[i] <> ' ' then effectivelength := i;
-        result := blanks;
-        qualindex[notfound] := target; {to terminate search}
-
-        while target <> qualindex[result] do
+      while target <> qualindex[result] do
+        begin
+        result := succ(result);
+        partialmatch := target <> qualindex[result];
+        for i := 1 to effectivelength do
+          partialmatch := partialmatch and
+                          (target[i] = qualindex[result, i]);
+        if partialmatch then
           begin
-          result := succ(result);
-          partialmatch := target <> qualindex[result];
-          for i := 1 to effectivelength do
-            partialmatch := partialmatch and
-                            (target[i] = qualindex[result, i]);
-          if partialmatch then
-            begin
-            partialresult := result;
-            partials := partials + 1;
-            end;
+          partialresult := result;
+          partials := partials + 1;
           end;
-        if (result = notfound) and (partials = 1) then
-          result := partialresult;
-        ambiguous := partials > 1;
-      end {findqual} ;
+        end;
+      if (result = notfound) and (partials = 1) then
+        result := partialresult;
+      ambiguous := partials > 1;
+    end;
     {>>>}
     {<<<}
     procedure getnumqual (var result: integer; {resulting value}
                          low_lim, hi_lim: integer {limits on value} );
+    { Scan off a number, for qualifiers that take numeric arguments }
 
-    { Scan off a number, for qualifiers that take numeric arguments.
-    }
+    var
+      tempres: integer;
+      accumulating, negate: boolean;
 
-      var
-        tempres: integer;
-        accumulating, negate: boolean;
+    begin
+      if sharedPtr^.cmdline[next] in [':', '='] then
+        next := next + 1
+      else
+        commandLineError(badparam, startingindex, next - 1);
 
+      accumulating := true;
+      tempres := 0;
 
-      begin {getnumqual}
-        if sharedPtr^.cmdline[next] in [':', '='] then
-          next := next + 1
-        else
-          commandLineError(badparam, startingindex, next - 1);
+      negate := sharedPtr^.cmdline[next] = '-';
+      if negate then 
+        next := next + 1;
 
-        accumulating := true;
-        tempres := 0;
-        negate := sharedPtr^.cmdline[next] = '-';
-        if negate then next := next + 1;
-        while sharedPtr^.cmdline[next] in ['0'..'9'] do
-          begin
-          if accumulating then
-            if tempres <= maxint div 10 then tempres := tempres * 10
-            else accumulating := false;
-          if accumulating then
-            if tempres <= maxint - (ord(sharedPtr^.cmdline[next]) - ord('0')) then
-              tempres := tempres + (ord(sharedPtr^.cmdline[next]) - ord('0'))
-            else accumulating := false;
-          next := next + 1;
-          end;
-        if negate then tempres := - tempres;
-        if accumulating and (tempres <= hi_lim) and (tempres >= low_lim) then
-          result := tempres
-        else
-          commandLineError (numrange, startingindex, next - 1);
-      end {getnumqual} ;
+      while sharedPtr^.cmdline[next] in ['0'..'9'] do
+        begin
+        if accumulating then
+          if tempres <= maxint div 10 then 
+            tempres := tempres * 10
+          else 
+            accumulating := false;
+        if accumulating then
+          if tempres <= maxint - (ord(sharedPtr^.cmdline[next]) - ord('0')) then
+            tempres := tempres + (ord(sharedPtr^.cmdline[next]) - ord('0'))
+          else 
+            accumulating := false;
+        next := next + 1;
+        end;
+
+      if negate then 
+        tempres := - tempres;
+
+      if accumulating and (tempres <= hi_lim) and (tempres >= low_lim) then
+        result := tempres
+      else
+        commandLineError (numrange, startingindex, next - 1);
+    end;
     {>>>}
     {<<<}
     procedure getspecialfilename (q: quals; {which qualifier}
                                  var next: cmdindex);
     { Handle the "/<qual>=<filename>" format for the macro, object, list, errors, include and environment qualifiers,
-      and the "/include=(<filenamelist>)" format. }
+      and the "/include=(<filenamelist>)" format }
 
-      var
-        start: cmdindex; {start of a filename}
-        savefilefound: boolean; {holds filefound during takefilename}
+    var
+      start: cmdindex; {start of a filename}
+      savefilefound: boolean; {holds filefound during takefilename}
 
       {<<<}
       procedure pickalist (q: quals; {which qualifier this file goes with}
@@ -863,33 +866,37 @@ procedure parseCommandLine;
         end;
       {>>>}
 
-      begin
-        savefilefound := filefound;
-        next := next + 1;
-        if sharedPtr^.cmdline[next] <> '(' then
-          begin
+    begin
+      savefilefound := filefound;
+      next := next + 1;
+
+      if sharedPtr^.cmdline[next] <> '(' then
+        begin
+        start := next;
+        filefound := false;
+        pickalist (q, false);
+        end
+
+      else
+        begin
+        repeat
+          next := next + 1;
           start := next;
           filefound := false;
-          pickalist(q, false);
-          end
+          pickalist (q, true);
+          skipblanks;
+          if not (q in [environq, includelistq]) and (sharedPtr^.cmdline[next] <> ')') then
+            commandLineError (missingparen, start - 1, next);
+        until (next >= sharedPtr^.cmdlength) or (sharedPtr^.cmdline[next] = ')');
+
+        if next < sharedPtr^.cmdlength then
+          next := next + 1
         else
-          begin
-          repeat
-            next := next + 1;
-            start := next;
-            filefound := false;
-            pickalist(q, true);
-            skipblanks;
-            if not (q in [environq, includelistq]) and (sharedPtr^.cmdline[next] <> ')') then
-              commandLineError (missingparen, start - 1, next);
-          until (next >= sharedPtr^.cmdlength) or (sharedPtr^.cmdline[next] = ')');
-          if next < sharedPtr^.cmdlength then
-            next := next + 1
-          else
-            commandLineError (missingparen, start - 1, sharedPtr^.cmdlength);
-          filefound := savefilefound;
-          end;
-      end;
+          commandLineError (missingparen, start - 1, sharedPtr^.cmdlength);
+
+        filefound := savefilefound;
+        end;
+    end;
     {>>>}
 
   begin
@@ -907,8 +914,7 @@ procedure parseCommandLine;
         next := next + 2;
         end;
 
-    while (next <= cmdlinelength) and
-          (sharedPtr^.cmdline[next] in ['A'..'Z', 'a'..'z', '0'..'9']) do
+    while (next <= cmdlinelength) and (sharedPtr^.cmdline[next] in ['A'..'Z', 'a'..'z', '0'..'9']) do
       begin
       if quali < qualifierlength then
         begin
@@ -927,7 +933,7 @@ procedure parseCommandLine;
       name[quali] := ' ';
       end;
 
-    findqual(name, thisqual, ambiguous);
+    findqual (name, thisqual, ambiguous);
 
     if ambiguous then
       commandLineError (ambig, startingindex, next - 1)
@@ -935,7 +941,7 @@ procedure parseCommandLine;
       commandLineError (unknown, startingindex, next - 1);
 
     if nofound and (thisqual in [cpu68000q, cpu68020q, fpc68881q, usebsd42libq, usesysVlibq]) then
-        commandLineError (nono, startingindex, next - 1);
+      commandLineError (nono, startingindex, next - 1);
 
     if thisqual in numquals then
       begin
@@ -947,8 +953,10 @@ procedure parseCommandLine;
           getnumqual (s, 0, 15);
           sharedPtr^.datasection := s;
           end;
-        tblockq: getnumqual (sharedPtr^.tblocknum, 0, maxint);
-        genmaskq: getnumqual (sharedPtr^.genoptmask, -65535, 65535);
+        tblockq: 
+          getnumqual (sharedPtr^.tblocknum, 0, maxint);
+        genmaskq: 
+          getnumqual (sharedPtr^.genoptmask, -65535, 65535);
         end;
       end;
 
@@ -978,6 +986,7 @@ procedure parseCommandLine;
 
   begin
     fieldsfound := fieldsfound + 1;
+
     if (fieldsfound = 1) and filefound then
       firstfound := true
     else if (fieldsfound = 2) and filefound then
@@ -1007,8 +1016,8 @@ procedure parseCommandLine;
 
     if next < sharedPtr^.cmdlength then
       next := next + 1;
-    filefound := false;
 
+    filefound := false;
   end;
   {>>>}
   {<<<}

@@ -63,8 +63,11 @@ clean:
 	rm -f -v *.ro
 	rm -f -v *.tmp
 	rm -f -v *.token
-	rm -f -v *.rel
+	rm -f -v *.inter
 	rm -f -v *.psuedo
+	rm -f -v *.rel
+	rm -f -v *.local
+	rm -f -v *.pseudo
 #
 	rm -f -v pmt
 	rm -f -v formatted.pas

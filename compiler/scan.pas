@@ -213,11 +213,12 @@ var
   curFileIndex: integer;    { pointer to current filename }
 
   { switch buffers used to delay effect of switches processed while reading nexttoken until becomes thistoken }
-  nextswitchread: boolean; {set true when first switch within comment is found}
-  nextswitchcounters: switchcounterarray; {buffer for switchcounters}
-  nextswitcheverplus: switcheverplusarray; {buffer for switcheverplus}
+  nextswitchread: boolean; { set true when first switch within comment is found}
+  nextswitchcounters: switchcounterarray;  { buffer for switchcounters }
+  nextswitcheverplus: switcheverplusarray; { buffer for switcheverplus }
 
-  scanswitchtable: array [scanswitchindex] of scanswitchentry; { table of embedded switch names }
+  { table of embedded switch names }
+  scanswitchtable: array [scanswitchindex] of scanswitchentry;
 {>>>}
 
 {<<<}
@@ -225,7 +226,7 @@ procedure putToken;
 { put current token to token file }
 
 var
-  dif: hostfilebyte; {difference in line numbers}
+  diff: hostfilebyte; {difference in line numbers}
 
   {<<<}
   procedure putInt (i: integer {value to put} );
@@ -305,8 +306,8 @@ begin
     { Put line increments as necessary }
     while lastTokenLine < line do
       begin
-      dif := min(line - lastTokenLine, hostfilelim);
-      if dif = 1 then
+      diff := min(line - lastTokenLine, hostfilelim);
+      if diff = 1 then
         {<<<  lineinc token}
         begin
         tokenSharedPtr^.tokenFile^.token := lineinc;
@@ -318,11 +319,11 @@ begin
         begin
         tokenSharedPtr^.tokenFile^.token := lineadd;
         put (tokenSharedPtr^.tokenFile);
-        tokenSharedPtr^.tokenFile^.token := dif;
+        tokenSharedPtr^.tokenFile^.token := diff;
         put (tokenSharedPtr^.tokenFile);
         end;
         {>>>}
-      lastTokenLine := lastTokenLine + dif;
+      lastTokenLine := lastTokenLine + diff;
       end;
 
     if lastBaseLine <> baseLine then
@@ -330,6 +331,7 @@ begin
       begin
       tokenSharedPtr^.tokenFile^.token := newfile;
       put (tokenSharedPtr^.tokenFile);
+
       putInt (baseLine);
       putInt (fileIndex); { filename pointer }
       lastBaseLine := baseLine;
@@ -3083,15 +3085,20 @@ procedure scan1;
       reslentable[6] := resindex + 1;
 
       if not (sharedPtr^.switcheverplus[standard] or sharedPtr^.switcheverplus[oldreswords]) then
-        enterresword('define   ', definesym);
+        enterresword ('define   ', definesym);
+
       enterresword ('downto   ', downtosym);
+
       if not sharedPtr^.switcheverplus[standard] then
         enterresword('origin   ', originsym);
+
       enterresword ('packed   ', packedsym);
       enterresword ('record   ', recordsym);
       enterresword ('repeat   ', repeatsym);
+
       if not (sharedPtr^.switcheverplus[standard] or sharedPtr^.switcheverplus[oldreswords]) then
         enterresword ('shared   ', sharedsym);
+
       if not sharedPtr^.switcheverplus[standard] then
         enterresword ('string   ', stringsym);
       reslentable[7] := resindex + 1;
@@ -3225,6 +3232,39 @@ procedure scan1;
       enterstandardid ('readfpcr  ', 8, readfpcrid);
     end;
     {>>>}
+    {<<<}
+    procedure initMapChars;
+
+    begin
+      { init the upper to lower case conversion table }
+      mapchars['A'] := 'a';
+      mapchars['B'] := 'b';
+      mapchars['C'] := 'c';
+      mapchars['D'] := 'd';
+      mapchars['E'] := 'e';
+      mapchars['F'] := 'f';
+      mapchars['G'] := 'g';
+      mapchars['H'] := 'h';
+      mapchars['I'] := 'i';
+      mapchars['J'] := 'j';
+      mapchars['K'] := 'k';
+      mapchars['L'] := 'l';
+      mapchars['M'] := 'm';
+      mapchars['N'] := 'n';
+      mapchars['O'] := 'o';
+      mapchars['P'] := 'p';
+      mapchars['Q'] := 'q';
+      mapchars['R'] := 'r';
+      mapchars['S'] := 's';
+      mapchars['T'] := 't';
+      mapchars['U'] := 'u';
+      mapchars['V'] := 'v';
+      mapchars['W'] := 'w';
+      mapchars['X'] := 'x';
+      mapchars['Y'] := 'y';
+      mapchars['Z'] := 'z';
+    end;
+    {>>>}
 
   begin
     sharedPtr := getSharedPtr;
@@ -3234,6 +3274,7 @@ procedure scan1;
     nextswitchread := false;
     initscanswitches;
     inittokentable;
+    initMapChars;
 
     for i := 0 to hashtablesize do
       begin
@@ -3263,34 +3304,6 @@ procedure scan1;
     { Initialize some switches }
     firstRealSeen := false; {used to detect error when $double occurs after first real constant.}
     firstTokenSeen := false; {used to detect error when $case occurs after first token is scanned.}
-
-    { init the upper to lower case conversion table }
-    mapchars['A'] := 'a';
-    mapchars['B'] := 'b';
-    mapchars['C'] := 'c';
-    mapchars['D'] := 'd';
-    mapchars['E'] := 'e';
-    mapchars['F'] := 'f';
-    mapchars['G'] := 'g';
-    mapchars['H'] := 'h';
-    mapchars['I'] := 'i';
-    mapchars['J'] := 'j';
-    mapchars['K'] := 'k';
-    mapchars['L'] := 'l';
-    mapchars['M'] := 'm';
-    mapchars['N'] := 'n';
-    mapchars['O'] := 'o';
-    mapchars['P'] := 'p';
-    mapchars['Q'] := 'q';
-    mapchars['R'] := 'r';
-    mapchars['S'] := 's';
-    mapchars['T'] := 't';
-    mapchars['U'] := 'u';
-    mapchars['V'] := 'v';
-    mapchars['W'] := 'w';
-    mapchars['X'] := 'x';
-    mapchars['Y'] := 'y';
-    mapchars['Z'] := 'z';
   end;
   {>>>}
 

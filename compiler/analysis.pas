@@ -852,12 +852,12 @@ end;
 
 {<<<}
 procedure gettoken;
-{ Read next lexical token using scan.pas scantoken routine 
+{ Read next lexical token using scan.pas scantoken routine
   global variables altered -
     thistoken -- Receives the "next" token from the token file
     lasttoken -- Receives previous value of thistoken
     token     -- Receives tokentype of thistoken
-    nexttoken -- Receives tokentype of what will be the next token read from the token file. 
+    nexttoken -- Receives tokentype of what will be the next token read from the token file.
                  This provides a one token "look ahead" for ANALYS.
 }
 begin
@@ -10139,6 +10139,7 @@ procedure enterblock (level: levelindex; {lex level of block}
 begin
   displaytop := level;
   sharedPtr^.blockref := ref; {global for 'panic' routine}
+
   with display[level] do
     begin
     if (lastid >= totalscopes) or (lastscope >= totalscopes) then
@@ -10166,6 +10167,7 @@ end;
 {>>>}
 {<<<}
 procedure fixupparamoffsets (endofdefs: boolean {last chance} );
+{<<<}
 { Parameters are allocated before variables but are addressed
   relative to the stack pointer.  This means that after a variable-
   declaration-part is parsed the parameter offsets must be adjusted
@@ -10190,6 +10192,7 @@ procedure fixupparamoffsets (endofdefs: boolean {last chance} );
   frame pointer relative offsets, including mapping for the
   debugger, use blocksize.
 }
+{>>>}
 {<<<}
 var
   i: tableIndex; {induction var}
@@ -10202,7 +10205,7 @@ var
                              huge; (well greater than quad, anyway)}
 {>>>}
 
-begin {fixupparamoffsets}
+begin
   with display[level] do
     begin
     bn := blockname;
@@ -10262,15 +10265,14 @@ begin {fixupparamoffsets}
       i := i + 1;
       end;
     end {with display};
-end {fixupparamoffsets} ;
+end;
 {>>>}
 {<<<}
 procedure exitblock (level: levelindex {level of block being exited} );
 { Called to exit the block at "level".
-  All forms defined in the block are disposed of, and any names
-  declared in the block are removed from the name table and
-  the key map.  Finally, the block id and table tops are reset to
-  the value on entry to the block.
+  All forms defined in the block are disposed of, 
+  and any names declared in the block are removed from the name table and the key map. 
+  Finally, the block id and table tops are reset to the value on entry to the block.
 }
 {<<<}
 var
@@ -10281,11 +10283,10 @@ var
   localvar: localvartype; { for writing to file }
 {>>>}
 
-begin {exitblock}
+begin 
   { Since for UMAX our global registers cannot overlap Unix-destroyed
     registers, there is no need to restrict global allocation based on
     nonpascal references. }
-
   regok := not anynonpascalcalls and not anynonlocallabels and (not anyexternals or (level > 1));
 
   tempvars := 0;
@@ -10387,7 +10388,6 @@ var
   p: entryptr; {used for access to name table entry}
   i: undefindex; {induction var for table scan}
 
-
 begin
   for i := display[level].oldundeftabletop + 1 to undeftabletop do
     begin
@@ -10433,7 +10433,6 @@ procedure enterundef (where: tableIndex);
   are satisfied by the end of the block.  The line and column are
   saved for an error message.
 }
-
 begin
   undeftabletop := undeftabletop + 1;
   if undeftabletop > undeftablesize then
@@ -10451,7 +10450,6 @@ function newproc: proctableindex;
 { Allocates a new entry in the proctable, initializes its entries,
   and returns the index of the new entry.
 }
-
 begin
   sharedPtr^.proctabletop := sharedPtr^.proctabletop + 1;
 
@@ -10640,9 +10638,9 @@ procedure enterlocalident (var newindex: tableIndex; {resulting name entry}
                           undefok: nametype {see enterident} );
 { Enter current token as identifier in local scope }
 
-begin {enterlocalident}
-  enterident(display[level].blockid, newindex, undefok);
-end {enterlocalident} ;
+begin
+  enterident (display[level].blockid, newindex, undefok);
+end;
 {>>>}
 
 {<<<}
@@ -11614,30 +11612,28 @@ end;
 {>>>}
 {<<<}
 procedure onevar (id: integer; {Scope in which to enter ident}
-                 varkind: nametype; {variable kind}
-                 var where: tableIndex; {where in symtable it ends up}
-                 sharedvar: boolean {if in 'shared' definition} );
-{ Syntactic routine to parse a single component of a variable list, which can
-  be part of a variable-list, parameter-list, or field-list.  "Varkind"
-  determines the kind of variable list being parsed.
-  production:
+                  varkind: nametype; {variable kind}
+                  var where: tableIndex; {where in symtable it ends up}
+                  sharedvar: boolean {if in 'shared' definition} );
+{<<<}
+{ Syntactic routine to parse a single component of a variable list, 
+  which can be part of a variable-list, parameter-list, or field-list.
+  "Varkind" determines the kind of variable list being parsed.
   x-identifier = identifier [use/define 'name' | origin nnn]
   The identifier is entered into the symbol table at scope "id".
-  If the identifier is a parameter, it is initialized on entry to
-  the scope, so is marked as "modified".
+  If the identifier is a parameter, it is initialized on entry to the scope, so is marked as "modified".
 }
-
+{>>>}
 var
   p: entryptr; {used to access name entry}
   assignedaddress: operand; {holds ORIGIN value or external name, if any}
   defineflag: boolean; {true if this is a DEFINE variable}
   varblock: 0..maxvarptrs; {for calculating block number of USE/DEFINE var}
   alias_needed: boolean; {true if string follows USE/DEFINE var}
-  vartab_state: (new_entry, reuse_entry, no_entry); {used with multidef
-                switch to handle mutiple definitions}
+  vartab_state: (new_entry, reuse_entry, no_entry); {used with multidef switch to handle mutiple definitions}
   entry: integer; {Current vartableentry index}
 
-begin {onevar}
+begin 
   {The following actually consumes the token}
   enterident(id, where, undefname);
   p := ref(bigtable[where]);
@@ -11794,7 +11790,7 @@ begin {onevar}
     modified := (varalloc = absolute) or knownvalid or sharedPtr^.switcheverplus[test];
     parammodified := false;
     end;
-end {onevar} ;
+end;
 {>>>}
 {<<<}
 procedure alloconevar (t: tableIndex; { name entry for variable }
@@ -11805,6 +11801,7 @@ procedure alloconevar (t: tableIndex; { name entry for variable }
                        typelen: addressrange; {var length}
                        refparam: boolean; {param passed by reference}
                        packedresult: boolean {do packed allocation} );
+{<<<}
 { Allocate one variable in a variable or field list.  "Size" is the current
   size of the dataspace in which the variable is being allocated, and is
   updated after the allocation.
@@ -11813,14 +11810,14 @@ procedure alloconevar (t: tableIndex; { name entry for variable }
   This procedure defines the packed allocation strategy, which is to allocate
   bitwise, but not to allow fields to cross word boundaries.
 }
-
+{>>>}
 var
   p: entryptr; {used for access to name entry}
   newoffset: addressrange; {offset of new variable}
   unusedspace: boolean; {we skipped over some space in packed field}
   overflowed: boolean; {true if data space is too large}
 
-begin {alloconevar}
+begin
   p := ref(bigtable[t]);
   p^.namekind := varkind;
 
@@ -11874,7 +11871,7 @@ begin {alloconevar}
       else warnbefore(bigblockerr);
     end;
   p^.length := typelen;
-end {alloconevar} ;
+end;
 {>>>}
 {<<<}
 procedure variablelist (follow: tokenset; { legal following symbols }
@@ -11927,7 +11924,6 @@ procedure variablelist (follow: tokenset; { legal following symbols }
   parameters.
 }
 {>>>}
-
 {<<<}
 var
   startset: tokenset; {All tokens to be found in a varlist}
@@ -12002,7 +11998,7 @@ begin
     else
       verify (f1, follow + begtypset + [comma, colon, semicolon], nosemiheaderr);
     end;
-end {variablelist} ;
+end;
 {>>>}
 {<<<}
 procedure gettyp {follow : tokenset; ( legal following symbols )
@@ -13019,7 +13015,6 @@ begin
 
   verifytoken(semicolon, nosemiheaderr);
   verify1(neverskipset, baddeclerr);
-
 end;
 {>>>}
 {<<<}
@@ -13031,7 +13026,6 @@ procedure constantdefinition;
   constant-definition = identifier "=" constant  .
   Constants simply have their value entered in the name table.
   }
-
 var
   t: tableIndex; { constant identifier entry}
   p, tp: entryptr; {used for nametable access}
@@ -13039,8 +13033,7 @@ var
   startpos: integer; {position of first var in source file}
   startline: integer; {line number of first var}
 
-begin {constantdefinition}
-
+begin 
   startpos := thistoken.filepos;
   startline := thistoken.line;
   gettoken;
@@ -13060,7 +13053,7 @@ begin {constantdefinition}
     verifytoken(semicolon, nosemiheaderr);
     verify1(constfollowset + neverskipset, baddeclerr);
   until not (token in constfollowset);
-end {constantdefinition} ;
+end;
 {>>>}
 {<<<}
 procedure typedefinition;
@@ -13112,7 +13105,6 @@ procedure vardefinition (sharedvar: boolean {if 'shared' section});
         type-denoter  .
   Almost all of the work is actually done in "variablelist"
 }
-
 var
   a: alignmentrange; {default alignment}
 
@@ -13211,7 +13203,6 @@ procedure parameterdefinition (var paramsize: addressrange; {size of parms}
   routine parameter has space for the routine address and a pointer
   for the static link.
 }
-
   {<<<}
     procedure oneparampiece;
 
@@ -13556,7 +13547,7 @@ procedure parameterdefinition (var paramsize: addressrange; {size of parms}
       end {oneparampiece} ;
   {>>>}
 
-begin {parameterdefinition}
+begin
   gettoken;
   oneparampiece;
   while token in
@@ -13568,7 +13559,7 @@ begin {parameterdefinition}
   if lasttoken.token = semicolon then warnbefore(badparamerr);
   verifytoken(rpar, norparerr);
   verify1(neverskipset + follow, badparamerr);
-end {parameterdefinition} ;
+end;
 {>>>}
 {<<<}
 procedure procdefinition;
