@@ -1,4 +1,5 @@
 { dumpToken.pas - dump tokens output.token file }
+program dumpToken (output);
 %include 'common.def';
 %include 'token.def';
 
