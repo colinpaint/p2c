@@ -6,7 +6,7 @@ CFLAGS = $(OPT) $(DEB)
 LFLAGS =
 
 OBJ = main.o scan.o analysis.o traverse.o code.o list.o common.o
-SRC = main.c scan.c analysis.c traverse.c code.c list.c common.c dumpToken.c #dumpInter.c dumpPseudo.c
+SRC = main.c scan.c analysis.c traverse.c code.c list.c common.c dumpToken.c dumpInter.c dumpPseudo.c
 
 DEP = common.def token.def inter.def pseudo.def \
       debug.def list.def main.def scan.def analysis.def traverse.def code.def
@@ -39,9 +39,11 @@ rebuild:
 	make all -j8
 	make run
 
-run: dumpToken
+run: dumpToken dumpInter dumpPseudo
 	./p68 test.pas/mac
 	./dumpToken
+	./dumpInter
+	./dumpPseudo
 	cat output.sa
 
 .PHONY: clean

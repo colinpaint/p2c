@@ -184,9 +184,9 @@ const
   lowtravrsblocks = 1;
   lowcodeblocks = 1;
 
-  amaxblocksin = 2}; { max number of blocks in heap+maxblockslow }
-  tmaxblocksin = 2}; { max blocks allocated to node file buffers }
-  cmaxblocksin = 2}; { max blocks ever allowed }
+  amaxblocksin = 2; { max number of blocks in heap+maxblockslow }
+  tmaxblocksin = 2; { max blocks allocated to node file buffers }
+  cmaxblocksin = 2; { max blocks ever allowed }
   bigtablesize = tablesize;           { minimum is 1}
   bigtnodetablesize = tnodetablesize; { minimum is 1}
   bigcnodetablesize = cnodetablesize; { minimum is 4}
