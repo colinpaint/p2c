@@ -852,24 +852,20 @@ end;
 
 {<<<}
 procedure gettoken;
-{ Read next lexical token
-  This is one of the most popular procedures in ANALYS.  What it
-  does is read the "next" token.  Several global level variables
-  are altered by this routine:
-      thistoken -- Receives the "next" token from the token file
-      lasttoken -- Receives previous value of thistoken
-      token     -- Receives tokentype of thistoken
-      nexttoken -- Receives tokentype of what will be the next
-                   token read from the token file.  This provides
-                   a one token "look ahead" for ANALYS.
-  If scanalys is true, SCAN's scantoken routine is called directly, otherwise tempfileone is read }
-
+{ Read next lexical token using scan.pas scantoken routine 
+  global variables altered -
+    thistoken -- Receives the "next" token from the token file
+    lasttoken -- Receives previous value of thistoken
+    token     -- Receives tokentype of thistoken
+    nexttoken -- Receives tokentype of what will be the next token read from the token file. 
+                 This provides a one token "look ahead" for ANALYS.
+}
 begin
   lasttoken := thistoken;
   thistoken := tokenSharedPtr^.nexttoken;
   token := thistoken.token;
 
-  scantoken;
+  scanToken;
 end;
 {>>>}
 
@@ -14195,7 +14191,7 @@ procedure analys;
     sharedPtr^.lastvartableptr := 0;
     sharedPtr^.lastvartableentry := 0;
 
-    scantoken;
+    scanToken;
     gettoken;
 
     nullboundindex := 0;

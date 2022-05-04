@@ -173,7 +173,7 @@ var
   newFilePos: integer;     { for tracking filePosition }
   currentFilePos: integer; { newFilePos, delayed by one character }
 
-  lasttokenline: integer; { line of last token read }
+  lastTokenLine: integer; { line of last token read }
   lastBaseLine: integer;  { BaseLine for last file read }
   endOfLine: boolean;     { effective eoln with nextch }
   endOfInput: boolean;    { effective overall eof }
@@ -191,8 +191,6 @@ var
         savefilename_length: filenameindex;
       end;
   baseLine: array [1..sourcedepth] of integer; {starting line for current file}
-
-  tokenbufindex: 0..diskbufsize; { next available space in token file block }
 
   { stringbuf[curstringbuf]     is buffer the current quoted string (nexttoken),
     stringbuf[not curstringbuf] is buffer for the previous (token) string, if any }
@@ -224,41 +222,11 @@ var
 
 {<<<}
 procedure putToken;
-{<<<}
-{ Put the current token to the token file.
-  This is encoded to the hostfilebyte level, with only the data required being sent.
-  This reduces the amount of intermediate file I/O required,
-  resulting in a significant speedup on machines with slow disks.
-
-  Since this is a high-bandwidth spot, code put sequences are written
-  in line rather than being isolated in procedures.
-
-  Assumptions built in are:
-        1.  "left" and "right" will fit in a hostfilebyte
-        2.  a target character will fit in a hostfilebyte
-
-  These seem likely enough to be true that the speed-up available by making these assumptions is worth taking
-}
-{>>>}
+{ put current token to token file }
 
 var
   dif: hostfilebyte; {difference in line numbers}
 
-  {<<<}
-  procedure putTokenFileBlock;
-  { Does the equivalent of a put on the token file.  Actually the file is
-    a file of blocks, and an actual put is done only if the block is full }
-
-  begin
-    if tokenbufindex = diskbufsize then
-      begin
-      tokenbufindex := 0;
-      put (tokenSharedPtr^.tokenFile);
-      end
-    else
-      tokenbufindex := tokenbufindex + 1;
-  end;
-  {>>>}
   {<<<}
   procedure putInt (i: integer {value to put} );
   { Puts an integer value to the token file as successive bytes. }
@@ -278,24 +246,18 @@ var
   begin
     if (i >= 0) and (i < hostfilelim) then
       begin
-      tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := i;
-      if tokenbufindex = diskbufsize then
-        begin
-        tokenbufindex := 0;
-        put (tokenSharedPtr^.tokenFile);
-        end
-      else
-        tokenbufindex := tokenbufindex + 1;
+      tokenSharedPtr^.tokenFile^.byte := i;
+      put (tokenSharedPtr^.tokenFile);
       end
     else
       begin
-      tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := hostfilelim;
-      putTokenFileBlock;
+      tokenSharedPtr^.tokenFile^.byte := hostfilelim;
+      put (tokenSharedPtr^.tokenFile);
       fudge.int := i;
       for j := 1 to hostintsize * hostfileunits do
         begin
-        tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := fudge.byte[j];
-        putTokenFileBlock;
+        tokenSharedPtr^.tokenFile^.byte := fudge.byte[j];
+        put (tokenSharedPtr^.tokenFile);
         end;
       end;
   end;
@@ -321,91 +283,69 @@ var
     fudge.rl := tokenSharedPtr^.nexttoken.realvalue;
     for j := 1 to size(realarray) do
       begin
-      tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := fudge.byte[j];
-      putTokenFileBlock;
+      tokenSharedPtr^.tokenFile^.byte := fudge.byte[j];
+      put (tokenSharedPtr^.tokenFile);
       end;
   end;
   {>>>}
 
 begin
+  if sharedPtr^.putlow = maxint then
+    begin
+    sharedPtr^.putlow := 0;
+    sharedPtr^.puthi := sharedPtr^.puthi + 1
+    end
+  else
+    sharedPtr^.putlow := sharedPtr^.putlow + 1;
+
   tokenSharedPtr^.tokenCount := tokenSharedPtr^.tokenCount + 1;
 
   with tokenSharedPtr^.nexttoken do
     begin
     { Put line increments as necessary }
-    while lasttokenline < line do
+    while lastTokenLine < line do
       begin
-      dif := min(line - lasttokenline, hostfilelim);
+      dif := min(line - lastTokenLine, hostfilelim);
       if dif = 1 then
         {<<<  lineinc token}
         begin
-        tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := lineinc;
-        if tokenbufindex = diskbufsize then
-          begin
-          tokenbufindex := 0;
-          put (tokenSharedPtr^.tokenFile);
-          end
-        else
-          tokenbufindex := tokenbufindex + 1;
+        tokenSharedPtr^.tokenFile^.token := lineinc;
+        put (tokenSharedPtr^.tokenFile);
         end
         {>>>}
       else
         {<<<  lineadd token}
         begin
-        tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := lineadd;
-        putTokenFileBlock;
-        tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := dif;
-        putTokenFileBlock;
+        tokenSharedPtr^.tokenFile^.token := lineadd;
+        put (tokenSharedPtr^.tokenFile);
+        tokenSharedPtr^.tokenFile^.token := dif;
+        put (tokenSharedPtr^.tokenFile);
         end;
         {>>>}
-      lasttokenline := lasttokenline + dif;
+      lastTokenLine := lastTokenLine + dif;
       end;
 
     if lastBaseLine <> baseLine then
       {<<<  newfile token}
       begin
-      tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := newfile;
-      putTokenFileBlock;
+      tokenSharedPtr^.tokenFile^.token := newfile;
+      put (tokenSharedPtr^.tokenFile);
       putInt (baseLine);
       putInt (fileIndex); { filename pointer }
       lastBaseLine := baseLine;
       end;
       {>>>}
 
-    tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := token;
-    {<<<  save token}
-    if tokenbufindex = diskbufsize then
-      begin
-      tokenbufindex := 0;
-      put (tokenSharedPtr^.tokenFile);
-      end
-    else
-      tokenbufindex := tokenbufindex + 1;
-    {>>>}
+    tokenSharedPtr^.tokenFile^.token := token;
+    put (tokenSharedPtr^.tokenFile);
 
-    tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := left;
-    {<<<  save left token}
-    if tokenbufindex = diskbufsize then
-      begin
-      tokenbufindex := 0;
-      put (tokenSharedPtr^.tokenFile);
-      end
-    else
-      tokenbufindex := tokenbufindex + 1;
-    {>>>}
+    tokenSharedPtr^.tokenFile^.token := left;
+    put (tokenSharedPtr^.tokenFile);
 
     if token in [ident, intconst, realconst, dblrealconst, charconst, stringconst] then
       begin
-      tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := right;
-      {<<<  save righttoken}
-      if tokenbufindex = diskbufsize then
-        begin
-        tokenbufindex := 0;
-        put (tokenSharedPtr^.tokenFile);
-        end
-      else
-        tokenbufindex := tokenbufindex + 1;
-      {>>>}
+      tokenSharedPtr^.tokenFile^.token := right;
+      put (tokenSharedPtr^.tokenFile);
 
       { save token params }
       case token of
@@ -423,8 +363,8 @@ begin
         {<<<}
         charconst:
           begin
-          tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := intvalue;
-          putTokenFileBlock;
+          tokenSharedPtr^.tokenFile^.token := intvalue;
+          put (tokenSharedPtr^.tokenFile);
           end;
         {>>>}
         {<<<}
@@ -441,25 +381,6 @@ begin
         end
       end;
     end
-end;
-{>>>}
-{<<<}
-procedure putTokenFile;
-{ Do the equivalent of a put to the token file
-  The value of the global variable "token" is encoded by "putToken" and written in a packed format to the tokenfile.
-  A count of tokens is kept and used to indicate the place in the file where embedded switches are found.
-}
-begin
-  { update token count -- two words for small computers }
-  if sharedPtr^.putlow = maxint then
-    begin
-    sharedPtr^.putlow := 0;
-    sharedPtr^.puthi := sharedPtr^.puthi + 1
-    end
-  else
-    sharedPtr^.putlow := sharedPtr^.putlow + 1;
-
-  putToken;
 end;
 {>>>}
 
@@ -817,7 +738,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure scantoken;
+procedure scanToken;
 { Get the next token from the source file. main procedure in scan, and converts all tokens to internal format. }
 
 var
@@ -2913,7 +2834,7 @@ begin
     fileIndex := curFileIndex; { stringtable index of filename}
     end;
 
-  putTokenFile;
+  putToken;
 end;
 {>>>}
 
@@ -3329,10 +3250,10 @@ procedure scan1;
     charcount := 0;
     sharedPtr^.lastline := 1;
 
-    lasttokenline := 1;
     baseLine[1] := 0;
-    lastBaseLine := - 1;
-    tokenbufindex := 0;
+    lastBaseLine := -1;
+    lastTokenLine := 1;
+
     convertingcase := true;
     endOfInput := false;
 
@@ -3341,7 +3262,7 @@ procedure scan1;
 
     { Initialize some switches }
     firstRealSeen := false; {used to detect error when $double occurs after first real constant.}
-    firsTokenSeen := false; {used to detect error when $case occurs after first token is scanned.}
+    firstTokenSeen := false; {used to detect error when $case occurs after first token is scanned.}
 
     { init the upper to lower case conversion table }
     mapchars['A'] := 'a';
@@ -3403,10 +3324,7 @@ begin
     left := chpos;
     right := chpos
     end;
-
   putToken;
-  if tokenbufindex > 0 then
-    put (tokenSharedPtr^.tokenFile);
 
   sharedPtr^.stringtablelimit := sharedPtr^.stringfilecount + sharedPtr^.stringtabletop;
   dispose (sharedPtr^.stringtable);

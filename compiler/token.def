@@ -19,12 +19,10 @@ type
   tokenRecordType = packed record
     case boolean of   { not packed, 4 bytes each, tokentype is unsigned, widens struct union }
       true:  (byte: hostfilebyte);
-      false: (toke: tokentype);
+      false: (token: tokentype);
     end;
 
-  tokenFileType = file of packed record
-                    block:  packed array [0..diskbufsize] of tokenRecordType;
-                    end;
+  tokenFileType = file of tokenRecordType;
 
   {<<<}
   { interface between scan and analysis }
@@ -52,9 +50,9 @@ type
   {>>>}
 
   tokenSharedType = record
+                     tokenFile: tokenFileType;
                      tokenCount: integer;
                      nexttoken: tokenrecord; { token being built by scanner }
-                     tokenFile: tokenFileType;
                      end;
   tokenSharedPtrType = ^tokenSharedType;
 

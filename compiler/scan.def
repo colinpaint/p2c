@@ -1,7 +1,7 @@
 { scan.def - external procedure defs }
 
 procedure dumpstr (len: columnindex; buf: boolean; dumplen: boolean); external;
-procedure scantoken; external;
+procedure scanToken; external;
 
 procedure scan1; external; { init scanner }
 procedure scan2; external; { terminate scanner }

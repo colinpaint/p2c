@@ -8,7 +8,6 @@ type
 var
   tokenSharedPtr: tokenSharedPtrType;
   tokencount: integer;
-  tokenbufindex: 0..diskbufsize;
   listingname: packed array [1..255] of char;
   toklengths: tokenlengthtable;
 
@@ -18,19 +17,6 @@ var
   var
     t: tokentype;
 
-    {<<<}
-    procedure gettempfile;
-
-    begin
-      if tokenbufindex = diskbufsize then
-        begin
-        tokenbufindex := 0;
-        get (tokenSharedPtr^.tokenFile);
-        end
-      else
-        tokenbufindex := tokenbufindex + 1;
-    end;
-    {>>>}
     {<<<}
     function getint: integer;
     { Get an integer value from the file }
@@ -47,13 +33,13 @@ var
         end;
 
     begin
-      fudge.int := tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte;
-      gettempfile;
+      fudge.int := tokenSharedPtr^.tokenFile^.byte;
+      get (tokenSharedPtr^.tokenFile);
       if fudge.int = hostfilelim then
         for j := 1 to hostintsize * hostfileunits do
           begin
-          fudge.byte[j] := tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte;
-          gettempfile;
+          fudge.byte[j] := tokenSharedPtr^.tokenFile^.byte;
+          get (tokenSharedPtr^.tokenFile);
           end;
       getint := fudge.int;
     end;
@@ -76,8 +62,8 @@ var
     begin
       for j := 1 to size(realarray) do
         begin
-        fudge.byte[j] := tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte;
-        gettempfile;
+        fudge.byte[j] := tokenSharedPtr^.tokenFile^.byte;
+        get (tokenSharedPtr^.tokenFile);
         end;
 
       r := fudge.rl;
@@ -88,8 +74,8 @@ var
     with tokenSharedPtr^.nexttoken do
       begin
       repeat
-        t := tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke;
-        gettempfile;
+        t := tokenSharedPtr^.tokenFile^.token;
+        get (tokenSharedPtr^.tokenFile);
         if t = newfile then
           begin
           baseline := getint;
@@ -99,20 +85,20 @@ var
           line := line + 1
         else if t = lineadd then
           begin
-          line := line + tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte;
-          gettempfile;
+          line := line + tokenSharedPtr^.tokenFile^.byte;
+          get (tokenSharedPtr^.tokenFile);
           end
         until not (t in [lineinc, lineadd, newfile]);
 
       token := t;
 
-      left := tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte;
-      gettempfile;
+      left := tokenSharedPtr^.tokenFile^.byte;
+      get (tokenSharedPtr^.tokenFile);
 
       if t in [ident, intconst, charconst, realconst, dblrealconst, stringconst] then
         begin
-        right := tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte;
-        gettempfile;
+        right := tokenSharedPtr^.tokenFile^.byte;
+        get (tokenSharedPtr^.tokenFile);
         case t of
           {<<<}
           ident:
@@ -128,8 +114,8 @@ var
           {<<<}
           charconst:
             begin
-            tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte;
-            gettempfile;
+            tokenSharedPtr^.tokenFile^.byte;
+            get (tokenSharedPtr^.tokenFile);
             end;
           {>>>}
           realconst,
@@ -279,7 +265,6 @@ begin
   toklengths[newfile] := 0;
   {>>>}
   tokencount := 0;
-  tokenbufindex := 0;
   tokenSharedPtr^.nexttoken.line := 1;
 
   reset (tokenSharedPtr^.tokenFile, 'token.tmp');
