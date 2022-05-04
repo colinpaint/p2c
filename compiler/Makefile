@@ -32,10 +32,11 @@ dumpPseudo: dumpPseudo.o $(DEP)
 %.c: %.pas $(DEP)
 	./../p2c -q $<
 
-all: p68 dumpToken pmt
+all: p68
 
-run: p68
-	./p68 test.pas
+run: dumpToken
+	./p68 test.pas/mac
+	./dumpToken
 
 .PHONY: clean
 clean:

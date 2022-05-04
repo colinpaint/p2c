@@ -163,34 +163,34 @@ var
   ch: char;            { current character being scanned }
   unconvertedch: char; { current character in raw (not case converted) state }
 
-  linepos: lineindex;  { current position in input line }
+  linePos: lineindex;  { current position in input line }
   currentbuf: packed array [1..inputbufsize] of char; { input buffer }
 
   charcount: columnindex; { effective position of nextch in this line }
   chpos: columnindex;     { effective position of "ch" in this line }
   oldchpos: columnindex;  { effective position of last "ch" }
 
-  new_filepos: integer;     { for tracking fileposition }
-  current_filepos: integer; { new_filepos, delayed by one character }
+  newFilePos: integer;     { for tracking filePosition }
+  currentFilePos: integer; { newFilePos, delayed by one character }
 
   lasttokenline: integer; { line of last token read }
-  lastbaseline: integer;  { baseline for last file read }
-  endofline: boolean;     { effective eoln with nextch }
-  endofinput: boolean;    { effective overall eof }
+  lastBaseLine: integer;  { BaseLine for last file read }
+  endOfLine: boolean;     { effective eoln with nextch }
+  endOfInput: boolean;    { effective overall eof }
 
   convertingcase: boolean; { true if uppercase wanted (except in strings) }
   skippingblanks: boolean; { currently skipping blanks }
 
-  saveinput: array [1..sourcedepth] of
+  saveInput: array [1..sourcedepth] of
       record
-        savech: char; { nextch for pushed source levels }
-        saveendofline: boolean;
-        savebuf: packed array [1..inputbufsize] of char;
-        savepos: lineindex;
-        savefileindex: integer;
+        saveCh: char; { nextch for pushed source levels }
+        saveendOfLine: boolean;
+        saveBuf: packed array [1..inputbufsize] of char;
+        savePos: lineindex;
+        saveFileIndex: integer;
         savefilename_length: filenameindex;
       end;
-  baseline: array [1..sourcedepth] of integer; {starting line for current file}
+  baseLine: array [1..sourcedepth] of integer; {starting line for current file}
 
   tokenbufindex: 0..diskbufsize; { next available space in token file block }
 
@@ -201,29 +201,29 @@ var
   { hashtable, includes pointer to loc in string table }
   hashtable: array [hashindex] of hashtablerecord;
 
-  scanswitchtable: array [scanswitchindex] of scanswitchentry; { table of embedded switch names }
-
   { table of reserved words, by length, and pointers into that table pointers to reswords }
   reslentable: array [minreslen..maxreslen1] of reservedindex;
-  reswords: array [reservedindex] of reswordtype; {text of reswords}
-  reswordtokens: array [reservedindex] of tokentype; {tokens for reswords}
-  tokentable: array [')'..'^'] of tokentype; {tokens for single char tokens}
+  reswords: array [reservedindex] of reswordtype;    { text of reswords }
+  reswordtokens: array [reservedindex] of tokentype; { tokens for reswords }
+  tokentable: array [')'..'^'] of tokentype;         { tokens for single char tokens }
 
   mapchars: packed array ['A'..'Z'] of char; {lower to upper conversion table}
-  incomment: boolean; {used to detect an unfinished comment}
-  inliteralstring: boolean; {used to detect an unfinished literal string}
-  first_real_seen: boolean; {used to detect error when $double occurs after first real constant.}
-  first_token_seen: boolean; {used to detect error when $case occurs after the first token.}
-  curFileIndex: integer; { pointer to current filename }
+  incomment: boolean;       { unfinished comment }
+  inliteralstring: boolean; { unfinished literal string }
+  firstRealSeen: boolean;   { error when $double occurs after first real constant }
+  firstTokenSeen: boolean;  { error when $case occurs after the first token }
+  curFileIndex: integer;    { pointer to current filename }
 
   { switch buffers used to delay effect of switches processed while reading nexttoken until becomes thistoken }
   nextswitchread: boolean; {set true when first switch within comment is found}
   nextswitchcounters: switchcounterarray; {buffer for switchcounters}
   nextswitcheverplus: switcheverplusarray; {buffer for switcheverplus}
+
+  scanswitchtable: array [scanswitchindex] of scanswitchentry; { table of embedded switch names }
 {>>>}
 
 {<<<}
-procedure puttoken;
+procedure putToken;
 {<<<}
 { Put the current token to the token file.
   This is encoded to the hostfilebyte level, with only the data required being sent.
@@ -361,14 +361,14 @@ begin
       lasttokenline := lasttokenline + dif;
       end;
 
-    if lastbaseline <> baseline then
+    if lastBaseLine <> baseLine then
       {<<<  newfile token}
       begin
       tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := newfile;
       puttempfile;
-      putint (baseline);
-      putint (fileindex); { filename pointer }
-      lastbaseline := baseline;
+      putint (baseLine);
+      putint (fileIndex); { filename pointer }
+      lastBaseLine := baseLine;
       end;
       {>>>}
 
@@ -413,7 +413,7 @@ begin
         ident:
           begin
           putint (key);
-          putint (keypos);
+          putint (keyPos);
           end;
         {>>>}
         {<<<}
@@ -444,9 +444,9 @@ begin
 end;
 {>>>}
 {<<<}
-procedure puttokenfile;
+procedure putTokenfile;
 { Do the equivalent of a put to the token file
-  The value of the global variable "token" is encoded by "puttoken" and written in a packed format to the tokenfile.
+  The value of the global variable "token" is encoded by "putToken" and written in a packed format to the tokenfile.
   A count of tokens is kept and used to indicate the place in the file where embedded switches are found.
 }
 begin
@@ -459,12 +459,12 @@ begin
   else
     sharedPtr^.putlow := sharedPtr^.putlow + 1;
 
-  puttoken;
+  putToken;
 end;
 {>>>}
 
 {<<<}
-procedure seekstringfile (n: integer);
+procedure seekStringFile (n: integer);
 { Do the equivalent of a "seek" on the string file.
   sets file and "nextstringfile" to access byte "n" of stringfile, only for scan/analysis one pass
 }
@@ -488,7 +488,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure putstringfile;
+procedure putStringFile;
 { Do the equivalent of a "put" on the stringfile }
 
 begin
@@ -504,7 +504,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure dumpidentifiers;
+procedure dumpIdentifiers;
 { Dumpidentifiers -- dumps stringtable into stringfile.
   Analys and Code occasionally need the character representation of an identifier
 }
@@ -515,7 +515,7 @@ begin
   for i := 1 to sharedPtr^.stringtabletop do
     begin
     sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] := ord(sharedPtr^.stringtable^[i]);
-    putstringfile;
+    putStringFile;
     end;
 end;
 {>>>}
@@ -527,8 +527,9 @@ procedure scanFatal (err: warning);
 begin
   sharedPtr^.fatalflag := true;
 
-  seekstringfile (sharedPtr^.stringfilecount);
-  dumpidentifiers;
+  seekStringFile (sharedPtr^.stringfilecount);
+  dumpIdentifiers;
+
   close (sharedPtr^.source[sharedPtr^.sourcelevel]);
 
   sharedPtr^.sourcelevel := 0;
@@ -565,7 +566,7 @@ begin
   q^.next := nil;
   q^.offset := curFileIndex;
   if sharedPtr^.sourcelevel = 1 then
-    tokenSharedPtr^.nexttoken.baseline := sharedPtr^.lastline - 1;
+    tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastline - 1;
 
   if sharedPtr^.filerememberlist <> nil then
     begin
@@ -592,10 +593,10 @@ end;
 {>>>}
 
 {<<<}
-procedure getch;
+procedure getCh;
 { Transfers the global "nextch" to "ch" and gets a new value for "nextch".
   This always provides a one character lookahead to simplify some of the lexical scanning.
-  In the process, the globals "endofinput", "endofline", and "chpos" are updated.
+  In the process, the globals "endOfInput", "endOfLine", and "chpos" are updated.
   Formfeed and tab characters are converted to blanks.
   The source files are organized as a stack of files, and input is always from the top of the stack.
   If end of included file is found, stack popped to including source file
@@ -609,7 +610,7 @@ procedure getch;
       if nextch = chr(formfeed) then
         begin
         { formfeed }
-        endofline := true; { but ends line as well }
+        endOfLine := true; { but ends line as well }
         nextch := ' '; { also becomes space }
         end
       else if (nextch <> chr(nul)) and (nextch <> chr(cr)) then
@@ -637,14 +638,14 @@ procedure getch;
   procedure getnextch;
 
   begin
-    if linepos >= inputbufsize then
+    if linePos >= inputbufsize then
       begin
       read (sharedPtr^.source[sharedPtr^.sourcelevel], currentbuf);
-      linepos := 0;
+      linePos := 0;
       end;
 
-    linepos := linepos + 1;
-    nextch := currentbuf[linepos];
+    linePos := linePos + 1;
+    nextch := currentbuf[linePos];
 
     if (nextch < ' ') then
       special
@@ -678,18 +679,18 @@ procedure getch;
     if sharedPtr^.sourcelevel > 1 then
       begin {inside include, pop to parent level}
       close (sharedPtr^.source[sharedPtr^.sourcelevel]);
-      with saveinput[sharedPtr^.sourcelevel] do
+      with saveInput[sharedPtr^.sourcelevel] do
         begin
-        nextch := savech; {restore next char to read}
-        currentbuf := savebuf; {restore input line}
-        linepos := savepos; {restore index in line}
-        curFileIndex := savefileindex;
-        endofline := saveendofline;
+        nextch := saveCh; {restore next char to read}
+        currentbuf := saveBuf; {restore input line}
+        linePos := savePos; {restore index in line}
+        curFileIndex := saveFileIndex;
+        endOfLine := saveendOfLine;
         sharedPtr^.filename_length := savefilename_length;
         end;
 
-      tokenSharedPtr^.nexttoken.baseline := sharedPtr^.lastline - baseline[sharedPtr^.sourcelevel];
-      if endofline then
+      tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastline - baseLine[sharedPtr^.sourcelevel];
+      if endOfLine then
         sharedPtr^.lastline := sharedPtr^.lastline + 1;
       sharedPtr^.sourcelevel := sharedPtr^.sourcelevel - 1; {pops the source stack}
       end
@@ -701,12 +702,12 @@ procedure getch;
       if sharedPtr^.morefiles then
         begin
         logInputFilename;
-        linepos := inputbufsize;
+        linePos := inputbufsize;
         getnextch;
         end
       else
         begin
-        endofinput := true;
+        endOfInput := true;
         nextch := ' ';
         skippingblanks := false;
         end;
@@ -725,10 +726,10 @@ procedure getch;
     if nextch = ' ' then
       begin
       readln (sharedPtr^.source[sharedPtr^.sourcelevel]); {skip past eoln}
-      linepos := inputbufsize;
+      linePos := inputbufsize;
       if (sharedPtr^.sourcelevel = 1) or not eof (sharedPtr^.source[sharedPtr^.sourcelevel]) then
         begin
-        endofline := true;
+        endOfLine := true;
         sharedPtr^.lastline := sharedPtr^.lastline + 1;
         end;
       end
@@ -742,11 +743,11 @@ procedure getch;
   end;
   {>>>}
   {<<<}
-  procedure doendofline;
+  procedure doendOfLine;
 
   begin
     charcount := 0; {this char is beginning of new line}
-    endofline := false;
+    endOfLine := false;
   end;
   {>>>}
 
@@ -756,7 +757,7 @@ begin
     ch := nextch;
     oldchpos := chpos;
     chpos := charcount;
-    current_filepos := new_filepos;
+    currentFilePos := newFilePos;
 
     if ch = chr(tabch) then
       dotab;
@@ -764,14 +765,14 @@ begin
     unconvertedch := ch;  { saved for case switch }
     if convertingcase and (ch in ['A'..'Z']) then
       ch := mapchars[ch];
-    if endofline then
-      doendofline;
+    if endOfLine then
+      doendOfLine;
 
-    if linepos < inputbufsize then
+    if linePos < inputbufsize then
       begin
       { normal case -- fill nextch }
-      linepos := linepos + 1;
-      nextch := currentbuf[linepos];
+      linePos := linePos + 1;
+      nextch := currentbuf[linePos];
       if (nextch < ' ') then
         special
       else
@@ -798,20 +799,20 @@ var
   i: 1..linelen;
 
 begin
-  seekstringfile (sharedPtr^.stringfilecount);
+  seekStringFile (sharedPtr^.stringfilecount);
   sharedPtr^.stringfilecount := sharedPtr^.stringfilecount + len;
 
   if dumplen then
     begin
     sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] := ord (stringbuf[buf, 0]);
-    putstringfile;
+    putStringFile;
     len := len - 1;
     end;
 
   for i := 1 to len do
     begin
     sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] := ord (stringbuf[buf, i]);
-    putstringfile;
+    putStringFile;
     end;
 end;
 {>>>}
@@ -899,7 +900,7 @@ var
         while (nextch >= '0') and (nextch <= '9') do
           begin
           val := val * 10 + (ord(nextch) - ord('0'));
-          getch;
+          getCh;
           end;
         snumber := val;
       end;
@@ -960,29 +961,28 @@ var
 
     begin
       repeat
-        getch; {nextch in ['$',',']}
+        getCh; {nextch in ['$',',']}
 
         if ch = ',' then {skip blanks following ','}
-          while nextch = ' ' do getch;
+          while nextch = ' ' do getCh;
 
         { Build switch name from source file }
-
         slen := 0;
         while nextch in ['a'..'z', 'A'..'Z', '0'..'9'] do
           begin
           slen := slen + 1;
-          getch;
+          getCh;
           if slen <= maxscanswitchlen then
             sname[slen] := ch;
           end;
 
         { Search for legal switches -- unknown are ignored }
-
         scanswitchtable[0].n := sname;
         scanswitchtable[0].internal := false;
         scanswitchtable[0].s := noswitch;
         scanswitchtable[0].v := 0;
         i := maxscanswitch;
+
         nofound := false;
         if (slen < 3) or (slen > maxscanswitchlen) then
           i := 0
@@ -1012,14 +1012,14 @@ var
           else if not internal then
             begin
             { Detect the case where $double occurs after the first token }
-            if (s = doublereals) and first_token_seen then
+            if (s = doublereals) and firstTokenSeen then
               if sharedPtr^.switchcounters[standard] <= 0 then
                 warnat (baddouble, sharedPtr^.lastline, chpos)
               else
                 i := 0; {ignore if standard active}
 
             { Detect the case where $case occurs after the first token }
-            if (s = caseswitch) and first_token_seen then
+            if (s = caseswitch) and firstTokenSeen then
               if sharedPtr^.switchcounters[standard] <= 0 then
                 warnat(badcase, sharedPtr^.lastline, chpos)
               else
@@ -1035,7 +1035,7 @@ var
             begin
             if nextch = '=' then
               begin
-              getch;
+              getCh;
               case is of
                 {<<<}
                 codesectsw:
@@ -1046,19 +1046,19 @@ var
                     convertingcase := false;
                     inliteralstring := true;
 
-                    getch;
+                    getCh;
                     repeat
-                      while (nextch <> '''') and not endofline do
+                      while (nextch <> '''') and not endOfLine do
                         begin
                         stuff;
-                        getch;
+                        getCh;
                         end;
-                      if not endofline then
+                      if not endOfLine then
                         begin
-                        getch;
+                        getCh;
                         stuff;
                         end;
-                    until (nextch <> '''') or endofline;
+                    until (nextch <> '''') or endOfLine;
 
                     sharedPtr^.codesect_strlength := sharedPtr^.stringtabletop - sharedPtr^.codesect_string;
 
@@ -1076,19 +1076,19 @@ var
                     convertingcase := false;
                     inliteralstring := true;
 
-                    getch;
+                    getCh;
                     repeat
-                      while (nextch <> '''') and not endofline do
+                      while (nextch <> '''') and not endOfLine do
                         begin
                         stuff;
-                        getch;
+                        getCh;
                         end;
-                      if not endofline then
+                      if not endOfLine then
                         begin
-                        getch;
+                        getCh;
                         stuff;
                         end;
-                    until (nextch <> '''') or endofline;
+                    until (nextch <> '''') or endOfLine;
 
                     sharedPtr^.module_strlength := sharedPtr^.stringtabletop - sharedPtr^.module_string;
 
@@ -1106,19 +1106,19 @@ var
                     convertingcase := false;
                     inliteralstring := true;
 
-                    getch;
+                    getCh;
                     repeat
-                      while (nextch <> '''') and not endofline do
+                      while (nextch <> '''') and not endOfLine do
                         begin
                         stuff;
-                        getch;
+                        getCh;
                         end;
-                      if not endofline then
+                      if not endOfLine then
                         begin
-                        getch;
+                        getCh;
                         stuff;
                         end;
-                    until (nextch <> '''') or endofline;
+                    until (nextch <> '''') or endOfLine;
 
                     sharedPtr^.ident_strlength := sharedPtr^.stringtabletop - sharedPtr^.ident_string;
 
@@ -1142,7 +1142,7 @@ var
                   sharedPtr^.objversion := snumber mod 256;
                   if nextch = '.' then
                     begin
-                    getch;
+                    getCh;
                     sharedPtr^.objrevision := snumber mod 256;
                     end;
                   end;
@@ -1180,7 +1180,7 @@ var
               begin
               if (s = own) and (nextch = '=') then
                 begin
-                getch;
+                getCh;
 
                 if (targetopsys = vdos) and (nextch >= '0') and (nextch <= '9') then
                   sharedPtr^.datasection := snumber mod 16
@@ -1191,25 +1191,27 @@ var
                     begin
                     convertingcase := false;
                     inliteralstring := true;
-                    getch;
+                    getCh;
                     repeat
-                      while (nextch <> '''') and not endofline do
+                      while (nextch <> '''') and not endOfLine do
                         begin
                         stuff;
-                        getch;
+                        getCh;
                         end;
-                      if not endofline then
+                      if not endOfLine then
                         begin
-                        getch;
+                        getCh;
                         stuff;
                         end;
-                    until (nextch <> '''') or endofline;
+                    until (nextch <> '''') or endOfLine;
+
                     sharedPtr^.ownsect_strlength := sharedPtr^.stringtabletop - sharedPtr^.ownsect_string;
                     inliteralstring := false;
                     convertingcase := true;
                     end;
                   end;
                 end;
+
               if i = checkswitchcount + 1 then
                 begin {check switch}
                 for j := 1 to checkswitchcount do
@@ -1233,22 +1235,22 @@ var
 
     convertingcase := false;
     repeat
-      getch;
+      getCh;
       skippingblanks := true;
-      while not ((ch in ['}', '*']) or endofinput) do
-        getch; {bump to '*'}
+      while not ((ch in ['}', '*']) or endOfInput) do
+        getCh; {bump to '*'}
       skippingblanks := false;
-      while (ch = '*') and not endofinput do
-        getch; {ignore multiples}
+      while (ch = '*') and not endOfInput do
+        getCh; {ignore multiples}
       if ch in termchars then
         incomment := false;
-    until not incomment or endofinput;
+    until not incomment or endOfInput;
     convertingcase := true;
 
     if incomment then
       warnat (eofincomment, sharedPtr^.lastline - 1, chpos)
-    else if not endofinput then
-      getch; {skip past delimiter if present}
+    else if not endOfInput then
+      getCh; {skip past delimiter if present}
 
     incomment := false;
   end;
@@ -1268,7 +1270,7 @@ var
     stack is pushed and the file specified opened as the next source file
   }
   var
-    s: alfa;                { directive as scanned}
+    directive: alfa;        { directive as scanned}
     i: identifierrange;     { general use induction var}
     filenamebuilt: boolean; { true if filename correctly built}
     newform: boolean;       { true if new type %include (quoted filename)}
@@ -1280,55 +1282,61 @@ var
       warnat (badchar, l, c);
 
     i := 0;
-    s := '          ';
+    directive := '          ';
 
-    getch;
+    getCh;
     while ch in ['A'..'Z', 'a'..'z'] do
       begin {read the directive}
       if i < 10 then
         begin
         i := i + 1;
         if ch in ['A'..'Z'] then
-          s[i] := chr(ord(nextch) + lowercase)
+          directive[i] := chr(ord(nextch) + lowercase)
         else
-          s[i] := ch;
+          directive[i] := ch;
         end;
-      getch;
+      getCh;
       end;
 
     { Now see if the directive is known, and handle if necessary }
-    if s = 'include   ' then
+    if directive = 'include   ' then
+      {<<<  include directive}
       begin {open a new level of source}
       if sharedPtr^.sourcelevel = sourcedepth then
         scanFatal (deepinclude);
 
       while nextch in [' ', chr(tabch)] do
-        getch;
+        getCh;
 
       filenamebuilt := false;
       i := 0;
+
       newform := nextch = '''';
       if newform then
+        {<<<  new format 'filename'}
         begin
-        getch;
-        while (nextch <> '''') and not endofline do
+        getCh;
+        while (nextch <> '''') and not endOfLine do
           begin
           if i < filenamelen then
             begin
             i := i + 1;
             sharedPtr^.filename[i] := nextch;
             end;
-          getch;
+          getCh;
           end;
+
         if nextch = '''' then
           begin
-          getch;
+          getCh;
           filenamebuilt := true;
           end
         else
           warnat (longstring, sharedPtr^.lastline - 1, chpos);
         end
+        {>>>}
       else
+        {<<<  old format filename;}
         begin
         while not (nextch in [' ', chr(tabch), ';']) do
           begin
@@ -1337,11 +1345,13 @@ var
             i := i + 1;
             sharedPtr^.filename[i] := nextch;
             end;
-          getch;
+          getCh;
           end;
+
         filenamebuilt := true;
-        getch;
+        getCh;
         end;
+        {>>>}
 
       oldfilename_length := sharedPtr^.filename_length;
       newfilename_length := i;
@@ -1351,42 +1361,44 @@ var
         sharedPtr^.filename[i] := ' '
         end;
 
-      while (nextch in [' ', chr(tabch)]) and not endofline do
-        getch;
+      while (nextch in [' ', chr(tabch)]) and not endOfLine do
+        getCh;
       if nextch = ';' then
-        getch;
+        getCh;
 
       if filenamebuilt then
         begin
         sharedPtr^.sourcelevel := sharedPtr^.sourcelevel + 1;
         openSource;
-        with saveinput[sharedPtr^.sourcelevel] do
+        with saveInput[sharedPtr^.sourcelevel] do
           begin
-          savech := nextch;
-          savepos := linepos;
-          saveendofline := endofline;
-          savefileindex := curFileIndex; { stringtable index of filename}
+          saveCh := nextch;
+          savePos := linePos;
+          saveendOfLine := endOfLine;
+          saveFileIndex := curFileIndex; { stringtable index of filename}
           savefilename_length := oldfilename_length;
-          savebuf := currentbuf;
-          linepos := inputbufsize;
+          saveBuf := currentbuf;
+          linePos := inputbufsize;
           end;
 
         sharedPtr^.filename_length := newfilename_length;
         logInputFilename;
-        baseline[sharedPtr^.sourcelevel] := sharedPtr^.lastline - tokenSharedPtr^.nexttoken.baseline - ord(endofline);
-        if not endofline then
+        baseLine[sharedPtr^.sourcelevel] := sharedPtr^.lastline - tokenSharedPtr^.nexttoken.baseLine - ord(endOfLine);
+        if not endOfLine then
           sharedPtr^.lastline := sharedPtr^.lastline + 1;
-        tokenSharedPtr^.nexttoken.baseline := sharedPtr^.lastline - 1;
+        tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastline - 1;
 
-        endofline := true;
+        endOfLine := true;
         end;
       end
-
-    else if s <> 'page      ' then
+      {>>>}
+    else if directive <> 'page      ' then
+      {<<<  unrecognised directive}
       begin
       warnat (baddirective, l, c);
-      getch
+      getCh
       end;
+      {>>>}
 
     ch := ' ';
     nextch := ' ';
@@ -1554,7 +1566,7 @@ var
     {>>>}
 
     {<<<}
-    procedure getch;
+    procedure getCh;
 
     begin
       ch := nextch(false);
@@ -1586,7 +1598,7 @@ var
       begin
         if (uppercase(ch) = c) then
           begin
-          getch;
+          getCh;
           chEquals := true
           end
         else chEquals := false
@@ -1747,12 +1759,12 @@ var
       errorcode := noerror;
 
       ch := nextch(true);
-      while (ch = ' ') do getch;
+      while (ch = ' ') do getCh;
 
       negative := (ch = '-');
       signed := negative or (ch = '+');
 
-      if signed then getch;
+      if signed then getCh;
 
       if (ch < '0') or (ch > '9') then
         begin
@@ -1771,7 +1783,7 @@ var
                 if chEquals('I') then
                   if chEquals('N') then
                     if chEquals('I') then
-                      if chEquals('T') then if chEquals('Y') then getch;
+                      if chEquals('T') then if chEquals('Y') then getCh;
 
                 { test for proper termination }
                 if not alfanumeric(ch) then { Infinity } class := InfClass;
@@ -1787,7 +1799,7 @@ var
 
                 begin { check NaN syntax }
                 { permit parenthesized argument }
-                if chEquals('(') then while not chEquals(')') do getch;
+                if chEquals('(') then while not chEquals(')') do getCh;
 
                 { test for proper termination }
                 if not alfanumeric(ch) then { quiet NaN } class := QNaNClass
@@ -1803,7 +1815,7 @@ var
 
       { - - -   scan integer part   - - - }
 
-      while (ch = '0') do getch;
+      while (ch = '0') do getCh;
 
       while (ch >= '0') and (ch <= '9') do
         begin
@@ -1817,7 +1829,7 @@ var
           DecExp := DecExp + 1;
           if (ch <> '0') then StickyBit := true
           end; { buffer is full }
-        getch
+        getCh
         end { while ch is digit } ;
 
       DecExp := DecExp + dpt;
@@ -1840,7 +1852,7 @@ var
             end { insert fraction digit }
           else { dpt => MaxInBuf }
           if (ch <> '0') then StickyBit := true;
-          getch
+          getCh
           end { while ch is digit }
 
         end { scan fraction part } ;
@@ -1858,9 +1870,9 @@ var
           precision := DoublePrecision1;
           end;
 
-        getch;
+        getCh;
         expneg := (ch = '-');
-        if expneg or (ch = '+') then getch;
+        if expneg or (ch = '+') then getCh;
 
         if (ch < '0') or (ch > '9') then errorcode := syntaxerr;
 
@@ -1869,7 +1881,7 @@ var
           begin
           if (ExpValue <= ExpLimit) then
             ExpValue := ExpValue * 10 + ord(ch) - ord('0');
-          getch
+          getCh
           end;
 
         if expneg then DecExp := DecExp - ExpValue
@@ -2194,7 +2206,7 @@ var
         while skipzeros and (ch = '0') do
           begin {scan leading zeros}
           leadingzeros := leadingzeros + 1;
-          getch;
+          getCh;
           end;
 
         while scanning do
@@ -2209,7 +2221,7 @@ var
             length := length + 1;
             fill := fill + 1;
             digits[fill] := digit;
-            getch;
+            getCh;
             end
           else scanning := false;
           end {while} ;
@@ -2313,7 +2325,7 @@ var
       else
         begin
         if draw > fill then
-          getch
+          getCh
         else
           draw := draw + 1;
         getrealch := ch;
@@ -2344,7 +2356,7 @@ var
 
         readreal (getrealch, realresult, realerror, realmode, isdouble);
         realvalue := realresult;
-        first_real_seen := true; {to detect $double error}
+        firstRealSeen := true; {to detect $double error}
 
         case realerror of
           noerror: ;
@@ -2371,7 +2383,7 @@ var
           if (sharedPtr^.switchcounters[standard] > 0) then
             numbererror (octalconst);
 
-          getch;
+          getCh;
           radix := 8;
           for i := 1 to length do {check for 8's or 9's}
             if digits[i] >= 8 then
@@ -2391,7 +2403,7 @@ var
             numbererror (badradix); {"...must lie in range 2..16"}
             end;
 
-          getch;
+          getCh;
           fill := 0;
           readdigits (true);
           convertinteger (intvalue);
@@ -2413,14 +2425,14 @@ var
     The hash function used was determined empirically from actual Pascal programs
   }
   var
-    t1, t2: 0..maxusword;   { used in computing hash function}
-    lastch: integer;        { position of end of id in stringtable}
-    count: identifierrange; { identifier length}
-    hash: hashindex;        { location within hash table}
-    w: reswordtype;         { first part of id for reserved word check}
+    t1, t2: 0..maxusword;   { used in computing hash function }
+    lastTop: integer;       { position of end of id in stringtable }
+    count: identifierrange; { identifier length }
+    hash: hashindex;        { location within hash table }
+    w: reswordtype;         { first part of id for reserved word check }
 
     {<<<}
-    procedure maptoken (var token: tokentype);
+    procedure mapToken (var token: tokentype);
     { Check the identifier just scanned against the reserved word table.
       Token is set to "ident" if not found, or the the corresponding token
       if this is a reserved word.
@@ -2457,17 +2469,18 @@ var
 
     begin
       identFound := false;
+
       with hashtable[hash] do
         if len = count then
           begin
           j := pos;
           i := sharedPtr^.stringtabletop + 1;
-          while (sharedPtr^.stringtable^[i] = sharedPtr^.stringtable^[j]) and (i <= lastch) do
+          while (sharedPtr^.stringtable^[i] = sharedPtr^.stringtable^[j]) and (i <= lastTop) do
             begin
             i := i + 1;
             j := j + 1
             end;
-          if i > lastch then
+          if i > lastTop then
             identFound := true;
           end;
     end;
@@ -2482,11 +2495,11 @@ var
 
     w := '         ';
     count := 0;
-    lastch := sharedPtr^.stringtabletop;
+    lastTop := sharedPtr^.stringtabletop;
 
     t2 := 0;
     repeat
-      {<<<  parse identifier in to w, forminh hash t2}
+      {<<<  parse identifier in to w, form t2 hash}
       count := count + 1;
       if count <= maxreslen then
         begin
@@ -2501,15 +2514,15 @@ var
           end;
         end;
 
-      if lastch < stringtablesize then
+      if lastTop < stringtablesize then
         begin
-        lastch := lastch + 1;
-        sharedPtr^.stringtable^[lastch] := ch;
+        lastTop := lastTop + 1;
+        sharedPtr^.stringtable^[lastTop] := ch;
         end
       else
         scanFatal (stringtableoverflow);
 
-      getch;
+      getCh;
       if (sharedPtr^.switchcounters[standard] > 0) and (ch in ['$', '_']) then
         warnat (badchar, sharedPtr^.lastline, chpos);
       until not (ch in ['$', '_', 'A'..'Z', 'a'..'z', '0'..'9']);
@@ -2517,7 +2530,7 @@ var
 
     with tokenSharedPtr^.nexttoken do
       begin
-      maptoken (token);
+      mapToken (token);
       if token = ident then
         begin
         hash := t2 mod hashtablesize;
@@ -2527,15 +2540,16 @@ var
           if pos = 0 then
             begin
             sharedPtr^.insertions := sharedPtr^.insertions + 1;
-            if sharedPtr^.insertions = hashtablesize then
+            if sharedPtr^.insertions >= hashtablesize then
               scanFatal (tablefull);
+
             pos := sharedPtr^.stringtabletop + 1;
             len := count;
             key := sharedPtr^.insertions;
-            sharedPtr^.stringtabletop := lastch
+            sharedPtr^.stringtabletop := lastTop
             end;
         key := hashtable[hash].key;
-        keypos := hashtable[hash].pos;
+        keyPos := hashtable[hash].pos;
         end
       end;
 
@@ -2561,7 +2575,7 @@ var
       while nextch in numbers do
         begin
         val := val * 10 + (ord(nextch) - ord('0'));
-        getch;
+        getCh;
         end;
     end;
     {>>>}
@@ -2584,11 +2598,11 @@ var
     if not ok then
       warnat (badconsterr, sharedPtr^.lastline, chpos);
 
-    getch;
+    getCh;
   end;
   {>>>}
   {<<<}
-  procedure stringliteral (quotech: char);
+  procedure stringliteral (quoteCh: char);
   { Scan a quoted string, building a string or character literal.
     As the string is read, a copy of it is built up in the string table.
     If the string length is exactly one, the token is returned as a character constant,
@@ -2622,22 +2636,23 @@ var
     repeat
       convertingcase := false; {we want a literal copy}
       inliteralstring := true;
-      getch;
-      while (ch <> quotech) and not endofline do
+      getCh;
+      while (ch <> quoteCh) and not endOfLine do
         begin
         stuff;
-        getch;
+        getCh;
         end;
+
       inliteralstring := false;
       convertingcase := true;
-      if endofline then
+      if endOfLine then
         warnat (longstring, sharedPtr^.lastline - 1, chpos)
       else
         begin
-        getch;
+        getCh;
         stuff;
         end;
-    until (ch <> quotech) or endofline;
+    until (ch <> quoteCh) or endOfLine;
 
     stringpos := stringpos - 1;
     stringbuf[sharedPtr^.curstringbuf, 0] := chr(stringpos);
@@ -2672,7 +2687,7 @@ begin
     nextswitchread := false;
     end;
 
-  while not (somethingelse or endofinput) do
+  while not (somethingelse or endOfInput) do
     case ch of
       ' ':
         {<<<}
@@ -2695,7 +2710,7 @@ begin
         if nextch = '*' then
           begin
           commentch := ')';
-          getch;
+          getCh;
           skipcomment
           end
         else
@@ -2709,7 +2724,7 @@ begin
           begin
           warnat(obsoletecomments, sharedPtr^.lastline, chpos);
           commentch := '/';
-          getch;
+          getCh;
           skipcomment;
           end
         else
@@ -2729,17 +2744,17 @@ begin
         {<<<}
         begin
         if ch = chr(cr) then
-          getch
+          getCh
         else
           begin
           warnat (badchar, sharedPtr^.lastline, chpos);
-          getch;
+          getCh;
           end;
         end;
         {>>>}
       end;
 
-  if not first_token_seen and nextswitchread then
+  if not firstTokenSeen and nextswitchread then
     {<<<  set embedded switches prior to the first token}
     { important for the 68000, 68020 and 68881 embedded switches because of the processor type check that is below }
 
@@ -2750,14 +2765,14 @@ begin
     end;
     {>>>}
 
-  first_token_seen := true;
+  firstTokenSeen := true;
   with tokenSharedPtr^.nexttoken do
     begin
     line := sharedPtr^.lastline;
     left := chpos;
-    filepos := current_filepos;
+    filePos := currentFilePos;
 
-    if (endofinput or sharedPtr^.fatalflag) then
+    if (endOfInput or sharedPtr^.fatalflag) then
       token := eofsym
     else
       case ch of
@@ -2767,19 +2782,19 @@ begin
           if nextch = '.' then
             begin
             token := dotdot;
-            getch;
+            getCh;
             end
 
           else if nextch = ')' then
             begin
             token := rbrack;
-            getch;
+            getCh;
             end
 
           else
             token := dot;
 
-          getch;
+          getCh;
           end;
           {>>>}
         '<':
@@ -2788,19 +2803,19 @@ begin
           if nextch = '=' then
             begin
             token := leq;
-            getch;
+            getCh;
             end
 
           else if nextch = '>' then
             begin
             token := neq;
-            getch;
+            getCh;
             end
 
           else
             token := lss;
 
-          getch;
+          getCh;
           end;
           {>>>}
         '>':
@@ -2809,12 +2824,12 @@ begin
           if nextch = '=' then
             begin
             token := geq;
-            getch;
+            getCh;
             end
           else
             token := gtr;
 
-          getch;
+          getCh;
           end;
           {>>>}
         ':':
@@ -2823,12 +2838,12 @@ begin
           if nextch = '=' then
             begin
             token := becomes;
-            getch;
+            getCh;
             end
           else
             token := colon;
 
-          getch;
+          getCh;
           end;
           {>>>}
         '(':
@@ -2837,12 +2852,12 @@ begin
           if nextch = '.' then
             begin
             token := lbrack;
-            getch;
+            getCh;
             end
           else
             token := lpar;
 
-          getch;
+          getCh;
           end;
           {>>>}
         ')', '*', '+', ',', '-', '/', ';', '=', '[', ']', '@', '^':
@@ -2850,7 +2865,7 @@ begin
           begin
           token := tokentable[ch];
 
-          getch;
+          getCh;
           end;
           {>>>}
         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
@@ -2883,22 +2898,22 @@ begin
           begin
           warnat (badchar, sharedPtr^.lastline, chpos);
 
-          getch;
+          getCh;
           end
           {>>>}
         end;
 
-    if not endofline and (sharedPtr^.lastline > line) then
+    if not endOfLine and (sharedPtr^.lastline > line) then
       begin
       left := 1;
       line := sharedPtr^.lastline
       end;
 
     right := oldchpos;
-    fileindex := curFileIndex; { stringtable index of filename}
+    fileIndex := curFileIndex; { stringtable index of filename}
     end;
 
-  puttokenfile;
+  putTokenfile;
 end;
 {>>>}
 
@@ -2907,7 +2922,7 @@ procedure scan1;
 { Init scanner, read first char, etc. }
 
   {<<<}
-  procedure initScan;
+  procedure init;
   {<<<}
   { Enterstandardid  - builds entry in hashtable and string table for each standard identifier (i.e. true,false) }
   { Enterresword     - builds entry in reswords and and reswordtokens for tokens like BEGIN, END. }
@@ -3315,18 +3330,18 @@ procedure scan1;
     sharedPtr^.lastline := 1;
 
     lasttokenline := 1;
-    baseline[1] := 0;
-    lastbaseline := - 1;
+    baseLine[1] := 0;
+    lastBaseLine := - 1;
     tokenbufindex := 0;
     convertingcase := true;
-    endofinput := false;
+    endOfInput := false;
 
-    linepos := inputbufsize;
+    linePos := inputbufsize;
     skippingblanks := false;
 
     { Initialize some switches }
-    first_real_seen := false; {used to detect error when $double occurs after first real constant.}
-    first_token_seen := false; {used to detect error when $case occurs after first token is scanned.}
+    firstRealSeen := false; {used to detect error when $double occurs after first real constant.}
+    firsTokenSeen := false; {used to detect error when $case occurs after first token is scanned.}
 
     { init the upper to lower case conversion table }
     mapchars['A'] := 'a';
@@ -3359,7 +3374,7 @@ procedure scan1;
   {>>>}
 
 begin
-  initScan;
+  init;
 
   sharedPtr^.sourcelevel := 1;
   sharedPtr^.curfile := 1;
@@ -3368,16 +3383,15 @@ begin
   logInputFilename;
 
   nextch := ' ';
-  getch;
+  getCh;
 end;
 {>>>}
 {<<<}
 procedure scan2;
 
 begin
-  seekstringfile (sharedPtr^.stringfilecount);
-
-  dumpidentifiers;
+  seekStringFile (sharedPtr^.stringfilecount);
+  dumpIdentifiers;
 
   close (sharedPtr^.source[sharedPtr^.sourcelevel]);
   sharedPtr^.sourcelevel := 0;
@@ -3389,7 +3403,8 @@ begin
     left := chpos;
     right := chpos
     end;
-  puttoken;
+
+  putToken;
   if tokenbufindex > 0 then
     put (tokenSharedPtr^.tokenFile);
 
@@ -3408,13 +3423,13 @@ begin
 
   repeat
     scantoken;
-    until (sharedPtr^.fatalflag or endofinput);
+    until (sharedPtr^.fatalflag or endOfInput);
 
   { align strings }
   while sharedPtr^.stringfilecount mod stringroundoff <> 0 do
     begin
     sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] := 0;
-    putstringfile;
+    putStringFile;
     sharedPtr^.stringfilecount := sharedPtr^.stringfilecount + 1;
     end;
 

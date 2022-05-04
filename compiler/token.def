@@ -29,15 +29,16 @@ type
   {<<<}
   { interface between scan and analysis }
   tokenrecord = record
-    baseline: integer;  { line the current file started on}
+    baseLine: integer;  { line the current file started on}
     line: integer;      { line this token appeared on }
-    fileindex: integer; { pointer into file name structure }
-    filepos: integer;   { getpos position of this token }
-    left, right: columnindex; { where on the line it appeared }
+    left: columnindex;  { where on the line it appeared }
+    right: columnindex; { where on the line it appeared }
+    fileIndex: integer; { pointer into file name structure }
+    filePos: integer;   { getpos position of this token }
 
     case token: tokentype of { the actual token }
       ident:        (key: hashindex;     { key uniquely identifies us }
-                     keypos: integer);   { location of name in string file }
+                     keyPos: integer);   { location of name in string file }
 
       intconst,
       charconst:    (intvalue: integer); { value or ord(value)}

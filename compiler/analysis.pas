@@ -915,28 +915,6 @@ begin
     sharedPtr^.nextstringfile := sharedPtr^.nextstringfile + 1;
 end;
 {>>>}
-
-{<<<}
-procedure putintfile;
-{ Write intermediate code file.
-  The output of ANALYS is an intermediate code file which is used as input to TRAVRS.
-  The intermediate code file is organized as blocks containing
-  arrays 0..diskbufsize of intermediate code records.
-  What this routine does is to calculate an index (nextintcode) into the
-  current buffer where the next intermediate code record should be written }
-
-begin
-  sharedPtr^.putlow := sharedPtr^.putlow + 1;
-
-  if nextintcode = diskbufsize then
-    begin
-    nextintcode := 0;
-    put (interSharedPtr^.interFile);
-    end
-  else
-    nextintcode := nextintcode + 1;
-end;
-{>>>}
 {<<<}
 procedure putstringfile;
 { Do the equivalent of a "put" on the stringfile.
@@ -969,7 +947,28 @@ end;
 {>>>}
 
 {<<<}
-procedure genform (f: types {form to emit} );
+procedure putintfile;
+{ Write intermediate code file.
+  The output of ANALYS is an intermediate code file which is used as input to TRAVRS.
+  The intermediate code file is organized as blocks containing
+  arrays 0..diskbufsize of intermediate code records.
+  What this routine does is to calculate an index (nextintcode) into the
+  current buffer where the next intermediate code record should be written }
+
+begin
+  sharedPtr^.putlow := sharedPtr^.putlow + 1;
+
+  if nextintcode = diskbufsize then
+    begin
+    nextintcode := 0;
+    put (interSharedPtr^.interFile);
+    end
+  else
+    nextintcode := nextintcode + 1;
+end;
+{>>>}
+{<<<}
+procedure genform (f: types);
 { If no errors found so far, emit a form to the intermediate file }
 
 begin
@@ -981,7 +980,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure genint (i: integer {value to emit} );
+procedure genint (i: integer);
 { If no errors found so far, emit an integer value to the intermediate file.
   Since each intermediate file element is only in the range 0..255 (one byte), multiple elements are used.
   Note that only unsigned integers are emitted. }
@@ -1018,7 +1017,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure genop (o: operator {operator to emit} );
+procedure genop (o: operator);
 { If no errors are found so far, emit an operator to the intermediate file }
 
 begin
@@ -1030,7 +1029,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure genstmt (s: stmttype {statement to emit} );
+procedure genstmt (s: stmttype);
 { If no errors are found so far, emit a statement to the intermediate file }
 
 begin
@@ -1054,33 +1053,32 @@ procedure verify (set1: tokenset; {acceptable tokens}
                  err: warning {Message if token not ok} );
 { Check that the current token is in set1, emit an error message
   "err" if not, and skip until the token is in set1 + set2 + neverskipset.
-  The error message will be placed as close to the estimated location of the token as possible }
-
+  The error message will be placed as close to the estimated location of the token as possible
+  }
 var
   skipset: tokenset; {Tokens which end skipping}
 
-
-begin {verify}
+begin
   if not (token in set1) then
     begin
     skipset := set1 + set2 + neverskipset;
     if token in skipset then warnbetween(err)
     else
       begin
-      warn(err);
+      warn (err);
       while not (token in skipset) do
         gettoken
       end
     end
-end {verify} ;
+end;
 {>>>}
 {<<<}
 procedure verify1 (set1: tokenset; {acceptable tokens} err: warning {message if token not ok} );
 { Same as verify, except no separate skip set is provided }
 
-begin {verify1}
+begin
   verify(set1, [], err);
-end {verify1} ;
+end;
 {>>>}
 {<<<}
 procedure verifytoken (tok: tokentype; {acceptable token}
@@ -1089,12 +1087,12 @@ procedure verifytoken (tok: tokentype; {acceptable token}
   found, emit an error message set by "err".  This is used for
   redundant tokens in the syntax, where parsing can continue if it is missing. }
 
-begin {verifytoken}
+begin
   if token = tok then
     gettoken
   else
     warnbetween (err)
-end {verifytoken} ;
+end;
 {>>>}
 
 {<<<}
@@ -1104,11 +1102,12 @@ procedure enterform (newtyp: types; {type for this form}
 { Enter a new formentry at the current level.
   This also gets a formnumber for use with the debugger, and sets the type to be newtyp. }
 
-begin {enterform}
+begin
   if tabletop = tablesize then
     analysFatal(tablefull)
   else
     tabletop := tabletop + 1;
+
   where := tabletop;
   whereptr := ref(bigtable[tabletop]);
   with whereptr^ do
@@ -1129,7 +1128,7 @@ begin {enterform}
     extendedrange := false;
     disposable := false;
     end;
-end {enterform} ;
+end;
 {>>>}
 {<<<}
 function getform (objecttype: entryptr {desired form} ): types;
@@ -2358,7 +2357,6 @@ procedure genrealvalue (op: operator; {type of real} r: realarray);
 { Generates a real operand.  This is machine dependent, and must be
   conditionalized, for example, for a crosscompiler
 }
-
   var
     kludge: {convert real to integer}
       record
@@ -2378,7 +2376,8 @@ procedure genrealvalue (op: operator; {type of real} r: realarray);
         begin {just write bytes to the stringfile}
         genint(sharedPtr^.stringfilecount);
         genint(0);
-        for i := 1 to sharedPtr^.targetrealsize * hostfileunits do putbyte(kludge.b[i]);
+        for i := 1 to sharedPtr^.targetrealsize * hostfileunits do
+          putbyte (kludge.b[i]);
         end;
       otherwise
         begin
@@ -2976,23 +2975,26 @@ procedure genoprnd;
               if emptyset and emptysetgenerated then setcount := emptysetcount
               else
                 begin
-                newlim := forcealign(sharedPtr^.stringfilecount, setalign * hostfileunits, false);
-                while newlim > sharedPtr^.stringfilecount do putbyte(0);
+                newlim := forcealign (sharedPtr^.stringfilecount, setalign * hostfileunits, false);
+                while newlim > sharedPtr^.stringfilecount do
+                  putbyte (0);
                 setcount := sharedPtr^.stringfilecount;
 
                 if emptyset then
                   begin
                   emptysetgenerated := true;
                   emptysetcount := setcount;
-                  for i := 0 to setvaluebytes do putbyte(0);
+                  for i := 0 to setvaluebytes do
+                    putbyte (0);
                   end
                 else
                   begin
                   kludge.s := setvalue^;
                   for i := 0 to oprndlen * hostfileunits - 1 do
-                    putbyte(kludge.b[i]);
+                    putbyte (kludge.b[i]);
                   end;
                 end;
+
               genop(structop);
               genint(setcount);
               genint(oprndlen);
@@ -3007,7 +3009,7 @@ procedure genoprnd;
 procedure debugstmt (s: stmttype;
                     line: integer;
                     filepos: integer;
-                    fileindex: integer);
+                    fileIndex: integer);
 
 
   begin {debugstmt}
@@ -3016,10 +3018,10 @@ procedure debugstmt (s: stmttype;
     { Only need to do sourcestringindex once.  If source name changes,
       and somebody sets to nonzero value, it'll be put out again.
     }
-    if sourcestringindex <> fileindex then
+    if sourcestringindex <> fileIndex then
       begin
-      sourcestringindex := fileindex;
-      genint(fileindex);
+      sourcestringindex := fileIndex;
+      genint (fileIndex);
       end
     else
       genint(0);
@@ -3036,7 +3038,7 @@ procedure newexprstmt (s: stmttype { statement to generate } );
 
 
   begin {newexprstmt}
-    debugstmt(s, thistoken.line, thistoken.filepos, thistoken.fileindex);
+    debugstmt(s, thistoken.line, thistoken.filepos, thistoken.fileIndex);
     intstate := opstate;
   end {newexprstmt} ;
 {>>>}
@@ -3452,14 +3454,11 @@ procedure returnresult (overflowed: boolean);
 {<<<}
 procedure dumpconst (constantlen: addressrange; {length of const to be dumped}
                     dumplen: boolean {dump length in stringfile if true} );
-
 { Dump a constant which is stored as an integer into the string file.
   This is required in two cases: when a structured constant is subjected
   to selection ("[", ".") or when a char or structured constant is
-  converted to a string.  If "dumplen" is true the length itself becomes
-  the first byte.
+  converted to a string.  If "dumplen" is true the length itself becomes the first byte.
 }
-
   var
     i, j, k: integer; {induction var for putting structured constant}
     tlim: integer; {temp value of consttablelimit}
@@ -3469,7 +3468,6 @@ procedure dumpconst (constantlen: addressrange; {length of const to be dumped}
           true: (b: packed array [1..hostintsize] of hostfilebyte);
           false: (i: integer);
       end;
-
 
   begin {dumpconst}
     with oprndstk[sp], cvalue do
@@ -3482,7 +3480,7 @@ procedure dumpconst (constantlen: addressrange; {length of const to be dumped}
           begin
           tlim := forcealign (sharedPtr^.stringfilecount, intalign * hostfileunits, false);
           while tlim > sharedPtr^.stringfilecount do
-            putbyte(0);
+            putbyte (0);
           representation := arrays;
           end;
         pos := sharedPtr^.stringfilecount;
@@ -3492,14 +3490,16 @@ procedure dumpconst (constantlen: addressrange; {length of const to be dumped}
         j := hostintsize * hostfileunits;
         if dumplen then
           begin
-          putbyte(constantlen);
+          putbyte (constantlen);
           oprndlen := oprndlen + 1;
           end;
         if constantlen < hostintsize * hostfileunits then
           if hostintlowbytefirst then j := constantlen {do left part}
           else i := j + 1 - constantlen; {do right part}
-        if reversebytes then for k := j downto i do putbyte(kludge.b[k])
-        else for k := i to j do putbyte(kludge.b[k]);
+        if reversebytes then for k := j downto i do
+          putbyte (kludge.b[k])
+        else for k := i to j do
+          putbyte (kludge.b[k]);
         end;
   end {dumpconst} ;
 {>>>}
@@ -5911,17 +5911,17 @@ procedure statement (follow: tokenset {legal following symbols} );
   function filedeclared: boolean;
   { Returns true unless "standard" is specified and token is input or output and is not declared in the program heading }
     var
-      fileindex: tableIndex; {to get to the file name}
+      fileIndex: tableIndex; {to get to the file name}
       f: entryptr; {to point there once we've found it}
 
     begin
       filedeclared := true;
       if (sharedPtr^.switchcounters[standard] > 0) and (token = ident) then
         begin
-        search(fileindex);
-        if (fileindex = inputindex) or (fileindex = outputindex) then
+        search (fileIndex);
+        if (fileIndex = inputindex) or (fileIndex = outputindex) then
           begin
-          f := ref(bigtable[fileindex]);
+          f := ref(bigtable[fileIndex]);
           filedeclared := f^.programdecl;
           end;
         end;
@@ -9587,7 +9587,7 @@ procedure statement (follow: tokenset {legal following symbols} );
       begin {repeatstatement}
         loopfactor := loopfactor + 1;
         gettoken;
-        debugstmt(begrpt, lasttoken.line, lasttoken.filepos, lasttoken.fileindex);
+        debugstmt(begrpt, lasttoken.line, lasttoken.filepos, lasttoken.fileIndex);
         nest := nest + 1;
         statement(follow + [untilsym, semicolon]);
         while token in [semicolon, beginsym..gotosym, ident] do
@@ -9988,14 +9988,14 @@ procedure statement (follow: tokenset {legal following symbols} );
         lab: labelptr; {label entry}
         gotoline: integer; {line on which goto appeared}
         gotofilepos: integer; {file position of goto token}
-        gotofileindex: integer; {fileindex of goto token}
+        gotofileIndex: integer; {fileindex of goto token}
 
 
       begin {gotostatement}
         forstack[forsp].containedgoto := true;
         gotoline := thistoken.line;
         gotofilepos := thistoken.filepos;
-        gotofileindex := thistoken.fileindex;
+        gotofileIndex := thistoken.fileIndex;
         gettoken;
         if token = intconst then
           begin
@@ -10018,7 +10018,7 @@ procedure statement (follow: tokenset {legal following symbols} );
               end;
             if (lev > 1) and (lev <> level) then
               sharedPtr^.proctable[display[level].blockref].intlevelrefs := true;
-            debugstmt(gotolab, gotoline, gotofilepos, gotofileindex);
+            debugstmt(gotolab, gotoline, gotofilepos, gotofileIndex);
             genint(internalvalue);
             genint(lev);
             end;
@@ -10490,58 +10490,45 @@ end;
 {>>>}
 
 {<<<}
-{ Symbol Table and Display Structure ----
+{ Symbol Table and Display Structure
 
-  The symbol table and display work together to implement Pascal's
-  name access rules.  They are only loosely connected, unlike many Pascal
-  compilers where they are part of the same structure.
+  The symbol table and display work together to implement Pascal's name access rules.
+  They are only loosely connected, unlike many Pascal compilers where they are part of the same structure.
 
-  Each unique identifier is assigned a unique number called a "key" by the
-  source scanner.  These keys are used as an index into a keymap table
-  which relates the key to a name table entry.  However, in Pascal,
-  the same name may refer to different objects in different scopes.
-  The compiler assigns unique identifiers to each scope, and the
-  combination of scope id and key is sufficient to identify an
-  object.
+  Each unique identifier is assigned a unique number called a "key" by the source scanner.
+  These keys are used as an index into a keymap table which relates the key to a name table entry.
+  However, in Pascal, the same name may refer to different objects in different scopes.
+  The compiler assigns unique identifiers to each scope, and the combination of scope id and key
+  is sufficient to identify an object.
 
-  The symbol table contains a separate name entry for each object, and
-  all objects with the same key are linked on a chain rooted in the keymap.
-  The scope id is stored in the name entry (called "name" of all things)
-  and is used when searching for a particular object.  Thus the symbol
-  table provides a complete mapping from scope id and key to a name
-  entry.
+  The symbol table contains a separate name entry for each object,
+  and all objects with the same key are linked on a chain rooted in the keymap.
+  The scope id is stored in the name entry (called "name" of all things) and is used when searching for a particular object.
+  Thus the symbol table provides a complete mapping from scope id and key to a name entry.
 
-  The display, on the other hand, keeps track of currently accessable
-  scopes.  Thus, upon entering a scope, the display is assigned an
-  id, and this is used for all items defined within this scope.  Each
-  procedure and each record will have it's own scope id.  Only those
-  scopes which are represented on the display will normally be
-  accessable.  Thus, to implement a "with" it is only necessary to
-  make a display entry containing the scope id of the record type, and
-  The fields of the record may be found by searching for an identifier
-  with the record's scope id.
+  The display, on the other hand, keeps track of currently accessable scopes.
+  Thus, upon entering a scope, the display is assigned an id, and this is used for all items defined within this scope.
+  Each procedure and each record will have it's own scope id.
+  Only those scopes which are represented on the display will normally be accessable.
+  Thus, to implement a "with" it is only necessary to make a display entry containing the scope id of the record type,
+  and The fields of the record may be found by searching for an identifier with the record's scope id.
 
-  This approach completely decouples accessing rules from the
-  symbol table.  The symbol table handles names, and the display
-  handles access rules.
+  This approach completely decouples accessing rules from the symbol table.
+  The symbol table handles names, and the display handles access rules.
 
-  There is an optimization which conserves space in the symbol
-  table, as well as speeding access.  Since identifiers defined
-  within a block are inaccessable after exit from that block,
-  they can be removed from the symbol table at block exit.  This is not
-  the case for record fields, or for parameters.
+  There is an optimization which conserves space in the symbol table, as well as speeding access.
+  Since identifiers defined within a block are inaccessable after exit from that block,
+  they can be removed from the symbol table at block exit.
+  This is not the case for record fields, or for parameters.
 
-  Record fields are simply left in the symbol table, and parameters
-  are removed from the keymap chain, but their entries are left in the
-  name table.  They are no longer accessable through the key map,
-  but can be found from the procedure entry.
+  Record fields are simply left in the symbol table, and parameters are removed from the keymap chain,
+  but their entries are left in the name table.
+  They are no longer accessable through the key map, but can be found from the procedure entry.
 
-  Parameters in forward definitions are treated somewhat differently, for
-  practical reasons.  They have their scope id set to an impossible
-  value to make them inaccessable.
+  Parameters in forward definitions are treated somewhat differently, for practical reasons.
+  They have their scope id set to an impossible value to make them inaccessable.
 
-  In addition, scope id's can be re-used after exit from a block,
-  thus conserving space in the symbol table.
+  In addition, scope id's can be re-used after exit from a block, thus conserving space in the symbol table.
 }
 {>>>}
 {<<<}
@@ -10635,7 +10622,7 @@ begin
     p^.varalloc := normalalloc; { initialization needed for $multidef }
     if token = ident then
       begin
-      p^.charindex := thistoken.keypos;
+      p^.charindex := thistoken.keyPos;
       p^.charlen := thistoken.right - thistoken.left + 1;
       end
     else
@@ -10665,10 +10652,9 @@ end {enterlocalident} ;
 {<<<}
 procedure programheading;
 { Syntactic routine to parse a program-heading.
-  Productions:
   program-heading = "program" identifier [ "(" identifier [* "," identifier *] ")" ] ";"
-  This is simply checked for syntactic correctness and ignored. }
-
+  This is simply checked for syntactic correctness and ignored
+}
   {<<<}
   procedure oneprogramparam;
   { Process one program parameter.  All identifiers declared in the
@@ -10724,7 +10710,7 @@ procedure programheading;
 begin
   gettoken;
 
-  sharedPtr^.proctable[0].charindex := thistoken.keypos;
+  sharedPtr^.proctable[0].charindex := thistoken.keyPos;
   sharedPtr^.proctable[0].charlen := min(maxprocnamelen, thistoken.right - thistoken.left + 1);
   verifytoken (ident, novarerr);
 
@@ -10833,792 +10819,793 @@ var
   f: entryptr; {for access to form data}
   packedflag: boolean; {this is a packed form}
 
-{<<<}
-procedure alignpartialint (var int: integer; {integer to be aligned}
-                          bytes: addressrange {actual size in use} );
-{ If the value is in the high order end of the integer, and it hasn't
-  used all bytes of the integer, we need to slide the value down to the
-  low order end, consistent with the rule that all values are kept in the low order end of the integer.
-}
-var
-  kludge: constbuffer; {used to shift left or right}
-  dist: 0..cbufsize; {distance to shift}
-  i: 0..cbufsize; {induction on bytes in integer}
+  {<<<}
+  procedure alignpartialint (var int: integer; {integer to be aligned}
+                            bytes: addressrange {actual size in use} );
+  { If the value is in the high order end of the integer, and it hasn't
+    used all bytes of the integer, we need to slide the value down to the
+    low order end, consistent with the rule that all values are kept in the low order end of the integer.
+  }
+  var
+    kludge: constbuffer; {used to shift left or right}
+    dist: 0..cbufsize; {distance to shift}
+    i: 0..cbufsize; {induction on bytes in integer}
 
-begin
-  if (bytes < hostintsize * hostfileunits) and (bytes > 0) then
-    begin
-    kludge.i := int;
-    dist := hostintsize * hostfileunits - bytes;
+  begin
+    if (bytes < hostintsize * hostfileunits) and (bytes > 0) then
+      begin
+      kludge.i := int;
+      dist := hostintsize * hostfileunits - bytes;
 
-    if hostintlowbytefirst then
-      begin {shift left}
-      for i := 1 to bytes do kludge.b[i] := kludge.b[i + dist];
-      for i := bytes + 1 to hostintsize * hostfileunits do
-        kludge.b[i] := 0;
-      end
-    else
-      begin {shift right}
-      for i := bytes downto 1 do kludge.b[i + dist] := kludge.b[i];
-      for i := dist downto 1 do kludge.b[i] := 0;
-      end;
-    int := kludge.i;
-    end;
-end;
-{>>>}
-{<<<}
-procedure reversestructure (var s: constbuffer; {structure to munge}
-                           bytes: integer {number of bytes to flip} );
-{ Reverse the bytes within each integer of a structure.
-}
-
-var
-  i, j: 1..cbufsize; {induction on bytes of an integer}
-  k: 0..cbufsize; {offset of integer in constant buffer}
-  t: hostfilebyte; {temp for flipping structure}
-
-begin
-  if reversebytes then
-    begin
-    k := 0;
-
-    while bytes - k > 0 do
-      begin {reverse the active bytes in each integer}
-      i := k + 1;
-      j := k + hostintsize * hostfileunits;
-      if bytes - k < hostintsize * hostfileunits then
-        if hostintlowbytefirst then
-          j := bytes {do left part}
-        else
-          i := j + 1 - (bytes - k); {do right part}
-
-      while i < j do
-        begin
-        t := s.b[i];
-        s.b[i] := s.b[j];
-        s.b[j] := t;
-        i := i + 1;
-        j := j - 1;
+      if hostintlowbytefirst then
+        begin {shift left}
+        for i := 1 to bytes do kludge.b[i] := kludge.b[i + dist];
+        for i := bytes + 1 to hostintsize * hostfileunits do
+          kludge.b[i] := 0;
+        end
+      else
+        begin {shift right}
+        for i := bytes downto 1 do kludge.b[i + dist] := kludge.b[i];
+        for i := dist downto 1 do kludge.b[i] := 0;
         end;
-      k := k + hostintsize * hostfileunits;
+      int := kludge.i;
       end;
-    end;
-end {reversestructure} ;
-{>>>}
+  end;
+  {>>>}
+  {<<<}
+  procedure reversestructure (var s: constbuffer; {structure to munge}
+                             bytes: integer {number of bytes to flip} );
+  { Reverse the bytes within each integer of a structure.
+  }
 
-{<<<}
-procedure putcbyte (b: hostfilebyte {constant byte to put} );
-{ Put a byte to the constant buffer, writing the buffer to the string file if it is full. }
+  var
+    i, j: 1..cbufsize; {induction on bytes of an integer}
+    k: 0..cbufsize; {offset of integer in constant buffer}
+    t: hostfilebyte; {temp for flipping structure}
 
-var
-  i: 1..cbufsize;
-
-begin
-  if emitflag then
-    begin
-    if cbytes = cbufsize then
-      begin
-      seekstringfile (sharedPtr^.stringfilecount);
-      for i := 1 to cbufsize do
-        putbyte (cbuf.b[i]);
-      cbytes := 0;
-      end;
-    cbytes := cbytes + 1;
-    cbuf.b[cbytes] := b;
-    end;
-end;
-{>>>}
-{<<<}
-procedure putcint (int: integer; {integer to write}
-                  bytes: addressrange {bytes to write} );
-{ Put "bytes" bytes of an integer to the constant buffer.
-  If there are more bytes specified than in an integer, empty bytes are appended to the end.
-}
-var
-  kludge: constbuffer; {used to separate bytes of the integer}
-  datasize: 0..cbufsize; {number of bytes of actual integer}
-  i: addressrange; {induction on "bytes"}
-
-begin
-  if emitflag then
-    begin
-    kludge.i := int;
-    datasize := min(bytes, hostintsize);
-
+  begin
     if reversebytes then
-      reversestructure(kludge, hostintsize * hostfileunits);
-
-    if hostintlowbytefirst <> reversebytes {low order first} then
-      for i := 1 to datasize do
-        putcbyte (kludge.b[i])
-    else {high order first}
-      for i := hostintsize * hostfileunits + 1 - datasize to hostintsize * hostfileunits do
-        putcbyte (kludge.b[i]);
-    for i := hostintsize * hostfileunits + 1 to bytes do
-      putcbyte(0);
-    end;
-end;
-{>>>}
-{<<<}
-procedure putcreal (r: realarray; {double} size: integer);
-{ Put a real value to the constant buffer. }
-
-var
-  kludge: constbuffer; {used to separate the bytes of the real}
-  i: 1..cbufsize; {induction on words of the real number}
-  t: hostfilebyte; {temp for switching bytes}
-
-begin
-  kludge.r := r;
-
-  if reversebytes then
-    for i := 1 to (size * hostfileunits) div 2 do
       begin
-      t := kludge.b[i * 2 - 1];
-      kludge.b[i * 2 - 1] := kludge.b[i * 2];
-      kludge.b[i * 2] := t;
+      k := 0;
+
+      while bytes - k > 0 do
+        begin {reverse the active bytes in each integer}
+        i := k + 1;
+        j := k + hostintsize * hostfileunits;
+        if bytes - k < hostintsize * hostfileunits then
+          if hostintlowbytefirst then
+            j := bytes {do left part}
+          else
+            i := j + 1 - (bytes - k); {do right part}
+
+        while i < j do
+          begin
+          t := s.b[i];
+          s.b[i] := s.b[j];
+          s.b[j] := t;
+          i := i + 1;
+          j := j - 1;
+          end;
+        k := k + hostintsize * hostfileunits;
+        end;
       end;
-
-  for i := 1 to size * hostfileunits do
-    putcbyte (kludge.b[i]);
-end;
-{>>>}
-{<<<}
-procedure putcptr (p: integer {targep} {pointer to generate} );
-{ Put a pointer value to the constant buffer.  Pointer constants are
-  kept in target form, so there is no need to call reversestructure.
-  NOTE: This routine assumes that a pointer will never be smaller than an integer
-}
-var
-  kludge: constbuffer; {used to separate the bytes of the pointer}
-  i: 1..cbufsize; {induction on bytes of the pointer}
-
-begin
-  for i := 1 to sharedPtr^.ptrsize * hostfileunits do
-    kludge.b[i] := 0;
-  kludge.p := p;
-
-  if hostintsize < sharedPtr^.ptrsize then
-    begin
-    if hostintlowbytefirst = reversebytes {high order first} then
-      for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
-        putcbyte(0);
-
-    for i := 1 to hostintsize * hostfileunits do
-      putcbyte(kludge.b[i]);
-
-    if hostintlowbytefirst <> reversebytes {low order first} then
-      for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
-        putcbyte(0);
-    end
-  else {pointer size = integer size}
-    for i := 1 to sharedPtr^.ptrsize * hostfileunits do putcbyte(kludge.b[i]);
-end;
-{>>>}
-
-{<<<}
-procedure flushpackbuffer;
-{ Flush anything in the packed constant buffer and update baseloc and
-curloc to reflect the new location.
-}
-var
-  bytes: addressrange; {how many bytes it takes to hold the value}
-
-begin
-  if curloc > baseloc then
-    begin
-    bytes := (curloc - baseloc + bitsperunit - 1) div bitsperunit;
-    if packinghightolow then alignpartialint(pbuf1, bytes);
-    putcint(pbuf1, bytes);
-    baseloc := ((baseloc + bitsperunit - 1) div bitsperunit + bytes) *
-               bitsperunit;
-    curloc := baseloc;
-    pbuf1 := 0;
-    end;
-end;
-{>>>}
-{<<<}
-procedure flushbuffer;
-{ Flush any partial value kept as an intvalue thus far. }
-
-var
-  i: 1..cbufsize; {induction var}
-
-begin
-  with value1.cvalue do
-    begin
-    if representation = ints then
-      begin
-      if reversebytes then
-        reversestructure(cbuf, hostintsize * hostfileunits);
-      if hostintlowbytefirst = reversebytes {high order first} then
-        alignpartialint(cbuf.i, cbytes);
-      intvalue := cbuf.i;
-      negated := false; { PJS force init }
-      end
-    else if emitflag then
-      begin
-      for i := 1 to cbytes do putbyte(cbuf.b[i]);
-      cbytes := 0;
-      end;
-    end;
-end;
-{>>>}
-{<<<}
-procedure putvalue (vloc: addressrange; {loc to put value}
-                    eltstring: boolean; {target elt is a string}
-                    whichbuf: boolean; {which string buffer}
-                    packing: boolean; {this is being packed in}
-                    eltsize: addressrange; {size of constant element}
-                    var value1: operand {value to place} );
-{ Put a constant value in "value" into the current structured constant.
-  There is an assumption that only items capable of representation as integers will actually be packed.
-  The packing is done by the routine "packedstore".
-  Strings require some extra work as a length byte must prefix the actual data,
-  as the result might need padding, and it might be a character needing conversion to a string!
-}
-var
-  full: boolean; {a packed word is full}
-  start, finish: addressrange; {start and end of constant in file}
-  bytes: addressrange; {bytes already used in the packing buffer}
+  end {reversestructure} ;
+  {>>>}
 
   {<<<}
-  procedure putpackedvalue (data: integer; {bits to put}
-                           dataloc: addressrange; {where to put bits}
-                           datasize: addressrange {number of bits to put} );
-  { Put one packed data item.  This code was inline until strings were
-    added, as conversion of a character to a string requires both the
-    length and data bytes to be emitted.
-  }
+  procedure putcbyte (b: hostfilebyte {constant byte to put} );
+  { Put a byte to the constant buffer, writing the buffer to the string file if it is full. }
+
+  var
+    i: 1..cbufsize;
+
   begin
-    { If the value won't fit in this integer, then we need to flush the packing buffer.
-      The VAX and iAPX, however, are a special case, for which packing is done to the maximum extent possible. }
-    if (targetmachine <> iapx86) and (targetmachine <> vax) and
-       (targetmachine <> i80386) or (sharedPtr^.switchcounters[oldpacking] > 0) then
+    if emitflag then
       begin
-      if dataloc + datasize > baseloc + bitsperunit * hostintsize then
+      if cbytes = cbufsize then
         begin
-        bytes := (dataloc - baseloc + bitsperunit - 1) div bitsperunit;
-        if packinghightolow then
-          alignpartialint (pbuf1, bytes);
-        putcint (pbuf1, bytes);
-        baseloc := ((dataloc + bitsperunit - 1) div bitsperunit) * bitsperunit;
-        curloc := baseloc;
-        pbuf1 := 0;
+        seekstringfile (sharedPtr^.stringfilecount);
+        for i := 1 to cbufsize do
+          putbyte (cbuf.b[i]);
+        cbytes := 0;
         end;
-      end {not vax} ;
-
-    packedstore (dataloc, datasize, baseloc, data, pbuf1, pbuf2, full);
-
-    if full then
-      begin {we write out the lower buffer}
-      putcint (pbuf1, hostintsize);
-      pbuf1 := pbuf2;
-      pbuf2 := 0;
-      baseloc := baseloc + hostintsize * bitsperunit;
+      cbytes := cbytes + 1;
+      cbuf.b[cbytes] := b;
       end;
-    curloc := dataloc + datasize;
+  end;
+  {>>>}
+  {<<<}
+  procedure putcint (int: integer; {integer to write}
+                    bytes: addressrange {bytes to write} );
+  { Put "bytes" bytes of an integer to the constant buffer.
+    If there are more bytes specified than in an integer, empty bytes are appended to the end.
+  }
+  var
+    kludge: constbuffer; {used to separate bytes of the integer}
+    datasize: 0..cbufsize; {number of bytes of actual integer}
+    i: addressrange; {induction on "bytes"}
+
+  begin
+    if emitflag then
+      begin
+      kludge.i := int;
+      datasize := min(bytes, hostintsize);
+
+      if reversebytes then
+        reversestructure (kludge, hostintsize * hostfileunits);
+
+      if hostintlowbytefirst <> reversebytes {low order first} then
+        for i := 1 to datasize do
+          putcbyte (kludge.b[i])
+      else {high order first}
+        for i := hostintsize * hostfileunits + 1 - datasize to hostintsize * hostfileunits do
+          putcbyte (kludge.b[i]);
+      for i := hostintsize * hostfileunits + 1 to bytes do
+        putcbyte(0);
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure putcreal (r: realarray; {double} size: integer);
+  { Put a real value to the constant buffer. }
+
+  var
+    kludge: constbuffer; {used to separate the bytes of the real}
+    i: 1..cbufsize; {induction on words of the real number}
+    t: hostfilebyte; {temp for switching bytes}
+
+  begin
+    kludge.r := r;
+
+    if reversebytes then
+      for i := 1 to (size * hostfileunits) div 2 do
+        begin
+        t := kludge.b[i * 2 - 1];
+        kludge.b[i * 2 - 1] := kludge.b[i * 2];
+        kludge.b[i * 2] := t;
+        end;
+
+    for i := 1 to size * hostfileunits do
+      putcbyte (kludge.b[i]);
+  end;
+  {>>>}
+  {<<<}
+  procedure putcptr (p: integer {targep} {pointer to generate} );
+  { Put a pointer value to the constant buffer.  Pointer constants are
+    kept in target form, so there is no need to call reversestructure.
+    NOTE: This routine assumes that a pointer will never be smaller than an integer
+  }
+  var
+    kludge: constbuffer; {used to separate the bytes of the pointer}
+    i: 1..cbufsize; {induction on bytes of the pointer}
+
+  begin
+    for i := 1 to sharedPtr^.ptrsize * hostfileunits do
+      kludge.b[i] := 0;
+    kludge.p := p;
+
+    if hostintsize < sharedPtr^.ptrsize then
+      begin
+      if hostintlowbytefirst = reversebytes {high order first} then
+        for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
+          putcbyte (0);
+
+      for i := 1 to hostintsize * hostfileunits do
+        putcbyte(kludge.b[i]);
+
+      if hostintlowbytefirst <> reversebytes {low order first} then
+        for i := 1 to (sharedPtr^.ptrsize - hostintsize) * hostfileunits do
+          putcbyte (0);
+      end
+    else {pointer size = integer size}
+      for i := 1 to sharedPtr^.ptrsize * hostfileunits do putcbyte(kludge.b[i]);
   end;
   {>>>}
 
-begin
-  if packing and (value1.cvalue.representation = ints) then
-    begin
-    if eltstring then
-      begin
-      putpackedvalue (1, vloc, bitsperunit); {length of string = 1 char}
-      putpackedvalue (value1.cvalue.intvalue, vloc + bitsperunit, eltsize - bitsperunit);
-      end
-    else
-      putpackedvalue(value1.cvalue.intvalue, vloc, eltsize);
-    end
+  {<<<}
+  procedure flushpackbuffer;
+  { Flush anything in the packed constant buffer and update baseloc and
+  curloc to reflect the new location.
+  }
+  var
+    bytes: addressrange; {how many bytes it takes to hold the value}
 
-  else { not packing or (representation <> ints) }
-    begin
-    if packing then
+  begin
+    if curloc > baseloc then
       begin
-      bytes := (vloc - baseloc + bitsperunit - 1) div bitsperunit;
-      if packinghightolow then
-        alignpartialint (pbuf1, bytes);
-      putcint (pbuf1, bytes);
+      bytes := (curloc - baseloc + bitsperunit - 1) div bitsperunit;
+      if packinghightolow then alignpartialint(pbuf1, bytes);
+      putcint(pbuf1, bytes);
+      baseloc := ((baseloc + bitsperunit - 1) div bitsperunit + bytes) *
+                 bitsperunit;
+      curloc := baseloc;
       pbuf1 := 0;
-      end
-    else
-      putcint (0, vloc - curloc);
-
-    with value1.cvalue do
-      case representation of
-        {<<<}
-        ints:
-          if eltstring then
-            begin {convert char to string w/length byte then pad}
-            putcbyte (1);
-            putcbyte (value1.cvalue.intvalue);
-            if packing then
-              putcint (0, eltsize div bitsperunit - 2)
-            else
-              putcint (0, eltsize - 2);
-            end
-          else
-            putcint (intvalue, eltsize);
-        {>>>}
-        reals:
-          putcreal (realvalue.realbuffer, sharedPtr^.targetrealsize);
-        doubles:
-          putcreal (realvalue.realbuffer, doublesize);
-        ptrs:
-          putcptr (ptrvalue);
-        otherwise
-          {<<<}
-          begin
-          if packing then
-            bytes := eltsize div bitsperunit
-          else
-            bytes := eltsize;
-
-          if (pos < 0) then {has not been dumped to file at all, yet}
-            begin
-            flushbuffer;
-            dumpstr (bytes, whichbuf, eltstring);
-            end
-
-          else
-            begin
-            start := pos;
-            if start >= sharedPtr^.stringfilecount then
-              start := start + (sharedPtr^.stringtablelimit - sharedPtr^.stringfilecount);
-            finish := start + len;
-
-            if eltstring then
-              putcbyte (len);
-            while start < finish do
-              begin
-              seekstringfile (start);
-              putcbyte (sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile]);
-              start := start + 1;
-              end;
-
-            seekstringfile (sharedPtr^.stringfilecount);
-
-            if eltstring then
-              len := len + 1; {a kludge, the length byte}
-
-            { This fixes structured constant bug tr2158.  Odd-byte length
-              structures actually allocated the next greater even numbered
-              byte worth of space and were not padded correctly.  Putvalue
-              only emitted the actual data bytes but moved the current
-              location counter to the allocated boundary.  This change
-              causes Putvalue to correctly emit the actual data bytes, and
-              eltsize-len (i.e. allocated length - data length) bytes of pad. }
-            if bytes < len then
-              if eltstring then
-                warn (stringoverflowerr)
-              else
-                warn (compilerwritererr);
-
-            putcint (0, bytes - len);
-            end;
-          end;
-          {>>>}
-        end;
-
-    curloc := vloc + eltsize;
-    baseloc := curloc;
-    end;
-end;
-{>>>}
-{<<<}
-procedure initcdump (var value1: operand; {value to initialize}
-                     consttypeindx: tableIndex; {index for this element type}
-                     consttype: entryptr {type of this element} );
-{ Initialize the value of the constant and set up the constant buffer for generating the value. }
-
-var
-  t: addressrange; {aligned value of consttablelimit}
-
-begin
-  cbytes := 0;
-  cbuf.i := 0;
-  pbuf1 := 0;
-  pbuf2 := 0;
-  curloc := 0;
-  baseloc := 0;
-
-  with value1 do
-    begin
-    typeindex := consttypeindx;
-    oprndlen := sizeof(consttype, false);
-    operandkind := constoperand;
-    end;
-
-  t := forcealign (sharedPtr^.stringfilecount, alignmentof(consttype, false) * hostfileunits, false);
-  putcint (0, t - sharedPtr^.stringfilecount);
-
-  curloc := 0;
-  baseloc := 0;
-
-  value1.extended := false;
-  value1.cvalue.representation := consttype^.typ;
-  value1.cvalue.stringconstflag := false;
-  value1.cvalue.pos := t;
-  value1.cvalue.len := value1.oprndlen * hostfileunits;
-  if value1.cvalue.representation = ints then
-    value1.cvalue.negated := false; {PJS force init }
-end;
-{>>>}
-{<<<}
-procedure finishdump(var value1: operand; {value being finished off}
-                     packing: boolean {this is a packed value} );
-{ After the entire constant has been parsed, this forces final output,
-  if necessary, and finishes off the resulting operand
-}
-begin
-  if value1.oprndlen > curloc then
-    if packing then
-      begin
-      flushpackbuffer;
-      if value1.oprndlen > curloc then
-        putcint(0, (value1.oprndlen - curloc) div bitsperunit);
-      end
-    else
-      putcint(0, value1.oprndlen - curloc);
-
-  flushbuffer;
-end;
-{>>>}
-{<<<}
-procedure innercstruct (eltloc: addressrange; {rel loc for this element}
-                       form: tableIndex; {form of this constant}
-                       outerpacked: boolean {outer structure was packed} );
-{ Given a structured value, determine the type and parse it }
-
-var
-  f: entryptr; {for access to form}
-  packedflag: boolean; {form is packed}
-
-  {<<<}
-  procedure constvalue(eltloc: addressrange; {rel loc for this element}
-                       elttype: tableIndex; {desired value type}
-                       eltstring: boolean; {current element is a string}
-                       packing: boolean; {set if packing this element}
-                       var value1: operand; {result, if not written}
-                       var written: boolean {value already written} );
-
-  { Parse a constant value.  If the value is in turn a structured constant,
-    it may be written to the string file as it is scanned.  Otherwise,
-    its value is placed in "value1", and must be written.
-  }
-
-    var
-      tindex: tableIndex; {type name index}
-      p: entryptr; {access to type name block}
-      elp: entryptr; {for access to elttype}
-      kludge: constbuffer; {converts to integer}
-      i: 1..cbufsize; {induction var for conversion}
-      start, finish: addressrange; {start and end of constant in file}
-
-  {<<<}
-  procedure getconstant(follow: tokenset; {legal following symbols}
-                        elttype: tableIndex; {desired value type}
-                        var value1: operand {result} );
-  { Parse a simple constant and make sure it's in range for the field
-    it's being assigned to.
-  }
-
-    var
-      elp: entryptr; {for access to elttype}
-      unsvalue: unsignedint; {for unsigned comparisons}
-
-
-    begin {getconstant}
-      constant(follow, false, value1);
-      with value1, cvalue do
-        if (representation = ints) and (elttype <> noneindex) and
-           compatible(typeindex, elttype) then
-          begin
-          elp := ref(bigtable[elttype]);
-          if extended and not elp^.extendedrange or (intvalue < 0) and
-             negated and elp^.extendedrange then
-            warnbefore(badconsterr)
-          else if elp^.extendedrange then
-            begin
-            unsvalue := intvalue;
-            if (unsvalue < lower(elp)) or
-               (unsvalue > upper(elp)) then
-              warnbefore(badconsterr);
-            end
-          else if (intvalue < lower(elp)) or
-                  (intvalue > upper(elp)) then
-            warnbefore(badconsterr);
-          end;
-    end {getconstant} ;
-  {>>>}
-
-
-  begin {constvalue}
-    written := false;
-    if token = ident then
-      begin
-      search(tindex);
-      p := ref(bigtable[tindex]);
-      with p^ do
-        if namekind = typename then
-          begin
-          if not compatible(typeindex, elttype) then warn(typesincomp);
-          gettoken;
-          innercstruct(eltloc, typeindex, packing);
-          written := true;
-          end
-        else getconstant(follow, elttype, value1);
-      end
-    else if token = lpar then
-      begin
-      elp := ref(bigtable[elttype]);
-      if not (elp^.typ in [arrays, fields, none]) then
-        begin
-        warn(badconsterr);
-        value1.typeindex := noneindex;
-        value1.cvalue.representation := ints;
-        end;
-      innercstruct(eltloc, elttype, packing);
-      written := true;
-      end
-    else getconstant(follow, elttype, value1);
-    if not written then
-      begin
-      elp := ref(bigtable[value1.typeindex]);
-      if not (eltstring and ((elp^.typ = chars) or
-         (elp^.typ = arrays) and (elp^.stringtype)) or
-         compatible(elttype, value1.typeindex)) then
-        warnbefore(typesincomp);
       end;
-  end {constvalue} ;
+  end;
   {>>>}
   {<<<}
-  procedure constelement (eltloc: addressrange; {loc to for this element}
-                          elttype: tableIndex; {type desired}
-                          eltsize: addressrange; {size of the element}
-                          eltstring: boolean; {current element is a string}
-                          packing: boolean {this is a packed field} );
-  { Read and store a constant element.  The result is written to the string
-    file buffer.
-  }
-    var
-      temp: operand; {holds a value}
-      written: boolean; {value already written}
-      whichbuf: boolean; {which string buf contains thistoken's string if
-                          any}
+  procedure flushbuffer;
+  { Flush any partial value kept as an intvalue thus far. }
 
-    begin {constelement}
-      whichbuf := sharedPtr^.curstringbuf;
-      constvalue (eltloc, elttype, eltstring, packing, temp, written);
-      if not written and (temp.typeindex <> noneindex) then
-        putvalue (eltloc, eltstring, whichbuf, packing, eltsize, temp);
-    end {constelement} ;
-  {>>>}
-  {<<<}
-  procedure constarray (eltloc: addressrange; {rel loc for this element}
-                       form: tableIndex {form for this array} );
-  { Syntactic routine to parse a constant array.
-    Each element is identical, and the number must match.
-  }
-    var
-      eltcount: addressrange; {elements defined so far}
-      eltsinarray: addressrange; {total elements in array}
-      elttype: tableIndex; {element type}
-      eltstring: boolean; {element is a string}
-      packing: boolean; {set if packed array}
-      eltsize: addressrange; {size of each element}
-      f: entryptr; {for access to type data}
+  var
+    i: 1..cbufsize; {induction var}
 
-
-    begin {constarray}
-      eltcount := 1;
-      f := ref(bigtable[form]);
-      elttype := f^.elementtype;
-      packing := f^.packedflag;
-      eltsize := f^.elementsize;
-      eltsinarray := f^.arraymembers;
-      f := ref(bigtable[elttype]);
-      eltstring := f^.typ = strings;
-      constelement(eltloc, elttype, eltsize, eltstring, packing);
-      while token in [lpar, comma] + begconstset do
+  begin
+    with value1.cvalue do
+      begin
+      if representation = ints then
         begin
-        verifytoken(comma, nocommaerr);
-        eltloc := eltloc + eltsize;
-        if eltcount = eltsinarray then warnbefore(badconsterr);
-        eltcount := eltcount + 1;
-        constelement(eltloc, elttype, eltsize, eltstring, packing);
+        if reversebytes then
+          reversestructure(cbuf, hostintsize * hostfileunits);
+        if hostintlowbytefirst = reversebytes {high order first} then
+          alignpartialint(cbuf.i, cbytes);
+        intvalue := cbuf.i;
+        negated := false; { PJS force init }
+        end
+      else if emitflag then
+        begin
+        for i := 1 to cbytes do
+          putbyte (cbuf.b[i]);
+        cbytes := 0;
         end;
-
-      if eltcount < eltsinarray then warnbefore(badconsterr);
-    end {constarray} ;
+      end;
+  end;
   {>>>}
   {<<<}
-  procedure constrecord (eltloc: addressrange; {start of this element}
-                        form: tableIndex {form for this record} );
-  { Syntactic routine to parse a constant record.
+  procedure putvalue (vloc: addressrange; {loc to put value}
+                      eltstring: boolean; {target elt is a string}
+                      whichbuf: boolean; {which string buffer}
+                      packing: boolean; {this is being packed in}
+                      eltsize: addressrange; {size of constant element}
+                      var value1: operand {value to place} );
+  { Put a constant value in "value" into the current structured constant.
+    There is an assumption that only items capable of representation as integers will actually be packed.
+    The packing is done by the routine "packedstore".
+    Strings require some extra work as a length byte must prefix the actual data,
+    as the result might need padding, and it might be a character needing conversion to a string!
   }
-
-    var
-      currentfield: tableIndex; {name entry for this field}
-      finished: boolean; {we used all of the fields we have}
-
+  var
+    full: boolean; {a packed word is full}
+    start, finish: addressrange; {start and end of constant in file}
+    bytes: addressrange; {bytes already used in the packing buffer}
 
     {<<<}
-    procedure constfield;
-    { Find the next field in this record and get a value for it. }
+    procedure putpackedvalue (data: integer; {bits to put}
+                             dataloc: addressrange; {where to put bits}
+                             datasize: addressrange {number of bits to put} );
+    { Put one packed data item.  This code was inline until strings were
+      added, as conversion of a character to a string requires both the
+      length and data bytes to be emitted.
+    }
+    begin
+      { If the value won't fit in this integer, then we need to flush the packing buffer.
+        The VAX and iAPX, however, are a special case, for which packing is done to the maximum extent possible. }
+      if (targetmachine <> iapx86) and (targetmachine <> vax) and
+         (targetmachine <> i80386) or (sharedPtr^.switchcounters[oldpacking] > 0) then
+        begin
+        if dataloc + datasize > baseloc + bitsperunit * hostintsize then
+          begin
+          bytes := (dataloc - baseloc + bitsperunit - 1) div bitsperunit;
+          if packinghightolow then
+            alignpartialint (pbuf1, bytes);
+          putcint (pbuf1, bytes);
+          baseloc := ((dataloc + bitsperunit - 1) div bitsperunit) * bitsperunit;
+          curloc := baseloc;
+          pbuf1 := 0;
+          end;
+        end {not vax} ;
+
+      packedstore (dataloc, datasize, baseloc, data, pbuf1, pbuf2, full);
+
+      if full then
+        begin {we write out the lower buffer}
+        putcint (pbuf1, hostintsize);
+        pbuf1 := pbuf2;
+        pbuf2 := 0;
+        baseloc := baseloc + hostintsize * bitsperunit;
+        end;
+      curloc := dataloc + datasize;
+    end;
+    {>>>}
+
+  begin
+    if packing and (value1.cvalue.representation = ints) then
+      begin
+      if eltstring then
+        begin
+        putpackedvalue (1, vloc, bitsperunit); {length of string = 1 char}
+        putpackedvalue (value1.cvalue.intvalue, vloc + bitsperunit, eltsize - bitsperunit);
+        end
+      else
+        putpackedvalue(value1.cvalue.intvalue, vloc, eltsize);
+      end
+
+    else { not packing or (representation <> ints) }
+      begin
+      if packing then
+        begin
+        bytes := (vloc - baseloc + bitsperunit - 1) div bitsperunit;
+        if packinghightolow then
+          alignpartialint (pbuf1, bytes);
+        putcint (pbuf1, bytes);
+        pbuf1 := 0;
+        end
+      else
+        putcint (0, vloc - curloc);
+
+      with value1.cvalue do
+        case representation of
+          {<<<}
+          ints:
+            if eltstring then
+              begin {convert char to string w/length byte then pad}
+              putcbyte (1);
+              putcbyte (value1.cvalue.intvalue);
+              if packing then
+                putcint (0, eltsize div bitsperunit - 2)
+              else
+                putcint (0, eltsize - 2);
+              end
+            else
+              putcint (intvalue, eltsize);
+          {>>>}
+          reals:
+            putcreal (realvalue.realbuffer, sharedPtr^.targetrealsize);
+          doubles:
+            putcreal (realvalue.realbuffer, doublesize);
+          ptrs:
+            putcptr (ptrvalue);
+          otherwise
+            {<<<}
+            begin
+            if packing then
+              bytes := eltsize div bitsperunit
+            else
+              bytes := eltsize;
+
+            if (pos < 0) then {has not been dumped to file at all, yet}
+              begin
+              flushbuffer;
+              dumpstr (bytes, whichbuf, eltstring);
+              end
+
+            else
+              begin
+              start := pos;
+              if start >= sharedPtr^.stringfilecount then
+                start := start + (sharedPtr^.stringtablelimit - sharedPtr^.stringfilecount);
+              finish := start + len;
+
+              if eltstring then
+                putcbyte (len);
+              while start < finish do
+                begin
+                seekstringfile (start);
+                putcbyte (sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile]);
+                start := start + 1;
+                end;
+
+              seekstringfile (sharedPtr^.stringfilecount);
+
+              if eltstring then
+                len := len + 1; {a kludge, the length byte}
+
+              { This fixes structured constant bug tr2158.  Odd-byte length
+                structures actually allocated the next greater even numbered
+                byte worth of space and were not padded correctly.  Putvalue
+                only emitted the actual data bytes but moved the current
+                location counter to the allocated boundary.  This change
+                causes Putvalue to correctly emit the actual data bytes, and
+                eltsize-len (i.e. allocated length - data length) bytes of pad. }
+              if bytes < len then
+                if eltstring then
+                  warn (stringoverflowerr)
+                else
+                  warn (compilerwritererr);
+
+              putcint (0, bytes - len);
+              end;
+            end;
+            {>>>}
+          end;
+
+      curloc := vloc + eltsize;
+      baseloc := curloc;
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure initcdump (var value1: operand; {value to initialize}
+                       consttypeindx: tableIndex; {index for this element type}
+                       consttype: entryptr {type of this element} );
+  { Initialize the value of the constant and set up the constant buffer for generating the value. }
+
+  var
+    t: addressrange; {aligned value of consttablelimit}
+
+  begin
+    cbytes := 0;
+    cbuf.i := 0;
+    pbuf1 := 0;
+    pbuf2 := 0;
+    curloc := 0;
+    baseloc := 0;
+
+    with value1 do
+      begin
+      typeindex := consttypeindx;
+      oprndlen := sizeof(consttype, false);
+      operandkind := constoperand;
+      end;
+
+    t := forcealign (sharedPtr^.stringfilecount, alignmentof(consttype, false) * hostfileunits, false);
+    putcint (0, t - sharedPtr^.stringfilecount);
+
+    curloc := 0;
+    baseloc := 0;
+
+    value1.extended := false;
+    value1.cvalue.representation := consttype^.typ;
+    value1.cvalue.stringconstflag := false;
+    value1.cvalue.pos := t;
+    value1.cvalue.len := value1.oprndlen * hostfileunits;
+    if value1.cvalue.representation = ints then
+      value1.cvalue.negated := false; {PJS force init }
+  end;
+  {>>>}
+  {<<<}
+  procedure finishdump(var value1: operand; {value being finished off}
+                       packing: boolean {this is a packed value} );
+  { After the entire constant has been parsed, this forces final output,
+    if necessary, and finishes off the resulting operand
+  }
+  begin
+    if value1.oprndlen > curloc then
+      if packing then
+        begin
+        flushpackbuffer;
+        if value1.oprndlen > curloc then
+          putcint(0, (value1.oprndlen - curloc) div bitsperunit);
+        end
+      else
+        putcint(0, value1.oprndlen - curloc);
+
+    flushbuffer;
+  end;
+  {>>>}
+  {<<<}
+  procedure innercstruct (eltloc: addressrange; {rel loc for this element}
+                         form: tableIndex; {form of this constant}
+                         outerpacked: boolean {outer structure was packed} );
+  { Given a structured value, determine the type and parse it }
+
+  var
+    f: entryptr; {for access to form}
+    packedflag: boolean; {form is packed}
+
+    {<<<}
+    procedure constvalue(eltloc: addressrange; {rel loc for this element}
+                         elttype: tableIndex; {desired value type}
+                         eltstring: boolean; {current element is a string}
+                         packing: boolean; {set if packing this element}
+                         var value1: operand; {result, if not written}
+                         var written: boolean {value already written} );
+
+    { Parse a constant value.  If the value is in turn a structured constant,
+      it may be written to the string file as it is scanned.  Otherwise,
+      its value is placed in "value1", and must be written.
+    }
 
       var
-        found: boolean; {field was found}
-        p: entryptr; {access to field names}
-        elttype: tableIndex; {form for a variant}
-        temp: operand; {temp value for variant}
-        written: boolean; {dummy argument to constvalue}
-        tagoffset: addressrange; {offset for tag field, if any}
-        localform: tableentry; {local copy of form entry}
-        f, f1: entryptr; {access to form data}
+        tindex: tableIndex; {type name index}
+        p: entryptr; {access to type name block}
+        elp: entryptr; {for access to elttype}
+        kludge: constbuffer; {converts to integer}
+        i: 1..cbufsize; {induction var for conversion}
+        start, finish: addressrange; {start and end of constant in file}
+
+    {<<<}
+    procedure getconstant(follow: tokenset; {legal following symbols}
+                          elttype: tableIndex; {desired value type}
+                          var value1: operand {result} );
+    { Parse a simple constant and make sure it's in range for the field
+      it's being assigned to.
+    }
+
+      var
+        elp: entryptr; {for access to elttype}
+        unsvalue: unsignedint; {for unsigned comparisons}
 
 
-      begin {constfield}
-        if finished then
-          constelement(eltloc, noneindex, unitsize, false, false)
-        else
-          begin
-          f := ref(bigtable[form]);
-          localform := f^;
-          found := false;
-          while (currentfield < localform.lastfield) and not found do
+      begin {getconstant}
+        constant(follow, false, value1);
+        with value1, cvalue do
+          if (representation = ints) and (elttype <> noneindex) and
+             compatible(typeindex, elttype) then
             begin
-            currentfield := currentfield + 1;
-            p := ref(bigtable[currentfield]);
-            if not p^.form then found := p^.name = localform.fieldid;
-            end;
-          if found then
-            begin
-            f1 := ref(bigtable[p^.vartype]);
-            constelement(p^.offset + eltloc, p^.vartype, sizeof(f1,
-                         localform.packedflag), f1^.typ = strings,
-                         localform.packedflag)
-            end
-          else if localform.firstvariant = 0 then
-            begin
-            finished := true;
-            warnbefore(badconsterr);
-            constelement(curloc, noneindex, unitsize, false, false);
-            end
-          else
-            begin
-            tagoffset := 0;
-            if localform.tagfield <> 0 then
+            elp := ref(bigtable[elttype]);
+            if extended and not elp^.extendedrange or (intvalue < 0) and
+               negated and elp^.extendedrange then
+              warnbefore(badconsterr)
+            else if elp^.extendedrange then
               begin
-              p := ref(bigtable[localform.tagfield]);
-              elttype := p^.vartype;
-              tagoffset := p^.offset;
+              unsvalue := intvalue;
+              if (unsvalue < lower(elp)) or
+                 (unsvalue > upper(elp)) then
+                warnbefore(badconsterr);
               end
-            else if localform.firstvariant <> 0 then
-              begin
-              f := ref(bigtable[localform.firstvariant]);
-              if f^.firstlabel <> 0 then
-                begin
-                f := ref(bigtable[f^.firstlabel]);
-                elttype := f^.varlabtype;
-                end
-              else elttype := noneindex;
-              end
-            else elttype := noneindex;
-            constvalue(tagoffset + eltloc, elttype, false,
-                       localform.packedflag, temp, written);
-            if localform.tagfield <> 0 then
-              begin
-              f := ref(bigtable[elttype]);
-              putvalue(tagoffset + eltloc, false, false,
-                       localform.packedflag, sizeof(f, localform.packedflag), temp);
-              end;
-            searchvariants(form, temp);
-            f := ref(bigtable[form]);
-            currentfield := f^.firstfield - 1;
+            else if (intvalue < lower(elp)) or
+                    (intvalue > upper(elp)) then
+              warnbefore(badconsterr);
             end;
-          end;
-      end {constfield} ;
+      end {getconstant} ;
     {>>>}
 
 
-    begin {constrecord}
-      finished := false;
-      f := ref(bigtable[form]);
-      currentfield := f^.firstfield - 1;
-
-      constfield;
-      while token in [lpar, comma] + begconstset do
+    begin {constvalue}
+      written := false;
+      if token = ident then
         begin
-        verifytoken(comma, nocommaerr);
+        search(tindex);
+        p := ref(bigtable[tindex]);
+        with p^ do
+          if namekind = typename then
+            begin
+            if not compatible(typeindex, elttype) then warn(typesincomp);
+            gettoken;
+            innercstruct(eltloc, typeindex, packing);
+            written := true;
+            end
+          else getconstant(follow, elttype, value1);
+        end
+      else if token = lpar then
+        begin
+        elp := ref(bigtable[elttype]);
+        if not (elp^.typ in [arrays, fields, none]) then
+          begin
+          warn(badconsterr);
+          value1.typeindex := noneindex;
+          value1.cvalue.representation := ints;
+          end;
+        innercstruct(eltloc, elttype, packing);
+        written := true;
+        end
+      else getconstant(follow, elttype, value1);
+      if not written then
+        begin
+        elp := ref(bigtable[value1.typeindex]);
+        if not (eltstring and ((elp^.typ = chars) or
+           (elp^.typ = arrays) and (elp^.stringtype)) or
+           compatible(elttype, value1.typeindex)) then
+          warnbefore(typesincomp);
+        end;
+    end {constvalue} ;
+    {>>>}
+    {<<<}
+    procedure constelement (eltloc: addressrange; {loc to for this element}
+                            elttype: tableIndex; {type desired}
+                            eltsize: addressrange; {size of the element}
+                            eltstring: boolean; {current element is a string}
+                            packing: boolean {this is a packed field} );
+    { Read and store a constant element.  The result is written to the string
+      file buffer.
+    }
+      var
+        temp: operand; {holds a value}
+        written: boolean; {value already written}
+        whichbuf: boolean; {which string buf contains thistoken's string if
+                            any}
+
+      begin {constelement}
+        whichbuf := sharedPtr^.curstringbuf;
+        constvalue (eltloc, elttype, eltstring, packing, temp, written);
+        if not written and (temp.typeindex <> noneindex) then
+          putvalue (eltloc, eltstring, whichbuf, packing, eltsize, temp);
+      end {constelement} ;
+    {>>>}
+    {<<<}
+    procedure constarray (eltloc: addressrange; {rel loc for this element}
+                         form: tableIndex {form for this array} );
+    { Syntactic routine to parse a constant array.
+      Each element is identical, and the number must match.
+    }
+      var
+        eltcount: addressrange; {elements defined so far}
+        eltsinarray: addressrange; {total elements in array}
+        elttype: tableIndex; {element type}
+        eltstring: boolean; {element is a string}
+        packing: boolean; {set if packed array}
+        eltsize: addressrange; {size of each element}
+        f: entryptr; {for access to type data}
+
+
+      begin {constarray}
+        eltcount := 1;
+        f := ref(bigtable[form]);
+        elttype := f^.elementtype;
+        packing := f^.packedflag;
+        eltsize := f^.elementsize;
+        eltsinarray := f^.arraymembers;
+        f := ref(bigtable[elttype]);
+        eltstring := f^.typ = strings;
+        constelement(eltloc, elttype, eltsize, eltstring, packing);
+        while token in [lpar, comma] + begconstset do
+          begin
+          verifytoken(comma, nocommaerr);
+          eltloc := eltloc + eltsize;
+          if eltcount = eltsinarray then warnbefore(badconsterr);
+          eltcount := eltcount + 1;
+          constelement(eltloc, elttype, eltsize, eltstring, packing);
+          end;
+
+        if eltcount < eltsinarray then warnbefore(badconsterr);
+      end {constarray} ;
+    {>>>}
+    {<<<}
+    procedure constrecord (eltloc: addressrange; {start of this element}
+                          form: tableIndex {form for this record} );
+    { Syntactic routine to parse a constant record.
+    }
+
+      var
+        currentfield: tableIndex; {name entry for this field}
+        finished: boolean; {we used all of the fields we have}
+
+
+      {<<<}
+      procedure constfield;
+      { Find the next field in this record and get a value for it. }
+
+        var
+          found: boolean; {field was found}
+          p: entryptr; {access to field names}
+          elttype: tableIndex; {form for a variant}
+          temp: operand; {temp value for variant}
+          written: boolean; {dummy argument to constvalue}
+          tagoffset: addressrange; {offset for tag field, if any}
+          localform: tableentry; {local copy of form entry}
+          f, f1: entryptr; {access to form data}
+
+
+        begin {constfield}
+          if finished then
+            constelement(eltloc, noneindex, unitsize, false, false)
+          else
+            begin
+            f := ref(bigtable[form]);
+            localform := f^;
+            found := false;
+            while (currentfield < localform.lastfield) and not found do
+              begin
+              currentfield := currentfield + 1;
+              p := ref(bigtable[currentfield]);
+              if not p^.form then found := p^.name = localform.fieldid;
+              end;
+            if found then
+              begin
+              f1 := ref(bigtable[p^.vartype]);
+              constelement(p^.offset + eltloc, p^.vartype, sizeof(f1,
+                           localform.packedflag), f1^.typ = strings,
+                           localform.packedflag)
+              end
+            else if localform.firstvariant = 0 then
+              begin
+              finished := true;
+              warnbefore(badconsterr);
+              constelement(curloc, noneindex, unitsize, false, false);
+              end
+            else
+              begin
+              tagoffset := 0;
+              if localform.tagfield <> 0 then
+                begin
+                p := ref(bigtable[localform.tagfield]);
+                elttype := p^.vartype;
+                tagoffset := p^.offset;
+                end
+              else if localform.firstvariant <> 0 then
+                begin
+                f := ref(bigtable[localform.firstvariant]);
+                if f^.firstlabel <> 0 then
+                  begin
+                  f := ref(bigtable[f^.firstlabel]);
+                  elttype := f^.varlabtype;
+                  end
+                else elttype := noneindex;
+                end
+              else elttype := noneindex;
+              constvalue(tagoffset + eltloc, elttype, false,
+                         localform.packedflag, temp, written);
+              if localform.tagfield <> 0 then
+                begin
+                f := ref(bigtable[elttype]);
+                putvalue(tagoffset + eltloc, false, false,
+                         localform.packedflag, sizeof(f, localform.packedflag), temp);
+                end;
+              searchvariants(form, temp);
+              f := ref(bigtable[form]);
+              currentfield := f^.firstfield - 1;
+              end;
+            end;
+        end {constfield} ;
+      {>>>}
+
+
+      begin {constrecord}
+        finished := false;
+        f := ref(bigtable[form]);
+        currentfield := f^.firstfield - 1;
+
         constfield;
-        end;
+        while token in [lpar, comma] + begconstset do
+          begin
+          verifytoken(comma, nocommaerr);
+          constfield;
+          end;
 
-      f := ref(bigtable[form]);
-      if (currentfield < f^.lastfield) or (f^.firstvariant <> 0) then
+        f := ref(bigtable[form]);
+        if (currentfield < f^.lastfield) or (f^.firstvariant <> 0) then
+          warnbefore(badconsterr);
+      end {constrecord} ;
+    {>>>}
+    {<<<}
+    procedure badconst;
+    { Parse off a bad constant.  Just throws away the values. }
+
+      begin {badconst}
         warnbefore(badconsterr);
-    end {constrecord} ;
-  {>>>}
-  {<<<}
-  procedure badconst;
-  { Parse off a bad constant.  Just throws away the values. }
-
-    begin {badconst}
-      warnbefore(badconsterr);
-      constelement(curloc, noneindex, unitsize, false, false);
-      while token in [lpar, comma] + begconstset do
-        begin
-        verifytoken(comma, nocommaerr);
         constelement(curloc, noneindex, unitsize, false, false);
+        while token in [lpar, comma] + begconstset do
+          begin
+          verifytoken(comma, nocommaerr);
+          constelement(curloc, noneindex, unitsize, false, false);
+          end;
+        value1.typeindex := noneindex;
+        value1.cvalue.representation := ints;
+      end {badconst} ;
+    {>>>}
+
+  begin
+    if token = lpar then
+      begin
+      gettoken;
+      f := ref(bigtable[form]);
+      packedflag := f^.packedflag;
+      if outerpacked and not packedflag then
+        begin
+        flushpackbuffer;
+        eltloc := eltloc div bitsperunit;
+        curloc := curloc div bitsperunit;
+        end
+      else if not outerpacked and packedflag then
+        begin
+        eltloc := eltloc * bitsperunit;
+        curloc := curloc * bitsperunit;
+        baseloc := curloc;
         end;
+      if f^.typ in [strings, arrays] then constarray(eltloc, form)
+      else if f^.typ = fields then constrecord(eltloc, form)
+      else badconst;
+      if not outerpacked and packedflag then
+        begin
+        flushpackbuffer;
+        curloc := curloc div bitsperunit;
+        end
+      else if outerpacked and not packedflag then
+        begin
+        curloc := curloc * bitsperunit;
+        baseloc := curloc;
+        end;
+      verifytoken(rpar, norparerr);
+      end
+    else
+      begin
+      warnbefore(typenotallowed);
       value1.typeindex := noneindex;
       value1.cvalue.representation := ints;
-    end {badconst} ;
+      end;
+  end;
   {>>>}
-
-begin
-  if token = lpar then
-    begin
-    gettoken;
-    f := ref(bigtable[form]);
-    packedflag := f^.packedflag;
-    if outerpacked and not packedflag then
-      begin
-      flushpackbuffer;
-      eltloc := eltloc div bitsperunit;
-      curloc := curloc div bitsperunit;
-      end
-    else if not outerpacked and packedflag then
-      begin
-      eltloc := eltloc * bitsperunit;
-      curloc := curloc * bitsperunit;
-      baseloc := curloc;
-      end;
-    if f^.typ in [strings, arrays] then constarray(eltloc, form)
-    else if f^.typ = fields then constrecord(eltloc, form)
-    else badconst;
-    if not outerpacked and packedflag then
-      begin
-      flushpackbuffer;
-      curloc := curloc div bitsperunit;
-      end
-    else if outerpacked and not packedflag then
-      begin
-      curloc := curloc * bitsperunit;
-      baseloc := curloc;
-      end;
-    verifytoken(rpar, norparerr);
-    end
-  else
-    begin
-    warnbefore(typenotallowed);
-    value1.typeindex := noneindex;
-    value1.cvalue.representation := ints;
-    end;
-end;
-{>>>}
 
 begin
   gettoken;
@@ -11714,7 +11701,7 @@ begin {onevar}
           with assignedaddress, cvalue do
             if typeindex = chartypeindex then
               begin
-              putbyte(intvalue);
+              putbyte (intvalue);
               pos := sharedPtr^.stringfilecount - 1;
               len := 1;
               end
@@ -13855,787 +13842,6 @@ end;
 {>>>}
 
 {<<<}
-procedure initanalys;
-{ Initialize all tables, etc. }
-{<<<}
-type
-  standardstring = packed array [1..9] of char; {used for standard ids}
-  kludgerecord =
-    record
-      case boolean of
-        false: (p: integer {targep} {nil pointer value} );
-        true: (b: packed array [1..32] of hostfilebyte);
-    end;
-{>>>}
-{<<<}
-var
-  f: tableIndex;  { used in creating forms}
-  fptr: entryptr; { used to access forms being created}
-  p: entryptr;    { used to access name entries}
-  i: integer;     { Misc induction vars}
-  kludge: kludgerecord; { for reversing bytes of NIL constant}
-  b: hostfilebyte; { temp for reversing bytes}
-{>>>}
-
-  {<<<}
-    procedure enterstandardid (id: standardids; {key for std id}
-                               n: nametype; {kind of entry}
-                               l: addressrange; {length of the name}
-                               f: tableIndex {type if meaningful} );
-  { Make a name table entry for a standard identifier.  "id" specifies the
-    standard id, and the other vars give necessary data }
-
-  var
-    usearly, uslate: 0..maxusint; {force unsigned compares}
-    i: integer; {intermediate check result}
-
-  begin
-    usearly := sharedPtr^.early;
-    uslate := sharedPtr^.late;
-    tabletop := tabletop + 1;
-
-    i := sharedPtr^.standardidtable[id];
-    keymap[i] := tabletop;
-    p := ref(bigtable[tabletop]);
-
-    with p^ do
-      begin
-      form := false;
-      name := lastid;
-      lastoccurrence := lastscope;
-      nextname := 0;
-      namekind := n;
-      charindex := 1;
-      charlen := 0;
-      with display[displaytop] do
-        if n <> boundid then
-          begin
-          namesdeclared := namesdeclared + 1;
-          if i > highestkey then highestkey := i;
-          end;
-
-      case n of
-        typename: typeindex := f;
-        varname, boundid:
-          begin
-          offset := display[level].blocksize;
-          length := l;
-          if n = varname then
-            display[level].blocksize := display[level].blocksize + length;
-          vartype := f;
-          knownvalid := true;
-          modified := true;
-          programdecl := false;
-          univparam := false;
-          varalloc := normalalloc;
-          end;
-        directivename, standardproc, standardfunc: procid := id;
-        constname: consttype := f;
-        end;
-      end;
-  end;
-  {>>>}
-
-begin
-  { This code checks certain configuration parameters and reports any potential problems. }
-  { If tablesize (a field width) is not at least as large as hashtablesize then give up now. }
-  if tablesize < hashtablesize then
-    begin
-    write ('Tablesize is smaller than hashtablesize');
-    abort (inconsistent);
-    end;
-
-  toklengths[programsym] := 6;
-  toklengths[labelsym] := 4;
-  toklengths[constsym] := 4;
-  toklengths[typesym] := 3;
-  toklengths[varsym] := 2;
-  toklengths[proceduresym] := 8;
-  toklengths[functionsym] := 7;
-  toklengths[uparrow] := 0;
-  toklengths[arraysym] := 4;
-  toklengths[filesym] := 3;
-  toklengths[setsym] := 2;
-  toklengths[recordsym] := 5;
-  toklengths[stringsym] := 5;
-  toklengths[univsym] := 3;
-  toklengths[packedsym] := 5;
-  toklengths[originsym] := 5;
-  toklengths[usesym] := 2;
-  toklengths[definesym] := 5;
-  toklengths[sharedsym] := 5;
-  toklengths[beginsym] := 4;
-  toklengths[ifsym] := 1;
-  toklengths[casesym] := 3;
-  toklengths[whilesym] := 4;
-  toklengths[repeatsym] := 5;
-  toklengths[forsym] := 2;
-  toklengths[withsym] := 3;
-  toklengths[gotosym] := 3;
-  toklengths[eql] := 0;
-  toklengths[lss] := 0;
-  toklengths[gtr] := 0;
-  toklengths[neq] := 1;
-  toklengths[leq] := 1;
-  toklengths[geq] := 1;
-  toklengths[insym] := 1;
-  toklengths[plus] := 0;
-  toklengths[minus] := 0;
-  toklengths[orsym] := 1;
-  toklengths[star] := 0;
-  toklengths[slash] := 0;
-  toklengths[divsym] := 2;
-  toklengths[modsym] := 2;
-  toklengths[andsym] := 2;
-  toklengths[ofsym] := 1;
-  toklengths[endsym] := 2;
-  toklengths[elsesym] := 3;
-  toklengths[thensym] := 3;
-  toklengths[otherwisesym] := 8;
-  toklengths[dosym] := 1;
-  toklengths[untilsym] := 4;
-  toklengths[tosym] := 1;
-  toklengths[downtosym] := 5;
-  toklengths[notsym] := 2;
-  toklengths[at] := 0;
-  toklengths[nilsym] := 2;
-  toklengths[colon] := 0;
-  toklengths[dot] := 0;
-  toklengths[dotdot] := 1;
-  toklengths[comma] := 0;
-  toklengths[semicolon] := 0;
-  toklengths[becomes] := 1;
-  toklengths[lpar] := 0;
-  toklengths[rpar] := 0;
-  toklengths[lbrack] := 0;
-  toklengths[rbrack] := 0;
-  toklengths[intconst] := 0;
-  toklengths[realconst] := 0;
-  toklengths[dblrealconst] := 0;
-  toklengths[charconst] := 0;
-  toklengths[stringconst] := 0;
-  toklengths[ident] := 0;
-  toklengths[eofsym] := 0;
-  toklengths[lineinc] := 0;
-  toklengths[lineadd] := 0;
-  toklengths[newfile] := 0;
-
-  emitflag := true;
-  emptysetgenerated := false;
-  checkundefs := true;
-  linearize := false;
-  skipfactor := false;
-  divfolded := false;
-
-  sharedPtr^.lastlabel := 32766;
-  nextintcode := 0;
-
-  blockheadset := [labelsym..functionsym];
-  begblockset := [labelsym..functionsym, beginsym];
-  begparamhdr := [functionsym, proceduresym, varsym, ident];
-  nextparamhdr := [functionsym, proceduresym, varsym, ident, rpar];
-  begstmtset := [beginsym..gotosym, ident];
-  begunsignedset := [nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst];
-  begconstset := [nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst, plus, minus];
-  begstructset := [uparrow..stringsym];
-  begsimplset := [nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst, plus, minus, lpar];
-  begtypset := [uparrow..stringsym, nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst,
-                plus, minus, lpar];
-  exprops := [eql..insym];
-  sexprops := [plus..orsym];
-  termops := [star..andsym];
-  begfactset := [ident, intconst, realconst, dblrealconst, charconst, stringconst, lbrack, lpar, notsym, at, nilsym];
-  begexprset := [eql..andsym, ident, intconst, realconst, dblrealconst, charconst, stringconst, lbrack, lpar, notsym, nilsym];
-  legalfunctypes := [scalars, ints, reals, doubles, bools, chars, ptrs, subranges, none];
-  neverskipset := [labelsym..functionsym, beginsym..gotosym, ident, semicolon, eofsym, endsym];
-  constfollowset := [ident, semicolon, eql, plus, minus, lpar, nilsym, intconst..stringconst];
-  typefollowset := [ident, semicolon, eql, uparrow..stringsym, nilsym, plus, minus, lpar, intconst..stringconst];
-
-  { Map for binary operators }
-  optable[eql] := eqop;
-  optable[lss] := lssop;
-  optable[gtr] := gtrop;
-  optable[neq] := neqop;
-  optable[leq] := leqop;
-  optable[geq] := geqop;
-  optable[insym] := inop;
-  optable[plus] := plusop;
-  optable[minus] := minusop;
-  optable[orsym] := orop;
-  optable[star] := mulop;
-  optable[slash] := slashop;
-  optable[divsym] := quoop;
-  optable[modsym] := remop;
-  optable[andsym] := andop;
-
-  intstate := stmtstate;
-
-  with tokenSharedPtr^.nexttoken do
-    begin
-    left := 0;
-    right := 0;
-    line := 1
-    end;
-
-  tokencount := 0;
-  tokenbufindex := 0;
-  probing := false;
-  sourcestringindex := 0;
-
-  fewestblocks := lastblocksin;
-  mostblocks := lastblocksin;
-
-  for i := 0 to cseregions do
-    begin
-    with sharedPtr^.cseregiontable[i, false] do
-      begin
-        low := 0; high := maxaddr;
-      end;
-    with sharedPtr^.cseregiontable[i, true] do
-      begin
-        low := 0; high := maxaddr;
-      end;
-    end;
-
-  for i := 0 to hashtablesize do keymap[i] := 0;
-
-  sharedPtr^.lastvartableptr := 0;
-  sharedPtr^.lastvartableentry := 0;
-
-  scantoken;
-  gettoken;
-
-  nullboundindex := 0;
-  inputdeclared := false;
-  sharedPtr^.standardfilesreferenced := false;
-  new (labelflag);
-
-  lastdebugrecord := 0;
-
-  sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-  if sharedPtr^.stringblkptr = nil then
-    begin
-    new (sharedPtr^.stringblkptr);
-    sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock] := sharedPtr^.stringblkptr;
-    end;
-
-  if not sharedPtr^.switcheverplus[environswitch] then
-    begin
-    case targetmachine of
-    iapx86:
-      begin
-      if sharedPtr^.switcheverplus[largemodel] then
-        sharedPtr^.ptrsize := longptrsize
-      else
-        sharedPtr^.ptrsize := defaultptrsize;
-      if sharedPtr^.switcheverplus[walkback] or sharedPtr^.switcheverplus[debugging] then
-        sharedPtr^.returnlinksize := sharedPtr^.extreturnlinksize;
-      end;
-    end;
-
-    for i := 0 to debughashtablesize do
-      debughashtable[i] := 0;
-
-    { these values must change as more standard ids/types/consts are added }
-    lastprocrecord := 0;
-    undeftabletop := 0;
-    sharedPtr^.proctabletop := 0;
-    sharedPtr^.mainref := 0;
-
-    sharedPtr^.globalsize := 0;
-    sharedPtr^.ownsize := 0;
-    sharedPtr^.definesize := 0;
-
-    lastfilekey := maxint;
-
-    anyfile := false;
-    anyexternals := false;
-
-    sharedPtr^.proctable[0].charindex := 0;
-    sharedPtr^.proctable[0].opensfile := false;
-    sharedPtr^.proctable[0].realfunction := false;
-    sharedPtr^.proctable[0].globaldeath := false;
-    sharedPtr^.proctable[0].isprocparam := false;
-    sharedPtr^.proctable[0].bodydefined := false;
-    sharedPtr^.proctable[0].intlevelrefs := false;
-    sharedPtr^.proctable[0].externallinkage := false;
-    sharedPtr^.proctable[0].referenced := true;
-    sharedPtr^.proctable[0].ownused := false;
-    sharedPtr^.proctable[0].calllinkage := pascal2call;
-    sharedPtr^.proctable[0].registerfunction := 0;
-    sharedPtr^.proctable[0].backlink := 0;
-    sharedPtr^.proctable[0].charlen := 0;
-    sharedPtr^.proctable[0].levelspread := 0;
-    sharedPtr^.proctable[0].level := 1;
-
-    lastid := 0;
-    lastscope := 0;
-
-    tabletop := 0;
-    enterblock(0, 0, 0);
-    level := 0;
-    display[0].oldtabletop := 0;
-
-    if sharedPtr^.switcheverplus[doublereals] then
-      sharedPtr^.targetrealsize := doublesize
-    else
-      sharedPtr^.targetrealsize := singlesize;
-
-    if sharedPtr^.switcheverplus[shortintegers] then
-      begin
-      sharedPtr^.targetintsize := shorttargetintsize;
-      sharedPtr^.targetmaxint := shortmaxint;
-      sharedPtr^.targetminint := shortminint;
-      end
-    else
-      begin
-      sharedPtr^.targetintsize := defaulttargetintsize;
-      sharedPtr^.targetmaxint := defaulttargetmaxint;
-      sharedPtr^.targetminint := defaulttargetminint;
-      end;
-
-    if targetmachine = iapx86 then
-      begin
-      if sharedPtr^.switcheverplus[largemodel] then
-        sharedPtr^.ptrsize := longptrsize
-      else
-        sharedPtr^.ptrsize := defaultptrsize;
-      if sharedPtr^.switcheverplus[walkback] or sharedPtr^.switcheverplus[debugging] then
-        sharedPtr^.returnlinksize := sharedPtr^.extreturnlinksize;
-      end;
-
-    {fake entry for bad boundid's, will be overwritten by next call}
-    enterstandardid (integerid, boundid, 0, nullboundindex);
-    with display[displaytop] do
-      namesdeclared := namesdeclared - 1;
-
-    {define 'integer'}
-    enterform (ints, f, fptr);
-    with fptr^ do
-      begin
-      intindex := f;
-      size := sharedPtr^.targetintsize;
-      align := intalign;
-      end;
-    enterstandardid (integerid, typename, sharedPtr^.targetintsize, intindex);
-
-    {define 'shortint' subrange}
-    enterform(subranges, f, fptr);
-    shortintindex := f;
-    with fptr^ do
-      begin
-      size := shorttargetintsize;
-      align := shortintalign;
-      lowerord := shortminint;
-      upperord := shortmaxint;
-      parentform := ints;
-      parenttype := intindex;
-      end;
-    enterstandardid(shortintid, typename, shorttargetintsize, shortintindex);
-
-    {define dummy subrange for set building operations}
-    enterform(subranges, f, fptr);
-    with fptr^ do
-      begin
-      subrangeindex := f;
-      size := sharedPtr^.targetintsize;
-      align := intalign;
-      lowerord := 0;
-      upperord := maxsetord;
-      parentform := ints;
-      parenttype := intindex;
-      parentform := ints;
-      end;
-
-    {define 'real'}
-    enterform(reals, f, fptr);
-    with fptr^ do
-      begin
-      realindex := f;
-      size := sharedPtr^.targetrealsize;
-      align := realalign;
-      end;
-    enterstandardid(realid, typename, sharedPtr^.targetrealsize, realindex);
-
-    {define 'double'}
-    enterform(doubles, f, fptr);
-    with fptr^ do
-      begin
-      doubleindex := f;
-      size := doublesize;
-      align := realalign;
-      end;
-
-    if sharedPtr^.switcheverplus[doublereals] then
-      doubleindex := realindex;
-
-    enterstandardid(doubleid, typename, doublesize, doubleindex);
-
-  if sharedPtr^.switcheverplus[symboltable] then
-    {define 'char'}
-    enterform(chars, f, fptr);
-    chartypeindex := f;
-    with fptr^ do
-      begin
-      size := charsize;
-      align := charalign;
-      end;
-    enterstandardid(charid, typename, charsize, chartypeindex);
-
-    {define 'boolean'}
-    enterform(bools, f, fptr);
-    with fptr^ do
-      begin
-      boolindex := f;
-      size := scalarsize;
-      align := scalaralign;
-      end;
-    enterstandardid(booleanid, typename, scalarsize, boolindex);
-
-    {define 'text'}
-    enterform(files, f, fptr);
-    with fptr^ do
-      begin
-      containsfile := true;
-      filebasetype := chartypeindex;
-      textindex := f;
-      size := sharedPtr^.ptrsize;
-      align := ptralign;
-      filekey := maxint;
-      end;
-    enterstandardid(textid, typename, sharedPtr^.ptrsize, textindex);
-
-    {define 'maxint'}
-    enterstandardid(maxintid, constname, 0, intindex);
-    p^.constvalue.representation := ints;
-    p^.constvalue.intvalue := sharedPtr^.targetmaxint;
-    p^.constvalue.negated := false;
-
-    {define 'minint'}
-    enterstandardid(minintid, constname, 0, intindex);
-    p^.constvalue.representation := ints;
-    p^.constvalue.intvalue := sharedPtr^.targetminint;
-    p^.constvalue.negated := true;
-
-    {define 'true'}
-    enterstandardid(trueid, constname, 0, boolindex);
-    p^.constvalue.representation := ints;
-    p^.constvalue.intvalue := ord(true);
-    p^.constvalue.negated := false;
-
-    {define 'false'}
-    enterstandardid(falseid, constname, 0, boolindex);
-    p^.constvalue.representation := ints;
-    p^.constvalue.intvalue := ord(false);
-    p^.constvalue.negated := false;
-
-    {define 'write'}
-    enterstandardid(writeid, standardproc, 0, 0);
-
-    {define 'writeln'}
-    enterstandardid(writelnid, standardproc, 0, 0);
-
-    {define special mc68881 functions}
-    if targetmachine = mc68000 then
-      begin
-      enterstandardid(facosid, standardfunc, 0, 0);
-      enterstandardid(fasinid, standardfunc, 0, 0);
-      enterstandardid(fatanid, standardfunc, 0, 0);
-      enterstandardid(fatanhid, standardfunc, 0, 0);
-      enterstandardid(fcoshid, standardfunc, 0, 0);
-      enterstandardid(fetoxm1id, standardfunc, 0, 0);
-      enterstandardid(fgetexpid, standardfunc, 0, 0);
-      enterstandardid(fgetmanid, standardfunc, 0, 0);
-      enterstandardid(fintid, standardfunc, 0, 0);
-      enterstandardid(flog10id, standardfunc, 0, 0);
-      enterstandardid(flog2id, standardfunc, 0, 0);
-      enterstandardid(flognp1id, standardfunc, 0, 0);
-      enterstandardid(fmodid, standardfunc, 0, 0);
-      enterstandardid(fremid, standardfunc, 0, 0);
-      enterstandardid(fscaleid, standardfunc, 0, 0);
-      enterstandardid(fsgldivid, standardfunc, 0, 0);
-      enterstandardid(fsglmulid, standardfunc, 0, 0);
-      enterstandardid(fsinhid, standardfunc, 0, 0);
-      enterstandardid(ftanid, standardfunc, 0, 0);
-      enterstandardid(ftanhid, standardfunc, 0, 0);
-      enterstandardid(ftentoxid, standardfunc, 0, 0);
-      enterstandardid(ftwotoxid, standardfunc, 0, 0);
-      enterstandardid(fmovecrid, standardfunc, 0, 0);
-      enterstandardid(readfpcrid, standardfunc, 0, 0);
-      end;
-
-    {define 'sngl'}
-    enterstandardid(snglid, standardfunc, 0, 0);
-
-    {define 'dbl'}
-    enterstandardid(dblid, standardfunc, 0, 0);
-
-    {define 'sin'}
-    enterstandardid(sinid, standardfunc, 0, 0);
-
-    {define 'cos'}
-    enterstandardid(cosid, standardfunc, 0, 0);
-
-    {define 'exp'}
-    enterstandardid(expid, standardfunc, 0, 0);
-
-    {define 'sqrt'}
-    enterstandardid(sqrtid, standardfunc, 0, 0);
-
-    {define 'arctan'}
-    enterstandardid(arctanid, standardfunc, 0, 0);
-
-    {define 'ln'}
-    enterstandardid(lnid, standardfunc, 0, 0);
-
-    {define 'odd'}
-    enterstandardid(oddid, standardfunc, 0, 0);
-
-    {define 'abs'}
-    enterstandardid(absid, standardfunc, 0, 0);
-
-    {define 'sqr'}
-    enterstandardid(sqrid, standardfunc, 0, 0);
-
-    {define 'trunc'}
-    enterstandardid(truncid, standardfunc, 0, 0);
-
-    {define 'round'}
-    enterstandardid(roundid, standardfunc, 0, 0);
-
-    {define 'ord'}
-    enterstandardid(ordid, standardfunc, 0, 0);
-
-    {define 'chr'}
-    enterstandardid(chrid, standardfunc, 0, 0);
-
-    {define 'succ'}
-    enterstandardid(succid, standardfunc, 0, 0);
-
-    {define 'pred'}
-    enterstandardid(predid, standardfunc, 0, 0);
-
-    {define 'eof'}
-    enterstandardid(eofid, standardfunc, 0, 0);
-
-    {define 'eoln'}
-    enterstandardid(eolnid, standardfunc, 0, 0);
-
-    {define 'time'}
-    enterstandardid(timeid, standardfunc, 0, 0);
-
-    {define 'size'}
-    enterstandardid(sizeid, standardfunc, 0, 0);
-
-    {define 'bitsize'}
-    enterstandardid(bitsizeid, standardfunc, 0, 0);
-
-    {define 'upper'}
-    enterstandardid(upperid, standardfunc, 0, 0);
-
-    {define 'lower'}
-    enterstandardid(lowerid, standardfunc, 0, 0);
-
-    {define 'loophole'}
-    enterstandardid(loopholeid, standardfunc, 0, 0);
-
-    {define 'ref'}
-    enterstandardid(refid, standardfunc, 0, 0);
-
-    {define 'noioerror'}
-    enterstandardid(noioerrorid, standardproc, 0, 0);
-
-    {define 'ioerror'}
-    enterstandardid(ioerrorid, standardfunc, 0, 0);
-
-    {define 'iostatus'}
-    enterstandardid(iostatusid, standardfunc, 0, 0);
-
-    {define 'copy'}
-    enterstandardid(copyid, standardfunc, 0, 0);
-
-    {define 'concat'}
-    enterstandardid(concatid, standardfunc, 0, 0);
-
-    {define 'length'}
-    enterstandardid(lengthid, standardfunc, 0, 0);
-
-    {define 'pos'}
-    enterstandardid(posid, standardfunc, 0, 0);
-
-    {define 'seek'}
-    enterstandardid(seekid, standardproc, 0, 0);
-
-    {define 'read'}
-    enterstandardid(readid, standardproc, 0, 0);
-
-    {define 'readln'}
-    enterstandardid(readlnid, standardproc, 0, 0);
-
-    {define 'break'}
-    enterstandardid(breakid, standardproc, 0, 0);
-
-    {define 'new'}
-    enterstandardid(newid, standardproc, 0, 0);
-
-    {define 'dispose'}
-    enterstandardid(disposeid, standardproc, 0, 0);
-
-    {define 'pack', a singularly silly procedure}
-    enterstandardid(packid, standardproc, 0, 9);
-
-    {define 'unpack', whose parameterlist is incompatible with 'pack'!}
-    enterstandardid(unpackid, standardproc, 0, 0);
-
-    {define 'put'}
-    enterstandardid(putid, standardproc, 0, 0);
-
-    {define 'page'}
-    enterstandardid(pageid, standardproc, 0, 0);
-
-    {define 'get'}
-    enterstandardid(getid, standardproc, 0, 0);
-
-    {define 'reset'}
-    enterstandardid(resetid, standardproc, 0, 0);
-
-    {define 'rewrite'}
-    enterstandardid(rewriteid, standardproc, 0, 0);
-
-    {define 'close'}
-    enterstandardid(closeid, standardproc, 0, 0);
-
-    {define 'delete'}
-    enterstandardid(deleteid, standardproc, 0, 0);
-
-    {define 'rename'}
-    enterstandardid(renameid, standardproc, 0, 0);
-
-    {define 'insert'}
-    enterstandardid(insertid, standardproc, 0, 0);
-
-    {define 'str'}
-    enterstandardid(strid, standardproc, 0, 0);
-
-    {define 'val'}
-    enterstandardid(valprocid, standardproc, 0, 0);
-
-    {define 'deletestr'}
-    enterstandardid(deletestrid, standardproc, 0, 0);
-
-    {define special mc68881 procedures}
-    if targetmachine = mc68000 then
-      begin
-      enterstandardid(fsincosid, standardproc, 0, 0);
-      enterstandardid(setfpcrid, standardproc, 0, 0);
-      end;
-
-    {define 'forward'}
-    enterstandardid(forwardid, directivename, 0, 0);
-
-    {define 'external'}
-    enterstandardid(externalid, directivename, 0, 0);
-
-    {define 'nonpascal'}
-    enterstandardid(nonpascalid, directivename, 0, 0);
-
-    {define 'interrupt'}
-    enterstandardid(interruptid, directivename, 0, 0);
-
-    {define 'fortran'}
-    if targetopsys = msdos then
-      enterstandardid(fortranid, directivename, 0, 0);
-
-    {define noneindex for undef typenames}
-    enterform(none, f, fptr);
-    with fptr^ do
-      begin
-      dbgsymbol := 0;
-      noneindex := f;
-      size := 0;
-      align := unitsize;
-      end;
-
-    {define nilindex}
-    enterform(ptrs, f, fptr);
-    with fptr^ do
-      begin
-      ptrtypename := 0;
-      nilindex := f;
-      size := sharedPtr^.ptrsize;
-      align := ptralign;
-      end;
-    nilvalue.operandkind := constoperand;
-    nilvalue.cvalue.representation := ptrs;
-
-    if reversebytes then
-      begin
-      kludge.p := niladdressvalue;
-      for i := 1 to hostintsize div 2 do
-        begin
-        b := kludge.b[i];
-        kludge.b[i] := kludge.b[hostintsize + 1 - i];
-        kludge.b[hostintsize + 1 - i] := b;
-        end;
-      nilvalue.cvalue.ptrvalue := kludge.p;
-      end
-    else nilvalue.cvalue.ptrvalue := niladdressvalue;
-    nilvalue.oprndlen := sharedPtr^.ptrsize;
-    nilvalue.typeindex := nilindex;
-
-    {define 'nil' for debugger}
-    tabletop := tabletop + 1;
-    p := ref(bigtable[tabletop]);
-    with p^ do
-      begin
-      form := false;
-      name := 0;
-      nextname := 0;
-      namekind := constname;
-      consttype := nilindex;
-      constvalue := nilvalue.cvalue;
-      end;
-
-    {define 'main' program}
-    p := ref(bigtable[0]);
-    with p^ do
-      begin
-      name := 0;
-      form := false;
-      nextname := 0;
-      namekind := procname;
-      charindex := 1;
-      charlen := 0;
-      paramlist := 0;
-      functype := noneindex;
-      funclen := 0;
-      dbgsymbol := 0;
-      end;
-
-    enterblock(1, 0, 0);
-
-    display[1].blocksize := display[0].blocksize;
-    display[1].oldtabletop := tabletop;
-    level := 1;
-
-    {define 'output'}
-    enterstandardid(outputid, varname, sharedPtr^.ptrsize, textindex);
-    outputindex := tabletop;
-    outputdeclared := false;
-
-    {define 'input'}
-    sharedPtr^.inputoffset := display[level].blocksize;
-    enterstandardid(inputid, varname, sharedPtr^.ptrsize, textindex);
-    inputindex := tabletop;
-    end; {not environment switch}
-
-  { Save the number of bytes allocated for input and output. }
-  sharedPtr^.globalfiles := display[1].blocksize;
-  sharedPtr^.consttablelimit := sharedPtr^.stringtablelimit;
-  stringfilebase := sharedPtr^.stringtablelimit; {save for writeenvirfile}
-end;
-{>>>}
-{<<<}
 procedure block;
 { Syntactic routine to parse a block, contains most of syntax analyzer }
 
@@ -14700,7 +13906,7 @@ begin
       sharedPtr^.globalsize := blocksize;
     genint (paramsize);
     genint (blocksize);
-    genint (thistoken.baseline);
+    genint (thistoken.baseLine);
     end;
 
   loopfactor := 0; { not in a loop }
@@ -14741,6 +13947,788 @@ procedure analys;
   The majority of the work is done by the routine "block" }
 {>>>}
 
+  {<<<}
+  procedure init;
+  { Initialize all tables, etc. }
+  {<<<}
+  type
+    standardstring = packed array [1..9] of char; {used for standard ids}
+    kludgerecord =
+      record
+        case boolean of
+          false: (p: integer {targep} {nil pointer value} );
+          true: (b: packed array [1..32] of hostfilebyte);
+      end;
+  {>>>}
+  {<<<}
+  var
+    f: tableIndex;  { used in creating forms}
+    fptr: entryptr; { used to access forms being created}
+    p: entryptr;    { used to access name entries}
+    i: integer;     { Misc induction vars}
+    kludge: kludgerecord; { for reversing bytes of NIL constant}
+    b: hostfilebyte; { temp for reversing bytes}
+  {>>>}
+
+    {<<<}
+      procedure enterstandardid (id: standardids; {key for std id}
+                                 n: nametype; {kind of entry}
+                                 l: addressrange; {length of the name}
+                                 f: tableIndex {type if meaningful} );
+    { Make a name table entry for a standard identifier.  "id" specifies the
+      standard id, and the other vars give necessary data
+    }
+    var
+      usearly, uslate: 0..maxusint; {force unsigned compares}
+      i: integer; {intermediate check result}
+
+    begin
+      usearly := sharedPtr^.early;
+      uslate := sharedPtr^.late;
+      tabletop := tabletop + 1;
+
+      i := sharedPtr^.standardidtable[id];
+      keymap[i] := tabletop;
+      p := ref(bigtable[tabletop]);
+
+      with p^ do
+        begin
+        form := false;
+        name := lastid;
+        lastoccurrence := lastscope;
+        nextname := 0;
+        namekind := n;
+        charindex := 1;
+        charlen := 0;
+        with display[displaytop] do
+          if n <> boundid then
+            begin
+            namesdeclared := namesdeclared + 1;
+            if i > highestkey then highestkey := i;
+            end;
+
+        case n of
+          typename: typeindex := f;
+          varname, boundid:
+            begin
+            offset := display[level].blocksize;
+            length := l;
+            if n = varname then
+              display[level].blocksize := display[level].blocksize + length;
+            vartype := f;
+            knownvalid := true;
+            modified := true;
+            programdecl := false;
+            univparam := false;
+            varalloc := normalalloc;
+            end;
+          directivename, standardproc, standardfunc: procid := id;
+          constname: consttype := f;
+          end;
+        end;
+    end;
+    {>>>}
+
+  begin
+    { This code checks certain configuration parameters and reports any potential problems. }
+    { If tablesize (a field width) is not at least as large as hashtablesize then give up now. }
+    if tablesize < hashtablesize then
+      begin
+      write ('Tablesize is smaller than hashtablesize');
+      abort (inconsistent);
+      end;
+
+    toklengths[programsym] := 6;
+    toklengths[labelsym] := 4;
+    toklengths[constsym] := 4;
+    toklengths[typesym] := 3;
+    toklengths[varsym] := 2;
+    toklengths[proceduresym] := 8;
+    toklengths[functionsym] := 7;
+    toklengths[uparrow] := 0;
+    toklengths[arraysym] := 4;
+    toklengths[filesym] := 3;
+    toklengths[setsym] := 2;
+    toklengths[recordsym] := 5;
+    toklengths[stringsym] := 5;
+    toklengths[univsym] := 3;
+    toklengths[packedsym] := 5;
+    toklengths[originsym] := 5;
+    toklengths[usesym] := 2;
+    toklengths[definesym] := 5;
+    toklengths[sharedsym] := 5;
+    toklengths[beginsym] := 4;
+    toklengths[ifsym] := 1;
+    toklengths[casesym] := 3;
+    toklengths[whilesym] := 4;
+    toklengths[repeatsym] := 5;
+    toklengths[forsym] := 2;
+    toklengths[withsym] := 3;
+    toklengths[gotosym] := 3;
+    toklengths[eql] := 0;
+    toklengths[lss] := 0;
+    toklengths[gtr] := 0;
+    toklengths[neq] := 1;
+    toklengths[leq] := 1;
+    toklengths[geq] := 1;
+    toklengths[insym] := 1;
+    toklengths[plus] := 0;
+    toklengths[minus] := 0;
+    toklengths[orsym] := 1;
+    toklengths[star] := 0;
+    toklengths[slash] := 0;
+    toklengths[divsym] := 2;
+    toklengths[modsym] := 2;
+    toklengths[andsym] := 2;
+    toklengths[ofsym] := 1;
+    toklengths[endsym] := 2;
+    toklengths[elsesym] := 3;
+    toklengths[thensym] := 3;
+    toklengths[otherwisesym] := 8;
+    toklengths[dosym] := 1;
+    toklengths[untilsym] := 4;
+    toklengths[tosym] := 1;
+    toklengths[downtosym] := 5;
+    toklengths[notsym] := 2;
+    toklengths[at] := 0;
+    toklengths[nilsym] := 2;
+    toklengths[colon] := 0;
+    toklengths[dot] := 0;
+    toklengths[dotdot] := 1;
+    toklengths[comma] := 0;
+    toklengths[semicolon] := 0;
+    toklengths[becomes] := 1;
+    toklengths[lpar] := 0;
+    toklengths[rpar] := 0;
+    toklengths[lbrack] := 0;
+    toklengths[rbrack] := 0;
+    toklengths[intconst] := 0;
+    toklengths[realconst] := 0;
+    toklengths[dblrealconst] := 0;
+    toklengths[charconst] := 0;
+    toklengths[stringconst] := 0;
+    toklengths[ident] := 0;
+    toklengths[eofsym] := 0;
+    toklengths[lineinc] := 0;
+    toklengths[lineadd] := 0;
+    toklengths[newfile] := 0;
+
+    emitflag := true;
+    emptysetgenerated := false;
+    checkundefs := true;
+    linearize := false;
+    skipfactor := false;
+    divfolded := false;
+
+    sharedPtr^.lastlabel := 32766;
+    nextintcode := 0;
+
+    blockheadset := [labelsym..functionsym];
+    begblockset := [labelsym..functionsym, beginsym];
+    begparamhdr := [functionsym, proceduresym, varsym, ident];
+    nextparamhdr := [functionsym, proceduresym, varsym, ident, rpar];
+    begstmtset := [beginsym..gotosym, ident];
+    begunsignedset := [nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst];
+    begconstset := [nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst, plus, minus];
+    begstructset := [uparrow..stringsym];
+    begsimplset := [nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst, plus, minus, lpar];
+    begtypset := [uparrow..stringsym, nilsym, ident, intconst, charconst, realconst, dblrealconst, stringconst,
+                  plus, minus, lpar];
+    exprops := [eql..insym];
+    sexprops := [plus..orsym];
+    termops := [star..andsym];
+    begfactset := [ident, intconst, realconst, dblrealconst, charconst, stringconst, lbrack, lpar, notsym, at, nilsym];
+    begexprset := [eql..andsym, ident, intconst, realconst, dblrealconst, charconst, stringconst, lbrack, lpar, notsym, nilsym];
+    legalfunctypes := [scalars, ints, reals, doubles, bools, chars, ptrs, subranges, none];
+    neverskipset := [labelsym..functionsym, beginsym..gotosym, ident, semicolon, eofsym, endsym];
+    constfollowset := [ident, semicolon, eql, plus, minus, lpar, nilsym, intconst..stringconst];
+    typefollowset := [ident, semicolon, eql, uparrow..stringsym, nilsym, plus, minus, lpar, intconst..stringconst];
+
+    { Map for binary operators }
+    optable[eql] := eqop;
+    optable[lss] := lssop;
+    optable[gtr] := gtrop;
+    optable[neq] := neqop;
+    optable[leq] := leqop;
+    optable[geq] := geqop;
+    optable[insym] := inop;
+    optable[plus] := plusop;
+    optable[minus] := minusop;
+    optable[orsym] := orop;
+    optable[star] := mulop;
+    optable[slash] := slashop;
+    optable[divsym] := quoop;
+    optable[modsym] := remop;
+    optable[andsym] := andop;
+
+    intstate := stmtstate;
+
+    with tokenSharedPtr^.nexttoken do
+      begin
+      left := 0;
+      right := 0;
+      line := 1
+      end;
+
+    tokencount := 0;
+    tokenbufindex := 0;
+    probing := false;
+    sourcestringindex := 0;
+
+    fewestblocks := lastblocksin;
+    mostblocks := lastblocksin;
+
+    for i := 0 to cseregions do
+      begin
+      with sharedPtr^.cseregiontable[i, false] do
+        begin
+          low := 0; high := maxaddr;
+        end;
+      with sharedPtr^.cseregiontable[i, true] do
+        begin
+          low := 0; high := maxaddr;
+        end;
+      end;
+
+    for i := 0 to hashtablesize do keymap[i] := 0;
+
+    sharedPtr^.lastvartableptr := 0;
+    sharedPtr^.lastvartableentry := 0;
+
+    scantoken;
+    gettoken;
+
+    nullboundindex := 0;
+    inputdeclared := false;
+    sharedPtr^.standardfilesreferenced := false;
+    new (labelflag);
+
+    lastdebugrecord := 0;
+
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+    if sharedPtr^.stringblkptr = nil then
+      begin
+      new (sharedPtr^.stringblkptr);
+      sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock] := sharedPtr^.stringblkptr;
+      end;
+
+    if not sharedPtr^.switcheverplus[environswitch] then
+      begin
+      case targetmachine of
+      iapx86:
+        begin
+        if sharedPtr^.switcheverplus[largemodel] then
+          sharedPtr^.ptrsize := longptrsize
+        else
+          sharedPtr^.ptrsize := defaultptrsize;
+        if sharedPtr^.switcheverplus[walkback] or sharedPtr^.switcheverplus[debugging] then
+          sharedPtr^.returnlinksize := sharedPtr^.extreturnlinksize;
+        end;
+      end;
+
+      for i := 0 to debughashtablesize do
+        debughashtable[i] := 0;
+
+      { these values must change as more standard ids/types/consts are added }
+      lastprocrecord := 0;
+      undeftabletop := 0;
+      sharedPtr^.proctabletop := 0;
+      sharedPtr^.mainref := 0;
+
+      sharedPtr^.globalsize := 0;
+      sharedPtr^.ownsize := 0;
+      sharedPtr^.definesize := 0;
+
+      lastfilekey := maxint;
+
+      anyfile := false;
+      anyexternals := false;
+
+      sharedPtr^.proctable[0].charindex := 0;
+      sharedPtr^.proctable[0].opensfile := false;
+      sharedPtr^.proctable[0].realfunction := false;
+      sharedPtr^.proctable[0].globaldeath := false;
+      sharedPtr^.proctable[0].isprocparam := false;
+      sharedPtr^.proctable[0].bodydefined := false;
+      sharedPtr^.proctable[0].intlevelrefs := false;
+      sharedPtr^.proctable[0].externallinkage := false;
+      sharedPtr^.proctable[0].referenced := true;
+      sharedPtr^.proctable[0].ownused := false;
+      sharedPtr^.proctable[0].calllinkage := pascal2call;
+      sharedPtr^.proctable[0].registerfunction := 0;
+      sharedPtr^.proctable[0].backlink := 0;
+      sharedPtr^.proctable[0].charlen := 0;
+      sharedPtr^.proctable[0].levelspread := 0;
+      sharedPtr^.proctable[0].level := 1;
+
+      lastid := 0;
+      lastscope := 0;
+
+      tabletop := 0;
+      enterblock(0, 0, 0);
+      level := 0;
+      display[0].oldtabletop := 0;
+
+      if sharedPtr^.switcheverplus[doublereals] then
+        sharedPtr^.targetrealsize := doublesize
+      else
+        sharedPtr^.targetrealsize := singlesize;
+
+      if sharedPtr^.switcheverplus[shortintegers] then
+        begin
+        sharedPtr^.targetintsize := shorttargetintsize;
+        sharedPtr^.targetmaxint := shortmaxint;
+        sharedPtr^.targetminint := shortminint;
+        end
+      else
+        begin
+        sharedPtr^.targetintsize := defaulttargetintsize;
+        sharedPtr^.targetmaxint := defaulttargetmaxint;
+        sharedPtr^.targetminint := defaulttargetminint;
+        end;
+
+      if targetmachine = iapx86 then
+        begin
+        if sharedPtr^.switcheverplus[largemodel] then
+          sharedPtr^.ptrsize := longptrsize
+        else
+          sharedPtr^.ptrsize := defaultptrsize;
+        if sharedPtr^.switcheverplus[walkback] or sharedPtr^.switcheverplus[debugging] then
+          sharedPtr^.returnlinksize := sharedPtr^.extreturnlinksize;
+        end;
+
+      {fake entry for bad boundid's, will be overwritten by next call}
+      enterstandardid (integerid, boundid, 0, nullboundindex);
+      with display[displaytop] do
+        namesdeclared := namesdeclared - 1;
+
+      {define 'integer'}
+      enterform (ints, f, fptr);
+      with fptr^ do
+        begin
+        intindex := f;
+        size := sharedPtr^.targetintsize;
+        align := intalign;
+        end;
+      enterstandardid (integerid, typename, sharedPtr^.targetintsize, intindex);
+
+      {define 'shortint' subrange}
+      enterform(subranges, f, fptr);
+      shortintindex := f;
+      with fptr^ do
+        begin
+        size := shorttargetintsize;
+        align := shortintalign;
+        lowerord := shortminint;
+        upperord := shortmaxint;
+        parentform := ints;
+        parenttype := intindex;
+        end;
+      enterstandardid(shortintid, typename, shorttargetintsize, shortintindex);
+
+      {define dummy subrange for set building operations}
+      enterform(subranges, f, fptr);
+      with fptr^ do
+        begin
+        subrangeindex := f;
+        size := sharedPtr^.targetintsize;
+        align := intalign;
+        lowerord := 0;
+        upperord := maxsetord;
+        parentform := ints;
+        parenttype := intindex;
+        parentform := ints;
+        end;
+
+      {define 'real'}
+      enterform(reals, f, fptr);
+      with fptr^ do
+        begin
+        realindex := f;
+        size := sharedPtr^.targetrealsize;
+        align := realalign;
+        end;
+      enterstandardid(realid, typename, sharedPtr^.targetrealsize, realindex);
+
+      {define 'double'}
+      enterform(doubles, f, fptr);
+      with fptr^ do
+        begin
+        doubleindex := f;
+        size := doublesize;
+        align := realalign;
+        end;
+
+      if sharedPtr^.switcheverplus[doublereals] then
+        doubleindex := realindex;
+
+      enterstandardid(doubleid, typename, doublesize, doubleindex);
+
+    if sharedPtr^.switcheverplus[symboltable] then
+      {define 'char'}
+      enterform(chars, f, fptr);
+      chartypeindex := f;
+      with fptr^ do
+        begin
+        size := charsize;
+        align := charalign;
+        end;
+      enterstandardid(charid, typename, charsize, chartypeindex);
+
+      {define 'boolean'}
+      enterform(bools, f, fptr);
+      with fptr^ do
+        begin
+        boolindex := f;
+        size := scalarsize;
+        align := scalaralign;
+        end;
+      enterstandardid(booleanid, typename, scalarsize, boolindex);
+
+      {define 'text'}
+      enterform(files, f, fptr);
+      with fptr^ do
+        begin
+        containsfile := true;
+        filebasetype := chartypeindex;
+        textindex := f;
+        size := sharedPtr^.ptrsize;
+        align := ptralign;
+        filekey := maxint;
+        end;
+      enterstandardid(textid, typename, sharedPtr^.ptrsize, textindex);
+
+      {define 'maxint'}
+      enterstandardid(maxintid, constname, 0, intindex);
+      p^.constvalue.representation := ints;
+      p^.constvalue.intvalue := sharedPtr^.targetmaxint;
+      p^.constvalue.negated := false;
+
+      {define 'minint'}
+      enterstandardid(minintid, constname, 0, intindex);
+      p^.constvalue.representation := ints;
+      p^.constvalue.intvalue := sharedPtr^.targetminint;
+      p^.constvalue.negated := true;
+
+      {define 'true'}
+      enterstandardid(trueid, constname, 0, boolindex);
+      p^.constvalue.representation := ints;
+      p^.constvalue.intvalue := ord(true);
+      p^.constvalue.negated := false;
+
+      {define 'false'}
+      enterstandardid(falseid, constname, 0, boolindex);
+      p^.constvalue.representation := ints;
+      p^.constvalue.intvalue := ord(false);
+      p^.constvalue.negated := false;
+
+      {define 'write'}
+      enterstandardid(writeid, standardproc, 0, 0);
+
+      {define 'writeln'}
+      enterstandardid(writelnid, standardproc, 0, 0);
+
+      {define special mc68881 functions}
+      if targetmachine = mc68000 then
+        begin
+        enterstandardid(facosid, standardfunc, 0, 0);
+        enterstandardid(fasinid, standardfunc, 0, 0);
+        enterstandardid(fatanid, standardfunc, 0, 0);
+        enterstandardid(fatanhid, standardfunc, 0, 0);
+        enterstandardid(fcoshid, standardfunc, 0, 0);
+        enterstandardid(fetoxm1id, standardfunc, 0, 0);
+        enterstandardid(fgetexpid, standardfunc, 0, 0);
+        enterstandardid(fgetmanid, standardfunc, 0, 0);
+        enterstandardid(fintid, standardfunc, 0, 0);
+        enterstandardid(flog10id, standardfunc, 0, 0);
+        enterstandardid(flog2id, standardfunc, 0, 0);
+        enterstandardid(flognp1id, standardfunc, 0, 0);
+        enterstandardid(fmodid, standardfunc, 0, 0);
+        enterstandardid(fremid, standardfunc, 0, 0);
+        enterstandardid(fscaleid, standardfunc, 0, 0);
+        enterstandardid(fsgldivid, standardfunc, 0, 0);
+        enterstandardid(fsglmulid, standardfunc, 0, 0);
+        enterstandardid(fsinhid, standardfunc, 0, 0);
+        enterstandardid(ftanid, standardfunc, 0, 0);
+        enterstandardid(ftanhid, standardfunc, 0, 0);
+        enterstandardid(ftentoxid, standardfunc, 0, 0);
+        enterstandardid(ftwotoxid, standardfunc, 0, 0);
+        enterstandardid(fmovecrid, standardfunc, 0, 0);
+        enterstandardid(readfpcrid, standardfunc, 0, 0);
+        end;
+
+      {define 'sngl'}
+      enterstandardid(snglid, standardfunc, 0, 0);
+
+      {define 'dbl'}
+      enterstandardid(dblid, standardfunc, 0, 0);
+
+      {define 'sin'}
+      enterstandardid(sinid, standardfunc, 0, 0);
+
+      {define 'cos'}
+      enterstandardid(cosid, standardfunc, 0, 0);
+
+      {define 'exp'}
+      enterstandardid(expid, standardfunc, 0, 0);
+
+      {define 'sqrt'}
+      enterstandardid(sqrtid, standardfunc, 0, 0);
+
+      {define 'arctan'}
+      enterstandardid(arctanid, standardfunc, 0, 0);
+
+      {define 'ln'}
+      enterstandardid(lnid, standardfunc, 0, 0);
+
+      {define 'odd'}
+      enterstandardid(oddid, standardfunc, 0, 0);
+
+      {define 'abs'}
+      enterstandardid(absid, standardfunc, 0, 0);
+
+      {define 'sqr'}
+      enterstandardid(sqrid, standardfunc, 0, 0);
+
+      {define 'trunc'}
+      enterstandardid(truncid, standardfunc, 0, 0);
+
+      {define 'round'}
+      enterstandardid(roundid, standardfunc, 0, 0);
+
+      {define 'ord'}
+      enterstandardid(ordid, standardfunc, 0, 0);
+
+      {define 'chr'}
+      enterstandardid(chrid, standardfunc, 0, 0);
+
+      {define 'succ'}
+      enterstandardid(succid, standardfunc, 0, 0);
+
+      {define 'pred'}
+      enterstandardid(predid, standardfunc, 0, 0);
+
+      {define 'eof'}
+      enterstandardid(eofid, standardfunc, 0, 0);
+
+      {define 'eoln'}
+      enterstandardid(eolnid, standardfunc, 0, 0);
+
+      {define 'time'}
+      enterstandardid(timeid, standardfunc, 0, 0);
+
+      {define 'size'}
+      enterstandardid(sizeid, standardfunc, 0, 0);
+
+      {define 'bitsize'}
+      enterstandardid(bitsizeid, standardfunc, 0, 0);
+
+      {define 'upper'}
+      enterstandardid(upperid, standardfunc, 0, 0);
+
+      {define 'lower'}
+      enterstandardid(lowerid, standardfunc, 0, 0);
+
+      {define 'loophole'}
+      enterstandardid(loopholeid, standardfunc, 0, 0);
+
+      {define 'ref'}
+      enterstandardid(refid, standardfunc, 0, 0);
+
+      {define 'noioerror'}
+      enterstandardid(noioerrorid, standardproc, 0, 0);
+
+      {define 'ioerror'}
+      enterstandardid(ioerrorid, standardfunc, 0, 0);
+
+      {define 'iostatus'}
+      enterstandardid(iostatusid, standardfunc, 0, 0);
+
+      {define 'copy'}
+      enterstandardid(copyid, standardfunc, 0, 0);
+
+      {define 'concat'}
+      enterstandardid(concatid, standardfunc, 0, 0);
+
+      {define 'length'}
+      enterstandardid(lengthid, standardfunc, 0, 0);
+
+      {define 'pos'}
+      enterstandardid(posid, standardfunc, 0, 0);
+
+      {define 'seek'}
+      enterstandardid(seekid, standardproc, 0, 0);
+
+      {define 'read'}
+      enterstandardid(readid, standardproc, 0, 0);
+
+      {define 'readln'}
+      enterstandardid(readlnid, standardproc, 0, 0);
+
+      {define 'break'}
+      enterstandardid(breakid, standardproc, 0, 0);
+
+      {define 'new'}
+      enterstandardid(newid, standardproc, 0, 0);
+
+      {define 'dispose'}
+      enterstandardid(disposeid, standardproc, 0, 0);
+
+      {define 'pack', a singularly silly procedure}
+      enterstandardid(packid, standardproc, 0, 9);
+
+      {define 'unpack', whose parameterlist is incompatible with 'pack'!}
+      enterstandardid(unpackid, standardproc, 0, 0);
+
+      {define 'put'}
+      enterstandardid(putid, standardproc, 0, 0);
+
+      {define 'page'}
+      enterstandardid(pageid, standardproc, 0, 0);
+
+      {define 'get'}
+      enterstandardid(getid, standardproc, 0, 0);
+
+      {define 'reset'}
+      enterstandardid(resetid, standardproc, 0, 0);
+
+      {define 'rewrite'}
+      enterstandardid(rewriteid, standardproc, 0, 0);
+
+      {define 'close'}
+      enterstandardid(closeid, standardproc, 0, 0);
+
+      {define 'delete'}
+      enterstandardid(deleteid, standardproc, 0, 0);
+
+      {define 'rename'}
+      enterstandardid(renameid, standardproc, 0, 0);
+
+      {define 'insert'}
+      enterstandardid(insertid, standardproc, 0, 0);
+
+      {define 'str'}
+      enterstandardid(strid, standardproc, 0, 0);
+
+      {define 'val'}
+      enterstandardid(valprocid, standardproc, 0, 0);
+
+      {define 'deletestr'}
+      enterstandardid(deletestrid, standardproc, 0, 0);
+
+      {define special mc68881 procedures}
+      if targetmachine = mc68000 then
+        begin
+        enterstandardid(fsincosid, standardproc, 0, 0);
+        enterstandardid(setfpcrid, standardproc, 0, 0);
+        end;
+
+      {define 'forward'}
+      enterstandardid(forwardid, directivename, 0, 0);
+
+      {define 'external'}
+      enterstandardid(externalid, directivename, 0, 0);
+
+      {define 'nonpascal'}
+      enterstandardid(nonpascalid, directivename, 0, 0);
+
+      {define 'interrupt'}
+      enterstandardid(interruptid, directivename, 0, 0);
+
+      {define 'fortran'}
+      if targetopsys = msdos then
+        enterstandardid(fortranid, directivename, 0, 0);
+
+      {define noneindex for undef typenames}
+      enterform(none, f, fptr);
+      with fptr^ do
+        begin
+        dbgsymbol := 0;
+        noneindex := f;
+        size := 0;
+        align := unitsize;
+        end;
+
+      {define nilindex}
+      enterform(ptrs, f, fptr);
+      with fptr^ do
+        begin
+        ptrtypename := 0;
+        nilindex := f;
+        size := sharedPtr^.ptrsize;
+        align := ptralign;
+        end;
+      nilvalue.operandkind := constoperand;
+      nilvalue.cvalue.representation := ptrs;
+
+      if reversebytes then
+        begin
+        kludge.p := niladdressvalue;
+        for i := 1 to hostintsize div 2 do
+          begin
+          b := kludge.b[i];
+          kludge.b[i] := kludge.b[hostintsize + 1 - i];
+          kludge.b[hostintsize + 1 - i] := b;
+          end;
+        nilvalue.cvalue.ptrvalue := kludge.p;
+        end
+      else nilvalue.cvalue.ptrvalue := niladdressvalue;
+      nilvalue.oprndlen := sharedPtr^.ptrsize;
+      nilvalue.typeindex := nilindex;
+
+      {define 'nil' for debugger}
+      tabletop := tabletop + 1;
+      p := ref(bigtable[tabletop]);
+      with p^ do
+        begin
+        form := false;
+        name := 0;
+        nextname := 0;
+        namekind := constname;
+        consttype := nilindex;
+        constvalue := nilvalue.cvalue;
+        end;
+
+      {define 'main' program}
+      p := ref(bigtable[0]);
+      with p^ do
+        begin
+        name := 0;
+        form := false;
+        nextname := 0;
+        namekind := procname;
+        charindex := 1;
+        charlen := 0;
+        paramlist := 0;
+        functype := noneindex;
+        funclen := 0;
+        dbgsymbol := 0;
+        end;
+
+      enterblock(1, 0, 0);
+
+      display[1].blocksize := display[0].blocksize;
+      display[1].oldtabletop := tabletop;
+      level := 1;
+
+      {define 'output'}
+      enterstandardid(outputid, varname, sharedPtr^.ptrsize, textindex);
+      outputindex := tabletop;
+      outputdeclared := false;
+
+      {define 'input'}
+      sharedPtr^.inputoffset := display[level].blocksize;
+      enterstandardid(inputid, varname, sharedPtr^.ptrsize, textindex);
+      inputindex := tabletop;
+      end; {not environment switch}
+
+    { Save the number of bytes allocated for input and output. }
+    sharedPtr^.globalfiles := display[1].blocksize;
+    sharedPtr^.consttablelimit := sharedPtr^.stringtablelimit;
+    stringfilebase := sharedPtr^.stringtablelimit; {save for writeenvirfile}
+  end;
+  {>>>}
+
 begin
   sharedPtr := getSharedPtr;
   tokenSharedPtr := getTokenSharedPtr;
@@ -14754,7 +14742,7 @@ begin
     sharedPtr^.stringblkptrtbl[1] := sharedPtr^.stringblkptr;
     end;
 
-  initanalys;
+  init;
 
   if token = programsym then
     programheading
@@ -14765,10 +14753,12 @@ begin
     block;
 
     while token = endsym do
+      {<<<  extra end warning}
       begin
       warn (extraenderr);
       gettoken;
       end;
+      {>>>}
 
     case token of
       proceduresym,

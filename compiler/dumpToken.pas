@@ -93,7 +93,7 @@ var
         if t = newfile then
           begin
           baseline := getint;
-          fileindex := getint; { stringtable index of filename }
+          fileIndex := getint; { stringtable index of filename }
           end
         else if t = lineinc then
           line := line + 1
@@ -118,7 +118,7 @@ var
           ident:
             begin
             key := getint;
-            keypos := getint;
+            keyPos := getint;
             end;
           {>>>}
           {<<<}
@@ -285,12 +285,12 @@ begin
   reset (tokenSharedPtr^.tokenFile, 'token.tmp');
   getnexttoken;
 
-  writeln ('Base Line Left Right File Id Token');
+  writeln (' Base  Line Left Right   pos index Id Token');
   repeat
     tokencount := tokencount + 1;
     with tokenSharedPtr^.nexttoken do
       begin
-      write (baseline:4, line:5, left:5, right:6, fileindex:5, ord(token):3, ' ');
+      write (baseline:5, ' ', line:5, ' ', left:4, ' ', right:5, ' ',filePos:5, ' ', fileIndex:5, ' ', ord(token):2, ' ');
       {<<<  write token names}
       case token of
         programsym:   write ('PROGRAM');
@@ -377,7 +377,7 @@ begin
   until (tokenSharedPtr^.nexttoken.token = eofsym) or eof (tokenSharedPtr^.tokenFile);
 
   with tokenSharedPtr^.nexttoken do
-    writeln (baseline: 5, line: 5, left: 4, right: 6, '  EOF');
+    writeln (baseline:5, line:5, ' ', left:4, ' ', right:4, filePos:5, fileIndex:5, ord(token):3, ' EOF');
   close (tokenSharedPtr^.tokenFile);
 
   writeln (tokencount: 1, ' tokens');
