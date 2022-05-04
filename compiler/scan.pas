@@ -245,7 +245,7 @@ var
   dif: hostfilebyte; {difference in line numbers}
 
   {<<<}
-  procedure puttempfile;
+  procedure putTokenFileBlock;
   { Does the equivalent of a put on the token file.  Actually the file is
     a file of blocks, and an actual put is done only if the block is full }
 
@@ -260,7 +260,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure putint (i: integer {value to put} );
+  procedure putInt (i: integer {value to put} );
   { Puts an integer value to the token file as successive bytes. }
 
   var
@@ -290,18 +290,18 @@ var
     else
       begin
       tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := hostfilelim;
-      puttempfile;
+      putTokenFileBlock;
       fudge.int := i;
       for j := 1 to hostintsize * hostfileunits do
         begin
         tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := fudge.byte[j];
-        puttempfile;
+        putTokenFileBlock;
         end;
       end;
   end;
   {>>>}
   {<<<}
-  procedure putreal;
+  procedure putReal;
   { Put a real value to the token file as successive bytes }
 
   var
@@ -316,13 +316,13 @@ var
     j: 1..32; {induction var}
 
 
-  begin {putreal}
+  begin {putReal}
     for j := 1 to 32 do fudge.byte[j] := 0;
     fudge.rl := tokenSharedPtr^.nexttoken.realvalue;
     for j := 1 to size(realarray) do
       begin
       tokenSharedPtr^.tokenFile^.block[tokenbufindex].byte := fudge.byte[j];
-      puttempfile;
+      putTokenFileBlock;
       end;
   end;
   {>>>}
@@ -353,9 +353,9 @@ begin
         {<<<  lineadd token}
         begin
         tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := lineadd;
-        puttempfile;
+        putTokenFileBlock;
         tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := dif;
-        puttempfile;
+        putTokenFileBlock;
         end;
         {>>>}
       lasttokenline := lasttokenline + dif;
@@ -365,9 +365,9 @@ begin
       {<<<  newfile token}
       begin
       tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := newfile;
-      puttempfile;
-      putint (baseLine);
-      putint (fileIndex); { filename pointer }
+      putTokenFileBlock;
+      putInt (baseLine);
+      putInt (fileIndex); { filename pointer }
       lastBaseLine := baseLine;
       end;
       {>>>}
@@ -412,30 +412,30 @@ begin
         {<<<}
         ident:
           begin
-          putint (key);
-          putint (keyPos);
+          putInt (key);
+          putInt (keyPos);
           end;
         {>>>}
         {<<<}
         intconst:
-          putint (intvalue);
+          putInt (intvalue);
         {>>>}
         {<<<}
         charconst:
           begin
           tokenSharedPtr^.tokenFile^.block[tokenbufindex].toke := intvalue;
-          puttempfile;
+          putTokenFileBlock;
           end;
         {>>>}
         {<<<}
         realconst, dblrealconst:
-          putreal;
+          putReal;
         {>>>}
         {<<<}
         stringconst:
           begin
-          putint (pos);
-          putint (len);
+          putInt (pos);
+          putInt (len);
           end;
         {>>>}
         end
@@ -444,7 +444,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure putTokenfile;
+procedure putTokenFile;
 { Do the equivalent of a put to the token file
   The value of the global variable "token" is encoded by "putToken" and written in a packed format to the tokenfile.
   A count of tokens is kept and used to indicate the place in the file where embedded switches are found.
@@ -2913,7 +2913,7 @@ begin
     fileIndex := curFileIndex; { stringtable index of filename}
     end;
 
-  putTokenfile;
+  putTokenFile;
 end;
 {>>>}
 
