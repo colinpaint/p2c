@@ -53,11 +53,19 @@ begin
   sharedPtr^.current_line := 0;
   sharedPtr^.fatalflag := false;
   sharedPtr^.lasterror := 0;
+
   sharedPtr^.sourcelevel := 0;
   sharedPtr^.currentswitch := 1;
+  sharedPtr^.lastswitch := 0;
   sharedPtr^.genoptmask := 0;
 
   sharedPtr^.lastlist := 0;
+  sharedPtr^.fakelist := false;
+
+  sharedPtr^.sourceListHead := nil;
+  sharedPtr^.objname := nil;
+  sharedPtr^.macname := nil;
+  sharedPtr^.listname := nil;
 
   sharedPtr^.stringfilecount := 0;
   sharedPtr^.stringtablelimit := 0;
@@ -71,24 +79,23 @@ begin
   new (sharedPtr^.stringtable);
 
   sharedPtr^.insertions := 0;
-  sharedPtr^.lastswitch := 0;
   sharedPtr^.nextstringfile := 0;
   sharedPtr^.filerememberlist := nil;
 
   sharedPtr^.shortsection := false;
   sharedPtr^.codesection := oursection; { default code section }
-  sharedPtr^.identstring := 0;
-  sharedPtr^.identstrlength := 0;
-  sharedPtr^.objversion := 0;
-  sharedPtr^.objrevision := 0;
   sharedPtr^.codesect_string := 0;    { codesect name }
   sharedPtr^.codesect_strlength := 0; { length of codesect name }
+  sharedPtr^.identstring := 0;
+  sharedPtr^.identstrlength := 0;
   sharedPtr^.module_string :=    0;   { module name }
   sharedPtr^.module_strlength := 0;   { length of module name }
   sharedPtr^.ownsect_string := 0;     { ownsect name }
   sharedPtr^.ownsect_strlength := 0;  { length of ownsect name }
   sharedPtr^.ident_string := 0;       { ident name}
   sharedPtr^.ident_strlength := 0;    { length of ident name }
+  sharedPtr^.objversion := 0;
+  sharedPtr^.objrevision := 0;
 
   tokenSharedPtr^.tokenCount := 0;
   tokenSharedPtr^.nexttoken.baseline := 0;

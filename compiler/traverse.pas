@@ -76,12 +76,6 @@
 
 %include 'traverse.def';
 {>>>}
-
-var
-  sharedPtr: sharedPtrType;
-  interSharedPtr: interSharedPtrType;
-  pseudoSharedPtr: pseudoSharedPtrType;
-
 {<<<}
 const
   pts = proctablespan; {shorter local name}
@@ -373,6 +367,10 @@ type
 {>>>}
 {<<<}
 var
+  sharedPtr: sharedPtrType;
+  interSharedPtr: interSharedPtrType;
+  pseudoSharedPtr: pseudoSharedPtrType;
+
   truelabel, falselabel: labelrange; { for short circuit boolean evaluaton}
   trueused, falseused: boolean; { set if truelabel, falselabel used in eval}
 
@@ -509,273 +507,190 @@ var
   dbglinkptr1: linkptr;
 {>>>}
 
-{<<<  commt.def}
-
-{ Return all buffers used in the virtual memory system to the heap. }
-procedure flushbuffers; external;
-
-{ Create a new pseudo-code label. }
-function newlabel: labelrange; external;
-
-{ Check node "node" to see if it is constant, and set "constflag" and "i" if it is.
-  This is used in dead code elimination. }
-procedure checkconst (node: nodeindex; {node to check}
-                      var constflag: boolean; {true if node is const}
-                      var i: integer {constant value if const} ); external;
-
-{ Figure out if possible how many iterations a for loop will execute. }
-procedure estimateloop (stmt: nodeindex;
-                        var fixed: boolean;
-                        var overflow: boolean;
-                        var runcount: unsignedint); external;
-
-{ Do the equivalent of a "put" on the pseudofile. }
-procedure putpseudofile; external;
-
-{ Generate a pseudo instruction }
-procedure genpseudo (o: pseudoop; {operator}
-                     l: addressrange; {operand length}
-                     n: keyindex; {key for this node}
-                     r: refcountrange; {reference count}
-                     c: refcountrange; {copy count}
-                     i, j, k: integer {operands} ); external;
-
-{ Generate a pseudo instruction with a real value as an operand }
-procedure genrealop (o: pseudoop; {operator}
-                     l: addressrange; {operand length}
-                     n: keyindex; {key for this node}
-                     r: refcountrange; {reference count}
-                     c: refcountrange; {copy count}
-                     val: realarray {real value} ); external;
-
-{<<<}
-{ Change the effective reference count for a node by "inc".  This
-  may have to chain down a sequence of nodes to get the actual most
-  recent node which should be changed. }
-{>>>}
-procedure increfcount (n: nodeindex; {node to increment}
-                       deadcode: boolean;
-                       inc: shortint {amount to increment} ); external;
-{>>>}
 {<<<  commt}
 {<<<}
-function newlabel;
+function newlabel: labelrange;
 { Create a new pseudo-code label.  Labels created in travrs are assigned
   from the low numbers, while those created later in codegen are
   assigned from the high end (maxint) down.  This helps avoid conflict.
-
   The label is not defined by this routine, it simply generates unique
   labels for later definition.
 }
-
-  begin {newlabel}
-    lasttravrslabel := lasttravrslabel + 1;
-    newlabel := lasttravrslabel
-  end {newlabel} ;
+begin
+  lasttravrslabel := lasttravrslabel + 1;
+  newlabel := lasttravrslabel
+end;
 {>>>}
 {<<<}
-procedure checkconst
-                    {node: nodeindex; (node to check)
-                     var constflag: boolean; (true if node is const)
-                     var i: integer (constant value if const) } ;
+procedure checkconst (node: nodeindex; var constflag: boolean; var i: integer);
 { Check node "node" to see if it is constant, and set "constflag" and
   "i" if it is.  This is used in dead code elimination.
 }
-  var
-    ptr: nodeptr; {used to access node}
+var
+  ptr: nodeptr; {used to access node}
 
-  begin {checkconst}
-    ptr := ref(bignodetable[node]);
-    with ptr^ do
-      if (action in [visit, revisit]) and (op = intop) then
-        begin
-        constflag := true;
-        i := oprnds[1];
-        end
-      else constflag := false;
-  end {checkconst} ;
+begin
+  ptr := ref(bignodetable[node]);
+  with ptr^ do
+    if (action in [visit, revisit]) and (op = intop) then
+      begin
+      constflag := true;
+      i := oprnds[1];
+      end
+    else
+      constflag := false;
+end;
 {>>>}
 {<<<}
-procedure estimateloop
-                      {stmt: nodeindex;
-                       var fixed: boolean;
-                       var overflow: boolean;
-                       var runcount: unsignedint} ;
-
-{    Purpose:
-      Figure out if possible how many iterations a for loop will execute.
-      Note : assumes that unsigned arithmetic works properly.
-
-    Inputs:
-      stmt : index to forhdr stmt.
-
-    Outputs:
-      fixed : true if constant loop.
-      overflow : true if loop runs for 0..maxusint iterations.
-      runcount : if fixed then number of iterations.
-
-    Algorithm:
-      Simply examine the for loop limits
-
-    Sideeffects:
-      none.
-
-    Last Modified: 7/16/85
-
+procedure estimateloop (stmt: nodeindex; var fixed: boolean; var overflow: boolean; var runcount: unsignedint);
+{ Figure out if possible how many iterations a for loop will execute.
+  Note : assumes that unsigned arithmetic works properly.
 }
+var
+  ptr: nodeptr; {used to access index node}
+  initialvalue, finalvalue: integer; {initial and final values}
+  uinitialvalue, ufinalvalue: unsignedint; {initial and final values unsigned}
+  currentstmt: node; { copy of the stmt node }
+  constfinal: boolean; { true if to/downto is constant }
 
-  var
-    ptr: nodeptr; {used to access index node}
-    initialvalue, finalvalue: integer; {initial and final values}
-    uinitialvalue, ufinalvalue: unsignedint; {initial and final values unsigned}
-    currentstmt: node; { copy of the stmt node }
-    constfinal: boolean; { true if to/downto is constant }
+begin
+  fixed := false;
+  overflow := false;
+  runcount := 0; {temp }
+  ptr := ref(bignodetable[stmt]);
+  currentstmt := ptr^;
+  with currentstmt do
+    begin
 
+    ptr := ref(bignodetable[expr1]);
+    if ptr^.op in [forupchkop, fordnchkop, forerrchkop] then
+      checkconst(ptr^.oprnds[1], constfinal, finalvalue)
+    else checkconst(expr1, constfinal, finalvalue);
 
-  begin {estimateloop}
-    fixed := false;
-    overflow := false;
-    runcount := 0; {temp }
-    ptr := ref(bignodetable[stmt]);
-    currentstmt := ptr^;
-    with currentstmt do
+    ptr := ref(bignodetable[expr2]);
+    if constfinal and ((ptr^.op = defforlitindexop) or
+       (ptr^.op = defunsforlitindexop)) then
       begin
+      fixed := true;
+      initialvalue := ptr^.oprnds[3];
+      uinitialvalue := initialvalue;
+      ufinalvalue := finalvalue;
 
-      ptr := ref(bignodetable[expr1]);
-      if ptr^.op in [forupchkop, fordnchkop, forerrchkop] then
-        checkconst(ptr^.oprnds[1], constfinal, finalvalue)
-      else checkconst(expr1, constfinal, finalvalue);
-
-      ptr := ref(bignodetable[expr2]);
-      if constfinal and ((ptr^.op = defforlitindexop) or
-         (ptr^.op = defunsforlitindexop)) then
+      if stmtkind = foruphdr then
         begin
-        fixed := true;
-        initialvalue := ptr^.oprnds[3];
-        uinitialvalue := initialvalue;
-        ufinalvalue := finalvalue;
-
-        if stmtkind = foruphdr then
+        if ptr^.op = defunsforlitindexop then
           begin
-          if ptr^.op = defunsforlitindexop then
+          if (uinitialvalue = 0) and (ufinalvalue = maxusint) then
             begin
-            if (uinitialvalue = 0) and (ufinalvalue = maxusint) then
-              begin
-              overflow := true;
-              runcount := maxusint; { at least! }
-              end
-            else
-              begin
-              if ufinalvalue >= uinitialvalue then
-                runcount := ufinalvalue - uinitialvalue + 1
-              else runcount := 0;
-              end;
+            overflow := true;
+            runcount := maxusint; { at least! }
             end
           else
             begin
-            { assumes two's complement representation }
-            if (initialvalue < - maxint) and (finalvalue = maxint) then
-              begin
-              overflow := true;
-              runcount := maxusint; { at least! }
-              end
-            else
-              begin
-              if initialvalue <= finalvalue then
-                begin
-                if initialvalue >= 0 then
-                  runcount := finalvalue - initialvalue + 1
-                else
-                  begin
-                  if finalvalue < 0 then
-                    runcount := finalvalue - initialvalue + 1
-                  else
-                    begin
-                    runcount := - initialvalue;
-                    runcount := runcount + finalvalue + 1;
-                    end;
-                  end;
-                end
-              else runcount := 0;
-              end;
+            if ufinalvalue >= uinitialvalue then
+              runcount := ufinalvalue - uinitialvalue + 1
+            else runcount := 0;
             end;
           end
         else
           begin
-          { down loop }
-          if ptr^.op = defunsforlitindexop then
+          { assumes two's complement representation }
+          if (initialvalue < - maxint) and (finalvalue = maxint) then
             begin
-            if (uinitialvalue = maxusint) and (ufinalvalue = 0) then
-              begin
-              overflow := true;
-              runcount := maxusint; { at least! }
-              end
-            else
-              begin
-              if ufinalvalue <= uinitialvalue then
-                runcount := uinitialvalue - ufinalvalue + 1
-              else runcount := 0;
-              end;
+            overflow := true;
+            runcount := maxusint; { at least! }
             end
           else
             begin
-            { assumes two's complement representation }
-            if (initialvalue = maxint) and (finalvalue < - maxint) then
+            if initialvalue <= finalvalue then
               begin
-              overflow := true;
-              runcount := maxusint; { at least! }
-              end
-            else
-              begin
-              if initialvalue >= finalvalue then
+              if initialvalue >= 0 then
+                runcount := finalvalue - initialvalue + 1
+              else
                 begin
-                if finalvalue >= 0 then
+                if finalvalue < 0 then
+                  runcount := finalvalue - initialvalue + 1
+                else
+                  begin
+                  runcount := - initialvalue;
+                  runcount := runcount + finalvalue + 1;
+                  end;
+                end;
+              end
+            else runcount := 0;
+            end;
+          end;
+        end
+      else
+        begin
+        { down loop }
+        if ptr^.op = defunsforlitindexop then
+          begin
+          if (uinitialvalue = maxusint) and (ufinalvalue = 0) then
+            begin
+            overflow := true;
+            runcount := maxusint; { at least! }
+            end
+          else
+            begin
+            if ufinalvalue <= uinitialvalue then
+              runcount := uinitialvalue - ufinalvalue + 1
+            else runcount := 0;
+            end;
+          end
+        else
+          begin
+          { assumes two's complement representation }
+          if (initialvalue = maxint) and (finalvalue < - maxint) then
+            begin
+            overflow := true;
+            runcount := maxusint; { at least! }
+            end
+          else
+            begin
+            if initialvalue >= finalvalue then
+              begin
+              if finalvalue >= 0 then
+                runcount := initialvalue - finalvalue + 1
+              else
+                begin
+                if initialvalue < 0 then
                   runcount := initialvalue - finalvalue + 1
                 else
                   begin
-                  if initialvalue < 0 then
-                    runcount := initialvalue - finalvalue + 1
-                  else
-                    begin
-                    runcount := - finalvalue;
-                    runcount := runcount + initialvalue + 1;
-                    end;
+                  runcount := - finalvalue;
+                  runcount := runcount + initialvalue + 1;
                   end;
-                end
-              else runcount := 0;
-              end;
+                end;
+              end
+            else runcount := 0;
             end;
-          end; { down loop }
-        end;
-      end; {with}
-  end; {estimateloop}
+          end;
+        end; { down loop }
+      end;
+    end; {with}
+end;
 {>>>}
 
 {<<<}
 procedure putpseudofile;
-{ Do the equivalent of a "put" on the pseudofile.  It is assumed that
-  the next pseudocode element has been stored in pseudofile^[nextpseudofile].
-  If the buffer is full, it is actually written, otherwise the
-  global index "nextpseudofile" is incremented.
+{ Do the equivalent of a "put" on the pseudofile.  
+  It is assumed that the next pseudocode element has been stored in pseudofile^[nextpseudofile].
+  If the buffer is full, it is actually written, otherwise the global index "nextpseudofile" is incremented.
 }
-  begin
-    if nextpseudofile = diskbufsize then
-      begin
-      nextpseudofile := 0;
-      put (pseudoSharedPtr^.pseudoFile);
-      end
-    else
-      nextpseudofile := nextpseudofile + 1;
-  end {putpseudofile} ;
+begin
+  if nextpseudofile = diskbufsize then
+    begin
+    nextpseudofile := 0;
+    put (pseudoSharedPtr^.pseudoFile);
+    end
+  else
+    nextpseudofile := nextpseudofile + 1;
+end;
 {>>>}
 {<<<}
-procedure genpseudo
-                     {o: pseudoop; (operator)
-                      l: addressrange; (operand length)
-                      n: keyindex; (key for this node)
-                      r: refcountrange; (reference count)
-                      c: refcountrange; (copy count)
-                      i, j, k: integer (operands)} ;
+procedure genpseudo (o: pseudoop; l: addressrange; n: keyindex;
+                     r: refcountrange; c: refcountrange; i, j, k: integer);
 { Generate a pseudocode output to the pseudofile.  Logically,
   this file consists of fixed length records, with unused fields
   filled with zeros.  The fields have the following use.
@@ -811,7 +726,6 @@ procedure genpseudo
         end;
       j: 1..32; {induction var}
 
-
     begin
       if (i >= 0) and (i < hostfilelim) then
         pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].byte := i
@@ -829,8 +743,7 @@ procedure genpseudo
     end;
   {>>>}
 
-begin {genpseudo}
-
+begin
   if travcode then
     begin
     pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
@@ -862,97 +775,87 @@ begin {genpseudo}
 
     pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].op := o;
     putpseudofile;
-    { No key data}
-    if not (o in
-       [endpseudocode, bad, blockentry, blockexit, jumpf, jumpt, jump,
-       pascallabel, savelabel, clearlabel, joinlabel, restorelabel,
-       sysroutine, caseelt, setfile, closerange, restoreloop,
-       saveactkeys]) then
-      begin
-      putint(l);
-      putint(n);
-      putint(r);
-      putint(c);
-      end;
 
-    putint(i);
+    { No key data}
+    if not (o in [endpseudocode, bad, blockentry, blockexit, jumpf, jumpt, jump,
+            pascallabel, savelabel, clearlabel, joinlabel, restorelabel,
+            sysroutine, caseelt, setfile, closerange, restoreloop, saveactkeys]) then
+      begin
+      putint (l);
+      putint (n);
+      putint (r);
+      putint (c);
+      end;
+    putint (i);
+
     { only one operand }
-    if not (o in
-       [endpseudocode, bad, blockexit, dovar, dounsvar, doint, doorigin,
-       pseudolabel, savelabel, clearlabel, joinlabel, restorelabel,
-       copyaccess, flt, pshaddr, pshstraddr, pshint, pshptr, pshreal, pshstr,
-       pshstruct, pshset, pshlitint, pshlitptr, pshlitreal, copystack, fmt,
-       wrint, wrreal, wrchar, wrst, wrbool, wrbin, wrxstr, rdbin, rdint,
-       rdchar, rdreal, rdst, rdxstr, stacktarget, ptrchk, chrstr, arraystr,
-       definelazy, setbinfile, setfile, closerange, restoreloop]) then
+    if not (o in [endpseudocode, bad, blockexit, dovar, dounsvar, doint, doorigin,
+                  pseudolabel, savelabel, clearlabel, joinlabel, restorelabel,
+                  copyaccess, flt, pshaddr, pshstraddr, pshint, pshptr, pshreal, pshstr,
+                  pshstruct, pshset, pshlitint, pshlitptr, pshlitreal, copystack, fmt,
+                  wrint, wrreal, wrchar, wrst, wrbool, wrbin, wrxstr, rdbin, rdint,
+                  rdchar, rdreal, rdst, rdxstr, stacktarget, ptrchk, chrstr, arraystr,
+                  definelazy, setbinfile, setfile, closerange, restoreloop]) then
       begin
       putint(j);
       putint(k);
       end;
     end;
-end; {genpseudo}
+end;
 {>>>}
 {<<<}
-procedure genrealop
-                   {o: pseudoop; (operator)
-                    l: addressrange; (operand length)
-                    n: keyindex; (key for this node)
-                    r: refcountrange; (reference count)
-                    c: refcountrange; (copy count)
-                    val: realarray (real value)} ;
-{ Generate a pseudo instruction with a real value as an operand
-}
-  var
-    rsize: integer;
-    i: 1..30;
-    kludge: {for converting to ints}
-      packed record
-        case boolean of
-          true: (r: realarray; );
-          false: (i: array [1..30] of integer; );
-      end;
+procedure genrealop (o: pseudoop; l: addressrange; n: keyindex; r: refcountrange; c: refcountrange; val: realarray);
+{ Generate a pseudo instruction with a real value as an operand }
 
-  begin
-    rsize := size(realarray);
-    kludge.r := val;
-    i := 1;
-    while rsize > 0 do
-      begin
-      genpseudo(o, l, n, r, c, kludge.i[i], kludge.i[i + 1], kludge.i[i + 2]);
-      i := i + 3;
-      rsize := rsize - 3 * size(integer);
-      end;
-  end; {genrealop}
+var
+  rsize: integer;
+  i: 1..30;
+  kludge: {for converting to ints}
+    packed record
+      case boolean of
+        true: (r: realarray; );
+        false: (i: array [1..30] of integer; );
+    end;
+
+begin
+  rsize := size(realarray);
+  kludge.r := val;
+  i := 1;
+  while rsize > 0 do
+    begin
+    genpseudo(o, l, n, r, c, kludge.i[i], kludge.i[i + 1], kludge.i[i + 2]);
+    i := i + 3;
+    rsize := rsize - 3 * size(integer);
+    end;
+end;
 {>>>}
 
 {<<<}
-procedure increfcount {n: nodeindex; (node to increment) deadcode: boolean; inc:
-                       shortint (amount to increment) } ;
-{ Change the effective reference count for a node by "inc".  This
-  may have to chain down a sequence of nodes to get the actual most
-  recent node which should be changed.
+procedure increfcount (n: nodeindex; deadcode: boolean; inc: shortint);
+{ Change the effective reference count for a node by "inc".
+  This may have to chain down a sequence of nodes to get the actual most recent node which should be changed
 }
-  var
-    p: nodeptr;
+var
+  p: nodeptr;
 
-  begin
-    if not (deadcode and (removedeadcode in sharedPtr^.genset)) and
-       (n <> 0) {or (inc < 0)} then
-      begin
-      p := ref(bignodetable[n]);
-      if p^.action = visit then
-        if (p^.op < intop) and (p^.op > newunsvarop) then
-          while p^.slink <> 0 do
-            begin
-            n := p^.slink;
-            p := ref(bignodetable[n]);
-            end;
-      p := ref(bignodetable[n]);
-      p^.refcount := p^.refcount + inc;
-      if p^.action = visit then
-        if p^.op = commaop then increfcount(p^.oprnds[2], deadcode, inc);
-      end;
-  end; {increfcount}
+begin
+  if not (deadcode and (removedeadcode in sharedPtr^.genset)) and
+     (n <> 0) {or (inc < 0)} then
+    begin
+    p := ref(bignodetable[n]);
+    if p^.action = visit then
+      if (p^.op < intop) and (p^.op > newunsvarop) then
+        while p^.slink <> 0 do
+          begin
+          n := p^.slink;
+          p := ref(bignodetable[n]);
+          end;
+    p := ref(bignodetable[n]);
+    p^.refcount := p^.refcount + inc;
+    if p^.action = visit then
+      if p^.op = commaop then increfcount(p^.oprnds[2], deadcode, inc);
+    end;
+end;
 {>>>}
 {>>>}
 {<<<  foldcom}
@@ -4995,7 +4898,6 @@ procedure loops;
           lasthoist := expr;
 
           { count the number of hoists that occur }
-
           if sharedPtr^.switcheverplus[test] then
             begin
             ptr := ref(bignodetable[expr]);
@@ -6032,364 +5934,6 @@ end;
 {>>>}
 
 {<<<}
-procedure inittravrs;
-{ Initialize structured constants (tables) and counters }
-
-var
-  i: integer; {induction var for initializing virtual memory}
-  j: 0..nodesperblock; { induction var so building ptrs }
-  o: operator; {induction var for initializing map}
-  t, t1: types; {induction vars for initializing maps}
-  p: proctableindex; {induction for initializing referenced field}
-
-  {<<<}
-    procedure map1;
-
-  { Initialize the map which takes input operators and types onto pseudocode.
-    This is split into three routines to reduce the size of the code for
-    each routine.
-  }
-
-
-      begin {[s=2] Format two assignments per line}
-        map[indxchkop, ints] := indxchk;     map[rangechkop, ints] := rangechk;
-        map[cindxchkop, ints] := indxchk;    map[ownop, ints] := doown;
-        map[congruchkop, ints] := congruchk; map[levop, ints] := dolevel;
-        map[intop, ints] := doint;           map[originop, ints] := doorigin;
-        map[ptrop, ints] := doptr;           map[realop, ints] := doreal;
-        map[structop, ints] := dostruct;     map[moveop, ints] := movint;
-        map[moveop, reals] := movreal;       map[moveop, bools] := movint;
-        map[moveop, chars] := movint;        map[moveop, ptrs] := movptr;
-        map[moveop, scalars] := movint;      map[moveop, arrays] := movstruct;
-        map[moveop, fields] := movstruct;    map[moveop, sets] := movset;
-        map[moveop, strings] := movstr;      map[moveop, fptrs] := movptr;
-        map[moveop, words] := movint;        map[moveop, opaques] := movptr;
-        map[moveop, bytes] := movint;
-        map[moveop, stringliterals] := movstruct;
-        map[moveop, procs] := movptr;        map[cmoveop, arrays] := movcstruct;
-        map[movelit, words] := movlitint;    map[movelit, opaques] := movlitptr;
-        map[movelit, ints] := movlitint;     map[movelit, chars] := movlitint;
-        map[movelit, bools] := movlitint;    map[movelit, ptrs] := movlitptr;
-        map[movelit, scalars] := movlitint;  map[movelit, reals] := movlitreal;
-        map[movelit, fptrs] := movlitptr;    map[movelit, procs] := movlitptr;
-        map[movelit, bytes] := movlitint;    map[chrstrop, strings] := chrstr;
-        map[chrstrop, stringliterals] := chrstr;
-        map[arraystrop, strings] := arraystr;
-        map[arraystrop, stringliterals] := arraystr;
-        map[chrstrop, chars] := chrstr;      map[arraystrop, arrays] := arraystr;
-        map[chrstrop1, stringliterals] := chrstr;
-        map[arraystrop1, stringliterals] := arraystr;
-        map[chrstrop1, strings] := chrstr;
-        map[arraystrop1, strings] := arraystr;
-        map[plusop, ints] := addint;         map[plusop, ptrs] := addptr;
-        map[plusop, strings] := addstr;      map[plusop, reals] := addreal;
-        map[plusop, sets] := addset;         map[plusop, scalars] := addint;
-        map[minusop, ints] := subint;        map[minusop, scalars] := subint;
-        map[minusop, ptrs] := subptr;        map[minusop, reals] := subreal;
-        map[minusop, sets] := subset;        map[notop, bools] := compbool;
-        map[notop, ints] := compint;         map[notop, scalars] := compint;
-        map[inop, sets] := inset;            map[andop, ints] := andint;
-        map[andop, bools] := andint;         map[andop, scalars] := andint;
-        map[andop, ptrs] := andint;          map[orop, ints] := orint;
-        map[orop, bools] := orint;           map[orop, scalars] := orint;
-        map[orop, ptrs] := orint;            map[incop, ints] := incint;
-        map[decop, ints] := decint;          map[indxop, ints] := indx;
-        map[indrop, ints] := indxindr;       map[openarrayop, ints] := openarray;
-        map[filebufindrop, ints] := indxindr;
-        map[aindxop, ints] := aindx;         map[mulop, ints] := mulint;
-        map[mulop, reals] := mulreal;        map[mulop, sets] := mulset;
-        map[mulop, scalars] := mulint;       map[divop, scalars] := divint;
-        map[divop, ints] := divint;          map[stddivop, ints] := stddivint;
-        map[slashop, sets] := divset;        map[slashop, reals] := divreal;
-        map[quoop, ints] := getquo;          map[remop, ints] := getrem;
-        map[shiftlop, ints] := shiftlint;    map[pindxop, ints] := pindx;
-        map[paindxop, ints] := paindx;       map[eqop, procs] := eqptr;
-        map[eqop, strings] := eqstr;         map[eqop, ints] := eqint;
-        map[eqop, chars] := eqint;           map[eqop, bools] := eqint;
-        map[eqop, ptrs] := eqptr;            map[eqop, fptrs] := eqfptr;
-        map[eqop, scalars] := eqint;         map[eqop, reals] := eqreal;
-        map[eqop, sets] := eqset;            map[eqop, arrays] := eqstruct;
-        map[eqop, words] := eqint;           map[eqop, opaques] := eqptr;
-        map[eqop, bytes] := eqint;           map[neqop, words] := neqint;
-        map[neqop, opaques] := neqptr;       map[neqop, procs] := neqptr;
-        map[neqop, strings] := neqstr;       map[neqop, ints] := neqint;
-        map[neqop, chars] := neqint;         map[neqop, bools] := neqint;
-        map[neqop, ptrs] := neqptr;          map[neqop, fptrs] := neqfptr;
-        map[ptrchkop, ints] := ptrchk;       map[neqop, bytes] := neqint;
-        { new for 32k }                      map[kwoop, ints] := kwoint;
-        map[modop, ints] := modint;          map[stdmodop, ints] := stdmodint;
-
-      end; {[s=1] map1}
-  {>>>}
-  {<<<}
-    procedure map2;
-
-  { More map initialization.
-  }
-
-
-      begin {[s=2] Format two assignments per line}
-        map[neqop, scalars] := neqint;       map[neqop, reals] := neqreal;
-        map[neqop, sets] := neqset;          map[neqop, arrays] := neqstruct;
-        map[lssop, strings] := lssstr;       map[lssop, ints] := lssint;
-        map[lssop, chars] := lssint;         map[lssop, bools] := lssint;
-        map[lssop, ptrs] := lssptr;          map[lssop, scalars] := lssint;
-        map[lssop, reals] := lssreal;        map[lssop, arrays] := lssstruct;
-        map[gtrop, ints] := gtrint;          map[gtrop, strings] := gtrstr;
-        map[gtrop, chars] := gtrint;         map[gtrop, bools] := gtrint;
-        map[gtrop, ptrs] := gtrptr;          map[gtrop, scalars] := gtrint;
-        map[gtrop, reals] := gtrreal;        map[gtrop, arrays] := gtrstruct;
-        map[geqop, strings] := geqstr;       map[geqop, ints] := geqint;
-        map[geqop, chars] := geqint;         map[geqop, bools] := geqint;
-        map[geqop, ptrs] := geqptr;          map[geqop, scalars] := geqint;
-        map[geqop, reals] := geqreal;        map[geqop, sets] := geqset;
-        map[geqop, arrays] := geqstruct;     map[leqop, strings] := leqstr;
-        map[leqop, ints] := leqint;          map[leqop, chars] := leqint;
-        map[leqop, bools] := leqint;         map[leqop, ptrs] := leqptr;
-        map[leqop, scalars] := leqint;       map[leqop, reals] := leqreal;
-        map[leqop, sets] := leqset;          map[leqop, arrays] := leqstruct;
-        map[eqlit, procs] := eqlitptr;       map[eqlit, ints] := eqlitint;
-        map[eqlit, reals] := eqlitreal;      map[eqlit, chars] := eqlitint;
-        map[eqlit, ptrs] := eqlitptr;        map[eqlit, scalars] := eqlitint;
-        map[eqlit, bools] := eqlitint;       map[eqlit, fptrs] := eqlitfptr;
-        map[eqlit, words] := eqlitint;       map[eqlit, opaques] := eqlitptr;
-        map[eqlit, bytes] := eqlitint;       map[neqlit, words] := neqlitint;
-        map[neqlit, opaques] := neqlitptr;   map[neqlit, ints] := neqlitint;
-        map[neqlit, procs] := neqlitptr;     map[neqlit, reals] := neqlitreal;
-        map[neqlit, chars] := neqlitint;     map[neqlit, ptrs] := neqlitptr;
-        map[neqlit, scalars] := neqlitint;   map[neqlit, bools] := neqlitint;
-        map[neqlit, fptrs] := neqlitfptr;    map[neqlit, bytes] := neqlitint;
-        map[lsslit, ints] := lsslitint;      map[lsslit, reals] := lsslitreal;
-        map[lsslit, chars] := lsslitint;     map[lsslit, ptrs] := lsslitptr;
-        map[lsslit, scalars] := lsslitint;   map[lsslit, bools] := lsslitint;
-        map[gtrlit, ints] := gtrlitint;      map[gtrlit, reals] := gtrlitreal;
-        map[gtrlit, chars] := gtrlitint;     map[gtrlit, ptrs] := gtrlitptr;
-        map[gtrlit, scalars] := gtrlitint;   map[gtrlit, bools] := gtrlitint;
-        map[leqlit, ints] := leqlitint;      map[leqlit, reals] := leqlitreal;
-        map[leqlit, chars] := leqlitint;     map[leqlit, ptrs] := leqlitptr;
-        map[leqlit, scalars] := leqlitint;   map[leqlit, bools] := leqlitint;
-      end; {[s=1] map2}
-  {>>>}
-  {<<<}
-    procedure map3;
-
-  { Yet more map initialization.
-  }
-
-      var
-        i: types; {induction var}
-
-
-      begin {[s=2] Format two assignments per line}
-        map[wr, files] := wrbin;             map[rd, files] := rdbin;
-        map[geqlit, ints] := geqlitint;      map[geqlit, reals] := geqlitreal;
-        map[geqlit, chars] := geqlitint;     map[geqlit, ptrs] := geqlitptr;
-        map[geqlit, scalars] := geqlitint;   map[geqlit, bools] := geqlitint;
-        map[pushaddr, none] := pshaddr;      map[pushproc, none] := pshproc;
-        map[pushaddr, strings] := pshaddr;   map[pushaddr, ints] := pshaddr;
-        map[pushaddr, arrays] := pshaddr;    map[pushaddr, ptrs] := pshaddr;
-        map[pushaddr, fields] := pshaddr;    map[pushaddr, chars] := pshaddr;
-        map[pushaddr, reals] := pshaddr;     map[pushaddr, scalars] := pshaddr;
-        map[pushaddr, bools] := pshaddr;     map[pushaddr, sets] := pshaddr;
-        map[pushaddr, files] := pshaddr;     map[pushaddr, opaques] := pshaddr;
-        map[pushaddr, words] := pshaddr;     map[pushaddr, bytes] := pshaddr;
-        map[pushaddr, conformantarrays] := pshaddr;
-        map[pushaddr, stringliterals] := pshaddr;
-        map[pushaddr, procs] := pshaddr;     map[pushaddr, flexarrays] := pshaddr;
-        map[pushstraddr, strings] := pshstraddr;
-        map[pushlitvalue, procs] := pshlitptr;
-        map[pushlitvalue, bools] := pshlitint;
-        map[pushlitvalue, chars] := pshlitint;
-        map[pushlitvalue, scalars] := pshlitint;
-        map[pushlitvalue, ptrs] := pshlitptr;
-        map[pushlitvalue, fptrs] := pshlitfptr;
-        map[pushlitvalue, ints] := pshlitint;
-        map[pushlitvalue, bytes] := pshlitint;
-        map[pushlitvalue, reals] := pshlitreal;
-        map[defforindexop, ints] := defforindex;
-        map[defforlitindexop, ints] := defforlitindex;
-        map[defunsforindexop, ints] := defunsforindex;
-        map[defunsforlitindexop, ints] := defunsforlitindex;
-        map[forupchkop, ints] := forupchk;   map[fordnchkop, ints] := fordnchk;
-        map[forerrchkop, ints] := forerrchk; map[pushfinal, ints] := pshint;
-        map[pushvalue, stringliterals] := pshstruct;
-        map[pushvalue, procs] := pshptr;     map[pushvalue, opaques] := pshptr;
-        map[pushvalue, ints] := pshint;      map[pushvalue, reals] := pshreal;
-        map[pushvalue, chars] := pshint;     map[pushvalue, ptrs] := pshptr;
-        map[pushvalue, scalars] := pshint;   map[pushvalue, arrays] := pshstruct;
-        map[pushvalue, fields] := pshstruct; map[pushvalue, sets] := pshset;
-        map[pushvalue, bools] := pshint;     map[pushvalue, strings] := pshstr;
-        map[pushvalue, fptrs] := pshptr;     map[pushvalue, bytes] := pshint;
-        map[pushvalue, words] := pshint;     map[pushvalue, doubles] := pshreal;
-
-        map[pushcvalue, stringliterals] := pshstruct;
-        map[pushcvalue, procs] := pshptr;    map[pushcvalue, opaques] := pshptr;
-        map[pushcvalue, ints] := pshint;     map[pushcvalue, reals] := pshreal;
-        map[pushcvalue, chars] := pshint;    map[pushcvalue, ptrs] := pshptr;
-        map[pushcvalue, scalars] := pshint;  map[pushcvalue, arrays] := pshstruct;
-        map[pushcvalue, fields] := pshstruct;
-        map[pushcvalue, sets] := pshset;     map[pushcvalue, bools] := pshint;
-        map[pushcvalue, strings] := pshstr;  map[pushcvalue, fptrs] := pshptr;
-        map[pushcvalue, bytes] := pshint;    map[pushcvalue, words] := pshint;
-        map[pushcvalue, doubles] := pshreal;
-
-        map[bldfmt, none] := fmt;            map[wr, ints] := wrint;
-        map[wr, reals] := wrreal;            map[wr, chars] := wrchar;
-        map[wr, arrays] := wrst;             map[wr, bools] := wrbool;
-        map[wr, strings] := wrxstr;          map[rd, ints] := rdint;
-        map[rd, reals] := rdreal;            map[rd, chars] := rdchar;
-        map[rd, arrays] := rdst;             map[rd, strings] := rdxstr;
-        map[addrop, opaques] := addr;        map[addrop, words] := addr;
-        map[addrop, bytes] := addr;          map[addrop, ptrs] := addr;
-        map[addrop, fptrs] := addr;          map[addrop, procs] := addr;
-        map[negop, scalars] := negint;       map[negop, ints] := negint;
-        map[negop, ptrs] := negint;          map[negop, reals] := negreal;
-        map[sysfn, ints] := sysfnint;        map[sysfn, chars] := sysfnint;
-        map[sysfn, bools] := sysfnint;       map[sysfn, scalars] := sysfnint;
-        map[sysfn, reals] := sysfnreal;      map[sysfn, ptrs] := sysfnint;
-        map[sysfn, strings] := sysfnstring;  map[float, ints] := flt;
-        map[float1, ints] := flt;            map[float_double, ints] := flt;
-        map[real_to_dbl, reals] := cvtrd;    map[dbl_to_real, doubles] := cvtdr;
-        map[definelazyop, files] := definelazy;
-        map[setbinfileop, files] := setbinfile;
-        map[setfileop, none] := setfile;
-        map[closerangeop, none] := closerange;
-
-        { Map entries for doubles }
-
-        map[moveop, doubles] := movreal;     map[movelit, doubles] := movlitreal;
-        map[plusop, doubles] := addreal;     map[minusop, doubles] := subreal;
-        map[mulop, doubles] := mulreal;      map[slashop, doubles] := divreal;
-        map[eqop, doubles] := eqreal;        map[neqop, doubles] := neqreal;
-        map[lssop, doubles] := lssreal;      map[gtrop, doubles] := gtrreal;
-        map[geqop, doubles] := geqreal;      map[leqop, doubles] := leqreal;
-        map[eqlit, doubles] := eqlitreal;    map[neqlit, doubles] := neqlitreal;
-        map[lsslit, doubles] := lsslitreal;  map[gtrlit, doubles] := gtrlitreal;
-        map[leqlit, doubles] := leqlitreal;  map[geqlit, doubles] := geqlitreal;
-        map[pushaddr, doubles] := pshaddr;
-        map[pushlitvalue, doubles] := pshlitreal;
-        map[wr, doubles] := wrreal;          map[rd, doubles] := rdreal;
-        map[negop, doubles] := negreal;      map[sysfn, doubles] := sysfnreal;
-
-        for i := subranges to none do map[loopholeop, i] := loopholefn;
-        for i := subranges to none do map[dummyargop, i] := dummyarg;
-        for i := subranges to none do map[dummyarg2op, i] := dummyarg2;
-      end; {[s=1] map3}
-  {>>>}
-  {<<<}
-    procedure map4;
-
-  { Initialize operators used for C
-  }
-
-      var
-        i: types; {induction var}
-
-
-      begin {[s=2] Format two assignments per line}
-        map[addeqop, ints] := addint;        map[addeqop, reals] := addreal;
-        map[addeqop, ptrs] := addptr;        map[andeqop, ints] := andint;
-        map[addeqop, scalars] := addint;     map[castfptrop, ints] := castintfptr;
-        map[castfptrop, ptrs] := castintfptr; {***hmmm...***}
-        map[castintop, ptrs] := castptrint;  map[castintop, ints] := castint;
-        map[castintop, fptrs] := castfptrint;
-        map[castintop, reals] := castrealint;
-        map[castptrop, ints] := castintptr;  map[castptrop, ptrs] := castptr;
-        map[castrealop, ints] := flt;        map[castrealop, reals] := castreal;
-        map[compop, ints] := compint;        map[daddop, none] := dataadd;
-        map[daddrop, none] := dataaddr;      map[dendop, none] := dataend;
-        map[dfaddrop, none] := datafaddr;    map[dfieldop, none] := datafield;
-        map[dfillop, none] := datafill;      map[dintop, none] := dataint;
-        map[diveqop, ints] := getquo;        map[diveqop, reals] := divreal;
-        map[diveqop, scalars] := getquo;     map[drealop, none] := datareal;
-        map[dstartop, none] := datastart;    map[dstoreop, none] := datastore;
-        map[dstructop, none] := datastruct;  map[dsubop, none] := datasub;
-        map[extop, none] := bad;             map[fptrop, ints] := dofptr;
-        map[modeqop, ints] := getrem;        map[modeqop, scalars] := getrem;
-        map[muleqop, ints] := mulint;        map[muleqop, reals] := mulreal;
-        map[muleqop, scalars] := mulint;     map[oreqop, scalars] := orint;
-        map[oreqop, ints] := orint;          map[postincop, ints] := postint;
-        map[postincop, scalars] := postint;  map[postincop, reals] := postreal;
-        map[postincop, ptrs] := postptr;     map[preincop, ptrs] := preincptr;
-        map[pushfptr, fptrs] := pshfptr;     map[pushret, ptrs] := pshretptr;
-        map[jumpvfuncop, none] := jumpvfunc; map[jumpvfuncop, ints] := jumpvfunc;
-        map[returnop, ints] := returnint;    map[returnop, reals] := returnreal;
-        map[returnop, ptrs] := returnptr;    map[returnop, fptrs] := returnfptr;
-        map[returnop, fields] := returnstruct;
-        map[returnop, stringliterals] := returnstruct;
-        map[returnop, chars] := returnint;   map[returnop, bools] := returnint;
-        map[returnop, scalars] := returnint;
-        map[returnop, strings] := returnstruct;
-        map[returnop, words] := returnint;   map[returnop, bytes] := returnint;
-        map[returnop, procs] := returnfptr;  map[returnop, doubles] := returnreal;
-        map[returnop, arrays] := returnstruct;
-        map[returnop, sets] := returnstruct; map[returnop, opaques] := returnptr;
-        map[shiftleqop, scalars] := shiftlint;
-        map[shiftleqop, ints] := shiftlint;  map[shiftreqop, ints] := shiftrint;
-        map[shiftreqop, scalars] := shiftrint;
-        map[shiftrop, scalars] := shiftrint; map[shiftrop, ints] := shiftrint;
-        map[subeqop, ints] := subint;        map[subeqop, scalars] := subint;
-        map[subeqop, reals] := subreal;      map[subeqop, ptrs] := subptr;
-        map[tempop, ints] := regtemp;        map[tempop, scalars] := regtemp;
-        map[tempop, ptrs] := ptrtemp;        map[tempop, reals] := realtemp;
-        map[tempop, fptrs] := ptrtemp;       map[xoreqop, scalars] := xorint;
-        map[xoreqop, ints] := xorint;        map[xorop, ints] := xorint;
-        map[xorop, scalars] := xorint;
-      end; {[s=1] map4}
-  {>>>}
-  {<<<}
-    procedure cmap;
-
-  { Initialize the cast map
-  }
-
-
-      begin
-        castmap[ints, ints] := castint;
-        castmap[ints, ptrs] := castptrint;
-        castmap[ints, fptrs] := castfptrint;
-        castmap[ints, reals] := castrealint;
-        castmap[ptrs, ints] := castintptr;
-        castmap[fptrs, ints] := castintfptr;
-        castmap[reals, ints] := flt;
-        castmap[reals, reals] := castreal;
-      end;
-  {>>>}
-
-begin
-  { This code checks certain configuration parameters and reports any potential problems. }
-  { End of special configuration checks}
-  lasttravrslabel := 1;
-
-  for o := endexpr to xorop do
-    for t := subranges to none do map[o, t] := bad;
-  for t := subranges to none do
-    for t1 := subranges to none do castmap[t, t1] := bad;
-
-  map1;
-  map2;
-  map3;
-  map4;
-  cmap;
-
-  nextpseudofile := 0;
-  nextintcode := 0;
-  laststmt := 1;
-  walkdepth := 0;
-  hoistone := 0;
-  hoisttwo := 0;
-  maxnodes := 0;
-
-  for p := 1 to sharedPtr^.proctabletop do
-    if newtravrsinterface then
-      sharedPtr^.new_proctable[p div (pts + 1)]^[p mod (pts + 1)].referenced := false
-    else sharedPtr^.proctable[p].referenced := false;
-
-  sharedPtr^.anynonlocalgotos := false;
-  emitpseudo := false;
-end;
-{>>>}
-{<<<}
 procedure dumptree;
 { dump the entire tree structure for a block to the dump file }
 
@@ -6702,7 +6246,7 @@ end;
   or they can be preceeded by a "begdata" statement and appear outside of a statement or even a block body.
   They do not cause anything to be placed in the tree, but generate pseudo-ops directly }
 {<<<}
-procedure take_data_op;
+procedure takeDataOp;
 { Take a data operator and generate output code. }
 
 var
@@ -6785,7 +6329,7 @@ begin
   getintfile;
   while interSharedPtr^.interFile^.block[nextintcode].o <> endexpr do
     begin
-    take_data_op;
+    takeDataOp;
     getintfile;
     end;
 
@@ -6947,50 +6491,45 @@ var
   {>>>}
   {<<<}
   procedure incr_deadcount;
-  { Increment deadcount.  This always turns off code generation, and possibly
-    logs a turn-on point.
-  }
+  { Increment deadcount.  This always turns off code generation, and possibly logs a turn-on point. }
 
-    var
-      d: dead_log; {for creating a log entry}
+  var
+    d: dead_log; {for creating a log entry}
 
-
-    begin
-      if not deadcode and (deadcount > 0) then
-        begin
-        new(d);
-        d^.next := dead_level;
-        d^.level := deadcount;
-        dead_level := d;
-        end;
-      deadcount := deadcount + 1;
-      deadcode := true;
-    end; {incr_deadcount}
+  begin
+    if not deadcode and (deadcount > 0) then
+      begin
+      new(d);
+      d^.next := dead_level;
+      d^.level := deadcount;
+      dead_level := d;
+      end;
+    deadcount := deadcount + 1;
+    deadcode := true;
+  end;
   {>>>}
   {<<<}
   procedure decr_deadcount;
   { Decrement deadcount.  This turns on code generation if deadcount becomes
-  zero or if it matches a previously logged level.
+    zero or if it matches a previously logged level
   }
+  var
+    d: dead_log; {for disposing of a log entry}
 
-    var
-      d: dead_log; {for disposing of a log entry}
-
-
-    begin
-      deadcount := deadcount - 1;
-      if dead_level <> nil then
+  begin
+    deadcount := deadcount - 1;
+    if dead_level <> nil then
+      begin
+      if dead_level^.level = deadcount then
         begin
-        if dead_level^.level = deadcount then
-          begin
-          deadcode := false;
-          d := dead_level;
-          dead_level := d^.next;
-          dispose(d);
-          end;
-        end
-      else if deadcount = 0 then deadcode := false;
-    end; {decr_deadcount}
+        deadcode := false;
+        d := dead_level;
+        dead_level := d^.next;
+        dispose(d);
+        end;
+      end
+    else if deadcount = 0 then deadcode := false;
+  end;
   {>>>}
   {<<<}
   procedure dead_exit(start: natural {starting dead count} );
@@ -6999,323 +6538,124 @@ var
     at the start of that expression.  All local adjustments of deadcount
     must be done by the time this is called.
   }
-    begin
-      if deadcount > start then
-        begin
-        gotodead := gotodead - 1;
-        decr_deadcount;
-        end;
-      if swbreak_found and caselab_found then decr_deadcount;
-      swbreak_found := false;
-      caselab_found := false;
-    end;
+  begin
+    if deadcount > start then
+      begin
+      gotodead := gotodead - 1;
+      decr_deadcount;
+      end;
+
+    if swbreak_found and caselab_found then
+      decr_deadcount;
+    swbreak_found := false;
+    caselab_found := false;
+  end;
   {>>>}
+
   {<<<}
   function bumpvarcount(varlev: levelindex; {level of var}
                         varisparam: boolean; {true if var is a parameter}
                         varoffset: addressrange {offset of var} ): boolean;
-  { bump the useage count of a register candidate variable.
-  }
+  { bump the useage count of a register candidate variable }
 
-    var
-      i: reghashindex; { hash value }
+  var
+    i: reghashindex; { hash value }
 
-
-    begin {bumpvarcount}
-      { if this is a register candidate, do lots of stuff }
-      bumpvarcount := false;
-      if varlev = level then
+  begin {bumpvarcount}
+    { if this is a register candidate, do lots of stuff }
+    bumpvarcount := false;
+    if varlev = level then
+      begin
+        { This hashes the variable's offset.  Really should be a
+          function call.  However, it would be called in several
+          high bandwidth places, and would produce an unneeded
+          speed penalty in this phase.  This code is replicated
+          in doreference, killasreg, initbuild and walk:indxnode.
+        }
+      i := (varoffset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
+      while ((regvars[i].offset <> varoffset) or
+            (regvars[i].parameter <> varisparam)) and
+            (regvars[i].worth >= 0) do
+        i := (i + 1) mod (regtablelimit + 1);
+      with regvars[i], varlife do
         begin
-          { This hashes the variable's offset.  Really should be a
-            function call.  However, it would be called in several
-            high bandwidth places, and would produce an unneeded
-            speed penalty in this phase.  This code is replicated
-            in doreference, killasreg, initbuild and walk:indxnode.
-          }
-        i := (varoffset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
-        while ((regvars[i].offset <> varoffset) or
-              (regvars[i].parameter <> varisparam)) and
-              (regvars[i].worth >= 0) do
-          i := (i + 1) mod (regtablelimit + 1);
-        with regvars[i], varlife do
+        if worth >= 0 then
           begin
-          if worth >= 0 then
-            begin
-            { a definition }
-            bumpvarcount := true;
-            worth := worth + loopfactor;
-            { set lifetime bounds }
-            if lonmin = 0 then lonmin := laststmtnode;
-            if laststmtnode > lonmax then lonmax := laststmtnode;
-            if foncount < fonmin then fonmin := foncount;
-            if foncount > fonmax then fonmax := foncount;
-            end;
-          end; {with}
-        end;
-    end {bumpvarcount} ;
+          { a definition }
+          bumpvarcount := true;
+          worth := worth + loopfactor;
+          { set lifetime bounds }
+          if lonmin = 0 then lonmin := laststmtnode;
+          if laststmtnode > lonmax then lonmax := laststmtnode;
+          if foncount < fonmin then fonmin := foncount;
+          if foncount > fonmax then fonmax := foncount;
+          end;
+        end; {with}
+      end;
+  end {bumpvarcount} ;
   {>>>}
   {<<<}
   procedure dodefine(varp: nodeindex);
   {
-    Purpose:
       If within a loop, mark the var described by varp as written. Also for
       a local variable update it's reference count and lifetime.
-
-    Inputs:
-      varp : index of a node describing some type of var.
-
-    Outputs:
-      none.
-
-    Algorithm:
       If in a loop:
        If procedure call has not killed all var's at this level previously,
        search the read list and remove this var, if it is found.  Then link
        this node into this loop's write list.
       If a local var, update refcount and lifetime fields.
-
-    Sideeffects:
-      as described.
-
-    Last modified: 2/25/87 (Rick)
-
   }
    { add a new definition of a simple var located at varoffset at local level }
 
-    var
-      ptr, ptr1: nodeptr; { for access to bit map nodes }
-      varlev: levelindex; { varaible level }
-      varoffset: addressrange; { location at varlev }
-      varisparam: boolean; { true if variable is a parameter }
-      now, prev: nodeindex; { for walking read chain }
-      found: boolean; { loop exit flag }
+  var
+    ptr, ptr1: nodeptr; { for access to bit map nodes }
+    varlev: levelindex; { varaible level }
+    varoffset: addressrange; { location at varlev }
+    varisparam: boolean; { true if variable is a parameter }
+    now, prev: nodeindex; { for walking read chain }
+    found: boolean; { loop exit flag }
 
+  begin {dodefine}
+    ptr := ref(bignodetable[varp]);
+    varlev := ptr^.oprnds[1];
+    varoffset := ptr^.oprnds[2];
+    ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
 
-    begin {dodefine}
-      ptr := ref(bignodetable[varp]);
-      varlev := ptr^.oprnds[1];
-      varoffset := ptr^.oprnds[2];
-      ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
+    if ptr1^.action = copy then
+      ptr1 := ref(bignodetable[ptr1^.directlink]);
 
-      if ptr1^.action = copy then
-        ptr1 := ref(bignodetable[ptr1^.directlink]);
+    varisparam := (ptr1^.oprnds[1] = localparamnode);
 
-      varisparam := (ptr1^.oprnds[1] = localparamnode);
+    ptr^.invariant := false;
+    ptr^.regcandidate := bumpvarcount(varlev, varisparam, varoffset);
 
-      ptr^.invariant := false;
-      ptr^.regcandidate := bumpvarcount(varlev, varisparam, varoffset);
+    { if in a loop, add this to the writes for the loop, and kill the reads }
 
-      { if in a loop, add this to the writes for the loop, and kill the reads }
-
-      if loopdepth > 0 then
+    if loopdepth > 0 then
+      begin
+      { if procedure call has killed off all reads, it's easy }
+      if not loopstack[loopdepth].deadlevels[varlev] then
         begin
-
-        { if procedure call has killed off all reads, it's easy }
-
-        if not loopstack[loopdepth].deadlevels[varlev] then
+        with loopstack[loopdepth] do
           begin
-          with loopstack[loopdepth] do
+          if ptr^.looplink <> 0 then
+            writeln('write looplink <> 0 var ', varp: 1, ' block ', sharedPtr^.blockref:
+                    1);
+          ptr^.looplink := writes;
+          writes := varp;
+          if lastwrite = 0 then lastwrite := varp;
+
+          { on this level, kill any reads of this var }
+
+          prev := 0;
+          now := reads;
+          while (now <> 0) do
             begin
-            if ptr^.looplink <> 0 then
-              writeln('write looplink <> 0 var ', varp: 1, ' block ', sharedPtr^.blockref:
-                      1);
-            ptr^.looplink := writes;
-            writes := varp;
-            if lastwrite = 0 then lastwrite := varp;
-
-            { on this level, kill any reads of this var }
-
-            prev := 0;
-            now := reads;
-            while (now <> 0) do
-              begin
-              ptr := ref(bignodetable[now]);
-              if varoffset = ptr^.oprnds[2] then
-                found := (varlev = ptr^.oprnds[1])
-              else found := false;
-              if found then
-                begin
-                ptr^.invariant := false;
-                if prev <> 0 then
-                  begin
-                  ptr1 := ref(bignodetable[prev]);
-                  ptr1^.looplink := ptr^.looplink;
-                  end
-                else reads := ptr^.looplink;
-                now := ptr^.looplink;
-                { isolate the node }
-                ptr^.looplink := 0;
-                end
-              else
-                begin
-                prev := now;
-                now := ptr^.looplink;
-                end;
-              end; {while}
-            end; {with}
-          end;
-        end;
-    end; {dodefine}
-  {>>>}
-  {<<<}
-  procedure doreference(varp: nodeindex);
-  {
-    Purpose:
-      If within a loop, mark the var described by varp as read, if not already
-      marked as written or dead by procedure call.  Also for a local variable,
-      update it's reference count and lifetime.
-
-    Inputs:
-      varp : index of a node describing some type of var.
-
-    Outputs:
-      none.
-
-    Algorithm:
-      If in a loop:
-       If procedure call has not killed all var's at this level previously,
-       search the write list.  If this var is not found, then link
-       this node into this loop's read list.
-      If a local var, update refcount and lifetime fields.
-
-    Sideeffects:
-      as described.
-
-    Last modified: 2/25/87 (Rick)
-  }
-
-    var
-      i: reghashindex; { hash value }
-      j: nodeindex; { for walking read/write chains }
-      found: boolean; { loop exit flag }
-      ptr, ptr1: nodeptr; { for access to nodes }
-      varlev: levelindex; { variable level }
-      varoffset: addressrange; { location at varlev }
-      varisparam: boolean; { true if variable is a parameter }
-
-
-    begin {doreference}
-
-      ptr := ref(bignodetable[varp]);
-      varlev := ptr^.oprnds[1];
-      varoffset := ptr^.oprnds[2];
-
-      ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
-      if ptr1^.action = copy then
-        ptr1 := ref(bignodetable[ptr1^.directlink]);
-
-      varisparam := (ptr1^.oprnds[1] = localparamnode);
-
-      ptr^.regcandidate := bumpvarcount(varlev, varisparam, varoffset);
-
-      { if in a loop, determine if modified in it yet }
-        { If we have overflowed loopstack, then since invariant is
-          initialized to false by default, all variables inside deeply
-          nested loops (except forloop induction vars) will be marked
-          as not invariant, which is what we want.
-
-          NOTE: we must ignore forloop induction vars since they exist
-          across loops and we can easily wind up building a circular
-          list if references exist in multiple loops. This doesn't hurt
-          since for loops are recognized as invariant by a different process.
-
-        }
-      { if already marked invariant, can't be written, is cse }
-
-      if (loopdepth > 0) and (loopoverflow = 0) and not ptr^.invariant then
-        begin
-
-        { eliminate operands we are sure are written quickly.
-        written := loopstack[loopdepth].deadlevels[varlev] or  ptr^.target;
-        }
-
-        if not (loopstack[loopdepth].deadlevels[varlev] or ptr^.target) then
-          begin
-          { must check the write list }
-          j := loopstack[loopdepth].writes;
-          found := false;
-          while (j <> 0) and (not found) do
-            begin
-            ptr := ref(bignodetable[j]);
+            ptr := ref(bignodetable[now]);
             if varoffset = ptr^.oprnds[2] then
               found := (varlev = ptr^.oprnds[1])
             else found := false;
-            j := ptr^.looplink;
-            end;
-          if not found then
-            begin
-
-            { Add it to the reads for this level, if not there already.
-              Since this is the only place that sets invariant to true,
-              if its true now this is a common subexpression and var
-              is already linked in.
-            }
-
-            ptr := ref(bignodetable[varp]);
-            if not ptr^.invariant then
-              begin
-              ptr^.invariant := true;
-              ptr^.looplink := loopstack[loopdepth].reads;
-              loopstack[loopdepth].reads := varp;
-              end;
-            end;
-          end; {must check }
-        end;
-    end; {doreference}
-  {>>>}
-  {<<<}
-  procedure loopkill(lower, upper: levelindex);
-  {
-    Purpose:
-      Kill the reads of any loop read that is within the destructive
-      power of the levels lower..upper.
-
-    Inputs:
-      lower : lowest level var that may be destroyed.
-      upper : highest level var that may be destroyed.
-
-    Outputs:
-      none.
-
-    Algorithm:
-      Sets the dead levels for all levels in the loop. Then
-      removes any read from loops that match the level bounds.
-
-    Sideeffects:
-      many.
-
-    Last Modified: 7/26/85
-
-  }
-
-    var
-      now, prev: nodeindex; { for walking looplink of reads }
-      ptr, ptr1: nodeptr; { for access to nodes }
-      i: 1..maxloopdepth; {induction var }
-      varlev: levelindex; { lex level of var }
-      l: levelindex; { induction var }
-
-
-    begin {loopkill}
-      for i := 1 to loopdepth do
-        begin
-        with loopstack[i] do
-          begin
-          { first set the bounds }
-          for l := lower to upper do deadlevels[l] := true;
-        {
-          Now kill all the reads that are already present in the loop
-          that are within bounds.
-        }
-          { on this level, kill any reads of this var }
-          prev := 0;
-          now := reads;
-          while now <> 0 do
-            begin
-            ptr := ref(bignodetable[now]);
-            varlev := ptr^.oprnds[1];
-
-            if (varlev <= upper) and (varlev >= lower) then
+            if found then
               begin
               ptr^.invariant := false;
               if prev <> 0 then
@@ -7333,106 +6673,233 @@ var
               prev := now;
               now := ptr^.looplink;
               end;
+            end; {while}
+          end; {with}
+        end;
+      end;
+  end; {dodefine}
+  {>>>}
+  {<<<}
+  procedure doreference(varp: nodeindex);
+  {
+      If within a loop, mark the var described by varp as read, if not already
+      marked as written or dead by procedure call.  Also for a local variable,
+      update it's reference count and lifetime.
+      If in a loop:
+       If procedure call has not killed all var's at this level previously,
+       search the write list.  If this var is not found, then link
+       this node into this loop's read list.
+      If a local var, update refcount and lifetime fields.
+  }
+  var
+    i: reghashindex; { hash value }
+    j: nodeindex; { for walking read/write chains }
+    found: boolean; { loop exit flag }
+    ptr, ptr1: nodeptr; { for access to nodes }
+    varlev: levelindex; { variable level }
+    varoffset: addressrange; { location at varlev }
+    varisparam: boolean; { true if variable is a parameter }
+
+  begin
+    ptr := ref(bignodetable[varp]);
+    varlev := ptr^.oprnds[1];
+    varoffset := ptr^.oprnds[2];
+
+    ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
+    if ptr1^.action = copy then
+      ptr1 := ref(bignodetable[ptr1^.directlink]);
+
+    varisparam := (ptr1^.oprnds[1] = localparamnode);
+
+    ptr^.regcandidate := bumpvarcount(varlev, varisparam, varoffset);
+
+    { if in a loop, determine if modified in it yet }
+      { If we have overflowed loopstack, then since invariant is
+        initialized to false by default, all variables inside deeply
+        nested loops (except forloop induction vars) will be marked
+        as not invariant, which is what we want.
+        NOTE: we must ignore forloop induction vars since they exist
+        across loops and we can easily wind up building a circular
+        list if references exist in multiple loops. This doesn't hurt
+        since for loops are recognized as invariant by a different process.
+      }
+    { if already marked invariant, can't be written, is cse }
+    if (loopdepth > 0) and (loopoverflow = 0) and not ptr^.invariant then
+      begin
+
+      { eliminate operands we are sure are written quickly.
+      written := loopstack[loopdepth].deadlevels[varlev] or  ptr^.target;
+      }
+      if not (loopstack[loopdepth].deadlevels[varlev] or ptr^.target) then
+        begin
+        { must check the write list }
+        j := loopstack[loopdepth].writes;
+        found := false;
+        while (j <> 0) and (not found) do
+          begin
+          ptr := ref(bignodetable[j]);
+          if varoffset = ptr^.oprnds[2] then
+            found := (varlev = ptr^.oprnds[1])
+          else found := false;
+          j := ptr^.looplink;
+          end;
+        if not found then
+          begin
+
+          { Add it to the reads for this level, if not there already.
+            Since this is the only place that sets invariant to true,
+            if its true now this is a common subexpression and var
+            is already linked in.
+          }
+
+          ptr := ref(bignodetable[varp]);
+          if not ptr^.invariant then
+            begin
+            ptr^.invariant := true;
+            ptr^.looplink := loopstack[loopdepth].reads;
+            loopstack[loopdepth].reads := varp;
+            end;
+          end;
+        end; {must check }
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure loopkill(lower, upper: levelindex);
+  {
+      Kill the reads of any loop read that is within the destructive
+      power of the levels lower..upper.
+      Sets the dead levels for all levels in the loop. Then
+  }
+  var
+    now, prev: nodeindex; { for walking looplink of reads }
+    ptr, ptr1: nodeptr; { for access to nodes }
+    i: 1..maxloopdepth; {induction var }
+    varlev: levelindex; { lex level of var }
+    l: levelindex; { induction var }
+
+
+  begin {loopkill}
+    for i := 1 to loopdepth do
+      begin
+      with loopstack[i] do
+        begin
+        { first set the bounds }
+        for l := lower to upper do deadlevels[l] := true;
+      {
+        Now kill all the reads that are already present in the loop
+        that are within bounds.
+      }
+        { on this level, kill any reads of this var }
+        prev := 0;
+        now := reads;
+        while now <> 0 do
+          begin
+          ptr := ref(bignodetable[now]);
+          varlev := ptr^.oprnds[1];
+
+          if (varlev <= upper) and (varlev >= lower) then
+            begin
+            ptr^.invariant := false;
+            if prev <> 0 then
+              begin
+              ptr1 := ref(bignodetable[prev]);
+              ptr1^.looplink := ptr^.looplink;
+              end
+            else reads := ptr^.looplink;
+            now := ptr^.looplink;
+            { isolate the node }
+            ptr^.looplink := 0;
+            end
+          else
+            begin
+            prev := now;
+            now := ptr^.looplink;
             end;
           end;
         end;
-    end {loopkill} ;
+      end;
+  end {loopkill} ;
   {>>>}
   {<<<}
   procedure killasreg(varp: nodeindex);
-  {   Purpose:
-      Make a variable ineligible for register allocation.
-
-    Inputs:
-      varp: index of varop to be made ineligible.
-
-    Outputs:
-      none.
-
-    Algorithm:
+  { Make a variable ineligible for register allocation.
       If level is locallevel, hash the offset, find the
       variable in the table, and invalidate it.
-
-    Sideeffects:
-      localvar table is modified.
-
-    Last Modified: 9/25/86 (Rick)
   }
+  var
+    i: reghashindex; {hash value}
+    ptr, ptr1: nodeptr; {for access to bit map nodes}
+    varisparam: boolean; {true if the var in question is a parameter}
+    varoffset: addressrange; {location at varlev}
+    now, prev: nodeindex; {for walking read chain}
 
-    var
-      i: reghashindex; {hash value}
-      ptr, ptr1: nodeptr; {for access to bit map nodes}
-      varisparam: boolean; {true if the var in question is a parameter}
-      varoffset: addressrange; {location at varlev}
-      now, prev: nodeindex; {for walking read chain}
 
+  begin {killasreg}
 
-    begin {killasreg}
-
+    ptr := ref(bignodetable[varp]);
+    while ptr^.op = commaop do
+      begin
+      varp := ptr^.oprnds[2];
       ptr := ref(bignodetable[varp]);
-      while ptr^.op = commaop do
+      end;
+
+      { Verify that operand is a variable.  Pushaddr also takes
+        structop, pushcvalue, call, unscall, callparam, unscallparam,
+        etc., which are ok but ignored here.
+      }
+
+    if (ptr^.op in [varop, unsvarop, newvarop, newunsvarop]) and
+       (ptr^.oprnds[1] = level) then
+      begin
+      blocksin[1].written := true;
+      varoffset := ptr^.oprnds[2];
+      ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
+
+      if ptr1^.action = copy then
+        ptr1 := ref(bignodetable[ptr1^.directlink]);
+
+      varisparam := (ptr1^.oprnds[1] = localparamnode);
+
+        { This hashes the variable's offset.  Really should be a
+          function call.  However, it would be called in several
+          high bandwidth places, and would produce an unneeded
+          speed penalty in this phase.  This code is replicated
+          in doreference, dodefine, initbuild and walk:indxnode.
+          }
+      i := (varoffset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
+      while ((regvars[i].offset <> varoffset) or
+            (regvars[i].parameter <> varisparam)) and
+            (regvars[i].worth >= 0) do
+        i := (i + 1) mod (regtablelimit + 1);
+      if regvars[i].worth >= 0 then
         begin
-        varp := ptr^.oprnds[2];
-        ptr := ref(bignodetable[varp]);
+        ptr^.regcandidate := false;
+        regvars[i].registercandidate := false;
         end;
-
-        { Verify that operand is a variable.  Pushaddr also takes
-          structop, pushcvalue, call, unscall, callparam, unscallparam,
-          etc., which are ok but ignored here.
-        }
-
-      if (ptr^.op in [varop, unsvarop, newvarop, newunsvarop]) and
-         (ptr^.oprnds[1] = level) then
-        begin
-        blocksin[1].written := true;
-        varoffset := ptr^.oprnds[2];
-        ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
-
-        if ptr1^.action = copy then
-          ptr1 := ref(bignodetable[ptr1^.directlink]);
-
-        varisparam := (ptr1^.oprnds[1] = localparamnode);
-
-          { This hashes the variable's offset.  Really should be a
-            function call.  However, it would be called in several
-            high bandwidth places, and would produce an unneeded
-            speed penalty in this phase.  This code is replicated
-            in doreference, dodefine, initbuild and walk:indxnode.
-            }
-        i := (varoffset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
-        while ((regvars[i].offset <> varoffset) or
-              (regvars[i].parameter <> varisparam)) and
-              (regvars[i].worth >= 0) do
-          i := (i + 1) mod (regtablelimit + 1);
-        if regvars[i].worth >= 0 then
-          begin
-          ptr^.regcandidate := false;
-          regvars[i].registercandidate := false;
-          end;
-        end;
-    end {killasreg} ;
+      end;
+  end {killasreg} ;
   {>>>}
   {<<<}
   procedure addpredsuccs(predblock, succblock: basicblockptr);
   { Add block "succblock" to the successor chains of block predblock
    Add block "predblock" to the predeccessor chains of block succblock
   }
-    var
-      newlink: linkptr; { ptr to new link block }
+  var
+    newlink: linkptr; { ptr to new link block }
 
-
-    begin
-      if (predblock <> nil) and (succblock <> nil) then
-        begin
-        new(newlink);
-        newlink^.snext := predblock^.successor;
-        predblock^.successor := newlink;
-        newlink^.suc := succblock;
-        newlink^.pnext := succblock^.predeccessor;
-        succblock^.predeccessor := newlink;
-        newlink^.pre := predblock;
-        end;
-    end; {addpredsuccs}
+  begin
+    if (predblock <> nil) and (succblock <> nil) then
+      begin
+      new(newlink);
+      newlink^.snext := predblock^.successor;
+      predblock^.successor := newlink;
+      newlink^.suc := succblock;
+      newlink^.pnext := succblock^.predeccessor;
+      succblock^.predeccessor := newlink;
+      newlink^.pre := predblock;
+      end;
+  end; {addpredsuccs}
   {>>>}
   {<<<}
   procedure newblock(var b: basicblockptr; {resulting block node}
@@ -7448,55 +6915,55 @@ var
   }
   {>>>}
 
-    var
-      l: levelindex; { induction var }
+  var
+    l: levelindex; { induction var }
 
 
-    begin
+  begin
+    if largeblock then
+      new(b, true)
+    else
+      new(b, false);
+
+    { default is that code will dominate if context dominates }
+    b^.dominates := context[contextsp].dominates;
+    blockblocks := blockblocks + 1;
+    currentblock := b;
+
+    { now initialize to something reasonable ( re-init if dead ) }
+
+    with b^ do
+      begin
+      bigblock := largeblock;
+      isdead := deadcode and (removedeadcode in sharedPtr^.genset);
+      visited := visitstate;
+      precode := 0;
+      beginstmt := 0;
+      forcelabel := false;
+      loophdr := false;
+      joinop := false;
+      saveop := false;
+      restoreop := false;
+      clearop := false;
+      dfolist := nil;
+      rdfolist := nil;
+      successor := nil;
+      predeccessor := nil;
+      blocklabel := 0;
       if largeblock then
-        new(b, true)
-      else
-        new(b, false);
-
-      { default is that code will dominate if context dominates }
-      b^.dominates := context[contextsp].dominates;
-      blockblocks := blockblocks + 1;
-      currentblock := b;
-
-      { now initialize to something reasonable ( re-init if dead ) }
-
-      with b^ do
         begin
-        bigblock := largeblock;
-        isdead := deadcode and (removedeadcode in sharedPtr^.genset);
-        visited := visitstate;
-        precode := 0;
-        beginstmt := 0;
-        forcelabel := false;
-        loophdr := false;
-        joinop := false;
-        saveop := false;
-        restoreop := false;
-        clearop := false;
-        dfolist := nil;
-        rdfolist := nil;
-        successor := nil;
-        predeccessor := nil;
-        blocklabel := 0;
-        if largeblock then
-          begin
-          willexecute := false;
-          deadloop := false;
-          looplabel := 0;
-          reads := 0;
-          writes := 0;
-          lastwrite := 0;
-          for l := 0 to maxlevel do deadlevels[l] := false;
-          end;
-        end; {with}
+        willexecute := false;
+        deadloop := false;
+        looplabel := 0;
+        reads := 0;
+        writes := 0;
+        lastwrite := 0;
+        for l := 0 to maxlevel do deadlevels[l] := false;
+        end;
+      end; {with}
 
-      if (predblock <> nil) then addpredsuccs(predblock, currentblock);
-    end {newblock} ;
+    if (predblock <> nil) then addpredsuccs(predblock, currentblock);
+  end {newblock} ;
   {>>>}
   {<<<}
   procedure newstmt(var p: nodeindex; {resulting statement node}
@@ -7507,209 +6974,206 @@ var
     to provide a place to link preconditions for the statement sequence
     in this context.
   }
+  var
+    ptr, ptr1: nodeptr; {used for access to node}
 
-    var
-      ptr, ptr1: nodeptr; {used for access to node}
-
-
-    begin {newstmt}
-      if lastnode = tnodetablesize then abort(manynodes)
+  begin {newstmt}
+    if lastnode = tnodetablesize then abort(manynodes)
+    else
+      begin
+      lastnode := lastnode + 1;
+      laststmtnode := lastnode;
+      if lastnode > maxnodes then maxnodes := lastnode;
+      p := lastnode;
+      { if this is the first stmt for this basic block link it in }
+      if currentblock^.beginstmt = 0 then
+        begin
+        if context[contextsp].firstblock = nil then
+          context[contextsp].firstblock := currentblock;
+        currentblock^.beginstmt := lastnode;
+        currentlaststmt := lastnode;
+        end
       else
         begin
-        lastnode := lastnode + 1;
-        laststmtnode := lastnode;
-        if lastnode > maxnodes then maxnodes := lastnode;
-        p := lastnode;
-        { if this is the first stmt for this basic block link it in }
-        if currentblock^.beginstmt = 0 then
+        ptr := ref(bignodetable[currentlaststmt]);
+        ptr^.nextstmt := lastnode;
+        currentlaststmt := lastnode;
+        end;
+      ptr := ref(bignodetable[p]);
+      with ptr^ do
+        begin
+        nodeform := stmtnode;
+        srcfileindx := 0;
+        nextstmt := 0;
+        stmtkind := s;
+        if s in
+           [whilehdr, rpthdr, ifhdr, foruphdr, fordnhdr, withhdr, casehdr,
+           loophdr, simplehdr, syscallhdr, gotohdr, cforhdr, loopbrkhdr,
+           cswbrkhdr, loopconthdr, returnhdr] then
           begin
-          if context[contextsp].firstblock = nil then
-            context[contextsp].firstblock := currentblock;
-          currentblock^.beginstmt := lastnode;
-          currentlaststmt := lastnode;
-          end
-        else
-          begin
-          ptr := ref(bignodetable[currentlaststmt]);
-          ptr^.nextstmt := lastnode;
-          currentlaststmt := lastnode;
-          end;
-        ptr := ref(bignodetable[p]);
-        with ptr^ do
-          begin
-          nodeform := stmtnode;
-          srcfileindx := 0;
-          nextstmt := 0;
-          stmtkind := s;
-          if s in
-             [whilehdr, rpthdr, ifhdr, foruphdr, fordnhdr, withhdr, casehdr,
-             loophdr, simplehdr, syscallhdr, gotohdr, cforhdr, loopbrkhdr,
-             cswbrkhdr, loopconthdr, returnhdr] then
+
+          getintfile;
+          srcfileindx := getintfileint;
+
+          laststmt := laststmt + 1;
+          stmtno := laststmt;
+
+          { This little hack is needed if the entire procedure body is
+            deadcoded out and if the first statement of the procedure
+            has the source file index, then the index will be lost.
+            If this is also the first procedure in the module then pma
+            will have no filename to print.  Since we always pass the
+            blkhdr this code will copy the srcfileindx up.  We only
+            support changing source file between procedures, not in the
+            middle, so the previous node should be is not a blkhdr.  If
+            it is not just let it go.
+
+            Don sez: this little hack has the effect of removing the
+            file index passed with the first dummy statment used by
+            the new debugger.  So I hacked it a little bit more.
+            Would have been MUCH better if the analys/travrs interface
+            had been changed so that the srcfileindex was just passed
+            in the intcode for blkhdr.  Note the assignment I added
+            for stmtno:  the little hack didn't work for newdebugger
+            'cause walkblk only emits a genstmtbrk if stmtno <> 0.
+            The check for 'simplehdr' should be sufficient because
+            only structured statements can trigger dead code and if
+            the first statement of a block is a simple statement, the
+            entire body won't be removed.
+          }
+          if s <> simplehdr then
             begin
-
-            getintfile;
-            srcfileindx := getintfileint;
-
-            laststmt := laststmt + 1;
-            stmtno := laststmt;
-
-            { This little hack is needed if the entire procedure body is
-              deadcoded out and if the first statement of the procedure
-              has the source file index, then the index will be lost.
-              If this is also the first procedure in the module then pma
-              will have no filename to print.  Since we always pass the
-              blkhdr this code will copy the srcfileindx up.  We only
-              support changing source file between procedures, not in the
-              middle, so the previous node should be is not a blkhdr.  If
-              it is not just let it go.
-
-              Don sez: this little hack has the effect of removing the
-              file index passed with the first dummy statment used by
-              the new debugger.  So I hacked it a little bit more.
-              Would have been MUCH better if the analys/travrs interface
-              had been changed so that the srcfileindex was just passed
-              in the intcode for blkhdr.  Note the assignment I added
-              for stmtno:  the little hack didn't work for newdebugger
-              'cause walkblk only emits a genstmtbrk if stmtno <> 0.
-              The check for 'simplehdr' should be sufficient because
-              only structured statements can trigger dead code and if
-              the first statement of a block is a simple statement, the
-              entire body won't be removed.
-            }
-            if s <> simplehdr then
+            ptr1 := ref(bignodetable[p - 1]);
+            if (ptr1^.nodeform = stmtnode) and (ptr1^.stmtkind = blkhdr)
+            then
               begin
-              ptr1 := ref(bignodetable[p - 1]);
-              if (ptr1^.nodeform = stmtnode) and (ptr1^.stmtkind = blkhdr)
-              then
-                begin
-                ptr1^.srcfileindx := srcfileindx;
-                srcfileindx := 0;
-                end;
+              ptr1^.srcfileindx := srcfileindx;
+              srcfileindx := 0;
               end;
-
-            getintfile;
-            textline := getintfileint;
             end;
 
-          case s of
-            blkhdr:
-              begin
-              stmtno := laststmt;
-              laststmt := laststmt + 1;
+          getintfile;
+          textline := getintfileint;
+          end;
 
-              textline := getintfileint;
-              getintfile;
-              procref := getintfileint;
-              sharedPtr^.blockref := procref;
-              getintfile;
-              ps := getintfileint;
-              getintfile;
-              bs := getintfileint;
-              getintfile;
-              fileline := getintfileint;
-              getintfile;
-              if newtravrsinterface then
-                begin
-                level := sharedPtr^.new_proctable[procref div (pts + 1)]^[procref mod
-                         (pts + 1)].level;
-                intlevelrefs := sharedPtr^.new_proctable[procref div (pts +
-                                1)]^[procref mod (pts + 1)].intlevelrefs;
-                end
-              else
-                begin
-                level := sharedPtr^.proctable[procref].level;
-                intlevelrefs := sharedPtr^.proctable[procref].intlevelrefs;
-                end;
-              end;
-            casehdr:
+        case s of
+          blkhdr:
+            begin
+            stmtno := laststmt;
+            laststmt := laststmt + 1;
+
+            textline := getintfileint;
+            getintfile;
+            procref := getintfileint;
+            sharedPtr^.blockref := procref;
+            getintfile;
+            ps := getintfileint;
+            getintfile;
+            bs := getintfileint;
+            getintfile;
+            fileline := getintfileint;
+            getintfile;
+            if newtravrsinterface then
               begin
-              selector := 0;
-              casedefptr := nil;
-              elements := 0;
-              joinblock := nil;
-              lowestlabel := 0;
-              highestlabel := 0;
-              end;
-            caselabhdr:
+              level := sharedPtr^.new_proctable[procref div (pts + 1)]^[procref mod
+                       (pts + 1)].level;
+              intlevelrefs := sharedPtr^.new_proctable[procref div (pts +
+                              1)]^[procref mod (pts + 1)].intlevelrefs;
+              end
+            else
               begin
-              caselabellow := 0;
-              caselabelhigh := 0;
-              stmtblock := nil;
-              stmtlabel := 0;
-              orderedlink := 0;
+              level := sharedPtr^.proctable[procref].level;
+              intlevelrefs := sharedPtr^.proctable[procref].intlevelrefs;
               end;
-            whilehdr, rpthdr, ifhdr, foruphdr, fordnhdr, withhdr, simplehdr,
-            syscallhdr, untilhdr, cforhdr, cforbothdr, nohdr:
-              begin
-              expr1 := 0;
-              expr2 := 0;
-              has_break := false;
-              trueblock := nil;
-              falseblock := nil;
-              end;
-            loopbrkhdr, loopconthdr, swbrkhdr, cswbrkhdr: targblock := nil;
-            gotohdr, labelhdr:
-              begin
-              labelno := 0;
-              nonlocalref := false;
-              labellevel := 0;
-              end;
-            otherwise
-            end {case}
-          end; {else}
-        end; {with}
-    end {newstmt} ;
+            end;
+          casehdr:
+            begin
+            selector := 0;
+            casedefptr := nil;
+            elements := 0;
+            joinblock := nil;
+            lowestlabel := 0;
+            highestlabel := 0;
+            end;
+          caselabhdr:
+            begin
+            caselabellow := 0;
+            caselabelhigh := 0;
+            stmtblock := nil;
+            stmtlabel := 0;
+            orderedlink := 0;
+            end;
+          whilehdr, rpthdr, ifhdr, foruphdr, fordnhdr, withhdr, simplehdr,
+          syscallhdr, untilhdr, cforhdr, cforbothdr, nohdr:
+            begin
+            expr1 := 0;
+            expr2 := 0;
+            has_break := false;
+            trueblock := nil;
+            falseblock := nil;
+            end;
+          loopbrkhdr, loopconthdr, swbrkhdr, cswbrkhdr: targblock := nil;
+          gotohdr, labelhdr:
+            begin
+            labelno := 0;
+            nonlocalref := false;
+            labellevel := 0;
+            end;
+          otherwise
+          end {case}
+        end; {else}
+      end; {with}
+  end {newstmt} ;
   {>>>}
   {<<<}
   procedure newexprnode(var n: nodeindex {resulting new node} );
   { Allocates a new expression node in the virtual node space and initializes its fields. }
 
-    var
-      p: nodeptr; {used for access to node}
+  var
+    p: nodeptr; {used for access to node}
 
-
-    begin
-      if lastnode = tnodetablesize then abort(manynodes)
-      else
+  begin
+    if lastnode = tnodetablesize then abort(manynodes)
+    else
+      begin
+      lastnode := lastnode + 1;
+      if lastnode > maxnodes then maxnodes := lastnode;
+      n := lastnode;
+      p := ref(bignodetable[lastnode]);
+      with p^ do
         begin
-        lastnode := lastnode + 1;
-        if lastnode > maxnodes then maxnodes := lastnode;
-        n := lastnode;
-        p := ref(bignodetable[lastnode]);
-        with p^ do
-          begin
-          {nice to use structured constant here }
-          nodeform := exprnode;
-          op := endexpr;
-          form := none;
-          action := visit;
-          refcount := 0;
-          copycount := 0;
-          valid := false;
-          mustinvalidate := false;
-          join := false;
-          target := false;
-          relation := false;
-          local := false;
-          invariant := false;
-          nodeoprnd[1] := false;
-          nodeoprnd[2] := false;
-          nodeoprnd[3] := false;
-          cost := 0;
-          prelink := 0;
-          hoistedby := nil;
-          looplink := 0;
-          slink := 0;
-          len := 0;
-          hasvalue := false;
-          ownvar := false;
-          oprnds[1] := 0;
-          oprnds[2] := 0;
-          oprnds[3] := 0;
-          oldlink := 0;
-          end;
+        {nice to use structured constant here }
+        nodeform := exprnode;
+        op := endexpr;
+        form := none;
+        action := visit;
+        refcount := 0;
+        copycount := 0;
+        valid := false;
+        mustinvalidate := false;
+        join := false;
+        target := false;
+        relation := false;
+        local := false;
+        invariant := false;
+        nodeoprnd[1] := false;
+        nodeoprnd[2] := false;
+        nodeoprnd[3] := false;
+        cost := 0;
+        prelink := 0;
+        hoistedby := nil;
+        looplink := 0;
+        slink := 0;
+        len := 0;
+        hasvalue := false;
+        ownvar := false;
+        oprnds[1] := 0;
+        oprnds[2] := 0;
+        oprnds[3] := 0;
+        oldlink := 0;
         end;
-    end {newexprnode} ;
+      end;
+  end {newexprnode} ;
   {>>>}
   {<<<}
   function hash(op: operator; {operator of this node}
@@ -7724,16 +7188,14 @@ var
     initialized to zero before assigning to rval, the worse we can do
     is make the hash not as good.
   }
-
-
-    begin
-      if op in [varop, unsvarop] then hash := 0
-      else
-        begin
-        if modworks then hash := (ord(op) + i1 + i2) mod nodehashsize + 1
-        else hash := ((ord(op) + i1 + i2) and 32767) mod nodehashsize + 1;
-        end;
-    end {hash} ;
+  begin
+    if op in [varop, unsvarop] then hash := 0
+    else
+      begin
+      if modworks then hash := (ord(op) + i1 + i2) mod nodehashsize + 1
+      else hash := ((ord(op) + i1 + i2) and 32767) mod nodehashsize + 1;
+      end;
+  end {hash} ;
   {>>>}
   {<<<}
   procedure initbuild;
@@ -7744,152 +7206,150 @@ var
   }
   {>>>}
 
-    var
-      n: nodeindex; {dummy argument to newexprnode}
-      i: shortint; {induction var for clearing opmap and virt mem}
-      localvar: localvartype; { file read temp }
-      ptr: nodeptr; { for access to node }
-      j: reghashindex; { unsigned var for quicker mod }
+  var
+    n: nodeindex; {dummy argument to newexprnode}
+    i: shortint; {induction var for clearing opmap and virt mem}
+    localvar: localvartype; { file read temp }
+    ptr: nodeptr; { for access to node }
+    j: reghashindex; { unsigned var for quicker mod }
 
+  begin
+    blockblocks := 0;
+    thrashing := false;
 
-    begin
+    lastnode := - 1;
+    laststmtnode := - 1;
+    currentblock := nil;
+    block_exit_block := nil;
+    deadcount := 0;
+    gotodead := 0;
+    deadcode := false;
+    dead_level := nil;
+    swbreak_found := false;
+    caselab_found := false;
+    newexprnode(n);
 
-      blockblocks := 0;
-      thrashing := false;
+    withsp := 0;
+    forsp := 0;
+    loopdepth := 0;
+    loopoverflow := 0;
+    contextsp := 2;
+    overflowdepth := 0;
 
-      lastnode := - 1;
-      laststmtnode := - 1;
-      currentblock := nil;
-      block_exit_block := nil;
-      deadcount := 0;
-      gotodead := 0;
-      deadcode := false;
-      dead_level := nil;
-      swbreak_found := false;
-      caselab_found := false;
-      newexprnode(n);
+    this_loop := nil;
+    this_case := nil;
+    final_block_size := 0;
 
-      withsp := 0;
-      forsp := 0;
-      loopdepth := 0;
-      loopoverflow := 0;
-      contextsp := 2;
-      overflowdepth := 0;
+    with context[2] do
+      begin
+      for i := 0 to nodehashsize do opmap[i] := 0;
+      searchlevel := 2;
+      joinflag := false;
+      dominates := true;
+      firstblock := nil;
+      end;
 
-      this_loop := nil;
-      this_case := nil;
-      final_block_size := 0;
+    with context[1] do
+      begin
+      opmap := context[2].opmap;
+      searchlevel := 1;
+      joinflag := false;
+      dominates := false;
+      firstblock := nil;
+      end;
+    shorteval := false;
 
-      with context[2] do
-        begin
-        for i := 0 to nodehashsize do opmap[i] := 0;
-        searchlevel := 2;
-        joinflag := false;
-        dominates := true;
-        firstblock := nil;
-        end;
+    locallabels := nil;
 
-      with context[1] do
-        begin
-        opmap := context[2].opmap;
-        searchlevel := 1;
-        joinflag := false;
-        dominates := false;
-        firstblock := nil;
-        end;
-      shorteval := false;
+    visitstate := false; { set initial state }
 
-      locallabels := nil;
+    { set option mask, do everything as default }
+    sharedPtr^.genset := [firstgenopt..lastgenopt];
 
-      visitstate := false; { set initial state }
+    { now remove some based on current switch value }
+    if (sharedPtr^.switchcounters[debugging] > 0) or (sharedPtr^.switchcounters[profiling] > 0) or
+       sharedPtr^.switcheverplus[targdebug] then
+      begin
+      sharedPtr^.genset := sharedPtr^.genset - [lifetimes, propagation, hoisting, removedeadcode,
+                subexpressions, tailmerging, bitops];
+      end;
 
-      { set option mask, do everything as default }
-      sharedPtr^.genset := [firstgenopt..lastgenopt];
-
-      { now remove some based on current switch value }
-      if (sharedPtr^.switchcounters[debugging] > 0) or (sharedPtr^.switchcounters[profiling] > 0) or
-         sharedPtr^.switcheverplus[targdebug] then
-        begin
-        sharedPtr^.genset := sharedPtr^.genset - [lifetimes, propagation, hoisting, removedeadcode,
-                  subexpressions, tailmerging, bitops];
-        end;
-
-      { now override these options based upon command line }
-      if sharedPtr^.switcheverplus[genmask] then
-        if sharedPtr^.genoptmask < 0 then
-          sharedPtr^.genset := sharedPtr^.genset + sharedPtr^.overrideset
-        else
-          sharedPtr^.genset := sharedPtr^.genset - sharedPtr^.overrideset;
-
-      nowdebugging := (sharedPtr^.switchcounters[debugging] > 0) or
-                      (sharedPtr^.switchcounters[profiling] > 0) or
-                      sharedPtr^.switcheverplus[targdebug];
-      nowwalking := (sharedPtr^.switchcounters[walkback] > 0);
-      exitStmtno := 0;
-
-      { init the local var map }
-      regvars[0].regid := 0;
-      regvars[0].varlife.lonmin := 0;
-      regvars[0].varlife.fonmin := 0;
-      if lifetimes in sharedPtr^.genset then
-        begin
-        regvars[0].varlife.lonmax := 0;
-        regvars[0].varlife.fonmin := shortmaxint;
-        regvars[0].varlife.fonmax := 0;
-        end
+    { now override these options based upon command line }
+    if sharedPtr^.switcheverplus[genmask] then
+      if sharedPtr^.genoptmask < 0 then
+        sharedPtr^.genset := sharedPtr^.genset + sharedPtr^.overrideset
       else
+        sharedPtr^.genset := sharedPtr^.genset - sharedPtr^.overrideset;
+
+    nowdebugging := (sharedPtr^.switchcounters[debugging] > 0) or
+                    (sharedPtr^.switchcounters[profiling] > 0) or
+                    sharedPtr^.switcheverplus[targdebug];
+    nowwalking := (sharedPtr^.switchcounters[walkback] > 0);
+    exitStmtno := 0;
+
+    { init the local var map }
+    regvars[0].regid := 0;
+    regvars[0].varlife.lonmin := 0;
+    regvars[0].varlife.fonmin := 0;
+    if lifetimes in sharedPtr^.genset then
+      begin
+      regvars[0].varlife.lonmax := 0;
+      regvars[0].varlife.fonmin := shortmaxint;
+      regvars[0].varlife.fonmax := 0;
+      end
+    else
+      begin
+      { no lifetimes set region to encompass entire block }
+      regvars[0].varlife.lonmax := tnodetablesize;
+      regvars[0].varlife.fonmin := 0;
+      regvars[0].varlife.fonmax := shortmaxint;
+      end;
+
+    regvars[0].worth := - 1;
+    regvars[0].registercandidate := false;
+
+    for j := 1 to regtablelimit do
+      begin
+      regvars[j] := regvars[0];
+      end;
+
+    read (sharedPtr^.localFile, localvar);
+    while localvar.typ <> none do
+      begin
+      { This hashes the var's offset, really should be a function call.
+        However it would be called in several high bandwidth places and
+        places an unneeded speed penalty on this phase.
+        This code is replicated in doreference, killasreg, dodefine
+        and walk:indxnode. }
+      j := (localvar.offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
+      while regvars[j].worth >= 0
+        do j := (j + 1) mod (regtablelimit + 1);
+      with regvars[j] do
         begin
-        { no lifetimes set region to encompass entire block }
-        regvars[0].varlife.lonmax := tnodetablesize;
-        regvars[0].varlife.fonmin := 0;
-        regvars[0].varlife.fonmax := shortmaxint;
+        { figure out mapping from data type to register type }
+        registercandidate := true;
+        case localvar.typ of
+          ptrs, fptrs: regkind := ptrreg;
+          reals, doubles:
+            if sharedPtr^.switcheverplus[fpc68881] then regkind := realreg
+            else regkind := genreg;
+          otherwise regkind := genreg;
+          end {typ} ;
+        offset := localvar.offset;
+        debugrecord := localvar.debugrecord;
+        parameter := false;
+
+        { mark this spot as allocated }
+        worth := 0;
         end;
-
-      regvars[0].worth := - 1;
-      regvars[0].registercandidate := false;
-
-      for j := 1 to regtablelimit do
-        begin
-        regvars[j] := regvars[0];
-        end;
-
       read (sharedPtr^.localFile, localvar);
-      while localvar.typ <> none do
-        begin
-        { This hashes the var's offset, really should be a function call.
-          However it would be called in several high bandwidth places and
-          places an unneeded speed penalty on this phase.
-          This code is replicated in doreference, killasreg, dodefine
-          and walk:indxnode. }
-        j := (localvar.offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
-        while regvars[j].worth >= 0
-          do j := (j + 1) mod (regtablelimit + 1);
-        with regvars[j] do
-          begin
-          { figure out mapping from data type to register type }
-          registercandidate := true;
-          case localvar.typ of
-            ptrs, fptrs: regkind := ptrreg;
-            reals, doubles:
-              if sharedPtr^.switcheverplus[fpc68881] then regkind := realreg
-              else regkind := genreg;
-            otherwise regkind := genreg;
-            end {typ} ;
-          offset := localvar.offset;
-          debugrecord := localvar.debugrecord;
-          parameter := false;
+      end;
 
-          { mark this spot as allocated }
-          worth := 0;
-          end;
-        read (sharedPtr^.localFile, localvar);
-        end;
-
-      foncount := 0;
-      loopfactor := 1; { every ref equal 1 ref }
-      irreducible := false;
-      localparamnode := 0;
-    end;
+    foncount := 0;
+    loopfactor := 1; { every ref equal 1 ref }
+    irreducible := false;
+    localparamnode := 0;
+  end;
   {>>>}
   {<<<}
   procedure addopmap(n: nodeindex; {node to add}
@@ -8256,7 +7716,6 @@ var
           end;
       end {clobber} ;
     {>>>}
-
 
   begin
     if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
@@ -9204,6 +8663,7 @@ var
       {>>>}
       {<<<}
       procedure buildnode;
+      {<<<}
       { Build the kind of node specified by the current operator in the intermediate
         file.  The node built will be left in stack[sp], and may consume operands
         which are already on the stack.
@@ -9228,413 +8688,513 @@ var
         and no copies of them are ever made, since the code generator will
         never modify them.
       }
+      {>>>}
+
+      var
+        relationbuilt: boolean; {There is a relation in this node}
+        unique: boolean; {set if no possibility of prior congru. expr}
+        ptr: nodeptr; {used for access to an operand node}
+        tmp: stackrecord; {used to hold stack top for swap and temp}
+        n: workingnode; {used to accumulate operands for node}
+        i: oprndindex; {induction var for operand search}
+        cnvts: standardids; {converted standard id}
+
+      {<<<}
+      procedure insertnode(contextlevel: contextindex);
+      { Insert a node in the specified context, if necessary, and push a
+        stack element with a reference to that node.
+      }
+        begin {Insertnode}
+          if sp = maxexprstack then abort(manytemps);
+          sp := sp + 1;
+          with stack[sp] do
+            begin
+            context_mark := 0;
+            litflag := false;
+            i := 0; {clear any previous junk}
+            relation := relationbuilt;
+            p := insertexpression(n, contextlevel, unique, relationbuilt, l,
+                                  uniqueoprnd);
+            end;
+        end {insertnode} ;
+      {>>>}
+      {<<<}
+      procedure insertnormal;
+      { Insert a node in the current context, the normal action. }
+
+        begin
+          insertnode(contextsp);
+        end {insertnormal} ;
+      {>>>}
+      {<<<}
+      procedure insertsequential;
+      { Insert a node which can be linked by the sequential link (slink) to
+        the previous node.  This is the case if oprnds[1] points to the previous
+        node, and the result of evaluating the previous nodes is not used by
+        this node.
+      }
 
         var
-          relationbuilt: boolean; {There is a relation in this node}
-          unique: boolean; {set if no possibility of prior congru. expr}
-          ptr: nodeptr; {used for access to an operand node}
-          tmp: stackrecord; {used to hold stack top for swap and temp}
-          n: workingnode; {used to accumulate operands for node}
-          i: oprndindex; {induction var for operand search}
-          cnvts: standardids; {converted standard id}
-
-        {<<<}
-        procedure insertnode(contextlevel: contextindex);
-        { Insert a node in the specified context, if necessary, and push a
-          stack element with a reference to that node.
-        }
-          begin {Insertnode}
-            if sp = maxexprstack then abort(manytemps);
-            sp := sp + 1;
-            with stack[sp] do
-              begin
-              context_mark := 0;
-              litflag := false;
-              i := 0; {clear any previous junk}
-              relation := relationbuilt;
-              p := insertexpression(n, contextlevel, unique, relationbuilt, l,
-                                    uniqueoprnd);
-              end;
-          end {insertnode} ;
-        {>>>}
-        {<<<}
-        procedure insertnormal;
-        { Insert a node in the current context, the normal action. }
-
-          begin
-            insertnode(contextsp);
-          end {insertnormal} ;
-        {>>>}
-        {<<<}
-        procedure insertsequential;
-        { Insert a node which can be linked by the sequential link (slink) to
-          the previous node.  This is the case if oprnds[1] points to the previous
-          node, and the result of evaluating the previous nodes is not used by
-          this node.
-        }
-
-          var
-            newexprnode: nodeindex; {index for this node}
-            newptr: nodeptr; {used to access top element on the stack}
-            prevnode: nodeindex; {prior node}
-            prevptr: nodeptr; {used to access previous operator}
+          newexprnode: nodeindex; {index for this node}
+          newptr: nodeptr; {used to access top element on the stack}
+          prevnode: nodeindex; {prior node}
+          prevptr: nodeptr; {used to access previous operator}
 
 
-          begin
-            insertnormal;
-            newexprnode := stack[sp].p;
-            newptr := ref(bignodetable[newexprnode]);
-            if newptr^.oprnds[1] <> 0 then
-              begin
-              prevnode := newptr^.oprnds[1];
-              prevptr := ref(bignodetable[prevnode]);
-              if prevptr^.action = visit then
-                if (prevptr^.op > newunsvarop) and (prevptr^.op < intop) then
-                  begin
-                  stack[sp].p := newptr^.oprnds[1];
-                  newptr^.oprnds[1] := 0;
-                  newptr^.nodeoprnd[1] := false;
-                  while prevptr^.slink <> 0 do
-                    begin
-                    prevnode := prevptr^.slink;
-                    prevptr := ref(bignodetable[prevnode]);
-                    end;
-                  prevptr := ref(bignodetable[prevnode]);
-                  prevptr^.slink := newexprnode;
-                  end;
-              end;
-          end; {insertsequential}
-        {>>>}
-
-        {<<<}
-        procedure buildintoprnds(count: oprndindex {number to build} );
-        { Build "count" literal integer operands in the workingnode "n".
-          These operands take their values from the next "count" records
-          in the intfile.
-        }
-
-          var
-            t: oprndindex; {induction var}
-
-
-          begin
-            for t := 1 to count do
-              with n.oprndlist[t] do
-                begin
-                getintfile;
-                litflag := true;
-                relation := false;
-                i := getintfileint;
-                end;
-          end {buildintopnrds} ;
-        {>>>}
-
-        {<<<}
-        procedure collectopdata;
-        { Collect the operand data (length, cost, form) provided with the
-          normal binary or unary operands and save it in the workingnode "n".
-        }
-
-
-          begin
-            getintfile;
-            n.len := getintfileint;
-            getintfile;
-            n.cost := min(getintfileint, maxcost);
-            getintfile;
-            n.form := interSharedPtr^.interFile^.block[nextintcode].f;
-          end {collectopdata} ;
-        {>>>}
-        {<<<}
-        procedure collectoprnds(count: oprndindex {number of opnds} );
-        {<<<}
-        { Collect "count" operands from the top of the stack and save them in
-          the workingnode "n".  The global variables "unique" and "relationbuilt"
-          are set if they are true for any operand.  If a relation is built, it
-          is noted as part of the "cost" field in "n".  This is a hack to
-          save data space during bootstrap.
-        }
-        {>>>}
-
-          var
-            i: oprndindex; {induction variable}
-
-
-          begin
-            for i := count downto 1 do
-              begin
-              unique := unique or stack[sp].uniqueoprnd;
-              n.oprndlist[i] := stack[sp];
-              sp := sp - 1
-              end;
-          end {collectoprnds} ;
-        {>>>}
-        {<<<}
-        procedure collectwork(count: oprndindex {operand count} );
-        { Do the work of collecting all necessary data for an operator.
-          First the operator data is read, then "count" arguments obtained from
-          the stack.  The results are left in "n".
-        }
-
-
-          begin
-            collectopdata;
-            collectoprnds(count);
-          end {collectwork} ;
-        {>>>}
-        {<<<}
-        procedure collectargs(count: oprndindex {operand count} );
-        { Collect data for a node with "count" operands, then create the
-          node, insert it in the appropriate context, and push a reference
-          to the node onto the stack.
-        }
-
-
-          begin
-            collectwork(count);
-            insertnormal;
-          end {collectargs} ;
-        {>>>}
-        {<<<}
-        procedure collectseqargs(count: oprndindex {operand count} );
-        { The same as collect args, except that "insertsequential" is used instead of "insertnormal }
-
-          begin
-            collectwork(count);
-            insertsequential;
-          end; {collectseqargs}
-        {>>>}
-        {<<<}
-        procedure killaffectedvars(s: stackindex {stack entry holding proc} );
-        { Kill variables affected by current procedure call or procedure push.  For
-          procedure params death to variables occurs somewhat before their allotted
-          time has expired by Pascal semantics, but not by much.  Since proc params
-          are quite rare we don't worry too much about "sub-optimality" in this case.
-        }
-
-          var
-            i: contextindex; {induction var on context levels}
-            l, u: levelindex; {Level bounds within which to invalidate}
-            cr: cseregionindex; {for clobbering cse's}
-
-          {<<<}
-          procedure clobber(nindex: nodeindex {start of chain} );
-          { Invalidate all variables on the chain headed by "nindex" which
-            have lex levels between "l" and "u" inclusive, and, if global,
-            fall within the deadly bounds of the proper cseregion.
-          }
-
-            var
-              ptr: nodeptr; {used for access to nodes}
-
-
+        begin
+          insertnormal;
+          newexprnode := stack[sp].p;
+          newptr := ref(bignodetable[newexprnode]);
+          if newptr^.oprnds[1] <> 0 then
             begin
-              while nindex <> 0 do
+            prevnode := newptr^.oprnds[1];
+            prevptr := ref(bignodetable[prevnode]);
+            if prevptr^.action = visit then
+              if (prevptr^.op > newunsvarop) and (prevptr^.op < intop) then
                 begin
-                ptr := ref(bignodetable[nindex]);
-                with ptr^ do
+                stack[sp].p := newptr^.oprnds[1];
+                newptr^.oprnds[1] := 0;
+                newptr^.nodeoprnd[1] := false;
+                while prevptr^.slink <> 0 do
                   begin
-                  if (oprnds[1] >= l) and (oprnds[1] <= u) and
-                     ((oprnds[1] > 1) or
-                     (oprnds[2] >= sharedPtr^.cseregiontable[cr, ownvar].low) and
-                     (oprnds[2] <= sharedPtr^.cseregiontable[cr, ownvar].high)) then
-                    begin
-                    valid := false;
-                    if deepestvalid > contextsp then
-                      begin
-                      deepestvalid := contextsp;
-                      end;
-                    end;
-                  nindex := slink;
+                  prevnode := prevptr^.slink;
+                  prevptr := ref(bignodetable[prevnode]);
                   end;
+                prevptr := ref(bignodetable[prevnode]);
+                prevptr^.slink := newexprnode;
                 end;
-            end {clobber} ;
-          {>>>}
+            end;
+        end; {insertsequential}
+      {>>>}
 
-          begin {killaffectedvars}
-            if stack[s].litflag then
+      {<<<}
+      procedure buildintoprnds(count: oprndindex {number to build} );
+      { Build "count" literal integer operands in the workingnode "n".
+        These operands take their values from the next "count" records
+        in the intfile.
+      }
+
+        var
+          t: oprndindex; {induction var}
+
+
+        begin
+          for t := 1 to count do
+            with n.oprndlist[t] do
               begin
-              if newtravrsinterface then
-                with sharedPtr^.new_proctable[stack[s].i div (pts + 1)]^[stack[s].i mod
-                     (pts + 1)] do
+              getintfile;
+              litflag := true;
+              relation := false;
+              i := getintfileint;
+              end;
+        end {buildintopnrds} ;
+      {>>>}
+
+      {<<<}
+      procedure collectopdata;
+      { Collect the operand data (length, cost, form) provided with the
+        normal binary or unary operands and save it in the workingnode "n".
+      }
+
+
+        begin
+          getintfile;
+          n.len := getintfileint;
+          getintfile;
+          n.cost := min(getintfileint, maxcost);
+          getintfile;
+          n.form := interSharedPtr^.interFile^.block[nextintcode].f;
+        end {collectopdata} ;
+      {>>>}
+      {<<<}
+      procedure collectoprnds(count: oprndindex {number of opnds} );
+      {<<<}
+      { Collect "count" operands from the top of the stack and save them in
+        the workingnode "n".  The global variables "unique" and "relationbuilt"
+        are set if they are true for any operand.  If a relation is built, it
+        is noted as part of the "cost" field in "n".  This is a hack to
+        save data space during bootstrap.
+      }
+      {>>>}
+
+        var
+          i: oprndindex; {induction variable}
+
+
+        begin
+          for i := count downto 1 do
+            begin
+            unique := unique or stack[sp].uniqueoprnd;
+            n.oprndlist[i] := stack[sp];
+            sp := sp - 1
+            end;
+        end {collectoprnds} ;
+      {>>>}
+      {<<<}
+      procedure collectwork(count: oprndindex {operand count} );
+      { Do the work of collecting all necessary data for an operator.
+        First the operator data is read, then "count" arguments obtained from
+        the stack.  The results are left in "n".
+      }
+
+
+        begin
+          collectopdata;
+          collectoprnds(count);
+        end {collectwork} ;
+      {>>>}
+      {<<<}
+      procedure collectargs(count: oprndindex {operand count} );
+      { Collect data for a node with "count" operands, then create the
+        node, insert it in the appropriate context, and push a reference
+        to the node onto the stack.
+      }
+
+
+        begin
+          collectwork(count);
+          insertnormal;
+        end {collectargs} ;
+      {>>>}
+      {<<<}
+      procedure collectseqargs(count: oprndindex {operand count} );
+      { The same as collect args, except that "insertsequential" is used instead of "insertnormal }
+
+        begin
+          collectwork(count);
+          insertsequential;
+        end; {collectseqargs}
+      {>>>}
+      {<<<}
+      procedure killaffectedvars(s: stackindex {stack entry holding proc} );
+      { Kill variables affected by current procedure call or procedure push.  For
+        procedure params death to variables occurs somewhat before their allotted
+        time has expired by Pascal semantics, but not by much.  Since proc params
+        are quite rare we don't worry too much about "sub-optimality" in this case.
+      }
+
+        var
+          i: contextindex; {induction var on context levels}
+          l, u: levelindex; {Level bounds within which to invalidate}
+          cr: cseregionindex; {for clobbering cse's}
+
+        {<<<}
+        procedure clobber(nindex: nodeindex {start of chain} );
+        { Invalidate all variables on the chain headed by "nindex" which
+          have lex levels between "l" and "u" inclusive, and, if global,
+          fall within the deadly bounds of the proper cseregion.
+        }
+
+          var
+            ptr: nodeptr; {used for access to nodes}
+
+
+          begin
+            while nindex <> 0 do
+              begin
+              ptr := ref(bignodetable[nindex]);
+              with ptr^ do
+                begin
+                if (oprnds[1] >= l) and (oprnds[1] <= u) and
+                   ((oprnds[1] > 1) or
+                   (oprnds[2] >= sharedPtr^.cseregiontable[cr, ownvar].low) and
+                   (oprnds[2] <= sharedPtr^.cseregiontable[cr, ownvar].high)) then
                   begin
-                  if stack[s].i <= cseregions then cr := stack[s].i
-                  else cr := 0;
-                  if globaldeath then l := 0
-                  else l := 2;
-                  if intlevelrefs then u := level - 1
-                  else u := 1;
-                  end
-              else
-                with sharedPtr^.proctable[stack[s].i] do
-                  begin
-                  if stack[s].i <= cseregions then cr := stack[s].i
-                  else cr := 0;
-                  if globaldeath then l := 0
-                  else l := 2;
-                  if intlevelrefs then u := level - 1
-                  else u := 1;
-                  end
+                  valid := false;
+                  if deepestvalid > contextsp then
+                    begin
+                    deepestvalid := contextsp;
+                    end;
+                  end;
+                nindex := slink;
+                end;
+              end;
+          end {clobber} ;
+        {>>>}
+
+        begin {killaffectedvars}
+          if stack[s].litflag then
+            begin
+            if newtravrsinterface then
+              with sharedPtr^.new_proctable[stack[s].i div (pts + 1)]^[stack[s].i mod
+                   (pts + 1)] do
+                begin
+                if stack[s].i <= cseregions then cr := stack[s].i
+                else cr := 0;
+                if globaldeath then l := 0
+                else l := 2;
+                if intlevelrefs then u := level - 1
+                else u := 1;
+                end
+            else
+              with sharedPtr^.proctable[stack[s].i] do
+                begin
+                if stack[s].i <= cseregions then cr := stack[s].i
+                else cr := 0;
+                if globaldeath then l := 0
+                else l := 2;
+                if intlevelrefs then u := level - 1
+                else u := 1;
+                end
+            end
+          else
+            begin
+            cr := 0;
+            l := 0;
+            u := level - 1;
+            end;
+          if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
+            begin
+            if loopdepth > 0 then loopkill(l, u);
+            for i := context[contextsp].searchlevel to contextsp do
+              clobber(context[i].opmap[0]);
+            updatecontext;
+            end;
+        end {killaffectedvars} ;
+      {>>>}
+
+      {<<<}
+      procedure callnode;
+      { Build a node for a procedure call.  This has three operands, a
+        literal with the proc index (for an explicit proc) or a node index
+        (for a proc parameter), the "reserve" for the return value, and
+        the parameter list.
+
+        All newvarops in the parameter list must be converted to varops, and
+        any variables which were modified must be invalidated.  Also, since
+        no detailed data is kept on what variables are modified by the called
+        procedure,  all variable which are defined at lex levels which the
+        procedure might access must be invalidated.  In the case of a parameter
+        procedure, we must assume that it can destroy everything in sight.
+        If the procedure makes no references except to local and global
+        variables, (intlevelrefs false) there is no need to invalidate
+        intermediate level variables.
+
+        The level and displacement are stored as operands in the varops for
+        just this purpose.  Note that pointers and file buffer variables have
+        a "level" of 0, and are invalidated whenever global vars are invalidated.
+        The field "globaldeath" in the procedure table is used to indicate the
+        need for global invalidation.
+      }
+
+        var
+          final: nodeindex; { index of final node on parm list }
+          reserve: nodeindex; { index of reserve node on parm list }
+          reverseparms: boolean; { true if we should reverse param list}
+
+        {<<<}
+        function reverse(current, previous: nodeindex): nodeindex;
+        {
+            Purpose:
+              reverse the a link list of nodes linked through slink.
+
+            Inputs:
+              current : index of node we must switch slink field.
+              previous : new value for slink field.
+
+            Outputs:
+              reverse : index of tail node in the list
+
+            Algorithm:
+              straight forward.
+
+            Sideeffects:
+              changes the nodes as described.
+
+            Last Modified: 9/23/85
+
+        }
+
+          var
+            ptr: nodeptr; { for access to current node }
+
+
+          begin {reverse}
+            ptr := ref(bignodetable[current]);
+            if ptr^.slink = 0 then
+              begin
+              reverse := current;
+              ptr^.slink := previous;
               end
             else
               begin
-              cr := 0;
-              l := 0;
-              u := level - 1;
+              reverse := reverse(ptr^.slink, current);
+              ptr^.slink := previous;
               end;
-            if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-              begin
-              if loopdepth > 0 then loopkill(l, u);
-              for i := context[contextsp].searchlevel to contextsp do
-                clobber(context[i].opmap[0]);
-              updatecontext;
-              end;
-          end {killaffectedvars} ;
+          end {reverse} ;
         {>>>}
 
-        {<<<}
-        procedure callnode;
-        { Build a node for a procedure call.  This has three operands, a
-          literal with the proc index (for an explicit proc) or a node index
-          (for a proc parameter), the "reserve" for the return value, and
-          the parameter list.
 
-          All newvarops in the parameter list must be converted to varops, and
-          any variables which were modified must be invalidated.  Also, since
-          no detailed data is kept on what variables are modified by the called
-          procedure,  all variable which are defined at lex levels which the
-          procedure might access must be invalidated.  In the case of a parameter
-          procedure, we must assume that it can destroy everything in sight.
-          If the procedure makes no references except to local and global
-          variables, (intlevelrefs false) there is no need to invalidate
-          intermediate level variables.
-
-          The level and displacement are stored as operands in the varops for
-          just this purpose.  Note that pointers and file buffer variables have
-          a "level" of 0, and are invalidated whenever global vars are invalidated.
-          The field "globaldeath" in the procedure table is used to indicate the
-          need for global invalidation.
-        }
-
-          var
-            final: nodeindex; { index of final node on parm list }
-            reserve: nodeindex; { index of reserve node on parm list }
-            reverseparms: boolean; { true if we should reverse param list}
-
-          {<<<}
-          function reverse(current, previous: nodeindex): nodeindex;
-          {
-              Purpose:
-                reverse the a link list of nodes linked through slink.
-
-              Inputs:
-                current : index of node we must switch slink field.
-                previous : new value for slink field.
-
-              Outputs:
-                reverse : index of tail node in the list
-
-              Algorithm:
-                straight forward.
-
-              Sideeffects:
-                changes the nodes as described.
-
-              Last Modified: 9/23/85
-
-          }
-
-            var
-              ptr: nodeptr; { for access to current node }
-
-
-            begin {reverse}
-              ptr := ref(bignodetable[current]);
-              if ptr^.slink = 0 then
+        begin
+          call_depth := call_depth - 1;
+          updatenewvars(stack[sp - 1].p);
+          reverseparms := false;
+          with stack[sp - 2] do
+            if litflag then
+            { reverse parameters if calling c on some machines }
+              if newtravrsinterface then
                 begin
-                reverse := current;
-                ptr^.slink := previous;
+                with sharedPtr^.new_proctable[i div (pts + 1)]^[i mod (pts + 1)] do
+                  if (calllinkage = nonpascalcall) and (stack[sp].i > 1) then
+                    begin
+                    reverseparms := true;
+                    { remember where reserveop is while it's cheap }
+                    reserve := stack[sp - 1].p;
+                    end
                 end
               else
                 begin
-                reverse := reverse(ptr^.slink, current);
-                ptr^.slink := previous;
+                with sharedPtr^.proctable[i] do
+                  if (calllinkage = nonpascalcall) and (stack[sp].i > 1) then
+                    begin
+                    reverseparms := true;
+                    { remember where reserveop is while it's cheap }
+                    reserve := stack[sp - 1].p;
+                    end;
                 end;
-            end {reverse} ;
-          {>>>}
+          killaffectedvars(sp - 2);
+          collectargs(3);
+            { now that all the refcounts are set reverse parameter list
+             if calling "c".
+            }
+          if reverseparms then
+            begin
+            { first on list is the reserve }
+              ptr := ref(bignodetable[reserve]);
+              ptr^.slink := reverse(ptr^.slink, 0);
+            end;
+
+        end {callnode} ;
+      {>>>}
+      {<<<}
+      procedure pushprocnode;
 
 
-          begin
-            call_depth := call_depth - 1;
-            updatenewvars(stack[sp - 1].p);
-            reverseparms := false;
-            with stack[sp - 2] do
-              if litflag then
-              { reverse parameters if calling c on some machines }
-                if newtravrsinterface then
-                  begin
-                  with sharedPtr^.new_proctable[i div (pts + 1)]^[i mod (pts + 1)] do
-                    if (calllinkage = nonpascalcall) and (stack[sp].i > 1) then
-                      begin
-                      reverseparms := true;
-                      { remember where reserveop is while it's cheap }
-                      reserve := stack[sp - 1].p;
-                      end
-                  end
-                else
-                  begin
-                  with sharedPtr^.proctable[i] do
-                    if (calllinkage = nonpascalcall) and (stack[sp].i > 1) then
-                      begin
-                      reverseparms := true;
-                      { remember where reserveop is while it's cheap }
-                      reserve := stack[sp - 1].p;
-                      end;
-                  end;
-            killaffectedvars(sp - 2);
-            collectargs(3);
-              { now that all the refcounts are set reverse parameter list
-               if calling "c".
-              }
-            if reverseparms then
+        begin {pushprocnode}
+          killaffectedvars(sp);
+          collectseqargs(3);
+        end {pushprocnode} ;
+      {>>>}
+      {<<<}
+      procedure buildvarnode;
+      { Build a node for a variable reference.  The length of the variable is
+        read from the file, then level and displacement are read and made into
+        operands 1 and 2.  These are used as an identification for the
+        variable when specific variables need to be invalidated, or for checking
+        for the target.
+
+        If the variable is the same as the target, it is marked as a target node
+        and the "mustinvalidate" bit is set to invalidate this node at the next
+        update time.
+        If the variable has a known value we substitute a reference to it's
+        value which is much cheaper.
+      }
+
+        var
+          stackp: nodeptr; {used to access top of stack node}
+          i: oprndindex; { induction var }
+
+
+        begin {buildvar}
+          getintfile;
+          n.len := getintfileint;
+          buildintoprnds(2);
+          n.oprndlist[3] := stack[sp];
+          getintfile;
+          unique := false;
+          n.ownvar := loophole(boolean, getintfileint);
+          sp := sp - 1;
+          insertnormal;
+          stackp := ref(bignodetable[stack[sp].p]);
+
+          { if the var has a value assigned use that instead }
+          {travrs does not yet handle extended range variables...}
+          if stackp^.hasvalue and ((n.op = varop) or
+             (stackp^.value > 0)) then
+            begin
+            { should tell some one that operand is now a literal
+              and can be folded. Future plans...
+            }
+            n.op := intop;
+            n.len := sharedPtr^.targetintsize;
+            n.oprndlist[1].i := stackp^.value;
+            n.oprndlist[2].i := 0;
+            n.oprndlist[3].i := 0;
+            for i := 1 to 3 do
               begin
-              { first on list is the reserve }
-                ptr := ref(bignodetable[reserve]);
-                ptr^.slink := reverse(ptr^.slink, 0);
+              n.oprndlist[i].litflag := true;
+              n.oprndlist[i].relation := false;
               end;
+            sp := sp - 1;
+            insertnode(1);
+            end
+          else
+            begin
+            unique := n.oprndlist[3].uniqueoprnd;
+            if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
+              doreference(stack[sp].p);
+            end;
+        end {buildvarnode} ;
+      {>>>}
+      {<<<}
+      procedure buildnewvarnode;
+      { Build a node for a "newvarop" or "newunsvarop".  This is a flag
+        to the tree builder that this is going to be an assignment target,
+        and will be changed to a "varop" at the next update time.  In the mean
+        time, references to the variable of the same name can be optimized.
 
-          end {callnode} ;
-        {>>>}
+        All variables which match in level and displacement will have their
+        "mustinvalidate" flag set so they will become invalid at the
+        next update.
+      }
+
+        var
+          j: contextindex; {induction var on levels}
+          stackp: nodeptr; {used to access top of stack node}
+          p: nodeptr; { for access to nodes }
+
+
         {<<<}
-        procedure pushprocnode;
+        procedure clobber(n1: nodeindex {start of chain} );
+        { Set the "mustinvalidate" flag for all variable nodes on the
+          chain rooted in "n1" which have the same level and displacement as
+          the variable being created.
 
-
-          begin {pushprocnode}
-            killaffectedvars(sp);
-            collectseqargs(3);
-          end {pushprocnode} ;
-        {>>>}
-        {<<<}
-        procedure buildvarnode;
-        { Build a node for a variable reference.  The length of the variable is
-          read from the file, then level and displacement are read and made into
-          operands 1 and 2.  These are used as an identification for the
-          variable when specific variables need to be invalidated, or for checking
-          for the target.
-
-          If the variable is the same as the target, it is marked as a target node
-          and the "mustinvalidate" bit is set to invalidate this node at the next
-          update time.
-          If the variable has a known value we substitute a reference to it's
-          value which is much cheaper.
+          The global "newvarcount" is incremented to keep track of how many
+          are created.  This allows termination of the scan on "updatecontext"
+          as soon as all targets are accounted for.
         }
 
           var
-            stackp: nodeptr; {used to access top of stack node}
-            i: oprndindex; { induction var }
+            ptr: nodeptr; {used for node access}
 
 
-          begin {buildvar}
+          begin
+            while n1 <> 0 do
+              begin
+              ptr := ref(bignodetable[n1]);
+              with ptr^ do
+                begin
+                if valid and (oprnds[1] = n.oprndlist[1].i) and
+                   (oprnds[2] = n.oprndlist[2].i) then
+                  begin
+                  mustinvalidate := true;
+                  end;
+                n1 := ptr^.slink;
+                end;
+              end;
+          end {clobber} ;
+        {>>>}
+
+        begin
+          { if dead part of tree don't recognize this }
+          if (deadcode and (removedeadcode in sharedPtr^.genset)) then
+            begin
+            n.op := varop;
+            buildvarnode;
+            end
+          else
+            begin
             getintfile;
             n.len := getintfileint;
             buildintoprnds(2);
@@ -9644,616 +9204,511 @@ var
             n.ownvar := loophole(boolean, getintfileint);
             sp := sp - 1;
             insertnormal;
-            stackp := ref(bignodetable[stack[sp].p]);
+            dodefine(stack[sp].p);
+            for j := contextsp downto context[contextsp].searchlevel do
+              clobber(context[j].opmap[0]);
+            newvarcount := newvarcount + 1;
+            end;
+        end {buildnewvarnode} ;
+      {>>>}
+      {<<<}
+      procedure builddeffor;
+      { Build a defforindex operator.  Only tricky thing is that we must
+        remove the effect of the "dodefine" spawned by the control var's
+        definition.  It will be re-inserted inside the for loop by the
+        routine "buildfor"
+       }
 
-            { if the var has a value assigned use that instead }
-            {travrs does not yet handle extended range variables...}
-            if stackp^.hasvalue and ((n.op = varop) or
-               (stackp^.value > 0)) then
-              begin
-              { should tell some one that operand is now a literal
-                and can be folded. Future plans...
-              }
-              n.op := intop;
-              n.len := sharedPtr^.targetintsize;
-              n.oprndlist[1].i := stackp^.value;
-              n.oprndlist[2].i := 0;
-              n.oprndlist[3].i := 0;
-              for i := 1 to 3 do
-                begin
-                n.oprndlist[i].litflag := true;
-                n.oprndlist[i].relation := false;
-                end;
-              sp := sp - 1;
-              insertnode(1);
-              end
-            else
-              begin
-              unique := n.oprndlist[3].uniqueoprnd;
-              if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-                doreference(stack[sp].p);
-              end;
-          end {buildvarnode} ;
-        {>>>}
-        {<<<}
-        procedure buildnewvarnode;
-        { Build a node for a "newvarop" or "newunsvarop".  This is a flag
-          to the tree builder that this is going to be an assignment target,
-          and will be changed to a "varop" at the next update time.  In the mean
-          time, references to the variable of the same name can be optimized.
-
-          All variables which match in level and displacement will have their
-          "mustinvalidate" flag set so they will become invalid at the
-          next update.
-        }
-
-          var
-            j: contextindex; {induction var on levels}
-            stackp: nodeptr; {used to access top of stack node}
-            p: nodeptr; { for access to nodes }
+        var
+          p: nodeptr;
 
 
-          {<<<}
-          procedure clobber(n1: nodeindex {start of chain} );
-          { Set the "mustinvalidate" flag for all variable nodes on the
-            chain rooted in "n1" which have the same level and displacement as
-            the variable being created.
+        begin {builddeffor}
+          { must defer the define until after from and to done }
+          getintfile;
+          n.len := getintfileint;
+          buildintoprnds(1);
+          n.oprndlist[3] := stack[sp];
+          sp := sp - 1;
+          n.oprndlist[2] := stack[sp];
+          sp := sp - 1;
+          insertnormal;
+          p := ref(bignodetable[n.oprndlist[2].p]);
 
-            The global "newvarcount" is incremented to keep track of how many
-            are created.  This allows termination of the scan on "updatecontext"
-            as soon as all targets are accounted for.
+          { If we're within a loop, unhook for-loop control variable
+            from the list of writes, as it really belongs within the
+            loop (gets "more valuable" and more likely to be assigned
+            a register).  If we don't unhook, exitloop will hook 'em
+            in a circle as it appends the inner-loop writes to the outer
+            loop's.  It doesn't check for duplicates, as this is impossible
+            except for for-loops control vars, which are explicit CSE's
+            throughout the life of the loop.  Of course, if this is a
+            dead level, it hasn't been put on the write list at all,
+            in which case we probably ought not remove it!
           }
 
-            var
-              ptr: nodeptr; {used for node access}
-
-
+          if (loopdepth > 0) and
+             not loopstack[loopdepth].deadlevels[level] then
             begin
-              while n1 <> 0 do
-                begin
-                ptr := ref(bignodetable[n1]);
-                with ptr^ do
-                  begin
-                  if valid and (oprnds[1] = n.oprndlist[1].i) and
-                     (oprnds[2] = n.oprndlist[2].i) then
-                    begin
-                    mustinvalidate := true;
-                    end;
-                  n1 := ptr^.slink;
-                  end;
-                end;
-            end {clobber} ;
-          {>>>}
+            p := ref(bignodetable[n.oprndlist[2].p]);
+            loopstack[loopdepth].writes := p^.looplink;
+            if loopstack[loopdepth].writes = 0 then
+              loopstack[loopdepth].lastwrite := 0;
+            p^.looplink := 0;
+            end;
 
-          begin
-            { if dead part of tree don't recognize this }
-            if (deadcode and (removedeadcode in sharedPtr^.genset)) then
+          with forstack[forsp], stack[sp] do
+            begin
+            forref := p;
+            forlevel := l;
+            end;
+        end {builddeffor} ;
+      {>>>}
+      {<<<}
+      procedure pushlitint;
+      { Push a literal integer onto the stack }
+
+        begin
+          if sp = maxexprstack then abort(manytemps);
+          sp := sp + 1;
+          with stack[sp] do
+            begin
+            context_mark := 0;
+            relation := false;
+            litflag := true;
+            uniqueoprnd := false;
+            getintfile;
+            i := getintfileint;
+            end;
+        end;
+      {>>>}
+      {<<<}
+      procedure buildptrnode;
+      { Build a node for a NIL pointer.  This is inserted into the tree as an integer value }
+
+
+        begin {buildptrnode}
+          n.len := sharedPtr^.ptrsize;
+          pushlitint;
+          collectoprnds(1);
+          insertnode(1);
+        end {buildptrnode} ;
+      {>>>}
+      {<<<}
+      procedure buildrealnode(rsize: shortint; {size of a real}
+                              form: types {reals or doubles} );
+      {<<<}
+      { Build a node for a real number.
+
+        Currently, only "C" represents all real constants in IEEE extended
+        form, as other language definitions make no provision for compile
+        time (i.e. folding) arithmetic to yield different answers than
+        calculations performed at runtime.
+
+        Build a node for a real number.  This is inserted into the
+        tree as a set of nodes, with the least significant part
+        being inserted first. This allows the sharing of these
+        nodes.  They will be written as a unit when the tree is
+        walked. The chain of values is linked through oprnds[3],
+        and the chain is terminated when oprnds[3] = 0.
+      }
+      {>>>}
+
+        var
+          intpieces, {number of integers per real}
+           j: 0..maxrealwords; {induction var}
+
+
+        begin
+          n.len := rsize;
+          n.form := form;
+          intpieces := size(realarray) div (hostfileunits * hostintsize);
+
+          for j := 1 to intpieces do
+            pushlitint;
+
+          if odd(intpieces) then
+            j := 1
+          else
+            j := 2;
+
+          collectoprnds(j);
+          insertnode(1);
+          intpieces := intpieces - j;
+
+          while intpieces > 0 do
+            begin
+            collectoprnds(3);
+            insertnode(1);
+            intpieces := intpieces - 2;
+            end;
+        end {buildreal} ;
+      {>>>}
+
+      begin
+        { Initialize the working node }
+        relationbuilt := false;
+        unique := false;
+          { if the statement we are collecting now are useless don't search for them! }
+        unique := deadcode and (removedeadcode in sharedPtr^.genset);
+        n.len := sharedPtr^.targetintsize;
+        n.cost := 0;
+        n.ownvar := false;
+        n.op := interSharedPtr^.interFile^.block[nextintcode].o;
+        n.form := none;
+        for i := 1 to 3 do
+          with n.oprndlist[i] do
+            begin
+            relation := false;
+            litflag := true;
+            l := 0;
+            i := 0
+            end;
+
+        case n.op of
+          jumpvfuncop:
+            begin
+            buildintoprnds(2);
+            insertnormal;
+            end;
+
+          deleteop:
+            begin
+            collectwork(1);
+            increfcount(n.oprndlist[1].p, deadcode, - 1);
+            end;
+
+          addrop:
+            begin
+            { must remove as register candidate}
+            { top of stack is var we want address of }
+            if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
               begin
-              n.op := varop;
-              buildvarnode;
+              killasreg(stack[sp].p);
+              end;
+            collectargs(1);
+            end;
+          float, negop, indrop, filebufindrop, incop, decop, remop, quoop,
+          ptrchkop, pushcvalue, definelazyop, setbinfileop, copystackop,
+          closerangeop, chrstrop, arraystrop, groupop, compop, float_double,
+          real_to_dbl, dbl_to_real:
+            collectargs(1);
+          tempop:
+            begin
+            collectwork(1);
+            unique := true;
+            insertnormal;
+            end;
+          dummyargop: collectseqargs(2);
+          setfileop:
+            begin
+            killinput := false;
+            collectargs(1);
+            end;
+          pushfinal:
+            begin
+            collectargs(1);
+            ptr := ref(bignodetable[n.oprndlist[1].p]);
+            if (ptr^.action = visit) and (ptr^.op = intop) then
+              begin
+              { just return the integer }
+              stack[sp].p := n.oprndlist[1].p;
+              end;
+            end;
+          wr: collectseqargs(1);
+          rd:
+            begin
+            collectopdata;
+            if n.form in [arrays, strings, files] then collectoprnds(1)
+            else collectoprnds(2);
+            insertsequential;
+            end;
+          setelt, plusop, minusop, mulop, bldset, divop, stddivop,
+          dummyarg2op, slashop, kwoop, modop, stdmodop, shiftlop, indxop,
+          pindxop, aindxop, paindxop, forerrchkop, loopholeop, shiftrop,
+          xorop, returnop, castfptrop, castintop, castptrop, castrealop:
+            collectargs(2);
+          openarrayop:
+            begin
+            collectwork(2);
+            insertnode(1);
+            sp := 0; {throw it away}
+            end;
+          commaop:
+            begin
+            collectargs(2);
+            increfcount(n.oprndlist[1].p, deadcode, - 1);
+            increfcount(n.oprndlist[2].p, deadcode, - 1);
+            end;
+          clearnewop: sequence_point;
+          saveop:
+            begin
+            sequence_point;
+            stack[sp].context_mark := lastnode;
+            cond_depth := cond_depth + 1;
+            end;
+          restop:
+            begin
+            sequence_point;
+            clear_expr(stack[sp].p, stack[sp - 1].context_mark);
+            stack[sp].context_mark := lastnode;
+            end;
+          questop:
+            begin
+            sequence_point;
+            clear_expr(stack[sp].p, stack[sp - 1].context_mark);
+            cond_depth := cond_depth - 1;
+            collectargs(3);
+            end;
+          vindxop: collectargs(3);
+          parmop: collectargs(2);
+          moveop:
+            begin
+            collectwork(2);
+            marktargets(n.oprndlist[1].p, n.oprndlist[2].p);
+            insertnormal;
+            end;
+          movelit:
+            begin
+            collectwork(2);
+            marktargets(n.oprndlist[1].p, 0);
+            insertnormal;
+            if (n.form = ints) and (propagation in sharedPtr^.genset) then
+              assignvalue(stack[sp].p);
+            end;
+          addeqop, andeqop, diveqop, modeqop, muleqop, oreqop, shiftleqop,
+          shiftreqop, subeqop, xoreqop, preincop, postincop:
+            begin {Could fold these, but we won't bother yet}
+            increfcount(stack[sp - 2].p, deadcode, 1);
+            collectargs(3);
+            end;
+          pushaddr, pushstraddr:
+            begin
+            { must remove as register candidate}
+            { top of stack is the address to push }
+            if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
+              begin
+              killasreg(stack[sp].p);
+              end;
+            collectseqargs(2);
+            end;
+          pushvalue, pushlitvalue, bldfmt, pushfptr: collectseqargs(2);
+          pushret: collectseqargs(2);
+          notop:
+            begin
+            collectopdata;
+            relationbuilt := (n.form = bools) and (shorteval or stack[sp].relation);
+            collectoprnds(1);
+            insertnormal;
+            end;
+          andop, orop:
+            begin
+            collectopdata;
+            relationbuilt := (n.form = bools) and (shorteval or
+                             stack[sp].relation or
+                             stack[sp - 1].relation);
+            collectoprnds(2);
+            insertnormal;
+            end;
+          setpair, forupchkop, fordnchkop, cmoveop: collectargs(3);
+          pushproc: pushprocnode;
+          rangechkop, indxchkop, cindxchkop, congruchkop:
+            begin
+            collectopdata;
+            if not stack[sp - 2].relation or
+               (stack[sp - 1].i <> ord(false)) or
+               (stack[sp].i <> ord(true)) then
+              begin
+              collectoprnds(3);
+              insertnormal;
+              end
+            else sp := sp - 2;
+            end;
+          call, callparam, unscall, unscallparam: callnode;
+          sysfn:
+            begin
+            collectopdata;
+            cnvts := loophole(standardids, stack[sp - 1].i);
+            if (n.form = bools) and not (cnvts in [predid, succid]) then
+              relationbuilt := true;
+            unique := cnvts in
+                      [frexpid, modfid, memcpyid, memmoveid, memsetid,
+                      strcatid, strcpyid, strncpyid, strncatid];
+            collectoprnds(2);
+            insertnormal;
+            end;
+          lsslit, leqlit, eqlit, neqlit, gtrlit, geqlit, lssop, leqop,
+          neqop, eqop, gtrop, geqop, inop:
+            begin
+            relationbuilt := true;
+            collectargs(2)
+            end;
+          float1, chrstrop1, arraystrop1:
+            begin
+            tmp := stack[sp];
+            sp := sp - 1;
+            collectargs(1);
+            sp := sp + 1;
+            stack[sp] := tmp;
+            end;
+          defforindexop, defunsforindexop, defforlitindexop,
+          defunsforlitindexop:
+            builddeffor;
+          forindexop:
+            begin {Use for stack to locate var}
+            getintfile;
+            begin
+            with forstack[getintfileint] do
+              begin
+              if sp = maxexprstack then abort(manytemps);
+              sp := sp + 1;
+              with stack[sp] do
+                begin
+                context_mark := 0;
+                relation := false;
+                litflag := false;
+                uniqueoprnd := false;
+                p := forref;
+                l := forlevel;
+                end;
+              if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
+                if bumpvarcount(level, false, forref) then {nothing} ;
+              end;
+            end;
+            end;
+          levop:
+            begin
+            buildintoprnds(2);
+            if (n.oprndlist[1].i <> 0) and
+               (n.oprndlist[1].i <> level) then
+              begin
+              n.oprndlist[3] := stack[sp];
+              sp := sp - 1;
+              end;
+            if (n.oprndlist[1].i = level) then
+              begin
+              insertnode(1);
+              localparamnode := stack[sp].p;
               end
             else
-              begin
-              getintfile;
-              n.len := getintfileint;
-              buildintoprnds(2);
-              n.oprndlist[3] := stack[sp];
-              getintfile;
-              unique := false;
-              n.ownvar := loophole(boolean, getintfileint);
-              sp := sp - 1;
               insertnormal;
-              dodefine(stack[sp].p);
-              for j := contextsp downto context[contextsp].searchlevel do
-                clobber(context[j].opmap[0]);
-              newvarcount := newvarcount + 1;
-              end;
-          end {buildnewvarnode} ;
-        {>>>}
-        {<<<}
-        procedure builddeffor;
-        { Build a defforindex operator.  Only tricky thing is that we must
-          remove the effect of the "dodefine" spawned by the control var's
-          definition.  It will be re-inserted inside the for loop by the
-          routine "buildfor"
-         }
-
-          var
-            p: nodeptr;
-
-
-          begin {builddeffor}
-            { must defer the define until after from and to done }
-            getintfile;
-            n.len := getintfileint;
+            end;
+          reserve:
+            begin
+            call_depth := call_depth + 1;
             buildintoprnds(1);
-            n.oprndlist[3] := stack[sp];
-            sp := sp - 1;
-            n.oprndlist[2] := stack[sp];
-            sp := sp - 1;
+            if stack[sp].litflag then
+              begin
+              n.oprndlist[2].i := stack[sp].i;
+              if (n.oprndlist[2].i = 0) then
+                sp := sp - 1;
+              end
+            else n.oprndlist[2].i := 0;
             insertnormal;
-            p := ref(bignodetable[n.oprndlist[2].p]);
-
-            { If we're within a loop, unhook for-loop control variable
-              from the list of writes, as it really belongs within the
-              loop (gets "more valuable" and more likely to be assigned
-              a register).  If we don't unhook, exitloop will hook 'em
-              in a circle as it appends the inner-loop writes to the outer
-              loop's.  It doesn't check for duplicates, as this is impossible
-              except for for-loops control vars, which are explicit CSE's
-              throughout the life of the loop.  Of course, if this is a
-              dead level, it hasn't been put on the write list at all,
-              in which case we probably ought not remove it!
-            }
-
-            if (loopdepth > 0) and
-               not loopstack[loopdepth].deadlevels[level] then
+            end;
+          intop:
+            begin {this and other literals are entered in context 1}
+            buildintoprnds(1);
+            insertnode(1);
+            end;
+          fptrop:
+            begin
+            buildintoprnds(1);
+            insertnode(1);
+            end;
+          ptrop: buildptrnode;
+          realop: buildrealnode (sharedPtr^.targetrealsize, reals);
+          doubleop: buildrealnode (doublesize, doubles);
+          structop:
+            begin
+            buildintoprnds(2);
+            n.len := n.oprndlist[2].i;
+            insertnormal;
+            end;
+          varop, unsvarop: buildvarnode;
+          newvarop, newunsvarop: buildnewvarnode;
+          ownop: insertnode(1);
+          extop:
+            begin
+            buildintoprnds(1);
+            insertnormal;
+            end;
+          globalop:
+            begin
+            n.op := levop;
+            with n.oprndlist[1] do
               begin
-              p := ref(bignodetable[n.oprndlist[2].p]);
-              loopstack[loopdepth].writes := p^.looplink;
-              if loopstack[loopdepth].writes = 0 then
-                loopstack[loopdepth].lastwrite := 0;
-              p^.looplink := 0;
+              relation := false;
+              litflag := true;
+              i := 1
               end;
-
-            with forstack[forsp], stack[sp] do
+            insertnode(1);
+            end;
+          originop, segop:
+            begin
+            buildintoprnds(1);
+            insertnormal;
+            end;
+          localop:
+            begin
+            n.op := levop;
+            with n.oprndlist[1] do
               begin
-              forref := p;
-              forlevel := l;
+              litflag := true;
+              relation := false;
+              i := level
               end;
-          end {builddeffor} ;
-        {>>>}
-        {<<<}
-        procedure pushlitint;
-        { Push a literal integer onto the stack }
-
-          begin
+            insertnode(1);
+            end;
+          lit: pushlitint;
+          withop:
+            begin
             if sp = maxexprstack then abort(manytemps);
+            sp := sp + 1;
+            getintfile;
+            with stack[sp] do
+              begin
+              context_mark := 0;
+              relation := false;
+              litflag := false;
+              uniqueoprnd := false;
+              with withstack[getintfileint] do
+                begin
+                l := withlevel;
+                p := withref;
+                end;
+              end;
+            end;
+          switchstack:
+            begin
+            tmp := stack[sp];
+            stack[sp] := stack[sp - 1];
+            stack[sp - 1] := tmp
+            end;
+          bldnil, newset:
+            begin
             sp := sp + 1;
             with stack[sp] do
               begin
               context_mark := 0;
               relation := false;
-              litflag := true;
               uniqueoprnd := false;
-              getintfile;
-              i := getintfileint;
-              end;
-          end;
-        {>>>}
-        {<<<}
-        procedure buildptrnode;
-        { Build a node for a NIL pointer.  This is inserted into the tree as an integer value }
-
-
-          begin {buildptrnode}
-            n.len := sharedPtr^.ptrsize;
-            pushlitint;
-            collectoprnds(1);
-            insertnode(1);
-          end {buildptrnode} ;
-        {>>>}
-
-
-        {<<<}
-        procedure buildrealnode(rsize: shortint; {size of a real}
-                                form: types {reals or doubles} );
-        {<<<}
-        { Build a node for a real number.
-
-          Currently, only "C" represents all real constants in IEEE extended
-          form, as other language definitions make no provision for compile
-          time (i.e. folding) arithmetic to yield different answers than
-          calculations performed at runtime.
-
-          Build a node for a real number.  This is inserted into the
-          tree as a set of nodes, with the least significant part
-          being inserted first. This allows the sharing of these
-          nodes.  They will be written as a unit when the tree is
-          walked. The chain of values is linked through oprnds[3],
-          and the chain is terminated when oprnds[3] = 0.
-        }
-        {>>>}
-
-          var
-            intpieces, {number of integers per real}
-             j: 0..maxrealwords; {induction var}
-
-
-          begin
-            n.len := rsize;
-            n.form := form;
-            intpieces := size(realarray) div (hostfileunits * hostintsize);
-
-            for j := 1 to intpieces do
-              pushlitint;
-
-            if odd(intpieces) then
-              j := 1
-            else
-              j := 2;
-
-            collectoprnds(j);
-            insertnode(1);
-            intpieces := intpieces - j;
-
-            while intpieces > 0 do
-              begin
-              collectoprnds(3);
-              insertnode(1);
-              intpieces := intpieces - 2;
-              end;
-          end {buildreal} ;
-        {>>>}
-
-
-        begin {buildnode}
-          { Initialize the working node }
-
-          relationbuilt := false;
-          unique := false;
-            { if the statement we are collecting now are useless don't
-              search for them!
-            }
-          unique := deadcode and (removedeadcode in sharedPtr^.genset);
-          n.len := sharedPtr^.targetintsize;
-          n.cost := 0;
-          n.ownvar := false;
-          n.op := interSharedPtr^.interFile^.block[nextintcode].o;
-          n.form := none;
-          for i := 1 to 3 do
-            with n.oprndlist[i] do
-              begin
-              relation := false;
-              litflag := true;
-              l := 0;
-              i := 0
-              end;
-
-          case n.op of
-            jumpvfuncop:
-              begin
-              buildintoprnds(2);
-              insertnormal;
-              end;
-
-            deleteop:
-              begin
-              collectwork(1);
-              increfcount(n.oprndlist[1].p, deadcode, - 1);
-              end;
-
-            addrop:
-              begin
-              { must remove as register candidate}
-              { top of stack is var we want address of }
-              if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-                begin
-                killasreg(stack[sp].p);
-                end;
-              collectargs(1);
-              end;
-            float, negop, indrop, filebufindrop, incop, decop, remop, quoop,
-            ptrchkop, pushcvalue, definelazyop, setbinfileop, copystackop,
-            closerangeop, chrstrop, arraystrop, groupop, compop, float_double,
-            real_to_dbl, dbl_to_real:
-              collectargs(1);
-            tempop:
-              begin
-              collectwork(1);
-              unique := true;
-              insertnormal;
-              end;
-            dummyargop: collectseqargs(2);
-            setfileop:
-              begin
-              killinput := false;
-              collectargs(1);
-              end;
-            pushfinal:
-              begin
-              collectargs(1);
-              ptr := ref(bignodetable[n.oprndlist[1].p]);
-              if (ptr^.action = visit) and (ptr^.op = intop) then
-                begin
-                { just return the integer }
-                stack[sp].p := n.oprndlist[1].p;
-                end;
-              end;
-            wr: collectseqargs(1);
-            rd:
-              begin
-              collectopdata;
-              if n.form in [arrays, strings, files] then collectoprnds(1)
-              else collectoprnds(2);
-              insertsequential;
-              end;
-            setelt, plusop, minusop, mulop, bldset, divop, stddivop,
-            dummyarg2op, slashop, kwoop, modop, stdmodop, shiftlop, indxop,
-            pindxop, aindxop, paindxop, forerrchkop, loopholeop, shiftrop,
-            xorop, returnop, castfptrop, castintop, castptrop, castrealop:
-              collectargs(2);
-            openarrayop:
-              begin
-              collectwork(2);
-              insertnode(1);
-              sp := 0; {throw it away}
-              end;
-            commaop:
-              begin
-              collectargs(2);
-              increfcount(n.oprndlist[1].p, deadcode, - 1);
-              increfcount(n.oprndlist[2].p, deadcode, - 1);
-              end;
-            clearnewop: sequence_point;
-            saveop:
-              begin
-              sequence_point;
-              stack[sp].context_mark := lastnode;
-              cond_depth := cond_depth + 1;
-              end;
-            restop:
-              begin
-              sequence_point;
-              clear_expr(stack[sp].p, stack[sp - 1].context_mark);
-              stack[sp].context_mark := lastnode;
-              end;
-            questop:
-              begin
-              sequence_point;
-              clear_expr(stack[sp].p, stack[sp - 1].context_mark);
-              cond_depth := cond_depth - 1;
-              collectargs(3);
-              end;
-            vindxop: collectargs(3);
-            parmop: collectargs(2);
-            moveop:
-              begin
-              collectwork(2);
-              marktargets(n.oprndlist[1].p, n.oprndlist[2].p);
-              insertnormal;
-              end;
-            movelit:
-              begin
-              collectwork(2);
-              marktargets(n.oprndlist[1].p, 0);
-              insertnormal;
-              if (n.form = ints) and (propagation in sharedPtr^.genset) then
-                assignvalue(stack[sp].p);
-              end;
-            addeqop, andeqop, diveqop, modeqop, muleqop, oreqop, shiftleqop,
-            shiftreqop, subeqop, xoreqop, preincop, postincop:
-              begin {Could fold these, but we won't bother yet}
-              increfcount(stack[sp - 2].p, deadcode, 1);
-              collectargs(3);
-              end;
-            pushaddr, pushstraddr:
-              begin
-              { must remove as register candidate}
-              { top of stack is the address to push }
-              if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-                begin
-                killasreg(stack[sp].p);
-                end;
-              collectseqargs(2);
-              end;
-            pushvalue, pushlitvalue, bldfmt, pushfptr: collectseqargs(2);
-            pushret: collectseqargs(2);
-            notop:
-              begin
-              collectopdata;
-              relationbuilt := (n.form = bools) and (shorteval or stack[sp].relation);
-              collectoprnds(1);
-              insertnormal;
-              end;
-            andop, orop:
-              begin
-              collectopdata;
-              relationbuilt := (n.form = bools) and (shorteval or
-                               stack[sp].relation or
-                               stack[sp - 1].relation);
-              collectoprnds(2);
-              insertnormal;
-              end;
-            setpair, forupchkop, fordnchkop, cmoveop: collectargs(3);
-            pushproc: pushprocnode;
-            rangechkop, indxchkop, cindxchkop, congruchkop:
-              begin
-              collectopdata;
-              if not stack[sp - 2].relation or
-                 (stack[sp - 1].i <> ord(false)) or
-                 (stack[sp].i <> ord(true)) then
-                begin
-                collectoprnds(3);
-                insertnormal;
-                end
-              else sp := sp - 2;
-              end;
-            call, callparam, unscall, unscallparam: callnode;
-            sysfn:
-              begin
-              collectopdata;
-              cnvts := loophole(standardids, stack[sp - 1].i);
-              if (n.form = bools) and not (cnvts in [predid, succid]) then
-                relationbuilt := true;
-              unique := cnvts in
-                        [frexpid, modfid, memcpyid, memmoveid, memsetid,
-                        strcatid, strcpyid, strncpyid, strncatid];
-              collectoprnds(2);
-              insertnormal;
-              end;
-            lsslit, leqlit, eqlit, neqlit, gtrlit, geqlit, lssop, leqop,
-            neqop, eqop, gtrop, geqop, inop:
-              begin
-              relationbuilt := true;
-              collectargs(2)
-              end;
-            float1, chrstrop1, arraystrop1:
-              begin
-              tmp := stack[sp];
-              sp := sp - 1;
-              collectargs(1);
-              sp := sp + 1;
-              stack[sp] := tmp;
-              end;
-            defforindexop, defunsforindexop, defforlitindexop,
-            defunsforlitindexop:
-              builddeffor;
-            forindexop:
-              begin {Use for stack to locate var}
-              getintfile;
-              begin
-              with forstack[getintfileint] do
-                begin
-                if sp = maxexprstack then abort(manytemps);
-                sp := sp + 1;
-                with stack[sp] do
-                  begin
-                  context_mark := 0;
-                  relation := false;
-                  litflag := false;
-                  uniqueoprnd := false;
-                  p := forref;
-                  l := forlevel;
-                  end;
-                if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-                  if bumpvarcount(level, false, forref) then {nothing} ;
-                end;
-              end;
-              end;
-            levop:
-              begin
-              buildintoprnds(2);
-              if (n.oprndlist[1].i <> 0) and
-                 (n.oprndlist[1].i <> level) then
-                begin
-                n.oprndlist[3] := stack[sp];
-                sp := sp - 1;
-                end;
-              if (n.oprndlist[1].i = level) then
-                begin
-                insertnode(1);
-                localparamnode := stack[sp].p;
-                end
-              else
-                insertnormal;
-              end;
-            reserve:
-              begin
-              call_depth := call_depth + 1;
-              buildintoprnds(1);
-              if stack[sp].litflag then
-                begin
-                n.oprndlist[2].i := stack[sp].i;
-                if (n.oprndlist[2].i = 0) then
-                  sp := sp - 1;
-                end
-              else n.oprndlist[2].i := 0;
-              insertnormal;
-              end;
-            intop:
-              begin {this and other literals are entered in context 1}
-              buildintoprnds(1);
-              insertnode(1);
-              end;
-            fptrop:
-              begin
-              buildintoprnds(1);
-              insertnode(1);
-              end;
-            ptrop: buildptrnode;
-            realop: buildrealnode (sharedPtr^.targetrealsize, reals);
-            doubleop: buildrealnode (doublesize, doubles);
-            structop:
-              begin
-              buildintoprnds(2);
-              n.len := n.oprndlist[2].i;
-              insertnormal;
-              end;
-            varop, unsvarop: buildvarnode;
-            newvarop, newunsvarop: buildnewvarnode;
-            ownop: insertnode(1);
-            extop:
-              begin
-              buildintoprnds(1);
-              insertnormal;
-              end;
-            globalop:
-              begin
-              n.op := levop;
-              with n.oprndlist[1] do
-                begin
-                relation := false;
-                litflag := true;
-                i := 1
-                end;
-              insertnode(1);
-              end;
-            originop, segop:
-              begin
-              buildintoprnds(1);
-              insertnormal;
-              end;
-            localop:
-              begin
-              n.op := levop;
-              with n.oprndlist[1] do
-                begin
-                litflag := true;
-                relation := false;
-                i := level
-                end;
-              insertnode(1);
-              end;
-            lit: pushlitint;
-            withop:
-              begin
-              if sp = maxexprstack then abort(manytemps);
-              sp := sp + 1;
-              getintfile;
-              with stack[sp] do
-                begin
-                context_mark := 0;
-                relation := false;
-                litflag := false;
-                uniqueoprnd := false;
-                with withstack[getintfileint] do
-                  begin
-                  l := withlevel;
-                  p := withref;
-                  end;
-                end;
-              end;
-            switchstack:
-              begin
-              tmp := stack[sp];
-              stack[sp] := stack[sp - 1];
-              stack[sp - 1] := tmp
-              end;
-            bldnil, newset:
-              begin
-              sp := sp + 1;
-              with stack[sp] do
-                begin
-                context_mark := 0;
-                relation := false;
-                uniqueoprnd := false;
-                litflag := false;
-                l := 1;
-                p := 0
-                end;
-              end;
-            daddop, daddrop, dfaddrop, dfieldop, dfillop, dintop, drealop,
-            dstartop, dstoreop, dstructop, dsubop, dendop:
-              take_data_op;
-            otherwise
-              begin
-              write('travrs build error', ord(n.op));
-              abort(builderror);
+              litflag := false;
+              l := 1;
+              p := 0
               end;
             end;
-          getintfile;
-        end {buildnode} ;
+          daddop, daddrop, dfaddrop, dfieldop, dfillop, dintop, drealop,
+          dstartop, dstoreop, dstructop, dsubop, dendop:
+            takeDataOp;
+          otherwise
+            begin
+            write('travrs build error', ord(n.op));
+            abort(builderror);
+            end;
+          end;
+        getintfile;
+      end {buildnode} ;
       {>>>}
 
       begin {buildexpr}
@@ -12285,6 +11740,365 @@ end;
 {<<<}
 procedure traverse;
 
+  {<<<}
+  procedure init;
+  { Initialize structured constants (tables) and counters }
+
+  var
+    i: integer; {induction var for initializing virtual memory}
+    j: 0..nodesperblock; { induction var so building ptrs }
+    o: operator; {induction var for initializing map}
+    t, t1: types; {induction vars for initializing maps}
+    p: proctableindex; {induction for initializing referenced field}
+
+    {<<<}
+      procedure map1;
+
+    { Initialize the map which takes input operators and types onto pseudocode.
+      This is split into three routines to reduce the size of the code for
+      each routine.
+    }
+
+
+        begin {[s=2] Format two assignments per line}
+          map[indxchkop, ints] := indxchk;     map[rangechkop, ints] := rangechk;
+          map[cindxchkop, ints] := indxchk;    map[ownop, ints] := doown;
+          map[congruchkop, ints] := congruchk; map[levop, ints] := dolevel;
+          map[intop, ints] := doint;           map[originop, ints] := doorigin;
+          map[ptrop, ints] := doptr;           map[realop, ints] := doreal;
+          map[structop, ints] := dostruct;     map[moveop, ints] := movint;
+          map[moveop, reals] := movreal;       map[moveop, bools] := movint;
+          map[moveop, chars] := movint;        map[moveop, ptrs] := movptr;
+          map[moveop, scalars] := movint;      map[moveop, arrays] := movstruct;
+          map[moveop, fields] := movstruct;    map[moveop, sets] := movset;
+          map[moveop, strings] := movstr;      map[moveop, fptrs] := movptr;
+          map[moveop, words] := movint;        map[moveop, opaques] := movptr;
+          map[moveop, bytes] := movint;
+          map[moveop, stringliterals] := movstruct;
+          map[moveop, procs] := movptr;        map[cmoveop, arrays] := movcstruct;
+          map[movelit, words] := movlitint;    map[movelit, opaques] := movlitptr;
+          map[movelit, ints] := movlitint;     map[movelit, chars] := movlitint;
+          map[movelit, bools] := movlitint;    map[movelit, ptrs] := movlitptr;
+          map[movelit, scalars] := movlitint;  map[movelit, reals] := movlitreal;
+          map[movelit, fptrs] := movlitptr;    map[movelit, procs] := movlitptr;
+          map[movelit, bytes] := movlitint;    map[chrstrop, strings] := chrstr;
+          map[chrstrop, stringliterals] := chrstr;
+          map[arraystrop, strings] := arraystr;
+          map[arraystrop, stringliterals] := arraystr;
+          map[chrstrop, chars] := chrstr;      map[arraystrop, arrays] := arraystr;
+          map[chrstrop1, stringliterals] := chrstr;
+          map[arraystrop1, stringliterals] := arraystr;
+          map[chrstrop1, strings] := chrstr;
+          map[arraystrop1, strings] := arraystr;
+          map[plusop, ints] := addint;         map[plusop, ptrs] := addptr;
+          map[plusop, strings] := addstr;      map[plusop, reals] := addreal;
+          map[plusop, sets] := addset;         map[plusop, scalars] := addint;
+          map[minusop, ints] := subint;        map[minusop, scalars] := subint;
+          map[minusop, ptrs] := subptr;        map[minusop, reals] := subreal;
+          map[minusop, sets] := subset;        map[notop, bools] := compbool;
+          map[notop, ints] := compint;         map[notop, scalars] := compint;
+          map[inop, sets] := inset;            map[andop, ints] := andint;
+          map[andop, bools] := andint;         map[andop, scalars] := andint;
+          map[andop, ptrs] := andint;          map[orop, ints] := orint;
+          map[orop, bools] := orint;           map[orop, scalars] := orint;
+          map[orop, ptrs] := orint;            map[incop, ints] := incint;
+          map[decop, ints] := decint;          map[indxop, ints] := indx;
+          map[indrop, ints] := indxindr;       map[openarrayop, ints] := openarray;
+          map[filebufindrop, ints] := indxindr;
+          map[aindxop, ints] := aindx;         map[mulop, ints] := mulint;
+          map[mulop, reals] := mulreal;        map[mulop, sets] := mulset;
+          map[mulop, scalars] := mulint;       map[divop, scalars] := divint;
+          map[divop, ints] := divint;          map[stddivop, ints] := stddivint;
+          map[slashop, sets] := divset;        map[slashop, reals] := divreal;
+          map[quoop, ints] := getquo;          map[remop, ints] := getrem;
+          map[shiftlop, ints] := shiftlint;    map[pindxop, ints] := pindx;
+          map[paindxop, ints] := paindx;       map[eqop, procs] := eqptr;
+          map[eqop, strings] := eqstr;         map[eqop, ints] := eqint;
+          map[eqop, chars] := eqint;           map[eqop, bools] := eqint;
+          map[eqop, ptrs] := eqptr;            map[eqop, fptrs] := eqfptr;
+          map[eqop, scalars] := eqint;         map[eqop, reals] := eqreal;
+          map[eqop, sets] := eqset;            map[eqop, arrays] := eqstruct;
+          map[eqop, words] := eqint;           map[eqop, opaques] := eqptr;
+          map[eqop, bytes] := eqint;           map[neqop, words] := neqint;
+          map[neqop, opaques] := neqptr;       map[neqop, procs] := neqptr;
+          map[neqop, strings] := neqstr;       map[neqop, ints] := neqint;
+          map[neqop, chars] := neqint;         map[neqop, bools] := neqint;
+          map[neqop, ptrs] := neqptr;          map[neqop, fptrs] := neqfptr;
+          map[ptrchkop, ints] := ptrchk;       map[neqop, bytes] := neqint;
+          { new for 32k }                      map[kwoop, ints] := kwoint;
+          map[modop, ints] := modint;          map[stdmodop, ints] := stdmodint;
+
+        end; {[s=1] map1}
+    {>>>}
+    {<<<}
+      procedure map2;
+
+    { More map initialization.
+    }
+
+
+        begin {[s=2] Format two assignments per line}
+          map[neqop, scalars] := neqint;       map[neqop, reals] := neqreal;
+          map[neqop, sets] := neqset;          map[neqop, arrays] := neqstruct;
+          map[lssop, strings] := lssstr;       map[lssop, ints] := lssint;
+          map[lssop, chars] := lssint;         map[lssop, bools] := lssint;
+          map[lssop, ptrs] := lssptr;          map[lssop, scalars] := lssint;
+          map[lssop, reals] := lssreal;        map[lssop, arrays] := lssstruct;
+          map[gtrop, ints] := gtrint;          map[gtrop, strings] := gtrstr;
+          map[gtrop, chars] := gtrint;         map[gtrop, bools] := gtrint;
+          map[gtrop, ptrs] := gtrptr;          map[gtrop, scalars] := gtrint;
+          map[gtrop, reals] := gtrreal;        map[gtrop, arrays] := gtrstruct;
+          map[geqop, strings] := geqstr;       map[geqop, ints] := geqint;
+          map[geqop, chars] := geqint;         map[geqop, bools] := geqint;
+          map[geqop, ptrs] := geqptr;          map[geqop, scalars] := geqint;
+          map[geqop, reals] := geqreal;        map[geqop, sets] := geqset;
+          map[geqop, arrays] := geqstruct;     map[leqop, strings] := leqstr;
+          map[leqop, ints] := leqint;          map[leqop, chars] := leqint;
+          map[leqop, bools] := leqint;         map[leqop, ptrs] := leqptr;
+          map[leqop, scalars] := leqint;       map[leqop, reals] := leqreal;
+          map[leqop, sets] := leqset;          map[leqop, arrays] := leqstruct;
+          map[eqlit, procs] := eqlitptr;       map[eqlit, ints] := eqlitint;
+          map[eqlit, reals] := eqlitreal;      map[eqlit, chars] := eqlitint;
+          map[eqlit, ptrs] := eqlitptr;        map[eqlit, scalars] := eqlitint;
+          map[eqlit, bools] := eqlitint;       map[eqlit, fptrs] := eqlitfptr;
+          map[eqlit, words] := eqlitint;       map[eqlit, opaques] := eqlitptr;
+          map[eqlit, bytes] := eqlitint;       map[neqlit, words] := neqlitint;
+          map[neqlit, opaques] := neqlitptr;   map[neqlit, ints] := neqlitint;
+          map[neqlit, procs] := neqlitptr;     map[neqlit, reals] := neqlitreal;
+          map[neqlit, chars] := neqlitint;     map[neqlit, ptrs] := neqlitptr;
+          map[neqlit, scalars] := neqlitint;   map[neqlit, bools] := neqlitint;
+          map[neqlit, fptrs] := neqlitfptr;    map[neqlit, bytes] := neqlitint;
+          map[lsslit, ints] := lsslitint;      map[lsslit, reals] := lsslitreal;
+          map[lsslit, chars] := lsslitint;     map[lsslit, ptrs] := lsslitptr;
+          map[lsslit, scalars] := lsslitint;   map[lsslit, bools] := lsslitint;
+          map[gtrlit, ints] := gtrlitint;      map[gtrlit, reals] := gtrlitreal;
+          map[gtrlit, chars] := gtrlitint;     map[gtrlit, ptrs] := gtrlitptr;
+          map[gtrlit, scalars] := gtrlitint;   map[gtrlit, bools] := gtrlitint;
+          map[leqlit, ints] := leqlitint;      map[leqlit, reals] := leqlitreal;
+          map[leqlit, chars] := leqlitint;     map[leqlit, ptrs] := leqlitptr;
+          map[leqlit, scalars] := leqlitint;   map[leqlit, bools] := leqlitint;
+        end; {[s=1] map2}
+    {>>>}
+    {<<<}
+      procedure map3;
+
+    { Yet more map initialization.
+    }
+
+        var
+          i: types; {induction var}
+
+
+        begin {[s=2] Format two assignments per line}
+          map[wr, files] := wrbin;             map[rd, files] := rdbin;
+          map[geqlit, ints] := geqlitint;      map[geqlit, reals] := geqlitreal;
+          map[geqlit, chars] := geqlitint;     map[geqlit, ptrs] := geqlitptr;
+          map[geqlit, scalars] := geqlitint;   map[geqlit, bools] := geqlitint;
+          map[pushaddr, none] := pshaddr;      map[pushproc, none] := pshproc;
+          map[pushaddr, strings] := pshaddr;   map[pushaddr, ints] := pshaddr;
+          map[pushaddr, arrays] := pshaddr;    map[pushaddr, ptrs] := pshaddr;
+          map[pushaddr, fields] := pshaddr;    map[pushaddr, chars] := pshaddr;
+          map[pushaddr, reals] := pshaddr;     map[pushaddr, scalars] := pshaddr;
+          map[pushaddr, bools] := pshaddr;     map[pushaddr, sets] := pshaddr;
+          map[pushaddr, files] := pshaddr;     map[pushaddr, opaques] := pshaddr;
+          map[pushaddr, words] := pshaddr;     map[pushaddr, bytes] := pshaddr;
+          map[pushaddr, conformantarrays] := pshaddr;
+          map[pushaddr, stringliterals] := pshaddr;
+          map[pushaddr, procs] := pshaddr;     map[pushaddr, flexarrays] := pshaddr;
+          map[pushstraddr, strings] := pshstraddr;
+          map[pushlitvalue, procs] := pshlitptr;
+          map[pushlitvalue, bools] := pshlitint;
+          map[pushlitvalue, chars] := pshlitint;
+          map[pushlitvalue, scalars] := pshlitint;
+          map[pushlitvalue, ptrs] := pshlitptr;
+          map[pushlitvalue, fptrs] := pshlitfptr;
+          map[pushlitvalue, ints] := pshlitint;
+          map[pushlitvalue, bytes] := pshlitint;
+          map[pushlitvalue, reals] := pshlitreal;
+          map[defforindexop, ints] := defforindex;
+          map[defforlitindexop, ints] := defforlitindex;
+          map[defunsforindexop, ints] := defunsforindex;
+          map[defunsforlitindexop, ints] := defunsforlitindex;
+          map[forupchkop, ints] := forupchk;   map[fordnchkop, ints] := fordnchk;
+          map[forerrchkop, ints] := forerrchk; map[pushfinal, ints] := pshint;
+          map[pushvalue, stringliterals] := pshstruct;
+          map[pushvalue, procs] := pshptr;     map[pushvalue, opaques] := pshptr;
+          map[pushvalue, ints] := pshint;      map[pushvalue, reals] := pshreal;
+          map[pushvalue, chars] := pshint;     map[pushvalue, ptrs] := pshptr;
+          map[pushvalue, scalars] := pshint;   map[pushvalue, arrays] := pshstruct;
+          map[pushvalue, fields] := pshstruct; map[pushvalue, sets] := pshset;
+          map[pushvalue, bools] := pshint;     map[pushvalue, strings] := pshstr;
+          map[pushvalue, fptrs] := pshptr;     map[pushvalue, bytes] := pshint;
+          map[pushvalue, words] := pshint;     map[pushvalue, doubles] := pshreal;
+
+          map[pushcvalue, stringliterals] := pshstruct;
+          map[pushcvalue, procs] := pshptr;    map[pushcvalue, opaques] := pshptr;
+          map[pushcvalue, ints] := pshint;     map[pushcvalue, reals] := pshreal;
+          map[pushcvalue, chars] := pshint;    map[pushcvalue, ptrs] := pshptr;
+          map[pushcvalue, scalars] := pshint;  map[pushcvalue, arrays] := pshstruct;
+          map[pushcvalue, fields] := pshstruct;
+          map[pushcvalue, sets] := pshset;     map[pushcvalue, bools] := pshint;
+          map[pushcvalue, strings] := pshstr;  map[pushcvalue, fptrs] := pshptr;
+          map[pushcvalue, bytes] := pshint;    map[pushcvalue, words] := pshint;
+          map[pushcvalue, doubles] := pshreal;
+
+          map[bldfmt, none] := fmt;            map[wr, ints] := wrint;
+          map[wr, reals] := wrreal;            map[wr, chars] := wrchar;
+          map[wr, arrays] := wrst;             map[wr, bools] := wrbool;
+          map[wr, strings] := wrxstr;          map[rd, ints] := rdint;
+          map[rd, reals] := rdreal;            map[rd, chars] := rdchar;
+          map[rd, arrays] := rdst;             map[rd, strings] := rdxstr;
+          map[addrop, opaques] := addr;        map[addrop, words] := addr;
+          map[addrop, bytes] := addr;          map[addrop, ptrs] := addr;
+          map[addrop, fptrs] := addr;          map[addrop, procs] := addr;
+          map[negop, scalars] := negint;       map[negop, ints] := negint;
+          map[negop, ptrs] := negint;          map[negop, reals] := negreal;
+          map[sysfn, ints] := sysfnint;        map[sysfn, chars] := sysfnint;
+          map[sysfn, bools] := sysfnint;       map[sysfn, scalars] := sysfnint;
+          map[sysfn, reals] := sysfnreal;      map[sysfn, ptrs] := sysfnint;
+          map[sysfn, strings] := sysfnstring;  map[float, ints] := flt;
+          map[float1, ints] := flt;            map[float_double, ints] := flt;
+          map[real_to_dbl, reals] := cvtrd;    map[dbl_to_real, doubles] := cvtdr;
+          map[definelazyop, files] := definelazy;
+          map[setbinfileop, files] := setbinfile;
+          map[setfileop, none] := setfile;
+          map[closerangeop, none] := closerange;
+
+          { Map entries for doubles }
+
+          map[moveop, doubles] := movreal;     map[movelit, doubles] := movlitreal;
+          map[plusop, doubles] := addreal;     map[minusop, doubles] := subreal;
+          map[mulop, doubles] := mulreal;      map[slashop, doubles] := divreal;
+          map[eqop, doubles] := eqreal;        map[neqop, doubles] := neqreal;
+          map[lssop, doubles] := lssreal;      map[gtrop, doubles] := gtrreal;
+          map[geqop, doubles] := geqreal;      map[leqop, doubles] := leqreal;
+          map[eqlit, doubles] := eqlitreal;    map[neqlit, doubles] := neqlitreal;
+          map[lsslit, doubles] := lsslitreal;  map[gtrlit, doubles] := gtrlitreal;
+          map[leqlit, doubles] := leqlitreal;  map[geqlit, doubles] := geqlitreal;
+          map[pushaddr, doubles] := pshaddr;
+          map[pushlitvalue, doubles] := pshlitreal;
+          map[wr, doubles] := wrreal;          map[rd, doubles] := rdreal;
+          map[negop, doubles] := negreal;      map[sysfn, doubles] := sysfnreal;
+
+          for i := subranges to none do map[loopholeop, i] := loopholefn;
+          for i := subranges to none do map[dummyargop, i] := dummyarg;
+          for i := subranges to none do map[dummyarg2op, i] := dummyarg2;
+        end; {[s=1] map3}
+    {>>>}
+    {<<<}
+      procedure map4;
+
+    { Initialize operators used for C
+    }
+
+        var
+          i: types; {induction var}
+
+
+        begin {[s=2] Format two assignments per line}
+          map[addeqop, ints] := addint;        map[addeqop, reals] := addreal;
+          map[addeqop, ptrs] := addptr;        map[andeqop, ints] := andint;
+          map[addeqop, scalars] := addint;     map[castfptrop, ints] := castintfptr;
+          map[castfptrop, ptrs] := castintfptr; {***hmmm...***}
+          map[castintop, ptrs] := castptrint;  map[castintop, ints] := castint;
+          map[castintop, fptrs] := castfptrint;
+          map[castintop, reals] := castrealint;
+          map[castptrop, ints] := castintptr;  map[castptrop, ptrs] := castptr;
+          map[castrealop, ints] := flt;        map[castrealop, reals] := castreal;
+          map[compop, ints] := compint;        map[daddop, none] := dataadd;
+          map[daddrop, none] := dataaddr;      map[dendop, none] := dataend;
+          map[dfaddrop, none] := datafaddr;    map[dfieldop, none] := datafield;
+          map[dfillop, none] := datafill;      map[dintop, none] := dataint;
+          map[diveqop, ints] := getquo;        map[diveqop, reals] := divreal;
+          map[diveqop, scalars] := getquo;     map[drealop, none] := datareal;
+          map[dstartop, none] := datastart;    map[dstoreop, none] := datastore;
+          map[dstructop, none] := datastruct;  map[dsubop, none] := datasub;
+          map[extop, none] := bad;             map[fptrop, ints] := dofptr;
+          map[modeqop, ints] := getrem;        map[modeqop, scalars] := getrem;
+          map[muleqop, ints] := mulint;        map[muleqop, reals] := mulreal;
+          map[muleqop, scalars] := mulint;     map[oreqop, scalars] := orint;
+          map[oreqop, ints] := orint;          map[postincop, ints] := postint;
+          map[postincop, scalars] := postint;  map[postincop, reals] := postreal;
+          map[postincop, ptrs] := postptr;     map[preincop, ptrs] := preincptr;
+          map[pushfptr, fptrs] := pshfptr;     map[pushret, ptrs] := pshretptr;
+          map[jumpvfuncop, none] := jumpvfunc; map[jumpvfuncop, ints] := jumpvfunc;
+          map[returnop, ints] := returnint;    map[returnop, reals] := returnreal;
+          map[returnop, ptrs] := returnptr;    map[returnop, fptrs] := returnfptr;
+          map[returnop, fields] := returnstruct;
+          map[returnop, stringliterals] := returnstruct;
+          map[returnop, chars] := returnint;   map[returnop, bools] := returnint;
+          map[returnop, scalars] := returnint;
+          map[returnop, strings] := returnstruct;
+          map[returnop, words] := returnint;   map[returnop, bytes] := returnint;
+          map[returnop, procs] := returnfptr;  map[returnop, doubles] := returnreal;
+          map[returnop, arrays] := returnstruct;
+          map[returnop, sets] := returnstruct; map[returnop, opaques] := returnptr;
+          map[shiftleqop, scalars] := shiftlint;
+          map[shiftleqop, ints] := shiftlint;  map[shiftreqop, ints] := shiftrint;
+          map[shiftreqop, scalars] := shiftrint;
+          map[shiftrop, scalars] := shiftrint; map[shiftrop, ints] := shiftrint;
+          map[subeqop, ints] := subint;        map[subeqop, scalars] := subint;
+          map[subeqop, reals] := subreal;      map[subeqop, ptrs] := subptr;
+          map[tempop, ints] := regtemp;        map[tempop, scalars] := regtemp;
+          map[tempop, ptrs] := ptrtemp;        map[tempop, reals] := realtemp;
+          map[tempop, fptrs] := ptrtemp;       map[xoreqop, scalars] := xorint;
+          map[xoreqop, ints] := xorint;        map[xorop, ints] := xorint;
+          map[xorop, scalars] := xorint;
+        end; {[s=1] map4}
+    {>>>}
+    {<<<}
+      procedure cmap;
+
+    { Initialize the cast map
+    }
+
+
+        begin
+          castmap[ints, ints] := castint;
+          castmap[ints, ptrs] := castptrint;
+          castmap[ints, fptrs] := castfptrint;
+          castmap[ints, reals] := castrealint;
+          castmap[ptrs, ints] := castintptr;
+          castmap[fptrs, ints] := castintfptr;
+          castmap[reals, ints] := flt;
+          castmap[reals, reals] := castreal;
+        end;
+    {>>>}
+
+  begin
+    { This code checks certain configuration parameters and reports any potential problems. }
+    { End of special configuration checks}
+    lasttravrslabel := 1;
+
+    for o := endexpr to xorop do
+      for t := subranges to none do map[o, t] := bad;
+    for t := subranges to none do
+      for t1 := subranges to none do castmap[t, t1] := bad;
+
+    map1;
+    map2;
+    map3;
+    map4;
+    cmap;
+
+    nextpseudofile := 0;
+    nextintcode := 0;
+    laststmt := 1;
+    walkdepth := 0;
+    hoistone := 0;
+    hoisttwo := 0;
+    maxnodes := 0;
+
+    for p := 1 to sharedPtr^.proctabletop do
+      if newtravrsinterface then
+        sharedPtr^.new_proctable[p div (pts + 1)]^[p mod (pts + 1)].referenced := false
+      else sharedPtr^.proctable[p].referenced := false;
+
+    sharedPtr^.anynonlocalgotos := false;
+    emitpseudo := false;
+  end;
+  {>>>}
+
 begin
   sharedPtr := getSharedPtr;
   interSharedPtr := getInterSharedPtr;
@@ -12295,7 +12109,7 @@ begin
     if sharedPtr^.switcheverplus[test] then
       rewrite (dumpFile, 'tree.tmp');
 
-  inittravrs;
+  init;
 
   while interSharedPtr^.interFile^.block[nextintcode].s <> endall do
     begin
@@ -12305,22 +12119,26 @@ begin
     if interSharedPtr^.interFile^.block[nextintcode].s <> endall then
       begin
       build;
-      if debugtree then if sharedPtr^.switcheverplus[test] then
-        dumptree;
+
+      if debugtree then
+        if sharedPtr^.switcheverplus[test] then
+          dumptree;
+
       improve;
-      if debugtree then if sharedPtr^.switcheverplus[test] then
-        dumptree;
+
+      if debugtree then
+        if sharedPtr^.switcheverplus[test] then
+          dumptree;
+
       walk;
       end;
     end;
 
-  if not travcode or sharedPtr^.switcheverplus[test] then
-    begin
-    pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].op := endpseudocode;
-    putpseudofile;
-    if nextpseudofile <> 0 then
-      put (pseudoSharedPtr^.pseudoFile);
-    end;
+  { close pseudoCode file }
+  pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].op := endpseudocode;
+  putpseudofile;
+  if nextpseudofile <> 0 then
+    put (pseudoSharedPtr^.pseudoFile);
 
   if sharedPtr^.switcheverplus[test] and sharedPtr^.switcheverplus[details] then
     begin

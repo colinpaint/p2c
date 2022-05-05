@@ -8502,13 +8502,13 @@ procedure statement (follow: tokenset {legal following symbols} );
         begin
           genop(bldnil);
           readflag := procid = readid;
-          if readflag and (token <> lpar) then 
+          if readflag and (token <> lpar) then
             warnbetween(noreadarg)
-          else if token = lpar then 
+          else if token = lpar then
             readparams
           else
             begin
-            if not inputdeclared then 
+            if not inputdeclared then
               warnnonstandard(inputnotdeclared);
             end;
         end;
@@ -8638,14 +8638,14 @@ procedure statement (follow: tokenset {legal following symbols} );
                 end
               else
                 begin
-                if not outputdeclared then 
+                if not outputdeclared then
                   warnnonstandard(outputnotdeclared);
                 onewriteparam (true);
                 end
               end
             else
               begin
-              if not outputdeclared then 
+              if not outputdeclared then
                 warnnonstandard(outputnotdeclared);
               onewriteparam(false);
               end;
@@ -8666,13 +8666,13 @@ procedure statement (follow: tokenset {legal following symbols} );
           writeflag := (procid = writeid);
           if not writeflag and (token <> lpar) then
             begin
-            if not outputdeclared then 
+            if not outputdeclared then
               warnnonstandard(outputnotdeclared);
             end;
 
-          if writeflag then 
+          if writeflag then
             verify([lpar], begexprset, nolparerr);
-          if token in begexprset then 
+          if token in begexprset then
             writeparams;
         end {writeprocedure} ;
   {>>>}
@@ -9554,10 +9554,8 @@ procedure statement (follow: tokenset {legal following symbols} );
                 begin
                 fortypeptr := ref(bigtable[vartype]);
 
-                { We don't support for loop indexes that are origined, declared
-                  USE, DEFINE or SHARED, or OWN.  OWN is allowed if the global
-                  section is not split.
-                }
+                { We don't support for loop indexes that are origined, declared USE, DEFINE or SHARED, or OWN.  
+                  OWN is allowed if the global section is not split }
                 if ((varalloc = ownalloc) and (sharedPtr^.globalsize > sharedPtr^.globalfiles)) or
                    (varalloc in [absolute, usealloc, definealloc, sharedalloc]) then
                   warn (unsupportedforvardecl);
@@ -13868,12 +13866,9 @@ procedure analys;
       standard id, and the other vars give necessary data
     }
     var
-      usearly, uslate: 0..maxusint; {force unsigned compares}
       i: integer; {intermediate check result}
 
     begin
-      usearly := sharedPtr^.early;
-      uslate := sharedPtr^.late;
       tabletop := tabletop + 1;
 
       i := sharedPtr^.standardidtable[id];

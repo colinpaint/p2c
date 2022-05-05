@@ -592,14 +592,14 @@ procedure getCh;
   procedure doeof;
 
   begin
-    if sharedPtr^.sourcelevel > 1 then
-      begin {inside include, pop to parent level}
+    if sharedPtr^.sourcelevel > 1 then { in include, pop to parent level}
+      begin 
       close (sharedPtr^.source[sharedPtr^.sourcelevel]);
       with saveInput[sharedPtr^.sourcelevel] do
         begin
-        nextch := saveCh; {restore next char to read}
+        nextch := saveCh;      {restore next char to read}
         currentbuf := saveBuf; {restore input line}
-        linePos := savePos; {restore index in line}
+        linePos := savePos;    {restore index in line}
         curFileIndex := saveFileIndex;
         endOfLine := saveendOfLine;
         sharedPtr^.filename_length := savefilename_length;
@@ -608,27 +608,17 @@ procedure getCh;
       tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastline - baseLine[sharedPtr^.sourcelevel];
       if endOfLine then
         sharedPtr^.lastline := sharedPtr^.lastline + 1;
-      sharedPtr^.sourcelevel := sharedPtr^.sourcelevel - 1; {pops the source stack}
+
+      { pop the source stack }
+      sharedPtr^.sourcelevel := sharedPtr^.sourcelevel - 1; 
       end
 
-    else
-      begin {end of main source file, so quit}
-      sharedPtr^.curfile := sharedPtr^.curfile + 1;
-      openNext;
-      if sharedPtr^.morefiles then
-        begin
-        logInputFilename;
-        linePos := inputbufsize;
-        getnextch;
-        end
-      else
-        begin
-        endOfInput := true;
-        nextch := ' ';
-        skippingblanks := false;
-        end;
-      end
-
+    else { end of main source file, quit }
+      begin 
+      endOfInput := true;
+      nextch := ' ';
+      skippingblanks := false;
+      end;
   end;
   {>>>}
   {<<<}
@@ -1285,7 +1275,7 @@ var
       if filenamebuilt then
         begin
         sharedPtr^.sourcelevel := sharedPtr^.sourcelevel + 1;
-        openSource;
+        openInclude;
         with saveInput[sharedPtr^.sourcelevel] do
           begin
           saveCh := nextch;
@@ -3304,9 +3294,7 @@ begin
   init;
 
   sharedPtr^.sourcelevel := 1;
-  sharedPtr^.curfile := 1;
-  openNext;
-
+  openSource;
   logInputFilename;
 
   nextch := ' ';

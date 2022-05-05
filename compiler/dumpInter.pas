@@ -785,6 +785,7 @@ var
 begin
   new (interSharedPtr);
 
+  writeln ('------- dumpInter - output.inter -------');
   reset (interSharedPtr^.interFile, 'output.inter');
 
   nextintcode := 0;
@@ -793,5 +794,7 @@ begin
     statement;
 
   close (interSharedPtr^.interFile);
+
+  writeln ('------- end of dumpInter -------');
   close (output);
 end;

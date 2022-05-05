@@ -406,6 +406,7 @@ var
 begin
   new (pseudoSharedPtr);
 
+  writeln ('---- dumpPseudo - output.pseudo ----');
   reset (pseudoSharedPtr^.pseudoFile, 'output.pseudo');
   nextpseudofile := 0;
 
@@ -421,7 +422,7 @@ begin
     getPseudoBuff;
     end;
 
-  writeln ('*** end of pseudocode *** Highest key: ', highestkey: 1);
+  writeln ('---- end of dumpPseudo highestKey: ', highestkey: 1, ' ----');
 
   close (output);
   close (pseudoSharedPtr^.pseudoFile);

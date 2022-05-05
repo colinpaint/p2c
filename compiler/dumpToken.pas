@@ -267,6 +267,7 @@ begin
   tokenCount := 0;
   tokenSharedPtr^.nexttoken.line := 1;
 
+  writeln ('------- dumpToken - output.token -------');
   reset (tokenSharedPtr^.tokenFile, 'output.token');
   getNextToken;
 
@@ -364,6 +365,6 @@ begin
     writeln (baseline:5, line:5, ' ', left:4, ' ', right:4, filePos:5, fileIndex:5, ord(token):3, ' EOF');
   close (tokenSharedPtr^.tokenFile);
 
-  writeln (tokenCount: 1, ' tokens');
+  writeln ('------- end of dumpToken count:', tokenCount: 1, '-------');
   close (output);
 end.

@@ -273,7 +273,7 @@ var
 begin
   if which = nil then
     begin
-    which := sharedPtr^.SourceListHead;
+    which := sharedPtr^.sourceListHead;
     while which^.next <> nil do
       which := which^.next;
     stripdevice := true;
@@ -348,116 +348,22 @@ begin
 end;
 {>>>}
 {<<<}
-procedure openNext;
-{ Open the next source file at the current level. If this is not the first input file, the old one is closed }
-
-var
-  sharedPtr: sharedPtrType;
-  i: integer;
-  list: FilenameListPtr;
+procedure openSource;
+{ open commandLine source file }
 
 begin
-  sharedPtr := getSharedPtr;
-
-  i := 1;
-  list := sharedPtr^.SourceListHead;
-  while (i < sharedPtr^.curfile) and (list <> nil) do
-    begin
-    i := i + 1;
-    list := list^.next;
-    end;
-
-  sharedPtr^.morefiles := (list <> nil);
-  if sharedPtr^.morefiles then
-    begin
-    if sharedPtr^.curfile > 1 then
-      close (sharedPtr^.source[sharedPtr^.sourcelevel]);
-
-    getFileName (list, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
-
-    Writeln ('openNext level:', sharedPtr^.sourcelevel:1, ' filename:', sharedPtr^.filename);
-    reset (sharedPtr^.source[sharedPtr^.sourcelevel], sharedPtr^.filename);
-    end;
+  getFileName (sharedPtr^.sourceListHead, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
+  Writeln ('openSource level:', sharedPtr^.sourcelevel:1, ' filename:', sharedPtr^.filename);
+  reset (sharedPtr^.source[sharedPtr^.sourcelevel], sharedPtr^.filename);
 end;
 {>>>}
 {<<<}
-procedure openSource;
-{ Open an included source file at current nesting level. The file
-  is expected to be in the global variable "filename". The current
-  directory is searched first, followed by any stored include list.
-  If the file is not present in any of these, a fatal error occurs. }
-
-var
-  sharedPtr: sharedPtrType;
-  prefix: FilenameBuf; {temp to create full path name}
-  prefixlen: FilenameIndex; {length of prefix}
-
-  {<<<}
-  function length (var s: FilenameBuf): integer;
-  { Return the length of string s, i.e. the last index in s that contains
-    a non-space character.  If there is no string at all in s, length returns 0; }
-
-  var
-    count: integer; {induction on file name characters}
-
-  begin
-    count := 0;
-    repeat
-      count := count + 1;
-    until (s[count] = ' ') or (count = filenamelen);
-    length := min(count, filenamelen);
-  end;
-  {>>>}
-  {<<<}
-  function fileExists (addprefix: boolean): boolean;
-  { Check if a target directory contains the file. This routine
-    assumes that "prefix" contains a directory string, and creates
-    a full pathname in prefix if addprefix is true.
-    The function returns "true" if the file exists in the directory }
-
-  const
-    DefLen = 4;
-    DefExt = '.pas';
-
-  var
-    status: integer; {value returned by reset}
-    i, j: FilenameIndex; {induction in strings}
-
-  begin
-    if addprefix then
-      i := prefixlen
-    else
-      i := 0; {just start at the beginning}
-
-    for j := 1 to DefLen do
-      begin
-      if i < filenamelen then
-        begin
-        i := i + 1;
-        prefix[i] := DefExt[j];
-        end;
-      end;
-
-    for j := i + 1 to filenamelen do
-      prefix[j] := ' ';
-
-    Writeln ('openSource - level:', sharedPtr^.sourcelevel:1, ' filename:', sharedPtr^.filename);
-    reset (sharedPtr^.source[sharedPtr^.sourceLevel], sharedPtr^.filename);
-
-    {
-    FileExists := (status >= 0);
-    }
-    FileExists := true;
-  end;
-  {>>>}
+procedure openInclude;
+{ open an included source file at current nesting level, file in global variable "filename" }
 
 begin
-  sharedPtr := getSharedPtr;
-  if not fileExists (false) then
-    begin
-    writeln ('cannot include ', sharedPtr^.filename: length(sharedPtr^.filename));
-    exitst (exitstatus);
-    end;
+  Writeln ('openInclude - level:', sharedPtr^.sourcelevel:1, ' filename:', sharedPtr^.filename);
+  reset (sharedPtr^.source[sharedPtr^.sourceLevel], sharedPtr^.filename);
 end;
 {>>>}
 
@@ -474,7 +380,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure skipblanks;
+procedure skipBlanks;
 
 begin
   while (next < sharedPtr^.cmdlength) and (sharedPtr^.cmdline[next] = ' ') do
@@ -482,7 +388,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure printversion;
+procedure printVersion;
 { Print a version message }
 
 begin
@@ -547,7 +453,7 @@ procedure parseCommandLine;
     sharedPtr^.cmdlength := min (cmdlinelength, sharedPtr^.cmdlength + 1);
     for i := sharedPtr^.cmdlength to cmdlinelength do
       sharedPtr^.cmdline[i] := ' ';
-    end;
+  end;
   {>>>}
   {<<<}
   procedure initquals;
@@ -601,22 +507,6 @@ procedure parseCommandLine;
   end;
   {>>>}
   {<<<}
-  procedure settoday;
-  { Set todays date, in a fashion suitable for license checking. }
-
-  var
-    month, day, year, dummy: integer;
-
-  begin
-    TimeStamp (day, month, year, dummy, dummy, dummy);
-
-    if year <= 1980 then
-      year := 1981;
-
-    sharedPtr^.today := (year - 1981) * 512 + month * 32 + day;
-  end;
-  {>>>}
-  {<<<}
   procedure addtofilelist (var list: filenamelistptr; start, finish: cmdindex; isinclude: boolean);
   { Append a filename (from the command line) to the given list }
 
@@ -665,7 +555,8 @@ procedure parseCommandLine;
                           var next: cmdindex; {index in command line}
                           isinclude: boolean {if this file in includes});
   { Parse a filename, and add it to the list specified by "list".
-    This routine makes sure that there is only one file specified per field. }
+    This routine makes sure that there is only one file specified per field
+  }
 
   var
     startindex: cmdindex; {start of this field}
@@ -736,7 +627,6 @@ procedure parseCommandLine;
 
       addtofilelist (list, filestart, filefinish, isinclude);
       end;
-
   end;
   {>>>}
   {<<<}
@@ -813,25 +703,25 @@ procedure parseCommandLine;
       tempres := 0;
 
       negate := sharedPtr^.cmdline[next] = '-';
-      if negate then 
+      if negate then
         next := next + 1;
 
       while sharedPtr^.cmdline[next] in ['0'..'9'] do
         begin
         if accumulating then
-          if tempres <= maxint div 10 then 
+          if tempres <= maxint div 10 then
             tempres := tempres * 10
-          else 
+          else
             accumulating := false;
         if accumulating then
           if tempres <= maxint - (ord(sharedPtr^.cmdline[next]) - ord('0')) then
             tempres := tempres + (ord(sharedPtr^.cmdline[next]) - ord('0'))
-          else 
+          else
             accumulating := false;
         next := next + 1;
         end;
 
-      if negate then 
+      if negate then
         tempres := - tempres;
 
       if accumulating and (tempres <= hi_lim) and (tempres >= low_lim) then
@@ -884,7 +774,7 @@ procedure parseCommandLine;
           start := next;
           filefound := false;
           pickalist (q, true);
-          skipblanks;
+          skipBlanks;
           if not (q in [environq, includelistq]) and (sharedPtr^.cmdline[next] <> ')') then
             commandLineError (missingparen, start - 1, next);
         until (next >= sharedPtr^.cmdlength) or (sharedPtr^.cmdline[next] = ')');
@@ -953,9 +843,9 @@ procedure parseCommandLine;
           getnumqual (s, 0, 15);
           sharedPtr^.datasection := s;
           end;
-        tblockq: 
+        tblockq:
           getnumqual (sharedPtr^.tblocknum, 0, maxint);
-        genmaskq: 
+        genmaskq:
           getnumqual (sharedPtr^.genoptmask, -65535, 65535);
         end;
       end;
@@ -1040,7 +930,7 @@ procedure parseCommandLine;
   end;
   {>>>}
   {<<<}
-  procedure checkconsistency;
+  procedure checkConsistency;
   { Check the command line and qualifiers for consistency. }
 
   var
@@ -1049,8 +939,10 @@ procedure parseCommandLine;
   begin
     if not ((outspeced and manyfound) or firstfound) then
       commandLineError (noinput, 2, 1);
+
     if not outspeced and emptyfileflag then
       commandLineError (nofile, emptystart, emptyend);
+
     if outspeced then
       if firstfound and ((sharedPtr^.objname <> nil) and (sharedPtr^.macname <> nil) or
          (sharedPtr^.objname <> nil) and not (macroq in qualsset) or
@@ -1096,55 +988,10 @@ procedure parseCommandLine;
 
     if twoof([standardq, caseq]) then
       commandLineError (contradiction, 2, 1);
-
-    {kludge pas2/lis=brol => access violation}
-    if sharedPtr^.sourcelisthead = nil then
-      commandLineError (noinput, 2, 1);
-
-  end {checkconsistency} ;
-  {>>>}
-  {<<<}
-  procedure installfilenames;
-  { Put the various file names where they belong.
-    In other words, if the "x,y=z..." command line format was used,
-    move x and y to the obj, mac, and list entries.
-    We allow one switch type filename for either obj or mac along with the "x" specification above,
-    if both object and macro are requested.
-    In such a case, the "x" filespec is used for the output that was not given by the switch.
-    For example, if the command line is "pas x,y=z/mac/obj=q",
-    the object file will be named "q", and the macro file will be named "x" }
-
-  var
-    p: filenamelistptr;
-
-  begin
-    p := sharedPtr^.sourcelisthead;
-
-    if outspeced and firstfound then
-      begin
-      if (objectq in qualsset) and (sharedPtr^.objname = nil) then
-        sharedPtr^.objname := p;
-
-      if (macroq in qualsset) and (sharedPtr^.macname = nil) then
-        sharedPtr^.macname := p;
-
-      sharedPtr^.sourcelisthead := sharedPtr^.sourcelisthead^.next;
-      p^.next := nil;
-      end;
-
-    p := sharedPtr^.sourcelisthead;
-    if outspeced and secondfound then
-      begin
-      if ((qualsset * [listq, errorsq]) <> []) and (sharedPtr^.listname = nil) then
-        sharedPtr^.listname := p;
-      sharedPtr^.sourcelisthead := sharedPtr^.sourcelisthead^.next;
-      p^.next := nil;
-      end;
-
   end;
   {>>>}
   {<<<}
-  procedure passtocompiler;
+  procedure passqQalsToCompiler;
   { Pass the command options from qualsset to the compiler }
 
   var
@@ -1282,14 +1129,7 @@ begin
   sharedPtr^.returnlinksize := defreturnlinksize;
   sharedPtr^.extreturnlinksize := defextreturnlinksize;
 
-  settoday;
   initquals;
-
-  sharedPtr^.fakelist := false;
-  sharedPtr^.sourcelisthead := nil;
-  sharedPtr^.objname := nil;
-  sharedPtr^.macname := nil;
-  sharedPtr^.listname := nil;
 
   next := 1;
   fieldsfound := 0;
@@ -1308,30 +1148,23 @@ begin
 
   getcommandline;
   repeat
-    skipblanks;
+    skipBlanks;
     case sharedPtr^.cmdline[next] of
-      '=', ',':
-        endfield (next);
-      '+':
-        if hostopsys = vms then
-          endfield (next)
-        else
-          takefilename (false, sharedPtr^.sourcelisthead, next, false);
       '/':
         takequal (next);
       ' ': ;
       otherwise
-        takefilename (false, sharedPtr^.sourcelisthead, next, false);
+        takefilename (false, sharedPtr^.sourceListHead, next, false);
       end;
     until next >= sharedPtr^.cmdlength;
 
   endfield (next);
+
   if not outspeced then
     fieldsfound := fieldsfound + 2; {fake fields}
 
-  checkconsistency;
-  installfilenames;
-  printversion;
+  checkConsistency;
+  printVersion;
 
   if not (framepointerq in qualsset) then
     begin
@@ -1339,7 +1172,7 @@ begin
     sharedPtr^.extreturnlinksize := sharedPtr^.ptrsize;
     end;
 
-  passtocompiler;
+  passqQalsToCompiler;
 
   if sharedPtr^.switcheverplus[doublereals] then
     sharedPtr^.targetrealsize := doublesize;

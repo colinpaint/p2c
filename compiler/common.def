@@ -977,7 +977,6 @@ type
     current_stmt: integer;  { used by error }
 
     { timing }
-    early, late, today: integer;               { date rollover check }
     startday, startmonth, startyear: integer;  { starting date }
     starthour, startmin, startsec: integer;    { starting time of day }
     istarthour, istartmin, istartsec: integer; { for monitoring execution time }
@@ -999,7 +998,7 @@ type
     { source file }
     sourcelevel: 0..sourcedepth; {current source include level}
     source: array [1..sourcedepth] of text; {files for including source}
-    SourceListHead: FilenameListPtr; {list of input filenames}
+    sourceListHead: FilenameListPtr; {list of input filenames}
     filerememberlist: filerememberptr; {input file name list head}
 
     filename_length: FilenameIndex; {length of name in filename buffer}
@@ -1019,6 +1018,12 @@ type
     listtable: array [listindex] of listrecord; {OLD listing control entries list}
     lastlist: integer; {last entry in listtable}
     lastline: natural; {last line in program}
+
+    { vartable }
+    vartable: array [1..maxvarptrs] of vartableblockptr;
+    lastvartableptr: 0..maxvarptrs;
+    lastvartableentry: var_index;
+    vartabodboffset: addressrange; {the last used offset in the vartable (VMS)}
 
     { stringtable }
     stringblkptrtbl: array [1..maxstringblks] of diskblock_ref;
@@ -1040,6 +1045,7 @@ type
     { references to standard identifiers when needed }
     standardidtable: array [standardids] of hashindex;
 
+    { target }
     targetintsize: integer;  { size of an integer variable on the target }
     targetrealsize: integer; { size of a real variable on the target }
     targetmaxint: integer;   { value of maxint on the target }
@@ -1060,51 +1066,37 @@ type
     extreturnlinksize: addressrange;    { Length of return linkage for externals }
     farextreturnlinksize: addressrange; { Length of return linkage for far externals }
 
-    { Table of procedure data -- built up by analys and used by coder }
+    { procTable, built up by analysis used by code }
     proctable: array [0..old_proctablesize] of proctableentry;
     new_proctable: array [0..procblocksmax] of ^proctable_block;
     proctabletop: proctableindex;
     blockref: proctableindex;
     mainref: proctableindex; {for main entry in C}
-    import_table_ref: proctableindex;
 
-    { Table of regions of variables modified by procedures }
+    { csRegionTable, regions of variables modified by procedures }
     cseregiontable: array [cseregionindex] of cseregionentry;
-
-    vartable: array [1..maxvarptrs] of vartableblockptr;
-    lastvartableptr: 0..maxvarptrs;
-    lastvartableentry: var_index;
-    vartabodboffset: addressrange; {the last used offset in the vartable (VMS)}
 
     tblocknum: integer;                  { block number to trigger special diagnostics}
     genset: packed set of gentypes;      { set of optimizations to carry out in this block}
     overrideset: packed set of gentypes; { optimizations based on genoptmask}
     genoptmask: integer;                 { codegen optimization mask}
 
-    codesect_string: stringtableindex; {pointer to codesect name}
-    codesect_strlength: 0..linelen; {length of codesect name}
-
-    module_string: stringtableindex; {pointer to module name}
-    module_strlength: 0..linelen; {length of module name}
-
-    ownsect_string: stringtableindex; {pointer to ownsect name}
-    ownsect_strlength: 0..linelen; {length of ownsect name}
-
-    ident_string: stringtableindex; {pointer to ident name}
-    ident_strlength: 0..linelen; {length of ident name}
+    codesect_string: stringtableindex;  { pointer to codesect name }
+    codesect_strlength: 0..linelen;     { length of codesect name }
+    module_string: stringtableindex;    { pointer to module name }
+    module_strlength: 0..linelen;       { length of module name }
+    ownsect_string: stringtableindex;   { pointer to ownsect name }
+    ownsect_strlength: 0..linelen;      { length of ownsect name }
+    ident_string: stringtableindex;     { pointer to ident name }
+    ident_strlength: 0..linelen;        { length of ident name }
 
     data_sect: array [section_kind] of data_control; {data section control}
-
-    { Special VERSAdos code parameters }
     codesection: 0..15; {section under which to generate code}
     datasection: 0..15; {read/write data section}
     shortsection: boolean; {section is short}
     objversion, objrevision: 0..255; {version and revision for object code}
     identstring: stringindex; {pointer to ident text}
     identstrlength: 0..linelen; {length of ident text}
-
-    psect_desc_head: psect_desc_ptr; {likewise, for putcode}
-    scdlink: var_index; {static constructor/destructor vartable index}
     end;
   {>>>}
   sharedPtrType = ^sharedType;
