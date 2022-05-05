@@ -1,8 +1,6 @@
 { code.def - external procedure defs }
 
+procedure initCode; external; { init code generator }
 procedure codeone; external;
 procedure genone; external;
-
-procedure initCode; external; { init code generator }
 procedure exitCode; external; { clean up after code generation }
-procedure code; external; { drive genblk, emit .obj/.mac, peephole cleanup }

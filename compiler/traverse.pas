@@ -766,26 +766,23 @@ procedure genpseudo (o: pseudoop; l: addressrange; n: keyindex;
   {>>>}
 
 begin
-  if travcode then
+  pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
+  with pseudoSharedPtr^.pseudobuff do
     begin
-    pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
-    with pseudoSharedPtr^.pseudobuff do
-      begin
-      len := l;
-      op := o;
-      key := n;
-      refcount := r;
-      copycount := c;
-      oprnds[1] := i;
-      oprnds[2] := j;
-      oprnds[3] := k;
-      if emitpseudo then
-        codeone;
-      emitpseudo := true;
-      end;
+    len := l;
+    op := o;
+    key := n;
+    refcount := r;
+    copycount := c;
+    oprnds[1] := i;
+    oprnds[2] := j;
+    oprnds[3] := k;
+    if emitpseudo then
+      codeone;
+    emitpseudo := true;
     end;
 
-  if not travcode or dumpPseudo then
+  if dumpPseudo then
     begin
     if sharedPtr^.putlow = maxint then
       begin
@@ -4190,13 +4187,10 @@ procedure walk;
       genpseudo (stmtbrk, 0, 0, 0, 0, 0, 0, ord(controlstmt) + 8);
     genpseudo (blockexit, 0, 0, 0, 0, symbolrecord, 0, 0);
 
-    if travcode then
-      begin
-      pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
-      if emitpseudo then
-        codeone; { this allows skipping codeone while debugging }
-      emitpseudo := false;
-      end;
+    pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
+    if emitpseudo then
+      codeone; { this allows skipping codeone while debugging }
+    emitpseudo := false;
 
     clearkeys;
     contextsp := 1;
@@ -11983,11 +11977,11 @@ procedure traverse;
     lasttravrslabel := 1;
 
     for o := endexpr to xorop do
-      for t := subranges to none do 
+      for t := subranges to none do
         map[o, t] := bad;
 
     for t := subranges to none do
-      for t1 := subranges to none do 
+      for t1 := subranges to none do
         castmap[t, t1] := bad;
 
     map1;
@@ -12007,7 +12001,7 @@ procedure traverse;
     for p := 1 to sharedPtr^.proctabletop do
       if newtravrsinterface then
         sharedPtr^.new_proctable[p div (pts + 1)]^[p mod (pts + 1)].referenced := false
-      else 
+      else
         sharedPtr^.proctable[p].referenced := false;
 
     sharedPtr^.anynonlocalgotos := false;

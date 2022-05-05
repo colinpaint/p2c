@@ -1146,125 +1146,6 @@ end;
 {>>>}
 
 {<<<}
-procedure getpseudobuff;
-{ Get and unpack the next element in the pseudofile, leaving the result in "pseudobuff" }
-
-  {<<<}
-  procedure gettempfile;
-  { Do the equivalent of a get on the pseudofile, treating the file as a file of bytes.
-    The pseudo-file is actually pseudoFile, and the next byte is accessed as pseudoFile^[nextpseudofile] }
-
-  begin
-    if not travcode then
-      begin
-      if nextpseudofile = diskbufsize then
-        begin
-        nextpseudofile := 0;
-        get (pseudoSharedPtr^.pseudoFile);
-        end
-      else nextpseudofile := nextpseudofile + 1;
-      end;
-  end;
-  {>>>}
-  {<<<}
-  function getint: integer;
-  {<<<}
-  { Get an integer value from the file.  This is made into a function to
-    allow returning the value into subranges of integer.  Integers are encoded
-    in a single byte unless they won't fit.
-  }
-  {>>>}
-
-  var
-    j: 1..32; {induction var}
-
-    fudge:
-      record
-        case boolean of
-          true: (int: integer);
-          false: (byte: packed array [1..32] of hostfilebyte);
-      end;
-
-  begin
-    if not travcode then
-      begin
-      fudge.int := pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].byte;
-      gettempfile;
-      if fudge.int = hostfilelim then
-        for j := 1 to hostintsize * hostfileunits do
-          begin
-          fudge.byte[j] := pseudoSharedPtr^.pseudoFile^.block;
-          gettempfile;
-          end;
-      getint := fudge.int;
-      end;
-  end;
-  {>>>}
-
-begin
-  if not travcode then
-    begin
-    if sharedPtr^.getlow = maxint then
-      begin
-      sharedPtr^.getlow := 0;
-      sharedPtr^.gethi := sharedPtr^.gethi + 1;
-      end
-    else
-      sharedPtr^.getlow := sharedPtr^.getlow + 1;
-
-    pseudoSharedPtr^.pseudobuff.op := pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].op;
-    gettempfile;
-
-    with pseudoSharedPtr^.pseudobuff do
-      begin
-      len := 0;
-      key := 0;
-      refcount := 0;
-      copycount := 0;
-      { No key data}
-      if not (op in nokeydata) then
-        begin
-        len := getint;
-        key := getint;
-        refcount := getint;
-        copycount := getint;
-        end;
-
-      oprnds[1] := getint;
-      oprnds[2] := 0;
-      oprnds[3] := 0;
-      { only one operand }
-      if not (op in oneoperand) then
-        begin
-        oprnds[2] := getint;
-        oprnds[3] := getint;
-        end;
-      end;
-    end;
-end;
-{>>>}
-{<<<}
-procedure unpackpseudofile;
-{ Get the next pseudo-instruction in "pseudobuf" and distribute some
-  of the fields into other global variables.
-}
-begin
-  if not travcode then
-    begin
-    pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
-    if pseudoSharedPtr^.pseudoinst.op <> endpseudocode then
-      getpseudobuff;
-
-    key := pseudoSharedPtr^.pseudoinst.key;
-    len := pseudoSharedPtr^.pseudoinst.len;
-    left := pseudoSharedPtr^.pseudoinst.oprnds[1];
-    right := pseudoSharedPtr^.pseudoinst.oprnds[2];
-    target := pseudoSharedPtr^.pseudoinst.oprnds[3];
-    end;
-end;
-{>>>}
-
-{<<<}
 procedure getreal (var rval: realarray);
 { Get a real number from the pseudo instruction.  We are making the assumption
   here (as elsewhere) that integers are at least 32 bits long so we can
@@ -3299,10 +3180,7 @@ begin
   nextobjblk := 0;
   tempfilesize := 0; { number of bytes written to temp file }
 
-  if scanalys then
-    count := sharedPtr^.stringfilecount + ord(odd(sharedPtr^.stringfilecount))
-  else
-    count := sharedPtr^.stringfilecount;
+  count := sharedPtr^.stringfilecount + ord(odd(sharedPtr^.stringfilecount))
 
   sharedPtr^.curstringblock := 1;
   sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
@@ -23750,7 +23628,6 @@ begin
   sharedPtr^.nextstringfile := 0;
 
   nextpseudofile := 0;
-  getpseudobuff;
 
   level := 0;
   fileoffset := 0;
@@ -23866,16 +23743,13 @@ procedure codeone;
 { Routine called by directly by travrs to generate code for one pseudoop for big compiler version. }
 
 begin
-  if travcode then
-    begin
-    key := pseudoSharedPtr^.pseudoinst.key;
-    len := pseudoSharedPtr^.pseudoinst.len;
-    left := pseudoSharedPtr^.pseudoinst.oprnds[1];
-    right := pseudoSharedPtr^.pseudoinst.oprnds[2];
-    target := pseudoSharedPtr^.pseudoinst.oprnds[3];
+  key := pseudoSharedPtr^.pseudoinst.key;
+  len := pseudoSharedPtr^.pseudoinst.len;
+  left := pseudoSharedPtr^.pseudoinst.oprnds[1];
+  right := pseudoSharedPtr^.pseudoinst.oprnds[2];
+  target := pseudoSharedPtr^.pseudoinst.oprnds[3];
 
-    codeselect;
-    end;
+  codeselect;
 end;
 {>>>}
 {<<<}
@@ -23924,39 +23798,5 @@ begin
     close (objfile);
 
   close (relFile);
-end;
-{>>>}
-
-{<<<}
-procedure code;
-{ Driver routine for code generator.
-  Most of the code generation is actually done in the overlay "genblk".
-  This routine is also responsible for initialization and termination actions
- }
-var
-  i: integer;
-
-begin
-  if not travcode then
-    begin
-    initCode;
-    while pseudoSharedPtr^.pseudobuff.op <> endpseudocode do
-      begin
-      repeat
-        unpackpseudofile;
-        codeselect;
-      until (pseudoSharedPtr^.pseudoinst.op = blockcode) or (pseudoSharedPtr^.pseudobuff.op = endpseudocode);
-
-      if pseudoSharedPtr^.pseudoinst.op = blockcode then
-        begin
-        genblk;
-        unpackpseudofile;
-        tempkey := loopcount - 1;
-        blockexitx;
-        end;
-      end;
-
-    exitCode;
-    end;
 end;
 {>>>}

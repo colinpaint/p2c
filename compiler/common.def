@@ -18,9 +18,6 @@ const
   targetopsys = vdos;
   targetmachine = mc68000;
 
-  scanalys = true; { scan/analys together }
-  travcode = true; { travrs/code together }
-
 {<<<}
 const
   register_return = false;
@@ -365,110 +362,110 @@ type
   hostfilebyte = 0..hostfilelim; {addressing unit of host file}
 
   {<<<}
-  switch = (noswitch,      {start of the switches}
-            awaremode,     {specify floating coprocessor mode}
-            bstep,         {handles 80186 bstep problems}
-            bytealloc,     {put ints into bytes if they fit}
-            caseswitch,    {makes Pascal compiler case sensitive}
-            classsw,       {Pascal-F class}
-            code_switch,   {???}
-            codeconst,     {put constants in code segment}
-            commonvars,    {emit define vars as common}
-            cplusplus,     {(C) compile C++}
-            checkout,      {(C) generate error checks}
-            compatibility, {(C) degrade error checking}
-            cpu68000,      {Specify the CPU}
+  switch = (noswitch,      { start of the switches}
+            awaremode,     { specify floating coprocessor mode}
+            bstep,         { handles 80186 bstep problems}
+            bytealloc,     { put ints into bytes if they fit}
+            caseswitch,    { makes Pascal compiler case sensitive}
+            classsw,       { Pascal-F class}
+            code_switch,   { ???}
+            codeconst,     { put constants in code segment}
+            commonvars,    { emit define vars as common}
+            cplusplus,     { (C) compile C++}
+            checkout,      { (C) generate error checks}
+            compatibility, { (C) degrade error checking}
+            cpu68000,      { Specify the CPU}
             cpu68020,
             cpu8086,
             cpu80286,
-            datesw,        {Pascal-F date}
-            debugging,     {generate high-level debugging interface code}
-            defineswitch,  {generate an environment module}
-            details,       {print internal details in test mode}
-            doublereals,   {(Pascal) use long reals}
-            editlist,      {(MS-DOS) special error format for BRIEF}
-            eis,           {(PDP-11) EIS floating point}
-            enumints,      {(C) allocate all enum vars ints}
-            environswitch, {read an environment module}
-            versionswitch, {display compiler version information}
-            expandfloat,   {(C) all floating point done in double}
-            extensions,    {(C) enable any special extensions}
-            fis,           {(PDP-11) FIS floating point}
-            floatsafe,     {lord only knows but I doubt he cares}
-            fpc68881,      {(68K) code for 68881}
-            fpp,           {(PDP-11, MS-DOS) FPP floating point}
-            framepointer,  {use dedicated frame pointer}
-            genmask,       {specify code optimization options}
-            groupown,      {(iAPX-86) allocate own section in DGROUP}
-            ident_switch,  {???}
-            indexcheck,    {(Pascal) generate index range checks}
-            largecode,     {(iAPX-86) far procedure calls}
-            largemodel,    {(iAPX-86) far pointers}
-            level0,        {(Pascal) disable conformant arrays}
-            listcount,     {turn listing on}
-            listerrors,    {list only lines with errors}
-            listexpansion, {list expanded macro lines}
-            listincludes,  {list include text}
-            librequest,    {include library request in output}
-            longlib,       {(68K) long library calls}
-            mainbody,      {(Pascal) this module contains a main program}
-            mathcheck,     {generate overflow checking}
-            mergelisting,  {merge assembly and source listing}
-            modstrings,    {(C) makes strings modifiable}
-            module_switch, {???}
-            multidef,      {(Pascal) allow multiple use/define for one var}
-            nearfarproc,   {determines near/far attribute of external procs}
-            nilcheck,      {generate pointer check code}
-            oldpacking,    {use old packing algorithm for compatibility}
-            oldreswords,   {(Pascal) don't define USE/DEFINE/SHARED}
-            outputebcdic,  {generate the assembly code in EBCDIC}
-            outputmacro,   {generate assembly code}
-            outputobj,     {generate object code}
-            outputprep,    {generate the preprocessor output}
-            outputprepstd, {generate the preprocessor output to standard out}
-            own,           {place following globals in an own section}
-            pascal1,       {generate Pascal-1 compatible code}
-            pascalf,       {accept Pascal-F syntax}
-            pdp11data,     {(VAX) allocate PDP-11 compatible data}
-            pic,           {(VAX, 68K) generate position independent code}
-            profiling,     {generate a statement count profile}
-            rangecheck,    {generate subrange checking code}
-            refnosw,       {Pascal-F refno}
-            romconsts,     {(C) put constants in a section for ROM}
-            runxenix,      {(i386) running Xenix+Intel obj, not ???}
-            sectionsw,     {Specify the code section}
-            sharecode,     {(Apollo)}
-            shortintegers, {use short, 16 bit integers}
-            shortsectsw,   {specify the code as a short section}
-            signedchars,   {(C) default to signed characters}
-            sim,           {(PDP-11) generate simulated floating point}
-            stackcheck,    {generate stack overflow code}
-            standard,      {disallow extensions (C, strict standard)}
+            datesw,        { Pascal-F date}
+            debugging,     { generate high-level debugging interface code}
+            defineswitch,  { generate an environment module}
+            details,       { print internal details in test mode}
+            doublereals,   { (Pascal) use long reals}
+            editlist,      { (MS-DOS) special error format for BRIEF}
+            eis,           { (PDP-11) EIS floating point}
+            enumints,      { (C) allocate all enum vars ints}
+            environswitch, { read an environment module}
+            versionswitch, { display compiler version information}
+            expandfloat,   { (C) all floating point done in double}
+            extensions,    { (C) enable any special extensions}
+            fis,           { (PDP-11) FIS floating point}
+            floatsafe,     { lord only knows but I doubt he cares}
+            fpc68881,      { (68K) code for 68881}
+            fpp,           { (PDP-11, MS-DOS) FPP floating point}
+            framepointer,  { use dedicated frame pointer}
+            genmask,       { specify code optimization options}
+            groupown,      { (iAPX-86) allocate own section in DGROUP}
+            ident_switch,  { ???}
+            indexcheck,    { (Pascal) generate index range checks}
+            largecode,     { (iAPX-86) far procedure calls}
+            largemodel,    { (iAPX-86) far pointers}
+            level0,        { (Pascal) disable conformant arrays}
+            listcount,     { turn listing on}
+            listerrors,    { list only lines with errors}
+            listexpansion, { list expanded macro lines}
+            listincludes,  { list include text}
+            librequest,    { include library request in output}
+            longlib,       { (68K) long library calls}
+            mainbody,      { (Pascal) this module contains a main program}
+            mathcheck,     { generate overflow checking}
+            mergelisting,  { merge assembly and source listing}
+            modstrings,    { (C) makes strings modifiable}
+            module_switch, { ???}
+            multidef,      { (Pascal) allow multiple use/define for one var}
+            nearfarproc,   { determines near/far attribute of external procs}
+            nilcheck,      { generate pointer check code}
+            oldpacking,    { use old packing algorithm for compatibility}
+            oldreswords,   { (Pascal) don't define USE/DEFINE/SHARED}
+            outputebcdic,  { generate the assembly code in EBCDIC}
+            outputmacro,   { generate assembly code}
+            outputobj,     { generate object code}
+            outputprep,    { generate the preprocessor output}
+            outputprepstd, { generate the preprocessor output to standard out}
+            own,           { place following globals in an own section}
+            pascal1,       { generate Pascal-1 compatible code}
+            pascalf,       { accept Pascal-F syntax}
+            pdp11data,     { (VAX) allocate PDP-11 compatible data}
+            pic,           { (VAX, 68K) generate position independent code}
+            profiling,     { generate a statement count profile}
+            rangecheck,    { generate subrange checking code}
+            refnosw,       { Pascal-F refno}
+            romconsts,     { (C) put constants in a section for ROM}
+            runxenix,      { (i386) running Xenix+Intel obj, not ???}
+            sectionsw,     { Specify the code section}
+            sharecode,     { (Apollo)}
+            shortintegers, { use short, 16 bit integers}
+            shortsectsw,   { specify the code as a short section}
+            signedchars,   { (C) default to signed characters}
+            sim,           { (PDP-11) generate simulated floating point}
+            stackcheck,    { generate stack overflow code}
+            standard,      { disallow extensions (C, strict standard)}
             statistics,
-            stmtnumbers,   {insert statement numbers in assembly output}
-            structstand, {assume standard interface for structure return vals}
-            structstatic, {place structure return in static var}
-            symboltable,   {generate a symbol table file}
-            targdebug,     {(C) generate target debug code}
-            targprofile,   {(C) generate target profile code}
-            tblock,        {specify a procedure number}
-            test,          {generate output for testing compiler}
-            timing,        {time compiler passes}
-            truncatesw,    {truncate intermediate operations where possible}
-            tswitch0,      {general purpose debugging switches}
+            stmtnumbers,   { insert statement numbers in assembly output}
+            structstand,   { assume standard interface for structure return vals}
+            structstatic,  { place structure return in static var}
+            symboltable,   { generate a symbol table file}
+            targdebug,     { (C) generate target debug code}
+            targprofile,   { (C) generate target profile code}
+            tblock,        { specify a procedure number}
+            test,          { generate output for testing compiler}
+            timing,        { time compiler passes}
+            truncatesw,    { truncate intermediate operations where possible}
+            tswitch0,      { general purpose debugging switches}
             tswitch1,
             tswitch2,
             tswitch3,
-            typesw,        {Pascal-F module type}
+            typesw,        { Pascal-F module type}
             verbose,       { Make various compilers obnoxiously noisy }
-            vectextref, {virtual vectors are extref}
-            vectextdef, {virtual vectors are extdef}
-            versionsw,     {(VERSAdos) specify version}
-            versnsw,       {Pascal-F version}
-            usebsd42lib,   {(UNIX) controls which unix library to use}
+            vectextref,    { virtual vectors are extref}
+            vectextdef,    { virtual vectors are extdef}
+            versionsw,     { (VERSAdos) specify version}
+            versnsw,       { Pascal-F version}
+            usebsd42lib,   { (UNIX) controls which unix library to use}
             usesysVlib,
-            walkback,      {generate walkback code}
-            windows,       {generate prologue/epilogue code for MS-Windows}
+            walkback,      { generate walkback code}
+            windows,       { generate prologue/epilogue code for MS-Windows}
             finalswitch);
   {>>>}
   {<<<}
@@ -476,7 +473,7 @@ type
   switchentry =
     packed record
       s: switch; {switch which was encountered}
-      v: - maxswitchvalue..maxswitchvalue; { bump current value by this much }
+      v: -maxswitchvalue..maxswitchvalue; { bump current value by this much }
       mlow, mhi: integer; { marker into current intermediate file }
     end;
   {>>>}
@@ -530,9 +527,8 @@ type
   linkages = (pascal2call, nonpascalcall, fortrancall, interruptcall, modulebody, definitionbody, implementationbody);
 
   {<<<}
-  { all detected compile time errors.  currently a union of all languages
-    and possibilities.  will hopefully be replaced later with a more sane
-    scheme of language-dependent warning files! }
+  { all detected compile time errors.  currently a union of all languages and possibilities.
+    will hopefully be replaced later with a more sane scheme of language-dependent warning files! }
   warning = (firstwarning, linetoolong, badchar, missingdigits, badinteger,
              badexpon, toomanyerrors, zerostring, stringtableoverflow,
              levelerr, doteoferr, extraenderr, extrastmterr, extraprocerr,
@@ -599,15 +595,15 @@ type
   {>>>}
 
   { subranges for various tables, values are documented above }
-  levelindex = 0..maxlevel;
+  levelindex  = 0..maxlevel;
   columnindex = 0..linelen;
-  hashindex = 0..hashtablesize;
+  hashindex   = 0..hashtablesize;
   switchindex = 0..switchtablesize;
-  errorindex = 0..errortablesize;
-  listindex = 1..listTableSize;
-  proctableindex = 0..proctablesize;
-  var_index = 0..vartablesize;
+  errorindex  = 0..errortablesize;
+  listindex   = 1..listTableSize;
+  var_index   = 0..vartablesize;
   cseregionindex = 0..cseregions;
+  proctableindex = 0..proctablesize;
 
   labelrange = 0..32767; {range of generated internal labels}
   pascallabelrange = integer; {range of pascal label numbers}
@@ -661,8 +657,6 @@ type
                    offset: stringtableindex; { offset in stringtable of the file name }
                  end;
   {>>>}
-
-  extension = packed array [1..maxextension] of char; {default extension}
 
   diskblock = packed array [0..diskbufsize] of hostfilebyte;
   diskblock_ref = ^diskblock;

@@ -1340,38 +1340,13 @@ begin
     reset (getSharedPtr^.localFile, 'output.local');
     reset (getInterSharedPtr^.interFile, 'output.inter');
     rewrite (getPseudoSharedPtr^.pseudoFile, 'output.pseudo');
-
-    if travcode then { traverse/code together }
-      begin
-      initCode;
-      traverse;
-      exitCode;
-
-      close (getSharedPtr^.localFile);
-      close (getInterSharedPtr^.interFile);
-      close (getPseudoSharedPtr^.pseudoFile);
-
-      printtime ('traverse/code');
-      end
-
-    else {  traverse then code}
-      begin
-      traverse;
-
-      close (getSharedPtr^.localFile);
-      close (getInterSharedPtr^.interFile);
-      close (getPseudoSharedPtr^.pseudoFile);
-      printtime ('traverse');
-
-      resetswitches;
-      settime;
-
-      reset (getPseudoSharedPtr^.pseudoFile, 'output.pseudo');
-      code;
-      close (getPseudoSharedPtr^.pseudoFile);
-
-      printtime ('code');
-      end;
+    initCode;
+    traverse;
+    exitCode;
+    close (getSharedPtr^.localFile);
+    close (getInterSharedPtr^.interFile);
+    close (getPseudoSharedPtr^.pseudoFile);
+    printtime ('traverse/code');
 
     if sharedPtr^.switcheverplus[symboltable] then
       closed;

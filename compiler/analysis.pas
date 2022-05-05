@@ -2293,7 +2293,7 @@ procedure dbg_alloc {index: integer; (index into debugfile) new_alloc:
                      allockind; (new allocation of var) new_offset:
                      addressrange (new register number)} ;
 { Called by improve to dump register allocation info into the debugfile.
-  Hidden in a language-depended routine to keep improve sharable between C, Modula-2 and Pascal 
+  Hidden in a language-depended routine to keep improve sharable between C, Modula-2 and Pascal
 }
 begin
   seek (sharedPtr^.debugfile, index);
@@ -2308,7 +2308,7 @@ procedure dbg_regs {(index: m_symbolindex; {procedure name to be updated}
                    {var pc_index: integer) {map file index for pc} ;
 { Modify the symbol file to reflect the actual register usage for a procedure.
   Used by code after register usage is known.  pc_index, if non-zero, is
-  the location in the map file to place the function starting pc. 
+  the location in the map file to place the function starting pc.
 }
 var
   i: integer;
@@ -10359,7 +10359,7 @@ begin
     opensfile := false;
     realfunction := false;
     isprocparam := false;
-    referenced := {false} travcode; {TRAVRS/CODE COMBINED}
+    referenced := true;
     ownused := false;
     calllinkage := pascal2call;
     registerfunction := 0;
