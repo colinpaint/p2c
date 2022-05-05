@@ -9554,7 +9554,7 @@ procedure statement (follow: tokenset {legal following symbols} );
                 begin
                 fortypeptr := ref(bigtable[vartype]);
 
-                { We don't support for loop indexes that are origined, declared USE, DEFINE or SHARED, or OWN.  
+                { We don't support for loop indexes that are origined, declared USE, DEFINE or SHARED, or OWN.
                   OWN is allowed if the global section is not split }
                 if ((varalloc = ownalloc) and (sharedPtr^.globalsize > sharedPtr^.globalfiles)) or
                    (varalloc in [absolute, usealloc, definealloc, sharedalloc]) then
@@ -10026,12 +10026,13 @@ procedure body;
 {>>>}
 {>>>}
 
+{ forwards }
 procedure block; forward;
 function create_type (typeindex: tableIndex) : unsignedword; forward;
+procedure gettyp (follow: tokenset; var resulttype: tableIndex); forward;
+
 {<<<}
-procedure enterblock (level: levelindex; {lex level of block}
-                      bn: tableIndex; {name index for block name}
-                      ref: proctableindex {procedure entry for block} );
+procedure enterblock (level: levelindex; bn: tableIndex; ref: proctableindex);
 { Set up the display for a new block.  This is called prior to parsing
   any definitions for the new block, including parameters.  Most of
   the display is initialized to empty values.  The scope id is incremented for the new block. }
@@ -10066,7 +10067,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure fixupparamoffsets (endofdefs: boolean {last chance} );
+procedure fixupparamoffsets (endofdefs: boolean);
 {<<<}
 { Parameters are allocated before variables but are addressed
   relative to the stack pointer.  This means that after a variable-
@@ -10168,7 +10169,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure exitblock (level: levelindex {level of block being exited} );
+procedure exitblock (level: levelindex);
 { Called to exit the block at "level".
   All forms defined in the block are disposed of,
   and any names declared in the block are removed from the name table and the key map.
@@ -10436,9 +10437,7 @@ end;
 
 { Name Table Entry Procedures - Procedures to enter identifiers into the name table }
 {<<<}
-procedure enterident (id: integer; {scope id for entry}
-                      var newindex: tableIndex; {resulting name entry}
-                      undefok: nametype {undefname, undeftypename, or noname to control redefs} );
+procedure enterident (id: integer; var newindex: tableIndex; undefok: nametype);
 {<<<}
 { Enter the current token as an identifier with scope id "id".  The
   resulting name index is returned in "newindex".  If undefok is set to
@@ -10534,8 +10533,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure enterlocalident (var newindex: tableIndex; {resulting name entry}
-                          undefok: nametype {see enterident} );
+procedure enterlocalident (var newindex: tableIndex; undefok: nametype);
 { Enter current token as identifier in local scope }
 
 begin
@@ -10642,11 +10640,8 @@ begin
 end;
 {>>>}
 
-procedure gettyp (follow: tokenset; var resulttype: tableIndex); forward;
 {<<<}
-procedure conststructure (follow: tokenset; {legal following symbols}
-                          form: tableIndex; {form found for this constant}
-                          var value1: operand {resulting value } );
+procedure conststructure (follow: tokenset; form: tableIndex; var value1: operand);
 {<<<}
 { Syntactic routine to parse a constant structure.
   Productions:
@@ -11511,10 +11506,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure onevar (id: integer; {Scope in which to enter ident}
-                  varkind: nametype; {variable kind}
-                  var where: tableIndex; {where in symtable it ends up}
-                  sharedvar: boolean {if in 'shared' definition} );
+procedure onevar (id: integer; varkind: nametype; var where: tableIndex; sharedvar: boolean);
 {<<<}
 { Syntactic routine to parse a single component of a variable list,
   which can be part of a variable-list, parameter-list, or field-list.
@@ -11693,14 +11685,8 @@ begin
 end;
 {>>>}
 {<<<}
-procedure alloconevar (t: tableIndex; { name entry for variable }
-                       f: tableIndex; { variable type }
-                       varkind: nametype; {type of this variable}
-                       var size: addressrange; {size of dataspace}
-                       a: alignmentrange; {alignment requirement}
-                       typelen: addressrange; {var length}
-                       refparam: boolean; {param passed by reference}
-                       packedresult: boolean {do packed allocation} );
+procedure alloconevar (t: tableIndex; f: tableIndex; varkind: nametype; var size: addressrange;
+                       a: alignmentrange; typelen: addressrange; refparam: boolean; packedresult: boolean );
 {<<<}
 { Allocate one variable in a variable or field list.  "Size" is the current
   size of the dataspace in which the variable is being allocated, and is
@@ -11761,10 +11747,13 @@ begin
     if p^.varalloc = ownalloc then
       if packedresult then
         allocpacked(a, typelen, sharedPtr^.ownsize, newoffset, overflowed, unusedspace)
-      else alloc(a, typelen, sharedPtr^.ownsize, newoffset, overflowed)
+      else
+        alloc(a, typelen, sharedPtr^.ownsize, newoffset, overflowed)
     else if packedresult then
       allocpacked(a, typelen, size, newoffset, overflowed, unusedspace)
-    else alloc(a, typelen, size, newoffset, overflowed);
+    else
+      alloc(a, typelen, size, newoffset, overflowed);
+
     p^.offset := newoffset;
     if overflowed then
       if varkind = fieldname then warnbefore(bigrecorderr)
@@ -11774,16 +11763,9 @@ begin
 end;
 {>>>}
 {<<<}
-procedure variablelist (follow: tokenset; { legal following symbols }
-                       f1: tokenset; {desired terminating symbols}
-                       id: integer; { scope id }
-                       dbgscope: p_symbolindex; {ditto for debugger}
-                       var size: addressrange; {size of dataspace}
-                       var align: alignmentrange; {alignment requirements}
-                       varkind: nametype; {kind of idents in list}
-                       notrecord: boolean; {Not record (for check)}
-                       packedresult: boolean; {packed alloc desired}
-                       sharedvar: boolean {if 'shared' definition} );
+procedure variablelist (follow: tokenset; f1: tokenset; id: integer; dbgscope: p_symbolindex;
+                        var size: addressrange; var align: alignmentrange;
+                        varkind: nametype; notrecord: boolean; packedresult: boolean; sharedvar: boolean);
 {<<<}
 { Syntactic routine to parse a group of variable lists of any flavor.
   Productions:
@@ -11842,30 +11824,28 @@ var
 
 begin
   align := unitsize;
-  startset := [uparrow..stringsym, nilsym, ident, plus, minus, lpar,
-              intconst..stringconst, comma, colon, semicolon];
+  startset := [uparrow..stringsym, nilsym, ident, plus, minus, lpar, intconst..stringconst, comma, colon, semicolon];
 
   {skip semicolons if processing field list}
-  if notrecord then verify([ident], follow, novarerr)
-  else while token = semicolon do gettoken;
+  if notrecord then
+    verify ([ident], follow, novarerr)
+  else while token = semicolon do
+    gettoken;
 
   while token in startset do
-    begin {parse one variable list, making sure that it terminates on one of
-           the tokens in f1}
-
+    begin {parse one variable list, making sure that it terminates on one of the tokens in f1}
     startset := startset - f1;
-
     startpos := thistoken.filepos;
     startline := thistoken.line;
 
-    onevar(id, varkind, first, sharedvar);
+    onevar (id, varkind, first, sharedvar);
     varcount := 1;
     last := first;
     while token in [ident, comma] do
       begin
-      verifytoken(comma, nocommaerr);
+      verifytoken (comma, nocommaerr);
       f := last;
-      onevar(id, varkind, last, sharedvar);
+      onevar (id, varkind, last, sharedvar);
       varcount := varcount + 1;
       if last - 1 <> f then
         begin
@@ -11875,8 +11855,8 @@ begin
       end;
 
     f := noneindex;
-    verifytoken(colon, nocolonerr);
-    gettyp(follow + startset, f);
+    verifytoken (colon, nocolonerr);
+    gettyp (follow + startset, f);
 
     fptr := ref(bigtable[f]);
     if notrecord and fptr^.containsfile then
@@ -11901,13 +11881,12 @@ begin
 end;
 {>>>}
 {<<<}
-procedure gettyp {follow : tokenset; ( legal following symbols )
-                  var resulttype: tableIndex (resulting type desc) } ;
+procedure gettyp (follow : tokenset; var resulttype: tableIndex);
 { Syntactic routine to parse a type }
 
 var
-  packflag: boolean; {set if "packed" found}
-  resulp: entryptr; {pointer for access to resulttype}
+  packflag: boolean; { set if "packed" found}
+  resulp: entryptr;  { pointer for access to resulttype}
 
   {<<<}
   procedure simpletyp;
@@ -12862,45 +12841,49 @@ var
   {<<<}
   procedure onelabeldef;
   { Process a single label definition, checking for duplicate label
-    declarations and entering the declaration in the label list.
+    declarations and entering the declaration in the label list
   }
+  begin
+    if token <> intconst then
+      warnbetween(nolabelerr)
+    else
+      begin
+      value1 := thistoken.intvalue;
+      if value1 > maxstandardlabel then
+        warn (biglabelerr);
 
-
-    begin {onelabeldef}
-      if token <> intconst then warnbetween(nolabelerr)
-      else
+      with display[level] do
         begin
-        value1 := thistoken.intvalue;
-        if value1 > maxstandardlabel then warn(biglabelerr);
-        with display[level] do
+        searchlsection (value1, labellist, t);
+
+        if t <> labelflag then
+          warn (duplabeldef)
+        else
           begin
-          searchlsection(value1, labellist, t);
-          if t <> labelflag then warn(duplabeldef)
-          else
+          new (t);
+          with t^ do
             begin
-            new(t);
-            with t^ do
+            labelvalue := value1;
+            nextlabel := labellist;
+            labellist := t;
+            maxlegalnest := maxint;
+            definednest := 0;
+            internalvalue := sharedPtr^.lastlabel;
+            { code generators need two entry points for Pascal labels }
+            sharedPtr^.lastlabel := sharedPtr^.lastlabel - 2;
+            nonlocalref := false;
+            with thistoken do
               begin
-              labelvalue := value1;
-              nextlabel := labellist;
-              labellist := t;
-              maxlegalnest := maxint;
-              definednest := 0;
-              internalvalue := sharedPtr^.lastlabel;
-              { code generators need two entry points for Pascal labels }
-              sharedPtr^.lastlabel := sharedPtr^.lastlabel - 2;
-              nonlocalref := false;
-              with thistoken do
-                begin
-                labelline := line;
-                labelcolumn := (left + right) div 2;
-                end;
-              end
-            end;
+              labelline := line;
+              labelcolumn := (left + right) div 2;
+              end;
+            end
           end;
-        gettoken;
         end;
-    end {onelabeldef} ;
+
+      gettoken;
+      end;
+  end;
   {>>>}
 
 begin
@@ -12909,12 +12892,12 @@ begin
 
   while token in [comma, intconst] do
     begin
-    verifytoken(comma, nocommaerr);
+    verifytoken (comma, nocommaerr);
     onelabeldef
     end;
 
-  verifytoken(semicolon, nosemiheaderr);
-  verify1(neverskipset, baddeclerr);
+  verifytoken (semicolon, nosemiheaderr);
+  verify1 (neverskipset, baddeclerr);
 end;
 {>>>}
 {<<<}
@@ -12965,7 +12948,6 @@ procedure typedefinition;
   As each type is parsed its formentry is created in main store,
   and its nameentry contains the index of the formentry.
 }
-
 var
   t: tableIndex; { name of type being defined }
   p: entryptr; { used for name access }
@@ -12978,10 +12960,11 @@ begin
   repeat
     startpos := thistoken.filepos;
     startline := thistoken.line;
-    enterlocalident(t, undeftypename);
-    verifytoken(eql, noeqlerr);
-    gettyp([eql, ident, semicolon, uparrow..stringsym, nilsym,
-           intconst..stringconst, plus, minus, lpar], f);
+
+    enterlocalident (t, undeftypename);
+    verifytoken (eql, noeqlerr);
+
+    gettyp([eql, ident, semicolon, uparrow..stringsym, nilsym, intconst..stringconst, plus, minus, lpar], f);
     p := ref(bigtable[t]);
     with p^ do
       begin
@@ -12990,13 +12973,13 @@ begin
       refdefined := false;
       end;
 
-    verifytoken(semicolon, nosemiheaderr);
-    verify1(typefollowset + neverskipset, baddeclerr);
+    verifytoken (semicolon, nosemiheaderr);
+    verify1 (typefollowset + neverskipset, baddeclerr);
   until not (token in typefollowset);
 end;
 {>>>}
 {<<<}
-procedure vardefinition (sharedvar: boolean {if 'shared' section});
+procedure vardefinition (sharedvar: boolean);
 { Syntactic routine to parse a variable-declaration-part.
   Productions:
   variable-declaration-part = "var" variable-declaration ";"
@@ -13015,9 +12998,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure changeparamids (firstparam: tableIndex; {entry of first parameter}
-                         lastparam: tableIndex; {might be less than firstparam}
-                         n: integer {scope id desired} );
+procedure changeparamids (firstparam: tableIndex; lastparam: tableIndex; n: integer);
 { Scan down the parameters of a procedure and change their scope to the
   specified scope.  This is used to change forward parameter declarations
   to the current scope, or to make them inaccessable after the declaration.
@@ -13032,14 +13013,13 @@ begin
   for i := firstparam to lastparam do
     begin
     p := ref(bigtable[i]);
-    if not p^.form and (p^.name <> deadscope) then p^.name := n;
+    if not p^.form and (p^.name <> deadscope) then 
+      p^.name := n;
     end;
 end;
 {>>>}
 {<<<}
-procedure getfunctiontype (functiondefinition: boolean; {in func def}
-                          forwardbody: boolean; {body of forward dec}
-                          var returntype: tableIndex {func type} );
+procedure getfunctiontype (functiondefinition: boolean; forwardbody: boolean; var returntype: tableIndex);
 { Syntactic routine to parse a function result type if necessary.
   Production:
   function-type = [ ":" type-identifier ]  .
@@ -13061,7 +13041,9 @@ begin
       warn(badcolonerr)
     else if forwardbody then
       warn(dupfwdresult);
+
     verifytoken (colon, nocolonerr);
+
     if token = ident then
       begin
       i := displaytop; {Name must be found in enclosing scopes, not current}
@@ -13081,6 +13063,7 @@ begin
       warn (notypenameerr);
       gettyp (neverskipset + [rpar], returntype);
       end;
+
     f := ref(bigtable[returntype]);
     if (not (f^.typ in legalfunctypes)) and
        (sharedPtr^.switchcounters[standard] > 0) then
@@ -13089,8 +13072,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure parameterdefinition (var paramsize: addressrange; {size of parms}
-                              follow: tokenset {legal follow syms} );
+procedure parameterdefinition (var paramsize: addressrange; follow: tokenset);
 { Syntactic routine to parse a parameter list.
   Productions:
   formal-parameter-list = "(" formal-parameter-section
@@ -13450,15 +13432,19 @@ procedure parameterdefinition (var paramsize: addressrange; {size of parms}
 begin
   gettoken;
   oneparampiece;
-  while token in
-        ([comma, semicolon, functionsym, proceduresym, varsym, ident]) do
+
+  while token in ([comma, semicolon, functionsym, proceduresym, varsym, ident]) do
     begin
-    if lasttoken.token <> semicolon then warnbetween(nosemiheaderr);
+    if lasttoken.token <> semicolon then
+      warnbetween (nosemiheaderr);
     oneparampiece;
     end;
-  if lasttoken.token = semicolon then warnbefore(badparamerr);
-  verifytoken(rpar, norparerr);
-  verify1(neverskipset + follow, badparamerr);
+
+  if lasttoken.token = semicolon then
+    warnbefore (badparamerr);
+
+  verifytoken (rpar, norparerr);
+  verify1 (neverskipset + follow, badparamerr);
 end;
 {>>>}
 {<<<}
@@ -13525,14 +13511,11 @@ begin
       procptr := ref(bigtable[procindex]);
       with procptr^ do
         begin
-        forwardbody := namekind in [externalproc, externalfunc, forwardproc,
-                       forwardfunc];
-        if functiondefinition and
-           (namekind in [externalproc, forwardproc]) then
-          warn(fwdprocfuncerr)
-        else if not functiondefinition and
-                (namekind in [externalfunc, forwardfunc]) then
-          warn(fwdfuncprocerr);
+        forwardbody := namekind in [externalproc, externalfunc, forwardproc, forwardfunc];
+        if functiondefinition and (namekind in [externalproc, forwardproc]) then
+          warn (fwdprocfuncerr)
+        else if not functiondefinition and (namekind in [externalfunc, forwardfunc]) then
+          warn (fwdfuncprocerr);
         end;
       end;
     end;
@@ -13550,18 +13533,20 @@ begin
   if level = maxlevel then
     analysFatal (levelerr);
   procptr := ref(bigtable[procindex]);
-  enterblock(level + 1, procindex, procptr^.procref);
+  enterblock (level + 1, procindex, procptr^.procref);
 
   display[level+1].dbgscope := procptr^.dbgsymbol;
 
   if token = lpar then
+    {<<<  lpar}
     begin
     hasparameters := true;
     if forwardbody then
-      warn(dupfwdparam);
+      warn (dupfwdparam);
     paramlistid := lastid;
     parameterdefinition (display[level + 1].paramsize, [colon]);
     end;
+    {>>>}
   paramindex := tabletop;
   getfunctiontype (functiondefinition, forwardbody, returntype);
 
@@ -13580,6 +13565,7 @@ begin
       Interruptcall procedures are an exception. }
     if not (sharedPtr^.proctable[procref].calllinkage = interruptcall) then
       sharedPtr^.proctable[procref].calllinkage := pascal2call;
+
     if forwardbody then
       begin
       display[level + 1].paramsize := savedparamsize;
@@ -13589,6 +13575,7 @@ begin
          (targetopsys = apollo) or (targetopsys = vms) then
         display[level + 1].blocksize := sharedPtr^.proctable[procref].registerfunction;
       end
+
     else
       begin
       sharedPtr^.proctable[procref].realfunction := ((f^.typ = reals) or (f^.typ = doubles)) and functiondefinition;
@@ -13600,13 +13587,16 @@ begin
       end;
 
     if token = ident then
+      {<<<  ident}
       begin
       search (directiveindex);
+
       f := ref(bigtable[directiveindex]);
       if f^.namekind = directivename then
         begin
         directive := f^.procid;
         if directive = forwardid then
+          {<<<  forward}
           begin
           if forwardbody then
             warn (dupforward)
@@ -13617,11 +13607,12 @@ begin
           else
             namekind := forwardproc
           end
+          {>>>}
         else
+          {<<<  external, nonpascal, fortran, interrupt }
           begin
           if forwardbody then
             warn(dupforward);
-          { external, nonpascal, fortran, interrupt }
           if functiondefinition then
             namekind := externalfunc
           else namekind := externalproc;
@@ -13665,9 +13656,11 @@ begin
               sharedPtr^.proctable[procref].registerfunction := forcealign (funclen, 4, false);
             end;
           end;
+          {>>>}
         end
       else
         warn (baddirective);
+
       gettoken;
 
       with display[level + 1] do
@@ -13677,14 +13670,17 @@ begin
         display[level].highestkey := max(display[level].highestkey, highestkey);
         end;
       end
+      {>>>}
     else
-      begin {no directive}
+      {<<<  no directive}
+      begin
       if functiondefinition then
         namekind := funcname
       else
         namekind := procname;
 
       funcassigned := not functiondefinition;
+
       if forwardbody then
         changeparamids(procindex + 1, paramlist, lastid)
       else
@@ -13696,6 +13692,7 @@ begin
         display[level + 1].scopeid := lastscope;
         end;
       display[level + 1].oldtabletop := tabletop;
+
       if procref <= cseregions then
         begin
         sharedPtr^.cseregiontable[procref, false].low := maxaddr;
@@ -13711,16 +13708,20 @@ begin
       level := level - 1;
       if not procptr^.funcassigned then
         warnat (nofuncass, funcline, funccol);
+
       sharedPtr^.proctable[procptr^.procref].bodydefined := true;
       directiveindex := procptr^.paramlist; {cache buffer...}
+
       if forwardbody then
         changeparamids(procindex + 1, directiveindex, deadscope);
+
       for directiveindex := procindex + 1 to directiveindex do
         begin
         f := ref(bigtable[directiveindex]);
         if not f^.form then f^.modified := f^.parammodified;
         end;
       end;
+      {>>>}
     end;
 
   displaytop := level;

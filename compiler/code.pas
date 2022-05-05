@@ -830,8 +830,12 @@ var
   sharedPtr: sharedPtrType;
   pseudoSharedPtr: pseudoSharedPtrType;
 
-  nextpseudofile: integer; { next byte in the current block of pseudofile}
+  macFile: text;            { receives macro assembler image}
+  objFile: objfiletype;     { receives object image} {??}
+  relFile: relfiletype;     { array [0..255] of unsigned }
+  diagFile: wordstream;     { temporary diagnostics file}
 
+  nextpseudofile: integer; { next byte in the current block of pseudofile}
   nokeydata: pseudoset;  { pseudoops without key, length, refcount or copycount}
   oneoperand: pseudoset; { pseudoops with only one operand}
 
@@ -1108,11 +1112,6 @@ var
   nextdiagbit: bits;        { next diagnostic bit to be filled in}
   commonesdid: esdrange;    { kluge for common section (own)}
 
-  macFile: text;            { receives macro assembler image}
-  objFile: objfiletype;     { receives object image} {??}
-  relFile: relfiletype;     { array [0..255] of unsigned }
-  diagFile: wordstream;     { temporary diagnostics file}
-
   objtype: array [1..maxwords] of objtypes;
   object: array [1..maxwords] of uns_word; { table for one instruction }
   relocn: array [1..maxwords] of boolean;  { table of relocation status }
@@ -1147,18 +1146,9 @@ end;
 {>>>}
 
 {<<<}
-{ Pseudo file handling procedures.
-  Since many of the fields in a pseudo-instruction are unused for many
-  of the instructions,  the pseudo-file is packed to eliminate the
-  redundant fields.
-  This code gets and unpacks the pseudo-file into pseudocode elements.
-}
-{>>>}
-{<<<}
 procedure getpseudobuff;
-{ Get and unpack the next element in the pseudofile, leaving the result
-  in "pseudobuff".
-}
+{ Get and unpack the next element in the pseudofile, leaving the result in "pseudobuff" }
+
   {<<<}
   procedure gettempfile;
   { Do the equivalent of a get on the pseudofile, treating the file as a file of bytes.
@@ -1178,7 +1168,6 @@ procedure getpseudobuff;
   {>>>}
   {<<<}
   function getint: integer;
-
   {<<<}
   { Get an integer value from the file.  This is made into a function to
     allow returning the value into subranges of integer.  Integers are encoded
@@ -1186,97 +1175,93 @@ procedure getpseudobuff;
   }
   {>>>}
 
-    var
-      { This fudges an integer into bytes.  The constant "32" is }
-      { simply a large enough number to include all probable systems. }
-      fudge:
-        record
-          case boolean of
-            true: (int: integer);
-            false: (byte: packed array [1..32] of hostfilebyte);
-        end;
-      j: 1..32; {induction var}
+  var
+    j: 1..32; {induction var}
 
+    fudge:
+      record
+        case boolean of
+          true: (int: integer);
+          false: (byte: packed array [1..32] of hostfilebyte);
+      end;
 
-    begin {getint}
-      if not travcode then
-        begin
-        fudge.int := pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].byte;
-        gettempfile;
-        if fudge.int = hostfilelim then
-          for j := 1 to hostintsize * hostfileunits do
-            begin
-            fudge.byte[j] := pseudoSharedPtr^.pseudoFile^.block;
-            gettempfile;
-            end;
-        getint := fudge.int;
-        end;
-    end {getint} ;
-  {>>>}
-
-  begin {getpseudobuff}
+  begin
     if not travcode then
       begin
-      if sharedPtr^.getlow = maxint then
-        begin
-        sharedPtr^.getlow := 0;
-        sharedPtr^.gethi := sharedPtr^.gethi + 1;
-        end
-      else
-        sharedPtr^.getlow := sharedPtr^.getlow + 1;
-
-      pseudoSharedPtr^.pseudobuff.op := pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].op;
+      fudge.int := pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].byte;
       gettempfile;
+      if fudge.int = hostfilelim then
+        for j := 1 to hostintsize * hostfileunits do
+          begin
+          fudge.byte[j] := pseudoSharedPtr^.pseudoFile^.block;
+          gettempfile;
+          end;
+      getint := fudge.int;
+      end;
+  end;
+  {>>>}
 
-      with pseudoSharedPtr^.pseudobuff do
+begin
+  if not travcode then
+    begin
+    if sharedPtr^.getlow = maxint then
+      begin
+      sharedPtr^.getlow := 0;
+      sharedPtr^.gethi := sharedPtr^.gethi + 1;
+      end
+    else
+      sharedPtr^.getlow := sharedPtr^.getlow + 1;
+
+    pseudoSharedPtr^.pseudobuff.op := pseudoSharedPtr^.pseudoFile^.block[nextpseudofile].op;
+    gettempfile;
+
+    with pseudoSharedPtr^.pseudobuff do
+      begin
+      len := 0;
+      key := 0;
+      refcount := 0;
+      copycount := 0;
+      { No key data}
+      if not (op in nokeydata) then
         begin
-        len := 0;
-        key := 0;
-        refcount := 0;
-        copycount := 0;
-        { No key data}
-        if not (op in nokeydata) then
-          begin
-          len := getint;
-          key := getint;
-          refcount := getint;
-          copycount := getint;
-          end;
+        len := getint;
+        key := getint;
+        refcount := getint;
+        copycount := getint;
+        end;
 
-        oprnds[1] := getint;
-        oprnds[2] := 0;
-        oprnds[3] := 0;
-        { only one operand }
-        if not (op in oneoperand) then
-          begin
-          oprnds[2] := getint;
-          oprnds[3] := getint;
-          end;
+      oprnds[1] := getint;
+      oprnds[2] := 0;
+      oprnds[3] := 0;
+      { only one operand }
+      if not (op in oneoperand) then
+        begin
+        oprnds[2] := getint;
+        oprnds[3] := getint;
         end;
       end;
-  end {getpseudobuff} ;
+    end;
+end;
 {>>>}
 {<<<}
 procedure unpackpseudofile;
-
 { Get the next pseudo-instruction in "pseudobuf" and distribute some
   of the fields into other global variables.
 }
+begin
+  if not travcode then
+    begin
+    pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
+    if pseudoSharedPtr^.pseudoinst.op <> endpseudocode then 
+      getpseudobuff;
 
-
-  begin {unpackpseudofile}
-    if not travcode then
-      begin
-      pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
-      if pseudoSharedPtr^.pseudoinst.op <> endpseudocode then getpseudobuff;
-
-      key := pseudoSharedPtr^.pseudoinst.key;
-      len := pseudoSharedPtr^.pseudoinst.len;
-      left := pseudoSharedPtr^.pseudoinst.oprnds[1];
-      right := pseudoSharedPtr^.pseudoinst.oprnds[2];
-      target := pseudoSharedPtr^.pseudoinst.oprnds[3];
-      end;
-  end {unpackpseudofile} ;
+    key := pseudoSharedPtr^.pseudoinst.key;
+    len := pseudoSharedPtr^.pseudoinst.len;
+    left := pseudoSharedPtr^.pseudoinst.oprnds[1];
+    right := pseudoSharedPtr^.pseudoinst.oprnds[2];
+    target := pseudoSharedPtr^.pseudoinst.oprnds[3];
+    end;
+end;
 {>>>}
 
 {<<<}
@@ -1293,7 +1278,7 @@ var
       end;
 
 begin
-   kluge.ival[1] := pseudoSharedPtr^.pseudoinst.oprnds[1];
+  kluge.ival[1] := pseudoSharedPtr^.pseudoinst.oprnds[1];
   kluge.ival[2] := pseudoSharedPtr^.pseudoinst.oprnds[2];
   kluge.ival[3] := pseudoSharedPtr^.pseudoinst.oprnds[3];
   rval := kluge.rval;
@@ -23763,8 +23748,10 @@ begin
   dummyarg_ptr := 0;
   sharedPtr^.curstringblock := 0;
   sharedPtr^.nextstringfile := 0;
+
   nextpseudofile := 0;
   getpseudobuff;
+
   level := 0;
   fileoffset := 0;
   formatcount := 0;
@@ -23839,23 +23826,38 @@ begin
   setcommonkey;
 
   case pseudoSharedPtr^.pseudoinst.op of
-    blockentry: blockentryx;
-    blockcode: blockcodex;
-    blockexit: blockexitx;
-    doint, doptr: dointx;
-    doreal: dorealx;
+    blockentry: 
+      blockentryx;
+
+    blockcode: 
+      blockcodex;
+
+    blockexit: 
+      blockexitx;
+
+    doint, doptr: 
+      dointx;
+
+    doreal: 
+      dorealx;
+
     dolevel:
       if (left > 1) and (left < level) then
         genone
       else
-        dostaticlevels(false);
-    doown: dostaticlevels(true);
-    dofptr: dofptrx;
+        dostaticlevels (false);
+    doown: 
+      dostaticlevels (true);
+
+    dofptr: 
+      dofptrx;
+
     otherwise
       genone;
     end;
 
-  if (key > lastkey) and (pseudoSharedPtr^.pseudoinst.op in [doint, doptr, dofptr, doreal, dolevel, doown]) then
+  if (key > lastkey) and 
+     (pseudoSharedPtr^.pseudoinst.op in [doint, doptr, dofptr, doreal, dolevel, doown]) then
     lastkey := key;
 end;
 {>>>}
@@ -23871,6 +23873,7 @@ begin
     left := pseudoSharedPtr^.pseudoinst.oprnds[1];
     right := pseudoSharedPtr^.pseudoinst.oprnds[2];
     target := pseudoSharedPtr^.pseudoinst.oprnds[3];
+
     codeselect;
     end;
 end;
@@ -23912,7 +23915,6 @@ begin
         writeln(i:3, peep[i]:10, ' times');
       end;
   }
-
   flushbuffers;
 
   if sharedPtr^.switcheverplus[outputmacro] then

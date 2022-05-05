@@ -66,7 +66,7 @@ clean:
 	rm -f -v *.tmp
 	rm -f -v *.token
 	rm -f -v *.inter
-	rm -f -v *.psuedo
+	rm -f -v *.pseudo
 	rm -f -v *.rel
 	rm -f -v *.local
 	rm -f -v *.tree

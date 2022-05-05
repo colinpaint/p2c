@@ -25,4 +25,4 @@ procedure getFileName (which: FilenameListPtr; stripdevice: boolean; stripext: b
 procedure getoutputname; external;
 
 procedure openSource; external;
-procedure openNext; external;
+procedure openInclude; external;
