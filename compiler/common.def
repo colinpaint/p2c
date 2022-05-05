@@ -1005,9 +1005,6 @@ type
     filename_length: FilenameIndex; { length of name in filename buffer }
     filename: FilenameBuf;          { temp file name }
 
-    { these are global to all due to overlay considerations}
-    curfile: integer; {number of current source file}
-
     { output files }
     outputname: packed array [1..maxprocnamelen] of char;
     objname: FilenameListPtr; {object file name pointer or nil}

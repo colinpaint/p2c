@@ -33,11 +33,10 @@ Update release version for PC-VV0-GS0 at 2.3.0.1
 {>>>}
 
 procedure list;
-{ Make program listing.  Goes to standard output if no explicit listing or error file has been specified. }
 
 var
   sharedPtr: sharedPtrType;
-  listFile: text;     {listing output file}
+  listFile: text;
 
   {<<<}
   procedure listing (var listFile: text);
@@ -111,7 +110,7 @@ var
   {>>>}
 
     {<<<}
-    procedure changeSourc;
+    procedure changeSource;
     { Change source[sourcelevel] to the next remembered file. }
 
     var
@@ -302,12 +301,12 @@ var
     end;
     {>>>}
     {<<<}
-    procedure dateandtime;
+    procedure dateTime;
 
     var
       sec, day, month, year: integer; {time buffer}
 
-    begin {dateandtime}
+    begin
       TimeStamp(day, month, year, hour, minute, sec);
       if hour >= 12 then
         ampm := 'P'
@@ -615,7 +614,7 @@ var
 
         else
           begin
-          changesourcename;
+          changSsourc;
           save[1].filename := sharedPtr^.filename;
           save[1].filename_length := sharedPtr^.filename_length;
           save[1].fileptr := thisfileptr;
@@ -1050,14 +1049,14 @@ var
     end;
     {>>>}
     {<<<}
-    procedure processerrorline;
+    procedure processErrorLine;
 
     var
       firsterror, lasterror, lastprinted: errorindex;
       errorlines: integer;
 
       {<<<}
-      procedure listerrors;
+      procedure listErrors;
 
       var
         i, size: integer;
@@ -1101,28 +1100,27 @@ var
       end;
       {>>>}
       {<<<}
-      procedure listbrieferrors;
+      procedure listBriefErrors;
 
-        var
-          i: integer;
+      var
+        i: integer;
 
-
-        begin {listbrieferrors}
-          for i := firsterror to lasterror do
-            with sharedPtr^.errortable[i] do
-              if uniqueerrs[err] then
-                begin
-                uniqueerrs[err] := false;
-                wl_str_l(sharedPtr^.filename, sharedPtr^.filename_length);
-                wl_chr('(');
-                wl_int(max(1, linecount - save[sharedPtr^.sourcelevel].line), 1);
-                wl_str(') : ');
-                listoneerror(err);
-                wl_line;
-                totallines := totallines + 1;
-                errorsreported := errorsreported + 1;
-                end;
-        end {listbrieferrors} ;
+      begin
+        for i := firsterror to lasterror do
+          with sharedPtr^.errortable[i] do
+            if uniqueerrs[err] then
+              begin
+              uniqueerrs[err] := false;
+              wl_str_l(sharedPtr^.filename, sharedPtr^.filename_length);
+              wl_chr('(');
+              wl_int(max(1, linecount - save[sharedPtr^.sourcelevel].line), 1);
+              wl_str(') : ');
+              listoneerror(err);
+              wl_line;
+              totallines := totallines + 1;
+              errorsreported := errorsreported + 1;
+              end;
+      end;
       {>>>}
 
     begin
@@ -1159,16 +1157,16 @@ var
         pageline := pageline + errorlines + 2;
 
       if sharedPtr^.switcheverplus[editlist] then
-        listbrieferrors
+        listBriefErrors
       else
         begin
         processline;
-        listerrors;
+        listErrors;
         end;
     end;
     {>>>}
     {<<<}
-    procedure sorterrortable;
+    procedure sortErrorTable;
 
     var
       sorted: boolean;
@@ -1176,20 +1174,16 @@ var
       i, top: integer;
 
       {<<<}
-      function posgtr(i, j: integer): boolean;
+      function posgtr (i, j: integer): boolean;
+      { Determines whether or not the error messages should be swapped  -- preserves time order if errors overlap }
 
-      { Determines whether or not the error messages should
-        be swapped  -- preserves time order if errors overlap.
-      }
-
-
-        begin {posgtr}
-          with sharedPtr^.errortable[j] do
-            if sharedPtr^.errortable[i].errline = errline then
-              posgtr := sharedPtr^.errortable[i].errcolumn > errcolumn + digits(ord(err)) + 1
-            else
-              posgtr := sharedPtr^.errortable[i].errline > errline;
-        end {posgtr} ;
+      begin
+        with sharedPtr^.errortable[j] do
+          if sharedPtr^.errortable[i].errline = errline then
+            posgtr := sharedPtr^.errortable[i].errcolumn > errcolumn + digits(ord(err)) + 1
+          else
+            posgtr := sharedPtr^.errortable[i].errline > errline;
+      end;
       {>>>}
 
     begin
@@ -1198,7 +1192,7 @@ var
       repeat
         sorted := true;
         for i := 1 to top do
-          if posgtr(i, i + 1) then
+          if posgtr (i, i + 1) then
             begin
             temp := sharedPtr^.errortable[i];
             sharedPtr^.errortable[i] := sharedPtr^.errortable[i + 1];
@@ -1212,9 +1206,9 @@ var
 
     {<<<}
     procedure printtrailer;
+    { Only 3 lines are printed if errors are going to terminal }
 
     begin
-      { Only 3 lines are printed if errors are going to terminal }
       if sharedPtr^.forceList then
         pageline := pageline + 3
       else
@@ -1258,7 +1252,7 @@ var
     end;
     {>>>}
     {<<<}
-    procedure skipwitherrors (limit: integer);
+    procedure skipWithWrrors (limit: integer);
 
     var
       pseudopageline: integer;
@@ -1321,10 +1315,10 @@ var
     end;
     {>>>}
     {<<<}
-    procedure listwitherrors (limit: integer);
+    procedure listWithErrors (limit: integer);
 
       {<<<}
-      procedure listsource (limit: integer);
+      procedure listSource (limit: integer);
 
       begin
         while linecount < limit do
@@ -1334,12 +1328,14 @@ var
 
     begin
       skipmode := false;
+
       while nexterrline < limit do
         begin
         listsource (nexterrline);
-        processerrorline;
+        processErrorLine;
         end;
-      listsource(limit)
+
+      listSource (limit)
     end;
     {>>>}
 
@@ -1347,7 +1343,6 @@ var
     bufferCount := 0;
 
     save[1].line := 0;
-    sharedPtr^.curfile := 1;
     sharedPtr^.sourcelevel := 1;
     sharedPtr^.curstringblock := - 1;
 
@@ -1355,7 +1350,7 @@ var
       with the file name saved by SCAN at the beginning of the compilation.
       We then use OPENS to get to the file by name. }
     curfileptr := sharedPtr^.fileRememberList;
-    changesourcename;
+    changeSource;
 
     lastfileptr := nil;
     save[1].filename := sharedPtr^.filename;
@@ -1383,8 +1378,8 @@ var
     for e := firstwarning to lastwarning do
       uniqueerrs[e] := false;
 
-    dateandtime;
-    sorterrortable;
+    dateTime;
+    sortErrorTable;
 
     i := 1;
     getnexterror;
@@ -1392,8 +1387,8 @@ var
       begin
       with sharedPtr^.listTable[i] do
         begin
-        skipwitherrors (start);
-        listwitherrors (start + count);
+        skipWithErrors (start);
+        listWithErrors (start + count);
         end;
       i := i + 1;
       end;
@@ -1409,6 +1404,7 @@ begin
 
   if sharedPtr^.forceList then
     listing (output)
+
   else
     begin
     getFileName (sharedPtr^.listname, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
