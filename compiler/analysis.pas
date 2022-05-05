@@ -8085,8 +8085,7 @@ procedure statement (follow: tokenset {legal following symbols} );
   {>>>}
 
   {<<<}
-    procedure standardprocedures(procid: standardids {which std proc} );
-
+  procedure standardprocedures(procid: standardids {which std proc} );
   { Parse a standard procedure.  The syntax is similar to that for a user
     procedure, so will not be repeated here.
 
@@ -8094,7 +8093,6 @@ procedure statement (follow: tokenset {legal following symbols} );
     and the variety of types which these procedures accept.  Also, new and
     dispose require special processing for the optional tag arguments.
   }
-
   {<<<}
       procedure pushstringparam(extendedstring: boolean {arrays or strings} );
 
@@ -8226,443 +8224,453 @@ procedure statement (follow: tokenset {legal following symbols} );
   end;
   {>>>}
   {<<<}
-      procedure newdispose;
-
+  procedure newdispose;
   { Parse a "new" or "dispose" call.  The optional arguments are used to chain
     down the tree of variants to get the size of the specified variant.  The
     final size result is passed to the routine as a second argument.
   }
+  var
+    n: tableIndex; {name entry, from search}
+    p: entryptr; {used to get currentrecord from name table}
+    currentrecord: tableIndex; {current part of record spec}
+    currentptr: entryptr; {used to access currentrecord}
+    f: entryptr; {used for general form access}
+    tagtype: tableIndex; { tagfield type }
+    callnew: boolean; {true if new instead of dispose}
+    containedfile: boolean; {true if parent record contains file}
 
-        var
-          n: tableIndex; {name entry, from search}
-          p: entryptr; {used to get currentrecord from name table}
-          currentrecord: tableIndex; {current part of record spec}
-          currentptr: entryptr; {used to access currentrecord}
-          f: entryptr; {used for general form access}
-          tagtype: tableIndex; { tagfield type }
-          callnew: boolean; {true if new instead of dispose}
-          containedfile: boolean; {true if parent record contains file}
+  begin
+    containedfile := false;
 
+    callnew := procid = newid;
+    genop(bldnil);
 
-        begin {newdispose}
-          containedfile := false;
-          callnew := procid = newid;
-          genop(bldnil);
-          verifytoken(lpar, nolparerr);
-          newresulttype(noneindex);
-          if token = ident then
-            begin
-            if callnew then modifyvariable(true, true)
-            else
-              begin
-              search(n);
-              if n <> 0 then
-                begin
-                p := ref(bigtable[n]);
-                if p^.namekind in
-                   [funcname, forwardfunc, externalfunc, funcparam] then
-                  factor
-                else modifyvariable(true, true);
-                end
-              else illegalident(n);
-              end;
-            if not (resultform in [none, ptrs]) then warnbefore(noptrvar);
-            genunary(pushaddr, ptrs);
-            end
-          else warnbetween(novarerr);
-          currentrecord := noneindex;
-          with resultptr^ do
-            if typ = ptrs then
-              begin
-              p := ref(bigtable[ptrtypename]);
-              currentrecord := p^.typeindex;
-              if p^.namekind = undeftypename then
-                begin
-                p^.lastoccurrence := display[level].scopeid;
-                end;
-              currentptr := ref(bigtable[currentrecord]);
-              containedfile := currentptr^.containsfile;
-              end;
-          parsetagparams(currentrecord);
-          currentptr := ref(bigtable[currentrecord]);
-          pushint(sizeof(currentptr, false));
-          oprndstk[sp].oprndlen := defaultptrsize;
-          genunary(pushvalue, ints);
-          parseextraargs;
-          if not callnew and containedfile then genunary(closerangeop, none);
-        end {newdispose} ;
+    verifytoken(lpar, nolparerr);
+    newresulttype(noneindex);
+
+    if token = ident then
+      begin
+      if callnew then 
+        modifyvariable(true, true)
+      else
+        begin
+        search(n);
+        if n <> 0 then
+          begin
+          p := ref(bigtable[n]);
+          if p^.namekind in
+             [funcname, forwardfunc, externalfunc, funcparam] then
+            factor
+          else 
+            modifyvariable(true, true);
+          end
+        else 
+          illegalident(n);
+        end;
+      if not (resultform in [none, ptrs]) then 
+        warnbefore(noptrvar);
+      genunary(pushaddr, ptrs);
+      end
+    else 
+      warnbetween(novarerr);
+
+    currentrecord := noneindex;
+    with resultptr^ do
+      if typ = ptrs then
+        begin
+        p := ref(bigtable[ptrtypename]);
+        currentrecord := p^.typeindex;
+        if p^.namekind = undeftypename then
+          begin
+          p^.lastoccurrence := display[level].scopeid;
+          end;
+        currentptr := ref(bigtable[currentrecord]);
+        containedfile := currentptr^.containsfile;
+        end;
+
+    parsetagparams(currentrecord);
+    currentptr := ref(bigtable[currentrecord]);
+    pushint(sizeof(currentptr, false));
+    oprndstk[sp].oprndlen := defaultptrsize;
+    genunary(pushvalue, ints);
+    parseextraargs;
+
+    if not callnew and containedfile then 
+      genunary(closerangeop, none);
+  end;
   {>>>}
   {<<<}
-      procedure filehack(filetype: tableIndex;
-                         reading: boolean);
-
+  procedure filehack(filetype: tableIndex; reading: boolean);
+  {<<<}
   { Generate intcode to access one file element.  The vast number of indirect
     operations is due to the fact that we placed the address of the file var
     on the stack when it was processed for the forthcoming "get/put" operation.
     Thus, we have mem[sp]->filevar->buffptr->data, three indirects in all.
   }
+  {>>>}
 
-        var
-          f: entryptr; {for access to filetype}
+  var
+    f: entryptr; {for access to filetype}
 
+  begin
+    genunary (setbinfileop, files);
+    genunary (indrop, files);
 
-        begin {filehack}
-          genunary(setbinfileop, files);
-          genunary(indrop, files);
-          if reading then genunary(definelazyop, files);
-          genunary(indrop, files);
-          genunary(indrop, files);
-          genop(newvarop);
-          bumpsp;
-          f := ref(bigtable[filetype]);
-          newresulttype(f^.filebasetype);
-          with oprndstk[sp] do
-            begin
-            typeindex := resulttype;
-            oprndlen := sizeof(resultptr, false);
-            genint(oprndlen);
-            operandkind := exproperand;
-            cost := 0;
-            extended := resultptr^.extendedrange;
-            end;
-          genint(0);
-          genint(0);
-          genint(0);
-        end {filehack} ;
+    if reading then 
+      genunary (definelazyop, files);
+
+    genunary (indrop, files);
+    genunary (indrop, files);
+    genop (newvarop);
+    bumpsp;
+
+    f := ref(bigtable[filetype]);
+    newresulttype (f^.filebasetype);
+
+    with oprndstk[sp] do
+      begin
+      typeindex := resulttype;
+      oprndlen := sizeof(resultptr, false);
+      genint (oprndlen);
+      operandkind := exproperand;
+      cost := 0;
+      extended := resultptr^.extendedrange;
+      end;
+
+    genint (0);
+    genint (0);
+    genint (0);
+  end;
   {>>>}
   {<<<}
-      procedure gencopystack(reservelen: integer {stack space to reserve for
-                                                  result value} );
-
+  procedure gencopystack(reservelen: integer);
   { Generate special code to copy the top element of the runtime stack,
     which is assumed by this routine to be the explicitly named file
     argument to "read" or "write".  Complicated by the fact that the
     travrs operand stack (for building nodes) might or might not already
     contain the read/write argument.
   }
-
-
-        begin {gencopystack}
-          if not constcheck(sp) then genop(switchstack);
-          genop(copystackop);
-          genint(reservelen);
-          genint(0);
-          genform(ptrs);
-          if not constcheck(sp) then genop(switchstack);
-        end {gencopystack} ;
+  begin 
+    if not constcheck(sp) then 
+      genop (switchstack);
+    genop (copystackop);
+    genint (reservelen);
+    genint (0);
+    genform (ptrs);
+    if not constcheck(sp) then 
+      genop(switchstack);
+  end;
   {>>>}
   {<<<}
-      procedure readprocedure;
-
+  procedure readprocedure;
   { Process a read procedure call.  The first argument may be a file, in
     which case that file is used, otherwise the file "input" is used.
   }
+  var
+    filetype: tableIndex;
+    f: entryptr; {for access to filetype}
+    readflag: boolean; {true if "read", rather than "readln"}
 
-        var
-          filetype: tableIndex;
-          f: entryptr; {for access to filetype}
-          readflag: boolean; {true if "read", rather than "readln"}
+    {<<<}
+          procedure readparams;
 
-
-  {<<<}
-        procedure readparams;
-
-  { Parse read parameters.  These look like any other var parameters,
-    except that many types of parameters are allowed.
-  }
-
-          var
-            readform: types; {type of parameter}
-            readfile: boolean; {true if read(filevar, ...) form}
-            restoresp: - 1..oprnddepth; {for restoring operand sp after each read}
-            filetype: tableIndex;
-            readfiledeclared: boolean; {set true if file was declared in program
-                                        header}
-
-  {<<<}
-          procedure genoneread;
-
-  { Generate the intermediate file output for one read parameter.  This
-    is done with a special operation "rd".
-  }
+    { Parse read parameters.  These look like any other var parameters,
+      except that many types of parameters are allowed.
+    }
 
             var
-              resultlen: integer; {length of result from read}
+              readform: types; {type of parameter}
+              readfile: boolean; {true if read(filevar, ...) form}
+              restoresp: - 1..oprnddepth; {for restoring operand sp after each read}
+              filetype: tableIndex;
+              readfiledeclared: boolean; {set true if file was declared in program
+                                          header}
+
+    {<<<}
+            procedure genoneread;
+
+    { Generate the intermediate file output for one read parameter.  This
+      is done with a special operation "rd".
+    }
+
+              var
+                resultlen: integer; {length of result from read}
 
 
-            begin {genoneread}
-              if readform <> files then
-                begin
-                if readform in [ints, reals, doubles, chars] then
+              begin {genoneread}
+                if readform <> files then
                   begin
-                  if readform = ints then resultlen := defaulttargetintsize
-                  else resultlen := sizeof(resultptr, false);
-                  gencopystack(resultlen);
+                  if readform in [ints, reals, doubles, chars] then
+                    begin
+                    if readform = ints then resultlen := defaulttargetintsize
+                    else resultlen := sizeof(resultptr, false);
+                    gencopystack(resultlen);
+                    end
+                  else if readfile and ((token <> rpar) or not readflag) then
+                    gencopystack(0);
+
+                  if not (readform in [none, ints, reals, doubles, chars]) then
+                    begin
+                    if ((readform <> arrays) or not resultptr^.stringtype) and
+                       (readform <> strings) or (sharedPtr^.switchcounters[standard] > 0) then
+                      warnbefore(badreadtype)
+                    else pushstringparam(false);
+                    end;
+                  end;
+                genunary(rd, readform);
+              end {genoneread} ;
+    {>>>}
+    {<<<}
+            procedure onereadparam;
+
+    { Parse one read parameter.  This must be a variable.
+    }
+
+
+              begin {onereadparam}
+                sp := restoresp;
+                if token = ident then
+                  begin
+                  if filetype <> textindex then filehack(filetype, true);
+                  modifyvariable(true, true);
+                  readform := resultform;
+                  if filetype <> textindex then
+                    begin
+                    f := ref(bigtable[filetype]);
+                    if not compatible(resulttype, f^.filebasetype) then
+                      warnbefore(typesincomp);
+                    genop(switchstack);
+                    genbinary(moveop, readform);
+                    readform := files;
+                    end;
+                  parsecolons(0);
+                  verify1([rpar, comma, ident], badparamerr)
                   end
-                else if readfile and ((token <> rpar) or not readflag) then
-                  gencopystack(0);
-
-                if not (readform in [none, ints, reals, doubles, chars]) then
+                else
                   begin
-                  if ((readform <> arrays) or not resultptr^.stringtype) and
-                     (readform <> strings) or (sharedPtr^.switchcounters[standard] > 0) then
-                    warnbefore(badreadtype)
-                  else pushstringparam(false);
+                  warnbetween(novarerr);
+                  newresulttype(noneindex);
                   end;
-                end;
-              genunary(rd, readform);
-            end {genoneread} ;
-  {>>>}
-  {<<<}
-          procedure onereadparam;
-
-  { Parse one read parameter.  This must be a variable.
-  }
+              end {onereadparam} ;
+    {>>>}
 
 
-            begin {onereadparam}
-              sp := restoresp;
-              if token = ident then
+            begin {readparams}
+              sp := - 1;
+              readfile := false;
+              restoresp := sp;
+              verifytoken(lpar, nolparerr);
+              filetype := textindex;
+              readfiledeclared := filedeclared;
+              onereadparam;
+              if resultform = files then
                 begin
-                if filetype <> textindex then filehack(filetype, true);
-                modifyvariable(true, true);
-                readform := resultform;
-                if filetype <> textindex then
-                  begin
-                  f := ref(bigtable[filetype]);
-                  if not compatible(resulttype, f^.filebasetype) then
-                    warnbefore(typesincomp);
-                  genop(switchstack);
-                  genbinary(moveop, readform);
-                  readform := files;
-                  end;
-                parsecolons(0);
-                verify1([rpar, comma, ident], badparamerr)
+                if not readfiledeclared then warnbefore(filenotdeclared);
+                restoresp := sp;
+                filetype := resulttype;
+                if (filetype <> textindex) and (procid = readlnid) then
+                  warnbefore(nottextfile);
+                if (procid = readid) and (token = rpar) then warn(noreadarg);
+                genunary(pushaddr, ptrs);
+                if filetype = textindex then genunary(setfileop, none);
+                readfile := true;
                 end
               else
                 begin
-                warnbetween(novarerr);
-                newresulttype(noneindex);
+                if not inputdeclared then
+                  warnnonstandard (inputnotdeclared);
+                genoneread;
                 end;
-            end {onereadparam} ;
-  {>>>}
+              while token in [comma, ident] do
+                begin
+                verifytoken (comma, nocommaerr);
+                onereadparam;
+                if resultform = files then
+                  warnbefore(badreadtype);
+                genoneread;
+                end;
 
-
-          begin {readparams}
-            sp := - 1;
-            readfile := false;
-            restoresp := sp;
-            verifytoken(lpar, nolparerr);
-            filetype := textindex;
-            readfiledeclared := filedeclared;
-            onereadparam;
-            if resultform = files then
-              begin
-              if not readfiledeclared then warnbefore(filenotdeclared);
-              restoresp := sp;
-              filetype := resulttype;
-              if (filetype <> textindex) and (procid = readlnid) then
-                warnbefore(nottextfile);
-              if (procid = readid) and (token = rpar) then warn(noreadarg);
-              genunary(pushaddr, ptrs);
-              if filetype = textindex then genunary(setfileop, none);
-              readfile := true;
-              end
-            else
-              begin
-              if not inputdeclared then
-                warnnonstandard (inputnotdeclared);
-              genoneread;
-              end;
-            while token in [comma, ident] do
-              begin
-              verifytoken (comma, nocommaerr);
-              onereadparam;
-              if resultform = files then
-                warnbefore(badreadtype);
-              genoneread;
-              end;
-
-            parseextraargs;
-          end;
-  {>>>}
-
-        begin
-          genop(bldnil);
-          readflag := procid = readid;
-          if readflag and (token <> lpar) then
-            warnbetween(noreadarg)
-          else if token = lpar then
-            readparams
-          else
-            begin
-            if not inputdeclared then
-              warnnonstandard(inputnotdeclared);
+              parseextraargs;
             end;
-        end;
+    {>>>}
+
+  begin
+    genop(bldnil);
+    readflag := procid = readid;
+    if readflag and (token <> lpar) then
+      warnbetween(noreadarg)
+    else if token = lpar then
+      readparams
+    else
+      begin
+      if not inputdeclared then
+        warnnonstandard(inputnotdeclared);
+      end;
+  end;
   {>>>}
   {<<<}
-      procedure writeprocedure;
-
+  procedure writeprocedure;
   { Process a write procedure.  This is complicated by the optional file
     argument (as in read) and by the optional field width arguments set
     by colons.  As in the read procedure, each write argument is passed
     with a special argument.
   }
+  var
+    writeflag: boolean; {true if write instead of writeln}
+    filetype: tableIndex;
+    f: entryptr; {for access to filetype}
+
+    {<<<}
+    procedure writeparams;
+    { Parse the parameters to a write procedure. }
+
+      var
+        restoresp: - 1..oprnddepth; {used to restore operand stack}
+        writefile: boolean; {true if write(f,...) form}
+        writefiledeclared: boolean; {set true if file was declared in program
+                                     header}
+
+
+      {<<<}
+      procedure onewriteparam(varread: boolean {var already read?} );
+      {<<<}
+      { Parse a single parameter to a write procedure.  The flag "varread" is
+        set if a variable has been read to check for the default file parameter.
+      }
+      {>>>}
 
         var
-          writeflag: boolean; {true if write instead of writeln}
-          filetype: tableIndex;
-          f: entryptr; {for access to filetype}
+          writeform: types; {form of argument}
+          writelen: addressrange; {length of write parameter}
+          stringflag: boolean; {used to check for string argument}
+          basetype: tableIndex; {pointer to base type}
 
+        begin {onewriteparam}
+          if filetype <> textindex then filehack(filetype, false);
+          skipfactor := varread;
+          expression(follow + [comma, rpar, colon], false);
+          stripsubrange(resulttype);
+          newresulttype(resulttype);
+          writeform := resultform;
+          if writeform = ints then setdefaulttargetintsize;
+          writelen := oprndstk[sp].oprndlen;
 
-        procedure writeparams;
-  { Parse the parameters to a write procedure.
-  }
+          if filetype = textindex then
+            begin
+            {set stringflag before upcoming genunary modifies resulttype}
+            if writeform = arrays then stringflag := resultptr^.stringtype
+            else stringflag := writeform = strings;
 
-          var
-            restoresp: - 1..oprnddepth; {used to restore operand stack}
-            writefile: boolean; {true if write(f,...) form}
-            writefiledeclared: boolean; {set true if file was declared in program
-                                         header}
+            if ((token <> rpar) or not writeflag) then gencopystack(0);
 
-
-          procedure onewriteparam(varread: boolean {var already read?} );
-
-  { Parse a single parameter to a write procedure.  The flag "varread" is
-    set if a variable has been read to check for the default file parameter.
-  }
-
-            var
-              writeform: types; {form of argument}
-              writelen: addressrange; {length of write parameter}
-              stringflag: boolean; {used to check for string argument}
-              basetype: tableIndex; {pointer to base type}
-
-            begin {onewriteparam}
-              if filetype <> textindex then filehack(filetype, false);
-              skipfactor := varread;
-              expression(follow + [comma, rpar, colon], false);
-              stripsubrange(resulttype);
-              newresulttype(resulttype);
-              writeform := resultform;
-              if writeform = ints then setdefaulttargetintsize;
-              writelen := oprndstk[sp].oprndlen;
-
-              if filetype = textindex then
+            case writeform of
+              bools, chars, ints:
                 begin
-                {set stringflag before upcoming genunary modifies resulttype}
-                if writeform = arrays then stringflag := resultptr^.stringtype
-                else stringflag := writeform = strings;
-
-                if ((token <> rpar) or not writeflag) then gencopystack(0);
-
-                case writeform of
-                  bools, chars, ints:
-                    begin
-                    genunary(pushvalue, writeform);
-                    parsecolons(1);
-                    end;
-                  none, reals, doubles:
-                    begin
-                    genunary(pushvalue, writeform);
-                    parsecolons(2);
-                    end;
-                  arrays, strings:
-                    begin
-                    if not stringflag then warnbefore(badwritearg)
-                    else pushstringparam(writeform = strings);
-                    parsecolons(1)
-                    end;
-                  otherwise
-                    begin
-                    warnbefore(badwritearg);
-                    parsecolons(maxint)
-                    end
-                  end;
-
-                end
-              else
-                begin
-                f := ref(bigtable[filetype]);
-                basetype := f^.filebasetype;
-                f := ref(bigtable[basetype]);
-                if ((getform(f) = ints) and ((writeform = reals) or
-                   (writeform = doubles))) or
-                   not compatible(basetype, resulttype) then
-                  warnbefore(typesincomp);
-                genbinary(moveop, resultform);
-                writeform := files;
+                genunary(pushvalue, writeform);
+                parsecolons(1);
                 end;
-              genop(wr);
-              genint(writelen);
-              genint(0);
-              genform(writeform);
-              sp := restoresp;
-            end {onewriteparam} ;
-
-
-          begin {writeparams}
-            writefile := false;
-            restoresp := - 1;
-            verifytoken(lpar, nolparerr);
-            filetype := textindex;
-            if token = ident then
-              begin
-              writefiledeclared := filedeclared;
-              factor;
-              if resultform = files then
+              none, reals, doubles:
                 begin
-                if not writefiledeclared then warnbefore(filenotdeclared);
-                writefile := true;
-                filetype := resulttype;
-                verify1([comma, rpar], badparamerr);
-                genunary(pushaddr, ptrs);
-                restoresp := sp;
-                if filetype = textindex then genunary(setfileop, none);
-                if (filetype <> textindex) and (procid = writelnid) then
-                  warnbefore(nottextfile);
-                if writeflag and (token = rpar) then warn(nowritearg)
-                end
-              else
+                genunary(pushvalue, writeform);
+                parsecolons(2);
+                end;
+              arrays, strings:
                 begin
-                if not outputdeclared then
-                  warnnonstandard(outputnotdeclared);
-                onewriteparam (true);
+                if not stringflag then warnbefore(badwritearg)
+                else pushstringparam(writeform = strings);
+                parsecolons(1)
+                end;
+              otherwise
+                begin
+                warnbefore(badwritearg);
+                parsecolons(maxint)
                 end
-              end
-            else
-              begin
-              if not outputdeclared then
-                warnnonstandard(outputnotdeclared);
-              onewriteparam(false);
               end;
 
-            while token in
-                  [comma, eql..andsym, ident, intconst..stringconst, lbrack,
-                  lpar, notsym, nilsym] do
-              begin
-              verifytoken(comma, nocommaerr);
-              onewriteparam(false)
-              end;
-            parseextraargs;
-          end {writeparams} ;
+            end
+          else
+            begin
+            f := ref(bigtable[filetype]);
+            basetype := f^.filebasetype;
+            f := ref(bigtable[basetype]);
+            if ((getform(f) = ints) and ((writeform = reals) or
+               (writeform = doubles))) or
+               not compatible(basetype, resulttype) then
+              warnbefore(typesincomp);
+            genbinary(moveop, resultform);
+            writeform := files;
+            end;
+          genop(wr);
+          genint(writelen);
+          genint(0);
+          genform(writeform);
+          sp := restoresp;
+        end {onewriteparam} ;
+      {>>>}
 
-
-        begin {writeprocedure}
-          genop(bldnil);
-          writeflag := (procid = writeid);
-          if not writeflag and (token <> lpar) then
+      begin {writeparams}
+        writefile := false;
+        restoresp := - 1;
+        verifytoken(lpar, nolparerr);
+        filetype := textindex;
+        if token = ident then
+          begin
+          writefiledeclared := filedeclared;
+          factor;
+          if resultform = files then
+            begin
+            if not writefiledeclared then warnbefore(filenotdeclared);
+            writefile := true;
+            filetype := resulttype;
+            verify1([comma, rpar], badparamerr);
+            genunary(pushaddr, ptrs);
+            restoresp := sp;
+            if filetype = textindex then genunary(setfileop, none);
+            if (filetype <> textindex) and (procid = writelnid) then
+              warnbefore(nottextfile);
+            if writeflag and (token = rpar) then warn(nowritearg)
+            end
+          else
             begin
             if not outputdeclared then
               warnnonstandard(outputnotdeclared);
-            end;
+            onewriteparam (true);
+            end
+          end
+        else
+          begin
+          if not outputdeclared then
+            warnnonstandard(outputnotdeclared);
+          onewriteparam(false);
+          end;
 
-          if writeflag then
-            verify([lpar], begexprset, nolparerr);
-          if token in begexprset then
-            writeparams;
-        end {writeprocedure} ;
+        while token in
+              [comma, eql..andsym, ident, intconst..stringconst, lbrack,
+              lpar, notsym, nilsym] do
+          begin
+          verifytoken(comma, nocommaerr);
+          onewriteparam(false)
+          end;
+        parseextraargs;
+      end {writeparams} ;
+    {>>>}
+
+  begin
+    genop (bldnil);
+
+    writeflag := (procid = writeid);
+    if not writeflag and (token <> lpar) then
+      begin
+      if not outputdeclared then
+        warnnonstandard(outputnotdeclared);
+      end;
+
+    if writeflag then
+      verify([lpar], begexprset, nolparerr);
+
+    if token in begexprset then
+      writeparams;
+  end;
   {>>>}
   {<<<}
       procedure pusharrayparam(packedarray, {which kind of array}
@@ -9006,472 +9014,426 @@ procedure statement (follow: tokenset {legal following symbols} );
     end; {fsincosproc}
   {>>>}
 
+  begin
+    newexprstmt (syscall);
+    genint (ord(procid));
 
-      begin {standardprocedures}
-        newexprstmt(syscall);
-        genint(ord(procid));
-        gettoken;
-        case procid of
-          readid, readlnid: readprocedure;
-          writeid, writelnid: writeprocedure;
-          newid: newdispose;
-          disposeid: newdispose;
-          pageid: page;
-          putid, getid, breakid, closeid, deleteid, noioerrorid:
-            ioprocedure(false);
-          seekid: seek;
-          renameid: rename;
-          resetid, rewriteid: resetrewrite;
-          packid: pack;
-          unpackid: unpack;
-          deletestrid: deletestr;
-          insertid: insert;
-          strid: str;
-          valprocid: val;
-          fsincosid: fsincosproc;
-          setfpcrid: setfpcrproc;
-          otherwise warn(compilerwritererr)
-          end;
-      end {standardprocedures} ;
+    gettoken;
+    case procid of
+      readid, readlnid: readprocedure;
+      writeid, writelnid: writeprocedure;
+      newid: newdispose;
+      disposeid: newdispose;
+      pageid: page;
+      putid, getid, breakid, closeid, deleteid, noioerrorid:
+        ioprocedure(false);
+      seekid: seek;
+      renameid: rename;
+      resetid, rewriteid: resetrewrite;
+      packid: pack;
+      unpackid: unpack;
+      deletestrid: deletestr;
+      insertid: insert;
+      strid: str;
+      valprocid: val;
+      fsincosid: fsincosproc;
+      setfpcrid: setfpcrproc;
+      otherwise warn(compilerwritererr)
+      end;
+  end;
   {>>>}
 
   {<<<}
-    procedure assignlabel;
-
+  procedure assignlabel;
   { Assign a label to the current statement.  This must search the labellist
     at the current level to make sure that it is declared.  It also may have
     to check and see if the label has been the target of an illegal goto.
   }
 
-      var
-        t: labelptr; {Label entry}
+  var
+    t: labelptr; {Label entry}
 
-
-      begin {assignlabel}
-        checkundefs := false;
-        nolabelsofar := false;
-        searchlabels(thistoken.intvalue, t);
-        if (t = labelflag) or (lev <> level) then warn(labnotpredef)
-        else
-          with t^ do
-            begin
-            if definednest <> 0 then warn(badlabeldef)
-            else if nest > maxlegalnest then
-              warnat(badlabelnest, labelline, labelcolumn);
-            definednest := nest;
-            maxlegalnest := maxint;
-            if nonlocalref then anynonlocallabels := true;
-            end;
-        genstmt(deflab);
-        genint(t^.internalvalue);
-        genint(lev);
-        genint(ord(t^.nonlocalref));
-        gettoken;
-        if token = becomes then illegalassign
-        else verifytoken(colon, nocolonerr);
-      end {assignlabel} ;
+  begin {assignlabel}
+    checkundefs := false;
+    nolabelsofar := false;
+    searchlabels(thistoken.intvalue, t);
+    if (t = labelflag) or (lev <> level) then warn(labnotpredef)
+    else
+      with t^ do
+        begin
+        if definednest <> 0 then warn(badlabeldef)
+        else if nest > maxlegalnest then
+          warnat(badlabelnest, labelline, labelcolumn);
+        definednest := nest;
+        maxlegalnest := maxint;
+        if nonlocalref then anynonlocallabels := true;
+        end;
+    genstmt(deflab);
+    genint(t^.internalvalue);
+    genint(lev);
+    genint(ord(t^.nonlocalref));
+    gettoken;
+    if token = becomes then illegalassign
+    else verifytoken(colon, nocolonerr);
+  end {assignlabel} ;
   {>>>}
   {<<<}
-    procedure badelseclause;
-
+  procedure badelseclause;
   { Generate an error message for a bad else clause, then recover.
     This is such a common error it is worth special handling.
   }
-
-
-      begin {badelseclause}
-        warn(badelseerr);
-        gettoken;
-        statement(follow)
-      end {badelseclause} ;
+  begin {badelseclause}
+    warn(badelseerr);
+    gettoken;
+    statement(follow)
+  end {badelseclause} ;
   {>>>}
   {<<<}
-    procedure assignment;
+  procedure assignment;
 
   { Syntactic routine to parse an assignment statement.
-
-    Productions:
-
     assignment-statement = variable ":=" expression  .
-
     This routine must transform integer expressions to real if the
     target is real, and may issue a range check for a subrange
     assignment.
-
     The left hand side variable is marked as modified.
   }
+  var
+    varptr: entryptr; {Provides access to LHS variable}
+    lefttype: tableIndex; {LHS type}
+    leftform: types; {for compatibility checking}
+    leftstdstring: boolean; {for char-to-std-string conversion}
 
-      var
-        varptr: entryptr; {Provides access to LHS variable}
-        lefttype: tableIndex; {LHS type}
-        leftform: types; {for compatibility checking}
-        leftstdstring: boolean; {for char-to-std-string conversion}
+  begin
+    variable (true, true, false, true, true, varindex);
+    lefttype := resulttype;
+    leftform := resultform;
+    leftstdstring := (resultform = arrays) and resultptr^.stringtype;
 
+    if token = eql then
+      begin
+      warn(nobecomeserr);
+      gettoken
+      end
+    else 
+      verifytoken (becomes, nobecomeserr);
 
-      begin {assignment}
-        variable(true, true, false, true, true, varindex);
-        lefttype := resulttype;
-        leftform := resultform;
-        leftstdstring := (resultform = arrays) and resultptr^.stringtype;
-        if token = eql then
-          begin
-          warn(nobecomeserr);
-          gettoken
-          end
-        else verifytoken(becomes, nobecomeserr);
-        expression(follow, false);
-        if resultptr^.containsfile then warnbefore(dontassignfile)
-        else if (leftform = reals) and (resultform = ints) then
-          genunary(float, ints)
-        else if (leftform = ints) and (resultform = reals) then
-          warnbefore(badrealtoint)
-        else if (leftform = doubles) and (resultform = ints) then
-          genunary(float_double, ints)
-        else if (leftform = ints) and (resultform = doubles) then
-          warnbefore(badrealtoint)
-        else if (leftform = doubles) and (resultform = reals) and
-                not sharedPtr^.switcheverplus[doublereals] then
-          begin
-          oprndstk[sp].oprndlen := doublesize;
-          genunary(real_to_dbl, reals);
-          end
-        else if (leftform = reals) and (resultform = doubles) then
-          warnbefore(baddbltoreal)
-        else if (leftform = strings) and (resultform = chars) then
-          genunary(chrstrop, strings)
-        else if (leftform = strings) and (resultform = arrays) and
-                resultptr^.stringtype then
-          genunary(arraystrop, strings)
-        else
-          begin
-          if (sharedPtr^.switchcounters[standard] <= 0) and leftstdstring and
-             (resultform = chars) then
-            begin
-            newstringtype(resulttype, arrays, 1);
-            newresulttype(resulttype);
-            oprndstk[sp].typeindex := resulttype;
-            end;
-          if not compatible(lefttype, resulttype) then warnbefore(badassignment);
-          end;
-        gencheck(rangechkop, lefttype);
-        if leftform = conformantarrays then
-          begin
-          genvalsize(lefttype, 1);
-          genoprnd;
-          genbinary(cmoveop, arrays);
-          end
-        else genbinary(moveop, leftform);
-        genoprndstmt;
-        varptr := ref(bigtable[varindex]);
-        with varptr^ do
-          if namekind in
-             [varname, fieldname, param, varparam, confparam, varconfparam] then
-            begin
-            modified := true;
-            parammodified := true;
-            if (nest = 1) and nolabelsofar then knownvalid := true;
-            end;
-      end {assignment} ;
+    expression (follow, false);
+
+    if resultptr^.containsfile then warnbefore(dontassignfile)
+    else if (leftform = reals) and (resultform = ints) then
+      genunary(float, ints)
+    else if (leftform = ints) and (resultform = reals) then
+      warnbefore(badrealtoint)
+    else if (leftform = doubles) and (resultform = ints) then
+      genunary(float_double, ints)
+    else if (leftform = ints) and (resultform = doubles) then
+      warnbefore(badrealtoint)
+    else if (leftform = doubles) and (resultform = reals) and
+            not sharedPtr^.switcheverplus[doublereals] then
+      begin
+      oprndstk[sp].oprndlen := doublesize;
+      genunary(real_to_dbl, reals);
+      end
+    else if (leftform = reals) and (resultform = doubles) then
+      warnbefore(baddbltoreal)
+    else if (leftform = strings) and (resultform = chars) then
+      genunary(chrstrop, strings)
+    else if (leftform = strings) and (resultform = arrays) and
+            resultptr^.stringtype then
+      genunary(arraystrop, strings)
+    else
+      begin
+      if (sharedPtr^.switchcounters[standard] <= 0) and leftstdstring and
+         (resultform = chars) then
+        begin
+        newstringtype(resulttype, arrays, 1);
+        newresulttype(resulttype);
+        oprndstk[sp].typeindex := resulttype;
+        end;
+      if not compatible(lefttype, resulttype) then warnbefore(badassignment);
+      end;
+
+    gencheck(rangechkop, lefttype);
+    if leftform = conformantarrays then
+      begin
+      genvalsize(lefttype, 1);
+      genoprnd;
+      genbinary(cmoveop, arrays);
+      end
+    else genbinary(moveop, leftform);
+    genoprndstmt;
+    varptr := ref(bigtable[varindex]);
+    with varptr^ do
+      if namekind in
+         [varname, fieldname, param, varparam, confparam, varconfparam] then
+        begin
+        modified := true;
+        parammodified := true;
+        if (nest = 1) and nolabelsofar then knownvalid := true;
+        end;
+  end {assignment} ;
   {>>>}
   {<<<}
-    procedure compoundstatement;
-
+  procedure compoundstatement;
   { Syntactic routine to parse a compound statement.
-
-    Productions:
-
     compound-statement = "begin" statement [* ";" statement *] "end"  .
-
     This does very little, just parses a statement sequence
   }
-
-
-      begin {compoundstatement}
-        gettoken;
-        nest := nest + 1;
-        statement(follow + [semicolon, endsym, otherwisesym] - [elsesym]);
-        while not (token in [labelsym..functionsym, endsym, eofsym]) do
-          begin
-          if token = semicolon then gettoken
-          else verify1([semicolon], nosemierr);
-          statement([semicolon, endsym, otherwisesym] + follow - [elsesym])
-          end;
-        updatelabelnest;
-        nest := nest - 1;
-        verifytoken(endsym, noenderr);
-      end {compoundstatement} ;
+  begin {compoundstatement}
+    gettoken;
+    nest := nest + 1;
+    statement(follow + [semicolon, endsym, otherwisesym] - [elsesym]);
+    while not (token in [labelsym..functionsym, endsym, eofsym]) do
+      begin
+      if token = semicolon then gettoken
+      else verify1([semicolon], nosemierr);
+      statement([semicolon, endsym, otherwisesym] + follow - [elsesym])
+      end;
+    updatelabelnest;
+    nest := nest - 1;
+    verifytoken(endsym, noenderr);
+  end {compoundstatement} ;
   {>>>}
   {<<<}
-    procedure ifstatement;
+  procedure ifstatement;
 
   { Syntactic routine to parse an if statement.
-
-    Productions:
-
     if-statement = "if" expression "then" statement
           [ "else" statement ]  .
-
     This must make a modification in the normal checking for undefined
     variable references.  This is because in a loop, it is possible for the
     variables to be initialized by another branch of the if on an earlier
     pass through the loop.  Thus if we are in a looping construct the
     checking is disabled
-
   }
+  var
+    oldcheck: boolean; {old value of checkundefs}
 
-      var
-        oldcheck: boolean; {old value of checkundefs}
-
-
-      begin {ifstatement}
-        getexprstmt(begif);
-        expression(follow + [elsesym, thensym, dosym], false);
-        checkboolean;
-        genoprndstmt;
-        oldcheck := checkundefs;
-        checkundefs := (loopfactor = 0);
-        verifytoken(thensym, nothenerr);
-        nest := nest + 1;
-        statement(follow + [elsesym]);
-        genstmt(endthen);
-        if token = elsesym then
-          begin
-          updatelabelnest;
-          gettoken;
-          genstmt(begelse);
-          statement(follow);
-          genstmt(endelse);
-          end;
-        updatelabelnest;
-        nest := nest - 1;
-        checkundefs := oldcheck;
-      end {ifstatement} ;
+  begin {ifstatement}
+    getexprstmt(begif);
+    expression(follow + [elsesym, thensym, dosym], false);
+    checkboolean;
+    genoprndstmt;
+    oldcheck := checkundefs;
+    checkundefs := (loopfactor = 0);
+    verifytoken(thensym, nothenerr);
+    nest := nest + 1;
+    statement(follow + [elsesym]);
+    genstmt(endthen);
+    if token = elsesym then
+      begin
+      updatelabelnest;
+      gettoken;
+      genstmt(begelse);
+      statement(follow);
+      genstmt(endelse);
+      end;
+    updatelabelnest;
+    nest := nest - 1;
+    checkundefs := oldcheck;
+  end {ifstatement} ;
   {>>>}
   {<<<}
-    procedure casestatement;
-
+  procedure casestatement;
   { Syntactic routine to parse a case statement.
-
-    Productions:
-
     case-statement = "case" expression "of"
           case-list-element [* ";" case-list-element *] [ ";" ]
           [ ( "otherwise" | "else" ) statement [ ";" ] ] "end"  .
-
     A list of used case labels is kept to allow checking for duplicate
     labels.
-
     A problem similar to that for "if" exists for undefined variable checks.
   }
+  type
+    caselabptr = ^caselabentry; {used to keep track of case labels}
+    caselabentry =
+      record
+        next: caselabptr;
+        value1: integer
+      end;
 
-      type
-        caselabptr = ^caselabentry; {used to keep track of case labels}
-        caselabentry =
-          record
-            next: caselabptr;
-            value1: integer
-          end;
+  var
+    oldcheck: boolean; {old value of checkundef}
+    latestlabel: caselabptr; {start of case label list}
+    p1: caselabptr; {used when deleting case label list}
+    casetype: tableIndex; {type of case expression}
+
+    {<<<}
+    procedure caselabel;
+    {<<<}
+    { Read a single case label, check it against previously read case labels,
+      then add it to the list of labels read.
+
+      Output generated:
+
+      case-label = "caselab(value1)"
+    }
+    {>>>}
 
       var
-        oldcheck: boolean; {old value of checkundef}
-        latestlabel: caselabptr; {start of case label list}
-        p1: caselabptr; {used when deleting case label list}
-        casetype: tableIndex; {type of case expression}
+        p: caselabptr; {used to trace label list}
+        p1: caselabptr; {used to generate new label entry}
+        lab: operand; {constant label value}
 
 
-      procedure caselabel;
-
-  { Read a single case label, check it against previously read case labels,
-    then add it to the list of labels read.
-
-    Output generated:
-
-    case-label = "caselab(value1)"
-  }
-
-        var
-          p: caselabptr; {used to trace label list}
-          p1: caselabptr; {used to generate new label entry}
-          lab: operand; {constant label value}
-
-
-        begin {caselabel}
-          new(p1);
-          with p1^ do
-            begin
-            next := latestlabel;
-            constant(follow + begconstset + [comma, colon, elsesym, otherwisesym],
-                     true, lab);
-            value1 := lab.cvalue.intvalue;
-            if not compatible(casetype, lab.typeindex) then
-              warnbefore(badcaselabeltype);
-            p := latestlabel;
-            while (p <> nil) do
-              begin
-              if p^.value1 = lab.cvalue.intvalue then warnbefore(dupcaselabel);
-              p := p^.next;
-              end;
-            genstmt(caselab);
-            genint(lab.cvalue.intvalue);
-            end;
-          latestlabel := p1;
-        end {caselabel} ;
-
-
-      procedure onecase;
-
-  { Syntactic routine to parse a case-element.
-
-    Production:
-
-    case-list-element = constant [* "," constant *] ":"
-          statement  .
-  }
-
-
-        begin {onecase}
-          if token in begconstset then
-            begin
-            caselabel;
-            while token in
-                  [comma, ident, plus, minus, nilsym, intconst..stringconst] do
-              begin
-              verifytoken(comma, nocommaerr);
-              if token in begconstset then caselabel
-              else warn(caselabelerr)
-              end;
-            verifytoken(colon, nocolonerr);
-            statement(follow + [semicolon, intconst, realconst, dblrealconst,
-                      charconst, ident, endsym, elsesym, otherwisesym]);
-            updatelabelnest;
-            genstmt(endcaseelt);
-            end;
-        end {onecase} ;
-
-
-      begin {casestatement}
-        getexprstmt(begcase);
-        expression(follow + [ofsym], false);
-        genoprndstmt;
-        if not (resultform in [ints, chars, bools, scalars, subranges, none]) then
-          warnbefore(badcasetype);
-        verifytoken(ofsym, nooferr);
-        casetype := resulttype;
-        latestlabel := nil;
-        oldcheck := checkundefs;
-        checkundefs := (loopfactor = 0);
-        nest := nest + 1;
-        onecase;
-        while token in
-              [semicolon, ident, nilsym, plus, minus, intconst..stringconst] do
+      begin {caselabel}
+        new(p1);
+        with p1^ do
           begin
-          verifytoken(semicolon, nosemierr);
-          onecase
+          next := latestlabel;
+          constant(follow + begconstset + [comma, colon, elsesym, otherwisesym],
+                   true, lab);
+          value1 := lab.cvalue.intvalue;
+          if not compatible(casetype, lab.typeindex) then
+            warnbefore(badcaselabeltype);
+          p := latestlabel;
+          while (p <> nil) do
+            begin
+            if p^.value1 = lab.cvalue.intvalue then warnbefore(dupcaselabel);
+            p := p^.next;
+            end;
+          genstmt(caselab);
+          genint(lab.cvalue.intvalue);
           end;
-        if token in [elsesym, otherwisesym] then
+        latestlabel := p1;
+      end {caselabel} ;
+    {>>>}
+    {<<<}
+    procedure onecase;
+    {<<<}
+    { Syntactic routine to parse a case-element.
+      case-list-element = constant [* "," constant *] ":"
+            statement  .
+    }
+    {>>>}
+
+
+      begin {onecase}
+        if token in begconstset then
           begin
-          warnnonstandard(caseelseerr);
-          gettoken;
-          if token = colon then
+          caselabel;
+          while token in
+                [comma, ident, plus, minus, nilsym, intconst..stringconst] do
             begin
-            warn(caselabelerr);
-            gettoken;
+            verifytoken(comma, nocommaerr);
+            if token in begconstset then caselabel
+            else warn(caselabelerr)
             end;
-          genstmt(casedef);
-          statement(follow + [semicolon, endsym]);
+          verifytoken(colon, nocolonerr);
+          statement(follow + [semicolon, intconst, realconst, dblrealconst,
+                    charconst, ident, endsym, elsesym, otherwisesym]);
           updatelabelnest;
-          if token = semicolon then gettoken
+          genstmt(endcaseelt);
           end;
-        nest := nest - 1;
-        while latestlabel <> nil do
-          begin
-          p1 := latestlabel^.next;
-          dispose(latestlabel);
-          latestlabel := p1;
-          end;
-        verifytoken(endsym, noenderr);
-        genstmt(endcase);
-        checkundefs := oldcheck;
-      end {casestatement} ;
+      end {onecase} ;
+    {>>>}
+
+  begin {casestatement}
+    getexprstmt(begcase);
+    expression(follow + [ofsym], false);
+    genoprndstmt;
+    if not (resultform in [ints, chars, bools, scalars, subranges, none]) then
+      warnbefore(badcasetype);
+    verifytoken(ofsym, nooferr);
+    casetype := resulttype;
+    latestlabel := nil;
+    oldcheck := checkundefs;
+    checkundefs := (loopfactor = 0);
+    nest := nest + 1;
+    onecase;
+    while token in
+          [semicolon, ident, nilsym, plus, minus, intconst..stringconst] do
+      begin
+      verifytoken(semicolon, nosemierr);
+      onecase
+      end;
+    if token in [elsesym, otherwisesym] then
+      begin
+      warnnonstandard(caseelseerr);
+      gettoken;
+      if token = colon then
+        begin
+        warn(caselabelerr);
+        gettoken;
+        end;
+      genstmt(casedef);
+      statement(follow + [semicolon, endsym]);
+      updatelabelnest;
+      if token = semicolon then gettoken
+      end;
+    nest := nest - 1;
+    while latestlabel <> nil do
+      begin
+      p1 := latestlabel^.next;
+      dispose(latestlabel);
+      latestlabel := p1;
+      end;
+    verifytoken(endsym, noenderr);
+    genstmt(endcase);
+    checkundefs := oldcheck;
+  end {casestatement} ;
   {>>>}
   {<<<}
-    procedure whilestatement;
-
+  procedure whilestatement;
   { Syntactic routine to parse a while statement.
-
-    Production:
-
     while-statement = "while" expression "do" statement  .
     loopfactor is used to determine if checking for undefinded
     vars should happen.
-
   }
+  var
+    oldcheck: boolean; {old value of checkundefs}
 
-      var
-        oldcheck: boolean; {old value of checkundefs}
-
-
-      begin {whilestatement}
-        loopfactor := loopfactor + 1;
-        getexprstmt(begwhile);
-        expression(follow + [dosym], false);
-        checkboolean;
-        genoprndstmt;
-        verifytoken(dosym, nodoerr);
-        nest := nest + 1;
-        oldcheck := checkundefs;
-        checkundefs := false;
-        statement(follow);
-        checkundefs := oldcheck;
-        updatelabelnest;
-        nest := nest - 1;
-        genstmt(endwhile);
-        loopfactor := loopfactor - 1;
-      end {whilestatement} ;
+  begin {whilestatement}
+    loopfactor := loopfactor + 1;
+    getexprstmt(begwhile);
+    expression(follow + [dosym], false);
+    checkboolean;
+    genoprndstmt;
+    verifytoken(dosym, nodoerr);
+    nest := nest + 1;
+    oldcheck := checkundefs;
+    checkundefs := false;
+    statement(follow);
+    checkundefs := oldcheck;
+    updatelabelnest;
+    nest := nest - 1;
+    genstmt(endwhile);
+    loopfactor := loopfactor - 1;
+  end {whilestatement} ;
   {>>>}
   {<<<}
     procedure repeatstatement;
-
   { Syntactic routine to parse a repeat statement.
-
-    Production:
-
     repeat-statement = "repeat" statement [* ";" statement *]
           "until" expression  .
-
     Loopfactor is manipulated in a manner similar to while.
   }
 
-
-      begin {repeatstatement}
-        loopfactor := loopfactor + 1;
-        gettoken;
-        debugstmt(begrpt, lasttoken.line, lasttoken.filepos, lasttoken.fileIndex);
-        nest := nest + 1;
-        statement(follow + [untilsym, semicolon]);
-        while token in [semicolon, beginsym..gotosym, ident] do
-          begin
-          verifytoken(semicolon, nosemierr);
-          statement(follow + [untilsym, semicolon])
-          end;
-        verifytoken(untilsym, nountilerr);
-        genstmt(endrpt);
-        intstate := opstate;
-        expression(follow, false);
-        checkboolean;
-        genoprndstmt;
-        updatelabelnest;
-        nest := nest - 1;
-        loopfactor := loopfactor - 1;
-      end {repeatstatement} ;
+  begin {repeatstatement}
+    loopfactor := loopfactor + 1;
+    gettoken;
+    debugstmt(begrpt, lasttoken.line, lasttoken.filepos, lasttoken.fileIndex);
+    nest := nest + 1;
+    statement(follow + [untilsym, semicolon]);
+    while token in [semicolon, beginsym..gotosym, ident] do
+      begin
+      verifytoken(semicolon, nosemierr);
+      statement(follow + [untilsym, semicolon])
+      end;
+    verifytoken(untilsym, nountilerr);
+    genstmt(endrpt);
+    intstate := opstate;
+    expression(follow, false);
+    checkboolean;
+    genoprndstmt;
+    updatelabelnest;
+    nest := nest - 1;
+    loopfactor := loopfactor - 1;
+  end {repeatstatement} ;
   {>>>}
   {<<<}
-    procedure forstatement;
-
+  procedure forstatement;
   { Syntactic routine to parse a for statement:
-
-    Production:
-
     for-statement = "for" variable ":=" expression
           ( "to" | "downto" ) final-value "do" statement  .
 
@@ -9489,267 +9451,261 @@ procedure statement (follow: tokenset {legal following symbols} );
     are passed to travrs differently if they are constant than if
     they are expressions.
   }
+  var
+    oldcheck: boolean; {old value of checkundefs}
+    oldjumpoutnest: integer; {old value of jumpoutnest}
+    upflag: boolean; {true if this if "for" "to"}
+    forlen: addressrange; {length of controlled var}
+    localflag: boolean; {true if var unused by interior procs}
+    t: forstackindex; {used for searching for stack}
+    forvar: tableIndex; {index of controlled var}
+    forvarptr: entryptr; {provides access to cont. var entry}
+    fortype: tableIndex; {type of for var}
+    fortypeptr: entryptr; {for access to fortype data}
+    initconst, initout: boolean; {initial value constant, out of range}
+    initlcheck, inithcheck: boolean; {set if low or high needs checking}
+    initcol: columnindex; {column of initial expression}
+    initline: integer; {text line of initial expression}
+    initval: integer; {initial constant value}
+    usinitval: unsignedint; {unsigned version of initial constant value}
+    initrange: range; {range of initial value}
+    finallen: integer; {length of final value}
+    finalconst: boolean; {final value is constant}
+    finalval: integer; {final constant value}
+    usfinalval: unsignedint; {unsigned version of final constant value}
+    finalout: boolean; {final value out of range}
+    finlcheck, finhcheck: boolean; {set if low or high needs checking}
+    finalrange: range; {range of final value}
+    lowerbound, upperbound: integer; {for type range}
+    extendedfor: boolean; {an extended range for statement}
+    unsignedfor: boolean; {an unsigned for statement}
 
-      var
-        oldcheck: boolean; {old value of checkundefs}
-        oldjumpoutnest: integer; {old value of jumpoutnest}
-        upflag: boolean; {true if this if "for" "to"}
-        forlen: addressrange; {length of controlled var}
-        localflag: boolean; {true if var unused by interior procs}
-        t: forstackindex; {used for searching for stack}
-        forvar: tableIndex; {index of controlled var}
-        forvarptr: entryptr; {provides access to cont. var entry}
-        fortype: tableIndex; {type of for var}
-        fortypeptr: entryptr; {for access to fortype data}
-        initconst, initout: boolean; {initial value constant, out of range}
-        initlcheck, inithcheck: boolean; {set if low or high needs checking}
-        initcol: columnindex; {column of initial expression}
-        initline: integer; {text line of initial expression}
-        initval: integer; {initial constant value}
-        usinitval: unsignedint; {unsigned version of initial constant value}
-        initrange: range; {range of initial value}
-        finallen: integer; {length of final value}
-        finalconst: boolean; {final value is constant}
-        finalval: integer; {final constant value}
-        usfinalval: unsignedint; {unsigned version of final constant value}
-        finalout: boolean; {final value out of range}
-        finlcheck, finhcheck: boolean; {set if low or high needs checking}
-        finalrange: range; {range of final value}
-        lowerbound, upperbound: integer; {for type range}
-        extendedfor: boolean; {an extended range for statement}
-        unsignedfor: boolean; {an unsigned for statement}
-
-
-      begin {forstatement}
-        loopfactor := loopfactor + 1;
-        getexprstmt(begfor);
-        forvar := 0;
-        fortype := noneindex;
-        lowerbound := 0;
-        upperbound := 0;
-        unsignedfor := false;
-        extendedfor := false;
-        if token = ident then
-          begin
-          search(forvar);
-          if forvar = 0 then warn(undefidenterr)
-          else
-            begin
-            if checkforstack(forvar, t) then warn(modifiedfor);
-            forvarptr := ref(bigtable[forvar]);
-            with forvarptr^ do
-              if namekind in [varname, param, varparam] then
-                begin
-                fortypeptr := ref(bigtable[vartype]);
-
-                { We don't support for loop indexes that are origined, declared USE, DEFINE or SHARED, or OWN.
-                  OWN is allowed if the global section is not split }
-                if ((varalloc = ownalloc) and (sharedPtr^.globalsize > sharedPtr^.globalfiles)) or
-                   (varalloc in [absolute, usealloc, definealloc, sharedalloc]) then
-                  warn (unsupportedforvardecl);
-
-                if not (fortypeptr^.typ in [none, ints, chars, scalars, bools, subranges]) then
-                  warn(badfortype)
-                else
-                  begin
-                  fortype := vartype;
-                  lowerbound := lower(fortypeptr);
-                  upperbound := upper(fortypeptr);
-                  extendedfor := fortypeptr^.extendedrange;
-                  unsignedfor := unsigned(fortypeptr, length, false);
-                  end;
-                if (namekind <> varname) or (lev <> level) then
-                  warn(badforvar)
-                else if nestedmod then
-                  warnnonstandard(badfornestref);
-                forlen := length;
-                localflag := registercandidate and ((level > 1) or not anyexternals);
-                end
-              else
-                warn (wantvarname);
-            end;
-          variable (true, true, false, true, true, forvar);
-          end
-        else
-          warnbetween(missingforindex);
-
-        if token = eql then
-          begin
-          warn (nobecomeserr);
-          gettoken
-          end
-        else
-          begin
-          verify ([becomes], follow + begexprset, nobecomeserr);
-          if token = becomes then
-            gettoken;
-          end;
-
-        expression (follow + [downtosym, tosym, untilsym, dosym], false);
-        if not compatible (fortype, resulttype) then
-          warnbefore (badforlimit);
-
-        oprndstk[sp].typeindex := fortype;
-        initconst := constcheck (sp);
-        if initconst then
-          initval := getintvalue(sp);
-
-        checkrange (oprndstk[sp], false, initout, initlcheck, inithcheck);
-        initrange := oprndstk[sp].value_range.optimistic;
-        if initout then
-          with lasttoken do
-            begin
-            initcol := (left + right) div 2;
-            initline := line;
-            end;
-
-        if initconst then
-          begin
-          genlit (initval);
-          sp := sp - 1;
-          if unsignedfor then
-            genop(defunsforlitindexop)
-          else
-            genop(defforlitindexop)
-          end
-        else
-          begin
-          genoprnd;
-          if unsignedfor then
-            genop(defunsforindexop)
-          else
-            genop(defforindexop)
-          end;
-
-        genint (forlen);
-        genint (ord(localflag));
-
-        upflag := (token = tosym);
-        if token in [downtosym, tosym] then
-          gettoken
-        else
-          warnbetween(nodowntoerr);
-        expression(follow + [dosym], false);
-
-        if not compatible (fortype, resulttype) then
-          warnbefore(badforlimit);
-        finalconst := constcheck(sp);
-        oprndstk[sp].typeindex := fortype;
-        oprndstk[sp].oprndlen := max(forlen, oprndstk[sp].oprndlen);
-        if finalconst then
-          begin
-          finallen := forlen;
-          finalval := getintvalue(sp)
-          end
-        else
-          begin
-          finallen := oprndstk[sp].oprndlen;
-          genunary(pushfinal, ints);
-          end;
-
-        finalrange := oprndstk[sp].value_range.optimistic;
-        oprndstk[sp].typeindex := fortype;
-        checkrange(oprndstk[sp], false, finalout, finlcheck, finhcheck);
-
-        genoprnd;
-        if finalconst and initconst then
-          begin
-          usinitval := initval;
-          usfinalval := finalval;
-          if upflag and (extendedfor and (usinitval <= usfinalval) or
-             not extendedfor and (initval <= finalval)) or not upflag and
-             (extendedfor and (usinitval >= usfinalval) or not extendedfor and
-             (initval >= finalval)) then
-            begin
-            if initout then warnat(rangeerror, initline, initcol);
-            if finalout then warnbefore(rangeerror);
-            end;
-          end
-        else if (sharedPtr^.switchcounters[rangecheck] > 0) and (upflag and (initlcheck or
-                finhcheck) or not upflag and (inithcheck or finlcheck)) then
-          begin
-          if initout or finalout then
-            begin
-            genlit(ord(not upflag));
-            genop(forerrchkop);
-            end
-          else
-            begin
-            genlit(lowerbound);
-            genlit(upperbound);
-            if upflag then genop(forupchkop)
-            else genop(fordnchkop);
-            end;
-          genint(finallen);
-          genint(1);
-          genform(ints);
-          end;
-
-        genop(endexpr);
-        intstate := stmtstate;
-        if upflag then genstmt(forup)
-        else genstmt(fordn);
-        genint(1);
-        verifytoken(dosym, nodoerr);
-        forsp := forsp + 1;
-        with forstack[forsp] do
-          begin
-          containedgoto := false; {hopefully remains false!}
-          forindex := forvar;
-          fortypeptr := ref(bigtable[fortype]);
-          settyperange(fortypeptr, forrange);
-          if upflag then
-            begin
-            if finalrange.maxlimit >= initrange.minlimit then
-              begin
-              if not finhcheck then forrange.maxlimit := finalrange.maxlimit;
-              if not initlcheck then forrange.minlimit := initrange.minlimit;
-              end
-            end
-          else
-            begin
-            if finalrange.minlimit <= initrange.maxlimit then
-              begin
-              if not finlcheck then forrange.minlimit := finalrange.minlimit;
-              if not inithcheck then forrange.maxlimit := initrange.maxlimit;
-              end
-            end;
-          end;
-
+  begin {forstatement}
+    loopfactor := loopfactor + 1;
+    getexprstmt(begfor);
+    forvar := 0;
+    fortype := noneindex;
+    lowerbound := 0;
+    upperbound := 0;
+    unsignedfor := false;
+    extendedfor := false;
+    if token = ident then
+      begin
+      search(forvar);
+      if forvar = 0 then warn(undefidenterr)
+      else
+        begin
+        if checkforstack(forvar, t) then warn(modifiedfor);
         forvarptr := ref(bigtable[forvar]);
         with forvarptr^ do
-          if namekind in [varname, fieldname, param, varparam] then
-            modified := true;
+          if namekind in [varname, param, varparam] then
+            begin
+            fortypeptr := ref(bigtable[vartype]);
 
-        oldcheck := checkundefs;
-        checkundefs := false;
-        nest := nest + 1;
-        oldjumpoutnest := jumpoutnest;
-        jumpoutnest := nest;
-        statement(follow);
-        checkundefs := oldcheck;
-        updatelabelnest;
-        genstmt(endfor);
-        genint(ord(jumpoutnest < nest));
-        jumpoutnest := min(jumpoutnest, oldjumpoutnest);
-        nest := nest - 1;
-        loopfactor := loopfactor - 1;
-        if not (forstack[forsp].containedgoto and
-           (sharedPtr^.switchcounters[standard] > 0)) and (nest = 1) then
+            { We don't support for loop indexes that are origined, declared USE, DEFINE or SHARED, or OWN.
+              OWN is allowed if the global section is not split }
+            if ((varalloc = ownalloc) and (sharedPtr^.globalsize > sharedPtr^.globalfiles)) or
+               (varalloc in [absolute, usealloc, definealloc, sharedalloc]) then
+              warn (unsupportedforvardecl);
+
+            if not (fortypeptr^.typ in [none, ints, chars, scalars, bools, subranges]) then
+              warn(badfortype)
+            else
+              begin
+              fortype := vartype;
+              lowerbound := lower(fortypeptr);
+              upperbound := upper(fortypeptr);
+              extendedfor := fortypeptr^.extendedrange;
+              unsignedfor := unsigned(fortypeptr, length, false);
+              end;
+            if (namekind <> varname) or (lev <> level) then
+              warn(badforvar)
+            else if nestedmod then
+              warnnonstandard(badfornestref);
+            forlen := length;
+            localflag := registercandidate and ((level > 1) or not anyexternals);
+            end
+          else
+            warn (wantvarname);
+        end;
+      variable (true, true, false, true, true, forvar);
+      end
+    else
+      warnbetween(missingforindex);
+
+    if token = eql then
+      begin
+      warn (nobecomeserr);
+      gettoken
+      end
+    else
+      begin
+      verify ([becomes], follow + begexprset, nobecomeserr);
+      if token = becomes then
+        gettoken;
+      end;
+
+    expression (follow + [downtosym, tosym, untilsym, dosym], false);
+    if not compatible (fortype, resulttype) then
+      warnbefore (badforlimit);
+
+    oprndstk[sp].typeindex := fortype;
+    initconst := constcheck (sp);
+    if initconst then
+      initval := getintvalue(sp);
+
+    checkrange (oprndstk[sp], false, initout, initlcheck, inithcheck);
+    initrange := oprndstk[sp].value_range.optimistic;
+    if initout then
+      with lasttoken do
+        begin
+        initcol := (left + right) div 2;
+        initline := line;
+        end;
+
+    if initconst then
+      begin
+      genlit (initval);
+      sp := sp - 1;
+      if unsignedfor then
+        genop(defunsforlitindexop)
+      else
+        genop(defforlitindexop)
+      end
+    else
+      begin
+      genoprnd;
+      if unsignedfor then
+        genop(defunsforindexop)
+      else
+        genop(defforindexop)
+      end;
+
+    genint (forlen);
+    genint (ord(localflag));
+
+    upflag := (token = tosym);
+    if token in [downtosym, tosym] then
+      gettoken
+    else
+      warnbetween(nodowntoerr);
+    expression(follow + [dosym], false);
+
+    if not compatible (fortype, resulttype) then
+      warnbefore(badforlimit);
+    finalconst := constcheck(sp);
+    oprndstk[sp].typeindex := fortype;
+    oprndstk[sp].oprndlen := max(forlen, oprndstk[sp].oprndlen);
+    if finalconst then
+      begin
+      finallen := forlen;
+      finalval := getintvalue(sp)
+      end
+    else
+      begin
+      finallen := oprndstk[sp].oprndlen;
+      genunary(pushfinal, ints);
+      end;
+
+    finalrange := oprndstk[sp].value_range.optimistic;
+    oprndstk[sp].typeindex := fortype;
+    checkrange(oprndstk[sp], false, finalout, finlcheck, finhcheck);
+
+    genoprnd;
+    if finalconst and initconst then
+      begin
+      usinitval := initval;
+      usfinalval := finalval;
+      if upflag and (extendedfor and (usinitval <= usfinalval) or
+         not extendedfor and (initval <= finalval)) or not upflag and
+         (extendedfor and (usinitval >= usfinalval) or not extendedfor and
+         (initval >= finalval)) then
+        begin
+        if initout then warnat(rangeerror, initline, initcol);
+        if finalout then warnbefore(rangeerror);
+        end;
+      end
+    else if (sharedPtr^.switchcounters[rangecheck] > 0) and (upflag and (initlcheck or
+            finhcheck) or not upflag and (inithcheck or finlcheck)) then
+      begin
+      if initout or finalout then
+        begin
+        genlit(ord(not upflag));
+        genop(forerrchkop);
+        end
+      else
+        begin
+        genlit(lowerbound);
+        genlit(upperbound);
+        if upflag then genop(forupchkop)
+        else genop(fordnchkop);
+        end;
+      genint(finallen);
+      genint(1);
+      genform(ints);
+      end;
+
+    genop(endexpr);
+    intstate := stmtstate;
+    if upflag then genstmt(forup)
+    else genstmt(fordn);
+    genint(1);
+    verifytoken(dosym, nodoerr);
+    forsp := forsp + 1;
+    with forstack[forsp] do
+      begin
+      containedgoto := false; {hopefully remains false!}
+      forindex := forvar;
+      fortypeptr := ref(bigtable[fortype]);
+      settyperange(fortypeptr, forrange);
+      if upflag then
+        begin
+        if finalrange.maxlimit >= initrange.minlimit then
           begin
-          forvarptr := ref(bigtable[forvar]);
-          if forvarptr^.namekind = varname then forvarptr^.modified := false;
-          end;
-        forsp := forsp - 1;
-      end {forstatement} ;
+          if not finhcheck then forrange.maxlimit := finalrange.maxlimit;
+          if not initlcheck then forrange.minlimit := initrange.minlimit;
+          end
+        end
+      else
+        begin
+        if finalrange.minlimit <= initrange.maxlimit then
+          begin
+          if not finlcheck then forrange.minlimit := finalrange.minlimit;
+          if not inithcheck then forrange.maxlimit := initrange.maxlimit;
+          end
+        end;
+      end;
+
+    forvarptr := ref(bigtable[forvar]);
+    with forvarptr^ do
+      if namekind in [varname, fieldname, param, varparam] then
+        modified := true;
+
+    oldcheck := checkundefs;
+    checkundefs := false;
+    nest := nest + 1;
+    oldjumpoutnest := jumpoutnest;
+    jumpoutnest := nest;
+    statement(follow);
+    checkundefs := oldcheck;
+    updatelabelnest;
+    genstmt(endfor);
+    genint(ord(jumpoutnest < nest));
+    jumpoutnest := min(jumpoutnest, oldjumpoutnest);
+    nest := nest - 1;
+    loopfactor := loopfactor - 1;
+    if not (forstack[forsp].containedgoto and
+       (sharedPtr^.switchcounters[standard] > 0)) and (nest = 1) then
+      begin
+      forvarptr := ref(bigtable[forvar]);
+      if forvarptr^.namekind = varname then forvarptr^.modified := false;
+      end;
+    forsp := forsp - 1;
+  end {forstatement} ;
   {>>>}
   {<<<}
     procedure withstatement;
-
   { Syntactic routine to parse a with-statement.
-
-    Production:
-
     with-statement = "with" variable [* ";" variable *] "do"
           statement  .
 
@@ -9758,133 +9714,128 @@ procedure statement (follow: tokenset {legal following symbols} );
     popped at the end of the statement.  Also, the address of the record
     is written to the intermediate file.
   }
+  var
+    withcount: integer; {number of variables}
+    i: integer; {induction variable}
+
+    {<<<}
+    procedure onewith;
+    { Parse a single variable in a with statement.  This actually pushes the
+      display and generates the output.
+    }
 
       var
-        withcount: integer; {number of variables}
-        i: integer; {induction variable}
+        p: entryptr; {access with variable}
+        off: addressrange; {offset of with variable}
+        i: tableIndex; {index of with variable}
+        l: levelindex; {level of with variable}
 
 
-      procedure onewith;
-
-  { Parse a single variable in a with statement.  This actually pushes the
-    display and generates the output.
-  }
-
-        var
-          p: entryptr; {access with variable}
-          off: addressrange; {offset of with variable}
-          i: tableIndex; {index of with variable}
-          l: levelindex; {level of with variable}
-
-
-        begin {onewith}
-          newexprstmt(begwith);
-          if token = ident then
-            begin
-            search(i);
-            p := ref(bigtable[i]);
-            if p^.namekind in [varname, fieldname, param, varparam] then
-              off := p^.offset
-            else off := 0;
-            l := lev;
-            modifyvariable(true, true);
-            genlit(0);
-            genunary(indxop, ints);
-            if resultform = fields then
-              if displaytop < maxlevel then
-                begin
-                displaytop := displaytop + 1;
-                with display[displaytop] do
-                  begin
-                  scopeid := display[displaytop - 1].scopeid;
-                  blockid := resultptr^.fieldid;
-                  blockkind := withblock;
-                  withpacking := resultptr^.packedflag;
-                  withoffset := off;
-                  withlevel := l;
-                  end;
-                withcount := withcount + 1;
-                genoprndstmt;
-                end
-              else warnbefore(levelerr)
-            else if resulttype <> noneindex then warnbefore(norecordident)
-            end
-          else warnbetween(norecordident);
-        end {onewith} ;
-
-
-      begin {withstatement}
-        gettoken;
-        withcount := 0;
-        onewith;
-        while token in [comma, ident] do
+      begin {onewith}
+        newexprstmt(begwith);
+        if token = ident then
           begin
-          verifytoken(comma, nocommaerr);
-          onewith;
-          end;
-        verifytoken(dosym, nodoerr);
-        statement(follow);
-        displaytop := displaytop - withcount;
-        for i := withcount downto 1 do genstmt(endwith);
-      end {withstatement} ;
+          search(i);
+          p := ref(bigtable[i]);
+          if p^.namekind in [varname, fieldname, param, varparam] then
+            off := p^.offset
+          else off := 0;
+          l := lev;
+          modifyvariable(true, true);
+          genlit(0);
+          genunary(indxop, ints);
+          if resultform = fields then
+            if displaytop < maxlevel then
+              begin
+              displaytop := displaytop + 1;
+              with display[displaytop] do
+                begin
+                scopeid := display[displaytop - 1].scopeid;
+                blockid := resultptr^.fieldid;
+                blockkind := withblock;
+                withpacking := resultptr^.packedflag;
+                withoffset := off;
+                withlevel := l;
+                end;
+              withcount := withcount + 1;
+              genoprndstmt;
+              end
+            else warnbefore(levelerr)
+          else if resulttype <> noneindex then warnbefore(norecordident)
+          end
+        else warnbetween(norecordident);
+      end {onewith} ;
+    {>>>}
+
+  begin
+    gettoken;
+
+    withcount := 0;
+    onewith;
+    while token in [comma, ident] do
+      begin
+      verifytoken (comma, nocommaerr);
+      onewith;
+      end;
+
+    verifytoken (dosym, nodoerr);
+    statement (follow);
+
+    displaytop := displaytop - withcount;
+    for i := withcount downto 1 do 
+      genstmt (endwith);
+  end;
   {>>>}
   {<<<}
-    procedure gotostatement;
-
+  procedure gotostatement;
   { Syntactic routine to parse a goto statement.
-
-    production:
-
     goto-statement = "goto" label  .
 
     This also has to check if the goto is legal, though if the
     label is not yet defined this may have to wait for the label to
     be defined.
-
   }
+  var
+    lab: labelptr; {label entry}
+    gotoline: integer; {line on which goto appeared}
+    gotofilepos: integer; {file position of goto token}
+    gotofileIndex: integer; {fileindex of goto token}
 
-      var
-        lab: labelptr; {label entry}
-        gotoline: integer; {line on which goto appeared}
-        gotofilepos: integer; {file position of goto token}
-        gotofileIndex: integer; {fileindex of goto token}
-
-
-      begin {gotostatement}
-        forstack[forsp].containedgoto := true;
-        gotoline := thistoken.line;
-        gotofilepos := thistoken.filepos;
-        gotofileIndex := thistoken.fileIndex;
-        gettoken;
-        if token = intconst then
+  begin {gotostatement}
+    forstack[forsp].containedgoto := true;
+    gotoline := thistoken.line;
+    gotofilepos := thistoken.filepos;
+    gotofileIndex := thistoken.fileIndex;
+    gettoken;
+    if token = intconst then
+      begin
+      searchlabels(thistoken.intvalue, lab);
+      with lab^ do
+        begin
+        if lab = labelflag then warn(labnotpredef)
+        else
           begin
-          searchlabels(thistoken.intvalue, lab);
-          with lab^ do
+          if definednest = 0 then maxlegalnest := min(nest, maxlegalnest)
+          else if (nest > maxlegalnest) or (nest < definednest) then
+            warnat(badlabelnest, labelline, labelcolumn)
+          else if (nest > definednest) and (lev = level) then
+            jumpoutnest := min(jumpoutnest, definednest);
+          if lev <> level then
             begin
-            if lab = labelflag then warn(labnotpredef)
-            else
-              begin
-              if definednest = 0 then maxlegalnest := min(nest, maxlegalnest)
-              else if (nest > maxlegalnest) or (nest < definednest) then
-                warnat(badlabelnest, labelline, labelcolumn)
-              else if (nest > definednest) and (lev = level) then
-                jumpoutnest := min(jumpoutnest, definednest);
-              if lev <> level then
-                begin
-                nonlocalref := true;
-                maxlegalnest := 1;
-                end;
-              end;
-            if (lev > 1) and (lev <> level) then
-              sharedPtr^.proctable[display[level].blockref].intlevelrefs := true;
-            debugstmt(gotolab, gotoline, gotofilepos, gotofileIndex);
-            genint(internalvalue);
-            genint(lev);
+            nonlocalref := true;
+            maxlegalnest := 1;
             end;
-          gettoken
-          end
-        else warnbetween(badlabelerr);
-      end {gotostatement} ;
+          end;
+        if (lev > 1) and (lev <> level) then
+          sharedPtr^.proctable[display[level].blockref].intlevelrefs := true;
+        debugstmt(gotolab, gotoline, gotofilepos, gotofileIndex);
+        genint(internalvalue);
+        genint(lev);
+        end;
+      gettoken
+      end
+    else warnbetween(badlabelerr);
+  end {gotostatement} ;
   {>>>}
 
 begin {statement}

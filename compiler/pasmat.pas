@@ -86,7 +86,6 @@ program Pasmat (Input, Output);
   'u' UcIdents
 }
 {>>>}
-
 {<<<}
 const
   MaxLineLen = 132; { max output line length }

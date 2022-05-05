@@ -1,6 +1,6 @@
 { traverse.def - external procedure defs }
 
-procedure opentree; external; {open the tree dump file for travrs}
+procedure opentree; external;  {open the tree dump file for travrs}
 procedure closetree; external; {close the tree dump file for travrs}
 
-procedure traverse; external; { common sub-expression elimination }
+procedure traverse; external;  { common sub-expression elimination }

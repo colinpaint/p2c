@@ -5885,6 +5885,7 @@ var
 
 begin
   if dumpFiles then
+    Writeln ('dumpTree');
     if dumpDetails and conditionsmatch then
       begin
       { first dump from root to tail }

@@ -3328,25 +3328,3 @@ begin
   Writeln ('scan found ', tokenSharedPtr^.tokenCount:3, ' tokens');
 end;
 {>>>}
-{<<<}
-procedure scan;
-{ Main scan procedure, see forward declaration for more data }
-
-begin
-  scan1;
-
-  repeat
-    scantoken;
-    until (sharedPtr^.fatalflag or endOfInput);
-
-  { align strings }
-  while sharedPtr^.stringfilecount mod stringroundoff <> 0 do
-    begin
-    sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] := 0;
-    putStringFile;
-    sharedPtr^.stringfilecount := sharedPtr^.stringfilecount + 1;
-    end;
-
-  scan2;
-end;
-{>>>}

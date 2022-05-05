@@ -1362,7 +1362,7 @@ begin
                               60 * ((sharedPtr^.endmin - sharedPtr^.startmin) +
                                     60 * (sharedPtr^.endhour - sharedPtr^.starthour)), 1);
 
-    writeln ('took ', sharedPtr^.endsec:1, 'sec, ',
+    writeln ('took ', sharedPtr^.endsec:1, ' sec, ',
              sharedPtr^.lastLine: 1, ' lines, ',
              (sharedPtr^.lastLine * 60) div sharedPtr^.endsec: 1, ' lines/min');
     end;

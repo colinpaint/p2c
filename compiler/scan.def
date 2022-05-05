@@ -5,5 +5,3 @@ procedure scanToken; external;
 
 procedure scan1; external; { init scanner }
 procedure scan2; external; { terminate scanner }
-
-procedure scan; external; { lexical scanner }
