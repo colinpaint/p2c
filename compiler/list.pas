@@ -62,7 +62,7 @@ var
         line: integer;
         ch: char;
         endofline: boolean;
-        filename_length: FilenameIndex;
+        filenameLength: FilenameIndex;
         filename: FilenameBuf;
         fileptr: fileRememberPtr;
       end;
@@ -162,14 +162,14 @@ var
       {>>>}
 
     begin
-      sharedPtr^.filename_length := 0;
+      sharedPtr^.filenameLength := 0;
       if curfileptr <> nil then
         begin
         seekStringFile (sharedPtr^.stringfilecount + curfileptr^.offset - 1);
         while sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] <> 0 do
           begin
-          sharedPtr^.filename_length := sharedPtr^.filename_length + 1;
-          sharedPtr^.filename[sharedPtr^.filename_length] := chr(sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile]);
+          sharedPtr^.filenameLength := sharedPtr^.filenameLength + 1;
+          sharedPtr^.filename[sharedPtr^.filenameLength] := chr(sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile]);
           getstringfile;
           end;
 
@@ -177,13 +177,37 @@ var
         curfileptr := curfileptr^.next;
         end;
 
-      for i := sharedPtr^.filename_length + 1 to filenamelen do
+      for i := sharedPtr^.filenameLength + 1 to filenamelen do
         sharedPtr^.filename[i] := ' ';
+    end;
+    {>>>}
+    {<<<}
+    procedure startInclude;
+
+    begin
+    if sharedPtr^.sourcelevel < sourcedepth then
+      begin
+      sharedPtr^.sourcelevel := sharedPtr^.sourcelevel + 1;
+      save[sharedPtr^.sourcelevel].line := linecount;
+      save[sharedPtr^.sourcelevel].ch := nextch;
+      save[sharedPtr^.sourcelevel].endofline := endofline;
+
+      changeSource;
+
+      save[sharedPtr^.sourcelevel].filenameLength := sharedPtr^.filenameLength;
+      save[sharedPtr^.sourcelevel].filename := sharedPtr^.filename;
+      save[sharedPtr^.sourcelevel].fileptr := thisfileptr;
+
+      openSource;
+      nextch := ' ';
+      endofline := true;
+      sourcestate := normal;
+      end;
     end;
     {>>>}
 
     {<<<}
-    procedure wl_line;
+    procedure listLine;
     { Dump out all the characters in the buffer. }
 
     begin
@@ -192,7 +216,7 @@ var
     end;
     {>>>}
     {<<<}
-    procedure wl_chr (c: char);
+    procedure listChr (c: char);
     { Copy a character to the output buffer. }
 
     begin
@@ -201,7 +225,7 @@ var
     end;
     {>>>}
     {<<<}
-    procedure wl_str (s: packed array [low..high: integer] of char);
+    procedure listStr (s: packed array [low..high: integer] of char);
     { Copy a string to the output buffer. }
 
     var
@@ -217,7 +241,7 @@ var
     end;
     {>>>}
     {<<<}
-    procedure wl_str_l (s: packed array [low..high: integer] of char; n: integer);
+    procedure listStrL (s: packed array [low..high: integer] of char; n: integer);
     { Copy a string of n bytes to the output buffer. }
 
     var
@@ -239,7 +263,7 @@ var
     end;
     {>>>}
     {<<<}
-    procedure wl_int (v: integer; n: integer);
+    procedure listInt (v: integer; n: integer);
     { Copy an integer (v) of width n to the output buffer. }
 
     var
@@ -252,7 +276,7 @@ var
 
     begin
       int_bufptr := 0;
-      if v < 0 then wl_chr('-');
+      if v < 0 then listChr('-');
       u := abs(v);
 
       repeat
@@ -346,33 +370,33 @@ var
       i: cmdindex;
 
     begin
-      wl_str ('Pascal-2 ');
-      wl_str (systemtitle);
-      wl_chr (' ');
-      wl_str (versionstring);
-      wl_chr (' ');
-      wl_str (todaystring);
-      wl_int ((hour + 11) mod 12 + 1, 4);
-      wl_chr (':');
-      wl_int (minute div 10, 1);
-      wl_int (minute mod 10, 1);
-      wl_chr (' ');
-      wl_chr (ampm);
-      wl_str ('M ');
-      wl_str ('    Page ');
-      wl_int (pagecount, 1);
-      wl_chr ('-');
-      wl_int (physicalpage, 1);
-      wl_line;
+      listStr ('Pascal-2 ');
+      listStr (systemtitle);
+      listChr (' ');
+      listStr (versionstring);
+      listChr (' ');
+      listStr (todaystring);
+      listInt ((hour + 11) mod 12 + 1, 4);
+      listChr (':');
+      listInt (minute div 10, 1);
+      listInt (minute mod 10, 1);
+      listChr (' ');
+      listChr (ampm);
+      listStr ('M ');
+      listStr ('    Page ');
+      listInt (pagecount, 1);
+      listChr ('-');
+      listInt (physicalpage, 1);
+      listLine;
 
-      wl_str_l (headerline, headerlength);
-      wl_line;
+      listStrL (headerline, headerlength);
+      listLine;
 
-      wl_str_l (sharedPtr^.filename, sharedPtr^.filename_length); { Print current filename }
-      lastfileptr := thisfileptr; {don't print this name again}
-      wl_line;
+      listStrL (sharedPtr^.filename, sharedPtr^.filenameLength); { Print current filename }
+      lastfileptr := thisfileptr; { don't print this name again }
+      listLine;
 
-      wl_line;
+      listLine;
 
       totallines := totallines + 4;
       topofpage := false;
@@ -380,10 +404,10 @@ var
       if (sharedPtr^.switcheverplus[debugging] or
           sharedPtr^.switcheverplus[profiling]) and not sharedPtr^.switcheverplus[defineswitch] then
         begin
-        wl_line;
-        wl_str_l ('Line', leftmargin div 2);
-        wl_str_l ('Stmt', leftmargin div 2);
-        wl_line;
+        listLine;
+        listStrL ('Line', leftmargin div 2);
+        listStrL ('Stmt', leftmargin div 2);
+        listLine;
         pageline := pageline + 2;
         totallines := totallines + 2;
         end;
@@ -397,7 +421,7 @@ var
       i: integer;
 
     begin
-      for i := tabfrom to tabto - 1 do wl_chr(' ');
+      for i := tabfrom to tabto - 1 do listChr(' ');
     end;
     {>>>}
     {<<<}
@@ -406,7 +430,7 @@ var
     begin
       if not topofpage then
         begin
-        if bufferCount > 0 then wl_line;
+        if bufferCount > 0 then listLine;
         page(listFile);
         end;
 
@@ -506,10 +530,10 @@ var
             if ch in [' ', ';'] then
               startInclude
 
-            else if sharedPtr^.filename_length < filenamelen then
+            else if sharedPtr^.filenameLength < filenamelen then
               begin
-              sharedPtr^.filename_length := sharedPtr^.filename_length + 1;
-              sharedPtr^.filename[sharedPtr^.filename_length] := ch;
+              sharedPtr^.filenameLength := sharedPtr^.filenameLength + 1;
+              sharedPtr^.filename[sharedPtr^.filenameLength] := ch;
               end;
           {>>>}
           {<<<}
@@ -520,31 +544,10 @@ var
             else if endofline then
               sourcestate := normal
 
-            else if sharedPtr^.filename_length < filenamelen then
+            else if sharedPtr^.filenameLength < filenamelen then
               begin
-              sharedPtr^.filename_length := sharedPtr^.filename_length + 1;
-              sharedPtr^.filename[sharedPtr^.filename_length] := ch;
-              end;
-          {>>>}
-          {<<<}
-          skippingfilequote:
-            if sharedPtr^.sourcelevel < sourcedepth then
-              begin
-              sharedPtr^.sourcelevel := sharedPtr^.sourcelevel + 1;
-              save[sharedPtr^.sourcelevel].line := linecount;
-              save[sharedPtr^.sourcelevel].ch := nextch;
-              save[sharedPtr^.sourcelevel].endofline := endofline;
-
-              changeSource;
-
-              save[sharedPtr^.sourcelevel].filename_length := sharedPtr^.filename_length;
-              save[sharedPtr^.sourcelevel].filename := sharedPtr^.filename;
-              save[sharedPtr^.sourcelevel].fileptr := thisfileptr;
-
-              openSource;
-              nextch := ' ';
-              endofline := true;
-              sourcestate := normal;
+              sharedPtr^.filenameLength := sharedPtr^.filenameLength + 1;
+              sharedPtr^.filename[sharedPtr^.filenameLength] := ch;
               end;
           {>>>}
           {<<<}
@@ -569,18 +572,20 @@ var
 
               if ch = '''' then
                 begin
-                sharedPtr^.filename_length := 0;
+                sharedPtr^.filenameLength := 0;
                 sourcestate := buildquotedfilename;
                 end
 
               else
                 begin
                 sharedPtr^.filename[1] := ch;
-                sharedPtr^.filename_length := 1;
+                sharedPtr^.filenameLength := 1;
                 sourcestate := buildfilename;
                 end;
               end;
           {>>>}
+          skippingfilequote:
+            startInclude;
           skippingquote:
             sourcestate := skippingstring;
           skippingstar:
@@ -605,7 +610,7 @@ var
 
           { Pop the old filename off stack }
           sharedPtr^.filename := save[sharedPtr^.sourcelevel].filename;
-          sharedPtr^.filename_length := save[sharedPtr^.sourcelevel].filename_length;
+          sharedPtr^.filenameLength := save[sharedPtr^.sourcelevel].filenameLength;
           thisfileptr := save[sharedPtr^.sourcelevel].fileptr;
 
           for i := 1 to sharedPtr^.sourcelevel do
@@ -614,9 +619,9 @@ var
 
         else
           begin
-          changSsourc;
+          changeSource;
           save[1].filename := sharedPtr^.filename;
-          save[1].filename_length := sharedPtr^.filename_length;
+          save[1].filenameLength := sharedPtr^.filenameLength;
           save[1].fileptr := thisfileptr;
           save[1].line := linecount;
 
@@ -662,10 +667,10 @@ var
             end
           else
             begin {Just print new current filename}
-            if not sharedPtr^.forceList then wl_line;
-            wl_str_l(sharedPtr^.filename, sharedPtr^.filename_length);
-            wl_line;
-            wl_line;
+            if not sharedPtr^.forceList then listLine;
+            listStrL(sharedPtr^.filename, sharedPtr^.filenameLength);
+            listLine;
+            listLine;
             lastfileptr := thisfileptr;
             pageline := pageline + 2 + ord(not sharedPtr^.forceList);
             end;
@@ -679,15 +684,15 @@ var
         }
 
         if sharedPtr^.sourcelevel > 1 then
-          wl_int (sharedPtr^.sourcelevel, 1)
+          listInt (sharedPtr^.sourcelevel, 1)
         else
-          wl_chr (' ');
-        wl_int (linecount - save[sharedPtr^.sourcelevel].line, leftmargin div 2 - 1);
+          listChr (' ');
+        listInt (linecount - save[sharedPtr^.sourcelevel].line, leftmargin div 2 - 1);
         if stmtno <> 0 then
-          wl_int (stmtno, leftmargin div 2)
+          listInt (stmtno, leftmargin div 2)
         else
-          wl_str_l ('  ', leftmargin div 2);
-        wl_chr (' ');
+          listStrL ('  ', leftmargin div 2);
+        listChr (' ');
         first := false;
       end {printlineno} ;
     {>>>}
@@ -743,7 +748,7 @@ var
         else
           begin
           if first then printlineno;
-          wl_chr(ch);
+          listChr(ch);
           column := column + 1;
           end;
         end;
@@ -764,7 +769,7 @@ var
         begin
         if first and not endofinput then
           printlineno;
-        wl_line;
+        listLine;
 
         {getpos(listing, temppos1, temppos2); }
         totallines := totallines + 1;
@@ -786,263 +791,263 @@ var
 
     begin
       case err of
-        linetoolong: wl_str('Line too long');
-        badchar: wl_str('Illegal character');
-        missingdigits: wl_str('Need at least 1 digit after ''.'' or ''E''');
-        octalconst: wl_str('Octal constants are not standard Pascal');
-        nondecimalconst: wl_str('Non-decimal integers are not standard Pascal');
-        toomanyerrors: wl_str('Too many errors!');
-        badoctal: wl_str('Octal constant contains an illegal digit');
-        badradix: wl_str('Non-decimal integer base must lie in range 2..16');
+        linetoolong: listStr('Line too long');
+        badchar: listStr('Illegal character');
+        missingdigits: listStr('Need at least 1 digit after ''.'' or ''E''');
+        octalconst: listStr('Octal constants are not standard Pascal');
+        nondecimalconst: listStr('Non-decimal integers are not standard Pascal');
+        toomanyerrors: listStr('Too many errors!');
+        badoctal: listStr('Octal constant contains an illegal digit');
+        badradix: listStr('Non-decimal integer base must lie in range 2..16');
         {<<<}
         badinteger:
           begin
-          wl_str('Integers must lie in range ');
-          wl_int( - sharedPtr^.targetmaxint - 1, 1);
-          wl_str('..');
-          wl_int(sharedPtr^.targetmaxint, 1);
+          listStr('Integers must lie in range ');
+          listInt( - sharedPtr^.targetmaxint - 1, 1);
+          listStr('..');
+          listInt(sharedPtr^.targetmaxint, 1);
           end;
         {>>>}
         {<<<}
         badexpon:
           begin
-          wl_str('Exponent must lie in range ');
+          listStr('Exponent must lie in range ');
           if sharedPtr^.switcheverplus[doublereals] then
             begin
-            wl_int(mindoubleexpon, 1);
-            wl_str('..');
-            wl_int(maxdoubleexpon, 1);
+            listInt(mindoubleexpon, 1);
+            listStr('..');
+            listInt(maxdoubleexpon, 1);
             end
           else
             begin
-            wl_int(minexpon, 1);
-            wl_str('..');
-            wl_int(maxexpon, 1);
+            listInt(minexpon, 1);
+            listStr('..');
+            listInt(maxexpon, 1);
             end;
           end;
         {>>>}
-        zerostring: wl_str('String of length zero');
+        zerostring: listStr('String of length zero');
         {<<<}
         levelerr:
           begin
-          wl_str('Only ');
-          wl_int(maxlevel, 1);
-          wl_str(' levels of nesting allowed');
+          listStr('Only ');
+          listInt(maxlevel, 1);
+          listStr(' levels of nesting allowed');
           end;
         {>>>}
-        doteoferr: wl_str('Use ''.'' after main program body');
-        extraenderr: wl_str('Extra END following block -- Check BEGIN ... END pairing');
-        extraprocerr: wl_str('Extra procedures found after main program body');
-        extrastmterr: wl_str('Extra statements found after end of program');
-        garbageerr: wl_str('Nonsense discovered after program end');
-        blockstarterr: wl_str('Block must begin with LABEL,CONST,TYPE,VAR,PROCEDURE,FUNCTION, or BEGIN');
-        scrambledblkerr: wl_str('Block declarations are incorrectly ordered');
-        badlabelnest: wl_str('Label is target of illegal GOTO');
-        nosemierr: wl_str('Use '';'' to separate statements');
-        nobeginerr: wl_str('BEGIN expected');
-        blockenderr: wl_str('Block ended incorrectly');
-        noenderr: wl_str('END expected');
-        stmtenderr: wl_str('Statement ended incorrectly');
-        nountilerr: wl_str('UNTIL expected');
-        badelseerr: wl_str('Unexpected ELSE clause -- Check preceding IF for extra '';''');
-        nothenerr: wl_str('THEN expected');
-        nocommaerr: wl_str(''','' expected');
-        nocolonerr: wl_str(''':'' expected');
-        nooferr: wl_str('OF expected');
-        caselabelerr: wl_str('Bad CASE label');
-        caseelseerr: wl_str('OTHERWISE/ELSE clause in CASE not allowed');
-        nodoerr: wl_str('DO expected');
-        nobecomeserr: wl_str(''':='' expected');
-        nodowntoerr: wl_str('TO or DOWNTO expected');
-        nofilevar: wl_str('File variable expected');
-        novarerr: wl_str('Identifier expected');
-        badlabelerr: wl_str('Label must be unsigned integer constant');
-        norparerr: wl_str(''')'' expected');
-        badcolonerr: wl_str('Procedures cannot be followed by type definition');
-        badparamerr: wl_str('Bad parameter element');
-        notypenameerr: wl_str('Type name expected');
-        nosemiprocerr: wl_str(''';'' expected after procedure body');
-        nofuncass: wl_str('Function identifier is never assigned a value');
-        badexprerr: wl_str('Badly formed expression');
-        nooperr: wl_str('Binary operator expected');
-        nooprnderr: wl_str('Operand expected');
-        badindexerr: wl_str(''']'' or '','' must follow index expression');
-        norbrackerr: wl_str(''']'' expected');
-        badrparerr: wl_str('Unexpected '')'' -- Check for matching parenthesis');
-        noeqlerr: wl_str('''='' expected');
-        badconsterr: wl_str('Bad constant');
-        nosemiheaderr: wl_str('Use '';'' to separate declarations');
-        baddeclerr: wl_str('Declaration terminated incorrectly');
-        badtypesyntax: wl_str('Bad type syntax');
-        nolabelerr: wl_str('Integer label expected');
-        nolbrackerr: wl_str('''['' expected');
-        nodotdoterr: wl_str('''..'' expected');
-        nolparerr: wl_str('''('' expected');
+        doteoferr: listStr('Use ''.'' after main program body');
+        extraenderr: listStr('Extra END following block -- Check BEGIN ... END pairing');
+        extraprocerr: listStr('Extra procedures found after main program body');
+        extrastmterr: listStr('Extra statements found after end of program');
+        garbageerr: listStr('Nonsense discovered after program end');
+        blockstarterr: listStr('Block must begin with LABEL,CONST,TYPE,VAR,PROCEDURE,FUNCTION, or BEGIN');
+        scrambledblkerr: listStr('Block declarations are incorrectly ordered');
+        badlabelnest: listStr('Label is target of illegal GOTO');
+        nosemierr: listStr('Use '';'' to separate statements');
+        nobeginerr: listStr('BEGIN expected');
+        blockenderr: listStr('Block ended incorrectly');
+        noenderr: listStr('END expected');
+        stmtenderr: listStr('Statement ended incorrectly');
+        nountilerr: listStr('UNTIL expected');
+        badelseerr: listStr('Unexpected ELSE clause -- Check preceding IF for extra '';''');
+        nothenerr: listStr('THEN expected');
+        nocommaerr: listStr(''','' expected');
+        nocolonerr: listStr(''':'' expected');
+        nooferr: listStr('OF expected');
+        caselabelerr: listStr('Bad CASE label');
+        caseelseerr: listStr('OTHERWISE/ELSE clause in CASE not allowed');
+        nodoerr: listStr('DO expected');
+        nobecomeserr: listStr(''':='' expected');
+        nodowntoerr: listStr('TO or DOWNTO expected');
+        nofilevar: listStr('File variable expected');
+        novarerr: listStr('Identifier expected');
+        badlabelerr: listStr('Label must be unsigned integer constant');
+        norparerr: listStr(''')'' expected');
+        badcolonerr: listStr('Procedures cannot be followed by type definition');
+        badparamerr: listStr('Bad parameter element');
+        notypenameerr: listStr('Type name expected');
+        nosemiprocerr: listStr(''';'' expected after procedure body');
+        nofuncass: listStr('Function identifier is never assigned a value');
+        badexprerr: listStr('Badly formed expression');
+        nooperr: listStr('Binary operator expected');
+        nooprnderr: listStr('Operand expected');
+        badindexerr: listStr(''']'' or '','' must follow index expression');
+        norbrackerr: listStr(''']'' expected');
+        badrparerr: listStr('Unexpected '')'' -- Check for matching parenthesis');
+        noeqlerr: listStr('''='' expected');
+        badconsterr: listStr('Bad constant');
+        nosemiheaderr: listStr('Use '';'' to separate declarations');
+        baddeclerr: listStr('Declaration terminated incorrectly');
+        badtypesyntax: listStr('Bad type syntax');
+        nolabelerr: listStr('Integer label expected');
+        nolbrackerr: listStr('''['' expected');
+        nodotdoterr: listStr('''..'' expected');
+        nolparerr: listStr('''('' expected');
         {<<<}
         proctablefull:
           begin
-          wl_str('Too many procedures (only ');
-          wl_int(proctablesize, 1);
-          wl_str(' allowed)');
+          listStr('Too many procedures (only ');
+          listInt(proctablesize, 1);
+          listStr(' allowed)');
           end;
         {>>>}
         {<<<}
         undeftablefull:
           begin
-          wl_str('Too many forward declarations (only ');
-          wl_int(undeftablesize, 1);
-          wl_str(' allowed)');
+          listStr('Too many forward declarations (only ');
+          listInt(undeftablesize, 1);
+          listStr(' allowed)');
           end;
         {>>>}
         {<<<}
         tablefull:
           begin
-          wl_str('Too many identifiers (only ');
-          wl_int(hashtablesize, 1);
-          wl_str(' allowed)');
+          listStr('Too many identifiers (only ');
+          listInt(hashtablesize, 1);
+          listStr(' allowed)');
           end;
         {>>>}
-        stringtableoverflow: wl_str('Too many strings or identifiers');
-        baddirective: wl_str('Unknown directive');
+        stringtableoverflow: listStr('Too many strings or identifiers');
+        baddirective: listStr('Unknown directive');
         {<<<}
         deepinclude:
           begin
-          wl_str('Too many nested INCLUDE directives (only ');
-          wl_int(sourcedepth - 1, 1);
-          wl_str(' allowed)');
+          listStr('Too many nested INCLUDE directives (only ');
+          listInt(sourcedepth - 1, 1);
+          listStr(' allowed)');
           end;
         {>>>}
-        duplicateident: wl_str( 'Identifier cannot be redefined or defined after use at this level');
-        undefidenterr: wl_str('Undefined identifier');
-        indexerror: wl_str('Array subscript out of range');
-        overflow: wl_str('Integer overflow or division by zero');
-        bigarrayerr: wl_str('Array exceeds addressable memory');
-        rangeerror: wl_str('Assignment value out of range');
-        badsubrange: wl_str('Illegal subrange');
-        badindex: wl_str('Index must be non-real scalar type');
-        badsetbase: wl_str('Sets must be non-real scalar type');
-        badsetexpression: wl_str('Set is constructed of incompatible types');
-        badcasetyp: wl_str('Case label must be non-real scalar type');
-        badcaselab: wl_str('Case label type does not match tag field type');
-        duplicatetag: wl_str('Tag identifier already used in this record');
-        duplabeldef: wl_str('Label cannot be redefined at this level');
-        labnotpredef: wl_str('Label must be declared in LABEL declaration');
-        badlabeldef: wl_str('Label defined twice');
-        badtagerr: wl_str('Tag does not appear in variant record label list');
-        labelundef: wl_str('Declared labels must be defined in procedure body');
-        fwdundef: wl_str('Forward procedure/function body is never defined');
-        typeundef: wl_str('Forward type reference is never resolved');
-        dupfwdparam: wl_str( 'Parameter list cannot be duplicated in forward-declared procedure/function body');
-        dupfwdresult: wl_str( 'Function result type cannot be duplicated in forward-declared function body');
-        dupforward: wl_str( 'This procedure/function name has been previously declared forward' );
-        fwdprocfuncerr: wl_str('This function was declared as a forward procedure');
-        fwdfuncprocerr: wl_str('This procedure was declared as a forward function');
-        badxdef: wl_str( 'External procedures/functions must be defined at outermost level' );
-        recordexpected: wl_str('Variable of type record expected');
-        arrayexpected: wl_str('Variable of type array expected');
-        ptrexpected: wl_str('File variable or pointer variable expected');
-        badfunctionarg: wl_str( 'Function cannot be applied to an operand of this type');
-        illegalformat: wl_str( 'This parameter cannot be followed by a format expression');
-        badformat: wl_str('Format expression must be of type integer');
-        badreadtype: wl_str('Variables of this type are not allowed in READ');
-        noreadarg: wl_str('Need at least one variable to READ');
-        badwritearg: wl_str('Variables of this type are not allowed in WRITE');
-        nostringerr: wl_str('Packed array [1..n] of characters expected');
-        filenameerr: wl_str('File names in RESET/REWRITE are non-standard');
-        noptrvar: wl_str('Pointer variable expected');
-        nofieldtype: wl_str('Field variable expected for NEW');
-        badnewlabel: wl_str('Variant label is undefined');
-        nowritearg: wl_str('Need at least one value to WRITE');
-        toomanyargs: wl_str('Too many actual parameters');
-        toofewargs: wl_str('Too few actual parameters');
-        paramtypeerr: wl_str( 'Actual parameter type doesn''t match formal parameter type');
-        booleanexpected: wl_str('Boolean value expected');
-        badarithtype: wl_str('Operator cannot be applied to these operand types');
-        signedseterr: wl_str( 'Unary ''+'' or ''-'' cannot be applied to set operands');
-        badreloprnds: wl_str( 'Illegal comparison of record, array, file, or pointer values' );
-        badrealtoint: wl_str( 'Can''t assign a real value to an integer variable (use TRUNC or ROUND)' );
-        baddbltoreal: wl_str( 'Can''t assign a double value to a real variable (use SNGL)' );
-        typesincomp: wl_str('Operands are of differing or incompatible type');
-        compilerwritererr: wl_str( 'Compiler writer error -- please contact Oregon Software at (503) 245-2202' );
-        nostrictinclusion: wl_str('No strict inclusion of sets allowed');
-        badinoprnds: wl_str('Bad IN operands');
-        badforvar: wl_str( 'FOR-loop control variable must be declared at this level');
-        unsupportedforvardecl: wl_str( 'FOR-loop control variable declared as OWN, USE, DEFINE, SHARED, OR ORIGIN');
-        badfortype: wl_str( 'FOR-loop control variable can only be a simple non-real scalar variable' );
-        badforlimit: wl_str( 'Expression type is incompatible with FOR index type');
-        badcasetype: wl_str( 'CASE selection expression must be a non-real scalar type');
-        badcaselabeltype: wl_str( 'CASE label does not match selection expression type');
-        indexincomp: wl_str( 'Index expression type does not match array declaration');
-        badprocparam: wl_str('Procedure name expected');
-        badfuncparam: wl_str('Function name expected');
-        varparamerr: wl_str( 'VAR parameters cannot be passed an expression, packed field or variant tag');
-        badassignment: wl_str( 'Assignment operands are of differing or incompatible types');
-        cantpack: wl_str('Can''t pack unstructured or named type');
-        wantvarname: wl_str('Variable name expected');
-        nofilefile: wl_str('File cannot contain a file component');
-        dupcaselabel: wl_str('Case label defined twice');
-        badfunctype: wl_str('Function result must be of scalar or pointer type');
-        badfuncassign: wl_str('Illegal function assignment');
-        missingforindex: wl_str('Index variable missing in this FOR statement');
-        modifiedfor: wl_str( 'Reassignment of FOR-loop control variable not allowed');
-        badprocfunc: wl_str('Only functions can be called from expressions');
-        badassign: wl_str('Assignment to constants not allowed');
-        norecordident: wl_str('Record identifier expected');
-        unassigned: wl_str('Must assign value before using variable');
-        badorigin: wl_str('Bad ORIGIN value');
-        novaluefile: wl_str('Files must be passed as VAR parameters');
-        dontassignfile: wl_str('Assignment of file variables not allowed');
-        longstring: wl_str('String constants may not include line separator');
-        bigsetbase: wl_str('Set types must have a base in the range 0..255');
-        nottextfile: wl_str('Readln, writeln, eoln, and page must be applied to text file');
-        obsoletecomments: wl_str('Non-standard comment form, please use "{" or "(*"');
-        typenotallowed: wl_str('A type identifier is not allowed here');
-        progexpected: wl_str('PROGRAM heading expected');
-        badmodop: wl_str('The divisor of a mod must be greater than zero');
-        badpackconform: wl_str( 'Packed conformant array parameters cannot be nested');
-        confinconsistent: wl_str( 'All parameters in a single parameter section must have the same type.' );
-        badconfactual: wl_str( 'Actual parameter cannot be used with this conformant array parameter.' );
-        bigrecorderr: wl_str('Record too large');
-        bigblockerr: wl_str('Data declarations for this block are too large');
+        duplicateident: listStr( 'Identifier cannot be redefined or defined after use at this level');
+        undefidenterr: listStr('Undefined identifier');
+        indexerror: listStr('Array subscript out of range');
+        overflow: listStr('Integer overflow or division by zero');
+        bigarrayerr: listStr('Array exceeds addressable memory');
+        rangeerror: listStr('Assignment value out of range');
+        badsubrange: listStr('Illegal subrange');
+        badindex: listStr('Index must be non-real scalar type');
+        badsetbase: listStr('Sets must be non-real scalar type');
+        badsetexpression: listStr('Set is constructed of incompatible types');
+        badcasetyp: listStr('Case label must be non-real scalar type');
+        badcaselab: listStr('Case label type does not match tag field type');
+        duplicatetag: listStr('Tag identifier already used in this record');
+        duplabeldef: listStr('Label cannot be redefined at this level');
+        labnotpredef: listStr('Label must be declared in LABEL declaration');
+        badlabeldef: listStr('Label defined twice');
+        badtagerr: listStr('Tag does not appear in variant record label list');
+        labelundef: listStr('Declared labels must be defined in procedure body');
+        fwdundef: listStr('Forward procedure/function body is never defined');
+        typeundef: listStr('Forward type reference is never resolved');
+        dupfwdparam: listStr( 'Parameter list cannot be duplicated in forward-declared procedure/function body');
+        dupfwdresult: listStr( 'Function result type cannot be duplicated in forward-declared function body');
+        dupforward: listStr( 'This procedure/function name has been previously declared forward' );
+        fwdprocfuncerr: listStr('This function was declared as a forward procedure');
+        fwdfuncprocerr: listStr('This procedure was declared as a forward function');
+        badxdef: listStr( 'External procedures/functions must be defined at outermost level' );
+        recordexpected: listStr('Variable of type record expected');
+        arrayexpected: listStr('Variable of type array expected');
+        ptrexpected: listStr('File variable or pointer variable expected');
+        badfunctionarg: listStr( 'Function cannot be applied to an operand of this type');
+        illegalformat: listStr( 'This parameter cannot be followed by a format expression');
+        badformat: listStr('Format expression must be of type integer');
+        badreadtype: listStr('Variables of this type are not allowed in READ');
+        noreadarg: listStr('Need at least one variable to READ');
+        badwritearg: listStr('Variables of this type are not allowed in WRITE');
+        nostringerr: listStr('Packed array [1..n] of characters expected');
+        filenameerr: listStr('File names in RESET/REWRITE are non-standard');
+        noptrvar: listStr('Pointer variable expected');
+        nofieldtype: listStr('Field variable expected for NEW');
+        badnewlabel: listStr('Variant label is undefined');
+        nowritearg: listStr('Need at least one value to WRITE');
+        toomanyargs: listStr('Too many actual parameters');
+        toofewargs: listStr('Too few actual parameters');
+        paramtypeerr: listStr( 'Actual parameter type doesn''t match formal parameter type');
+        booleanexpected: listStr('Boolean value expected');
+        badarithtype: listStr('Operator cannot be applied to these operand types');
+        signedseterr: listStr( 'Unary ''+'' or ''-'' cannot be applied to set operands');
+        badreloprnds: listStr( 'Illegal comparison of record, array, file, or pointer values' );
+        badrealtoint: listStr( 'Can''t assign a real value to an integer variable (use TRUNC or ROUND)' );
+        baddbltoreal: listStr( 'Can''t assign a double value to a real variable (use SNGL)' );
+        typesincomp: listStr('Operands are of differing or incompatible type');
+        compilerwritererr: listStr( 'Compiler writer error -- please contact Oregon Software at (503) 245-2202' );
+        nostrictinclusion: listStr('No strict inclusion of sets allowed');
+        badinoprnds: listStr('Bad IN operands');
+        badforvar: listStr( 'FOR-loop control variable must be declared at this level');
+        unsupportedforvardecl: listStr( 'FOR-loop control variable declared as OWN, USE, DEFINE, SHARED, OR ORIGIN');
+        badfortype: listStr( 'FOR-loop control variable can only be a simple non-real scalar variable' );
+        badforlimit: listStr( 'Expression type is incompatible with FOR index type');
+        badcasetype: listStr( 'CASE selection expression must be a non-real scalar type');
+        badcaselabeltype: listStr( 'CASE label does not match selection expression type');
+        indexincomp: listStr( 'Index expression type does not match array declaration');
+        badprocparam: listStr('Procedure name expected');
+        badfuncparam: listStr('Function name expected');
+        varparamerr: listStr( 'VAR parameters cannot be passed an expression, packed field or variant tag');
+        badassignment: listStr( 'Assignment operands are of differing or incompatible types');
+        cantpack: listStr('Can''t pack unstructured or named type');
+        wantvarname: listStr('Variable name expected');
+        nofilefile: listStr('File cannot contain a file component');
+        dupcaselabel: listStr('Case label defined twice');
+        badfunctype: listStr('Function result must be of scalar or pointer type');
+        badfuncassign: listStr('Illegal function assignment');
+        missingforindex: listStr('Index variable missing in this FOR statement');
+        modifiedfor: listStr( 'Reassignment of FOR-loop control variable not allowed');
+        badprocfunc: listStr('Only functions can be called from expressions');
+        badassign: listStr('Assignment to constants not allowed');
+        norecordident: listStr('Record identifier expected');
+        unassigned: listStr('Must assign value before using variable');
+        badorigin: listStr('Bad ORIGIN value');
+        novaluefile: listStr('Files must be passed as VAR parameters');
+        dontassignfile: listStr('Assignment of file variables not allowed');
+        longstring: listStr('String constants may not include line separator');
+        bigsetbase: listStr('Set types must have a base in the range 0..255');
+        nottextfile: listStr('Readln, writeln, eoln, and page must be applied to text file');
+        obsoletecomments: listStr('Non-standard comment form, please use "{" or "(*"');
+        typenotallowed: listStr('A type identifier is not allowed here');
+        progexpected: listStr('PROGRAM heading expected');
+        badmodop: listStr('The divisor of a mod must be greater than zero');
+        badpackconform: listStr( 'Packed conformant array parameters cannot be nested');
+        confinconsistent: listStr( 'All parameters in a single parameter section must have the same type.' );
+        badconfactual: listStr( 'Actual parameter cannot be used with this conformant array parameter.' );
+        bigrecorderr: listStr('Record too large');
+        bigblockerr: listStr('Data declarations for this block are too large');
         {<<<}
         biglabelerr:
           begin
-          wl_str('Label must lie in range 0..');
-          wl_int(maxstandardlabel, 1);
+          listStr('Label must lie in range 0..');
+          listInt(maxstandardlabel, 1);
           end;
         {>>>}
-        badnumber: wl_str( 'Blank characters must separate identifiers from numeric constants');
-        badfornestref: wl_str('Nested procedure modifies index variable');
-        badcasetags: wl_str('Variant tags do not exactly match range of tag type');
-        nameundef: wl_str('PROGRAM parameter is never defined');
-        filenotdeclared: wl_str('External file must be declared in PROGRAM statement');
-        inputnotdeclared: wl_str('Standard file "input" must be declared by PROGRAM statement');
-        outputnotdeclared: wl_str( 'Standard file "output" must be declared by PROGRAM statement');
-        novarianttag: wl_str( 'Variant record case selector may not be passed as a VAR parameter');
-        notlevel0: wl_str('Conformant arrays are not Level 0');
-        toomanyelements: wl_str('Too many array elements');
-        eofincomment: wl_str('End of file encountered in a comment');
-        baddouble: wl_str('Embedded DOUBLE switch is illegal after first token');
-        manyscopes: wl_str( 'Too many records, or forward, external or nonpascal procedures/functions' );
-        baduniv: wl_str('UNIV may only be used with VAR parameters');
-        badstringindex: wl_str('STRING limit must be an integer in the range 1..255');
-        stringoverflowerr: wl_str('STRING exceeds allocated size');
-        bodyfounderr: wl_str( 'Procedure or function bodies not allowed with "define" option.');
-        manyenviron: wl_str('Only one environment directive allowed.');
-        badenviron: wl_str( 'Environment directive must precede all declarations.');
-        badoptions: wl_str( 'Environment file options inconsistent with currently defined options.');
-        baddefine: wl_str( 'This type of declaration not allowed with "define" option.');
-        badcase: wl_str('Embedded case switch is illegal after first token');
-        toomanyextvars: wl_str('Too many external variables');
-        badsharedvar: wl_str('Shared variable declaration error');
-        badusedefinevar: wl_str('Use and/or define not allowed here');
-        badcvtfunc: wl_str('SNGL and DBL are illegal with DOUBLE switch');
-        badinterruptproc: wl_str('Illegal interrupt procedure');
-        badmultidef: wl_str('Improper redefinition of use/define variable');
+        badnumber: listStr( 'Blank characters must separate identifiers from numeric constants');
+        badfornestref: listStr('Nested procedure modifies index variable');
+        badcasetags: listStr('Variant tags do not exactly match range of tag type');
+        nameundef: listStr('PROGRAM parameter is never defined');
+        filenotdeclared: listStr('External file must be declared in PROGRAM statement');
+        inputnotdeclared: listStr('Standard file "input" must be declared by PROGRAM statement');
+        outputnotdeclared: listStr( 'Standard file "output" must be declared by PROGRAM statement');
+        novarianttag: listStr( 'Variant record case selector may not be passed as a VAR parameter');
+        notlevel0: listStr('Conformant arrays are not Level 0');
+        toomanyelements: listStr('Too many array elements');
+        eofincomment: listStr('End of file encountered in a comment');
+        baddouble: listStr('Embedded DOUBLE switch is illegal after first token');
+        manyscopes: listStr( 'Too many records, or forward, external or nonpascal procedures/functions' );
+        baduniv: listStr('UNIV may only be used with VAR parameters');
+        badstringindex: listStr('STRING limit must be an integer in the range 1..255');
+        stringoverflowerr: listStr('STRING exceeds allocated size');
+        bodyfounderr: listStr( 'Procedure or function bodies not allowed with "define" option.');
+        manyenviron: listStr('Only one environment directive allowed.');
+        badenviron: listStr( 'Environment directive must precede all declarations.');
+        badoptions: listStr( 'Environment file options inconsistent with currently defined options.');
+        baddefine: listStr( 'This type of declaration not allowed with "define" option.');
+        badcase: listStr('Embedded case switch is illegal after first token');
+        toomanyextvars: listStr('Too many external variables');
+        badsharedvar: listStr('Shared variable declaration error');
+        badusedefinevar: listStr('Use and/or define not allowed here');
+        badcvtfunc: listStr('SNGL and DBL are illegal with DOUBLE switch');
+        badinterruptproc: listStr('Illegal interrupt procedure');
+        badmultidef: listStr('Improper redefinition of use/define variable');
         {<<<}
         otherwise
           begin
-          wl_str('??? UNKNOWN ERROR REPORTED ???');
+          listStr('??? UNKNOWN ERROR REPORTED ???');
           end;
         {>>>}
         end {case err} ;
@@ -1072,13 +1077,13 @@ var
             if (errcolumn >= linepos) and (errcolumn + size < linelen) then
               begin
               tab (linepos + leftmargin, errcolumn + leftmargin);
-              wl_chr('^');
-              wl_int (ord(err), size);
+              listChr('^');
+              listInt (ord(err), size);
               linepos := errcolumn + size + 1;
               end;
             end;
 
-        wl_line;
+        listLine;
         totallines := totallines + 1;
 
         for i := firsterror to lasterror do
@@ -1086,16 +1091,16 @@ var
             if uniqueerrs[err] then
               begin
               uniqueerrs[err] := false;
-              wl_str ('*** ');
-              wl_int (ord(err), 2);
-              wl_str (': ');
+              listStr ('*** ');
+              listInt (ord(err), 2);
+              listStr (': ');
               listoneerror (err);
-              wl_line;
+              listLine;
               totallines := totallines + 1;
               errorsreported := errorsreported + 1;
               end;
 
-        wl_line;
+        listLine;
         totallines := totallines + 1;
       end;
       {>>>}
@@ -1111,12 +1116,12 @@ var
             if uniqueerrs[err] then
               begin
               uniqueerrs[err] := false;
-              wl_str_l(sharedPtr^.filename, sharedPtr^.filename_length);
-              wl_chr('(');
-              wl_int(max(1, linecount - save[sharedPtr^.sourcelevel].line), 1);
-              wl_str(') : ');
+              listStrL(sharedPtr^.filename, sharedPtr^.filenameLength);
+              listChr('(');
+              listInt(max(1, linecount - save[sharedPtr^.sourcelevel].line), 1);
+              listStr(') : ');
               listoneerror(err);
-              wl_line;
+              listLine;
               totallines := totallines + 1;
               errorsreported := errorsreported + 1;
               end;
@@ -1220,39 +1225,39 @@ var
       { Don't print invocation line if errors are going to terminal }
       if not sharedPtr^.forceList then
         begin
-        wl_line;
-        wl_str ('command line:');
-        wl_line;
+        listLine;
+        listStr ('command line:');
+        listLine;
 
-        wl_str_l (sharedPtr^.cmdline, sharedPtr^.cmdlength); { Print user's command line }
-        wl_line;
+        listStrL (sharedPtr^.cmdline, sharedPtr^.cmdlength); { Print user's command line }
+        listLine;
         end;
-      wl_line;
+      listLine;
 
       if lineswitherrors = 0 then
         begin
-        wl_str (' *** No lines with errors detected ***');
-        wl_line;
+        listStr (' *** No lines with errors detected ***');
+        listLine;
         end
 
       else if lineswitherrors = 1 then
         begin
-        wl_str(' *** There was 1 line with errors detected ***');
-        wl_line;
+        listStr(' *** There was 1 line with errors detected ***');
+        listLine;
         end
 
       else
         begin
-        wl_str (' *** There were ');
-        wl_int (lineswitherrors, 1);
-        wl_str (' lines with errors detected ***');
-        wl_line;
+        listStr (' *** There were ');
+        listInt (lineswitherrors, 1);
+        listStr (' lines with errors detected ***');
+        listLine;
         end;
 
     end;
     {>>>}
     {<<<}
-    procedure skipWithWrrors (limit: integer);
+    procedure skipWithErrors (limit: integer);
 
     var
       pseudopageline: integer;
@@ -1354,7 +1359,7 @@ var
 
     lastfileptr := nil;
     save[1].filename := sharedPtr^.filename;
-    save[1].filename_length := sharedPtr^.filename_length;
+    save[1].filenameLength := sharedPtr^.filenameLength;
     save[1].fileptr := thisfileptr;
     openSource;
 
@@ -1383,7 +1388,7 @@ var
 
     i := 1;
     getnexterror;
-    while i <= sharedPtr^.lastlist do
+    while i <= sharedPtr^.lastList do
       begin
       with sharedPtr^.listTable[i] do
         begin
@@ -1407,15 +1412,15 @@ begin
 
   else
     begin
-    getFileName (sharedPtr^.listname, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
+    getFileName (sharedPtr^.listname, false, false, sharedPtr^.filename, sharedPtr^.filenameLength);
     rewrite (listFile, 'output.txt');
 
     { If the last region of the file is nolisted and the list command line option is used,
       this dummy listing line will force a forceList of any errors in the nolisted region.
       This fix causes no harm in the normal case }
-    sharedPtr^.lastlist := sharedPtr^.lastlist + 1;
-    sharedPtr^.listTable[sharedPtr^.lastlist].start := sharedPtr^.lastLine;
-    sharedPtr^.listTable[sharedPtr^.lastlist].count := 0;
+    sharedPtr^.lastList := sharedPtr^.lastList + 1;
+    sharedPtr^.listTable[sharedPtr^.lastList].start := sharedPtr^.lastLine;
+    sharedPtr^.listTable[sharedPtr^.lastList].count := 0;
 
     listing (listFile);
     close (listFile);

@@ -334,8 +334,8 @@ var
   limit: 1..maxprocnamelen;
 
 begin
-  getFileName (nil, true, true, sharedPtr^.filename, sharedPtr^.filename_length);
-  limit := min (sharedPtr^.filename_length, maxprocnamelen);
+  getFileName (nil, true, true, sharedPtr^.filename, sharedPtr^.filenameLength);
+  limit := min (sharedPtr^.filenameLength, maxprocnamelen);
 
   for i := 1 to limit do
     if (sharedPtr^.filename[i] >= 'a') and (sharedPtr^.filename[i] <= 'z') then
@@ -352,7 +352,7 @@ procedure openSource;
 { open commandLine source file }
 
 begin
-  getFileName (sharedPtr^.sourceListHead, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
+  getFileName (sharedPtr^.sourceListHead, false, false, sharedPtr^.filename, sharedPtr^.filenameLength);
   Writeln ('openSource level:', sharedPtr^.sourcelevel:1, ' filename:', sharedPtr^.filename);
   reset (sharedPtr^.source[sharedPtr^.sourcelevel], sharedPtr^.filename);
 end;

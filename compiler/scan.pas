@@ -187,7 +187,7 @@ var
         saveBuf: packed array [1..inputbufsize] of char;
         savePos: lineindex;
         saveFileIndex: integer;
-        savefilename_length: filenameindex;
+        savefilenameLength: filenameindex;
       end;
   baseLine: array [1..sourcedepth] of integer; {starting line for current file}
 
@@ -456,7 +456,7 @@ end;
 {>>>}
 {<<<}
 procedure logInputFilename;
-{ Put the name of the file just opened found in global "filename", with its length in global "filename_length"
+{ Put the name of the file just opened found in global "filename", with its length in global "filenameLength"
   in the string table, among the identifiers. The name in the string table is terminated by a chr(0).
 
   On systems that use logical names or file versions,
@@ -496,10 +496,10 @@ begin
   else
     sharedPtr^.filerememberlist := q;
 
-  if sharedPtr^.stringtabletop + sharedPtr^.filename_length >= stringtablesize then
+  if sharedPtr^.stringtabletop + sharedPtr^.filenameLength >= stringtablesize then
     scanFatal (stringtableoverflow);
 
-  for i := 1 to sharedPtr^.filename_length do
+  for i := 1 to sharedPtr^.filenameLength do
     begin
     sharedPtr^.stringtabletop := sharedPtr^.stringtabletop + 1;
     sharedPtr^.stringtable^[sharedPtr^.stringtabletop] := sharedPtr^.filename[i];
@@ -604,7 +604,7 @@ procedure getCh;
         linePos := savePos;    {restore index in line}
         curFileIndex := saveFileIndex;
         endOfLine := saveendOfLine;
-        sharedPtr^.filename_length := savefilename_length;
+        sharedPtr^.filenameLength := savefilenameLength;
         end;
 
       tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastLine - baseLine[sharedPtr^.sourcelevel];
@@ -1182,8 +1182,8 @@ var
     i: identifierrange;     { general use induction var}
     filenamebuilt: boolean; { true if filename correctly built}
     newform: boolean;       { true if new type %include (quoted filename)}
-    oldfilename_length: filenameindex; { for saving filename_length in stack}
-    newfilename_length: filenameindex; { to temporarily save new filename_length}
+    oldfilenameLength: filenameindex; { for saving filenameLength in stack}
+    newfilenameLength: filenameindex; { to temporarily save new filenameLength}
 
   begin
     if (sharedPtr^.switchcounters[standard] > 0) then
@@ -1261,8 +1261,8 @@ var
         end;
         {>>>}
 
-      oldfilename_length := sharedPtr^.filename_length;
-      newfilename_length := i;
+      oldfilenameLength := sharedPtr^.filenameLength;
+      newfilenameLength := i;
       while i < filenamelen do
         begin
         i := i + 1;
@@ -1284,12 +1284,12 @@ var
           savePos := linePos;
           saveendOfLine := endOfLine;
           saveFileIndex := curFileIndex; { stringtable index of filename}
-          savefilename_length := oldfilename_length;
+          savefilenameLength := oldfilenameLength;
           saveBuf := currentbuf;
           linePos := inputbufsize;
           end;
 
-        sharedPtr^.filename_length := newfilename_length;
+        sharedPtr^.filenameLength := newfilenameLength;
         logInputFilename;
         baseLine[sharedPtr^.sourcelevel] := sharedPtr^.lastLine - tokenSharedPtr^.nexttoken.baseLine - ord(endOfLine);
         if not endOfLine then

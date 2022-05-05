@@ -1252,7 +1252,7 @@ begin
   if not travcode then
     begin
     pseudoSharedPtr^.pseudoinst := pseudoSharedPtr^.pseudobuff;
-    if pseudoSharedPtr^.pseudoinst.op <> endpseudocode then 
+    if pseudoSharedPtr^.pseudoinst.op <> endpseudocode then
       getpseudobuff;
 
     key := pseudoSharedPtr^.pseudoinst.key;
@@ -23635,13 +23635,13 @@ begin
   getOutputName;
   if sharedPtr^.switcheverplus[outputmacro] then
     begin
-    getFileName (sharedPtr^.macname, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
+    getFileName (sharedPtr^.macname, false, false, sharedPtr^.filename, sharedPtr^.filenameLength);
     rewrite (macFile, 'output.sa');
     end;
 
   if sharedPtr^.switcheverplus[outputobj] then
     begin
-    getFileName (sharedPtr^.objname, false, false, sharedPtr^.filename, sharedPtr^.filename_length);
+    getFileName (sharedPtr^.objname, false, false, sharedPtr^.filename, sharedPtr^.filenameLength);
     rewrite (objFile, 'output.ro');
     end;
 
@@ -23826,19 +23826,19 @@ begin
   setcommonkey;
 
   case pseudoSharedPtr^.pseudoinst.op of
-    blockentry: 
+    blockentry:
       blockentryx;
 
-    blockcode: 
+    blockcode:
       blockcodex;
 
-    blockexit: 
+    blockexit:
       blockexitx;
 
-    doint, doptr: 
+    doint, doptr:
       dointx;
 
-    doreal: 
+    doreal:
       dorealx;
 
     dolevel:
@@ -23846,17 +23846,17 @@ begin
         genone
       else
         dostaticlevels (false);
-    doown: 
+    doown:
       dostaticlevels (true);
 
-    dofptr: 
+    dofptr:
       dofptrx;
 
     otherwise
       genone;
     end;
 
-  if (key > lastkey) and 
+  if (key > lastkey) and
      (pseudoSharedPtr^.pseudoinst.op in [doint, doptr, dofptr, doreal, dolevel, doown]) then
     lastkey := key;
 end;
