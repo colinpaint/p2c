@@ -189,7 +189,7 @@ var
         saveFileIndex: integer;
         savefilenameLength: filenameindex;
       end;
-  baseLine: array [1..sourcedepth] of integer; {starting line for current file}
+  baseLine: array [1..sourcedepth] of integer; { starting line for current file }
 
   { stringbuf[curstringbuf]     is buffer the current quoted string (nexttoken),
     stringbuf[not curstringbuf] is buffer for the previous (token) string, if any }

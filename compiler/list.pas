@@ -78,7 +78,7 @@ var
     uniqueerrs: packed array [warning] of boolean {too big for a set!} ;
     e: warning; {for initializing uniqueerrs array}
 
-    pageline, linecount, pagecount, physicalpage, nexterrline : integer;
+    pageline, linecount, pagecount, physicalpage, nextErrLine : integer;
     nexterror: integer;
     totallines: integer;
 
@@ -96,9 +96,6 @@ var
     ampm: char;
     todaystring: packed array [1..9] of char;
 
-    headerline: hdrline; {Site header line}
-    headerlength: integer; {length of site header line}
-
     save: array [1..sourcedepth] of save_rec;
 
     buffer: packed array [1..180] of char;
@@ -108,6 +105,61 @@ var
     thisfileptr: fileRememberPtr; { the file that is open }
     lastfileptr: fileRememberPtr; { the last file name printed in listing }
   {>>>}
+
+    {<<<}
+    function digits (i: integer): integer;
+
+    var
+      j: integer;
+
+    begin
+      j := 1;
+      while i >= 10 do
+        begin
+        j := j + 1;
+        i := i div 10;
+        end;
+      digits := j;
+    end;
+    {>>>}
+    {<<<}
+    procedure dateTime;
+
+    var
+      sec, day, month, year: integer; {time buffer}
+
+    begin
+      TimeStamp(day, month, year, hour, minute, sec);
+      if hour >= 12 then
+        ampm := 'P'
+      else
+        ampm := 'A';
+
+      case month of
+        1: todaystring := '  -Jan-  ';
+        2: todaystring := '  -Feb-  ';
+        3: todaystring := '  -Mar-  ';
+        4: todaystring := '  -Apr-  ';
+        5: todaystring := '  -May-  ';
+        6: todaystring := '  -Jun-  ';
+        7: todaystring := '  -Jul-  ';
+        8: todaystring := '  -Aug-  ';
+        9: todaystring := '  -Sep-  ';
+        10: todaystring := '  -Oct-  ';
+        11: todaystring := '  -Nov-  ';
+        12: todaystring := '  -Dec-  ';
+        end {case month} ;
+
+      if day > 9 then
+        todaystring[1] := chr(ord('0') + day div 10);
+      todaystring[2] := chr(ord('0') + day mod 10);
+
+      year := year mod 100;
+
+      todaystring[8] := chr(ord('0') + year div 10);
+      todaystring[9] := chr(ord('0') + year mod 10);
+    end;
+    {>>>}
 
     {<<<}
     procedure changeSource;
@@ -308,113 +360,6 @@ var
           end;
     end;
     {>>>}
-
-    {<<<}
-    function digits (i: integer): integer;
-
-    var
-      j: integer;
-
-    begin
-      j := 1;
-      while i >= 10 do
-        begin
-        j := j + 1;
-        i := i div 10;
-        end;
-      digits := j;
-    end;
-    {>>>}
-    {<<<}
-    procedure dateTime;
-
-    var
-      sec, day, month, year: integer; {time buffer}
-
-    begin
-      TimeStamp(day, month, year, hour, minute, sec);
-      if hour >= 12 then
-        ampm := 'P'
-      else
-        ampm := 'A';
-
-      case month of
-        1: todaystring := '  -Jan-  ';
-        2: todaystring := '  -Feb-  ';
-        3: todaystring := '  -Mar-  ';
-        4: todaystring := '  -Apr-  ';
-        5: todaystring := '  -May-  ';
-        6: todaystring := '  -Jun-  ';
-        7: todaystring := '  -Jul-  ';
-        8: todaystring := '  -Aug-  ';
-        9: todaystring := '  -Sep-  ';
-        10: todaystring := '  -Oct-  ';
-        11: todaystring := '  -Nov-  ';
-        12: todaystring := '  -Dec-  ';
-        end {case month} ;
-
-      if day > 9 then
-        todaystring[1] := chr(ord('0') + day div 10);
-      todaystring[2] := chr(ord('0') + day mod 10);
-
-      year := year mod 100;
-
-      todaystring[8] := chr(ord('0') + year div 10);
-      todaystring[9] := chr(ord('0') + year mod 10);
-    end;
-    {>>>}
-
-    {<<<}
-    procedure title;
-
-    var
-      i: cmdindex;
-
-    begin
-      listStr ('Pascal-2 ');
-      listStr (systemtitle);
-      listChr (' ');
-      listStr (versionstring);
-      listChr (' ');
-      listStr (todaystring);
-      listInt ((hour + 11) mod 12 + 1, 4);
-      listChr (':');
-      listInt (minute div 10, 1);
-      listInt (minute mod 10, 1);
-      listChr (' ');
-      listChr (ampm);
-      listStr ('M ');
-      listStr ('    Page ');
-      listInt (pagecount, 1);
-      listChr ('-');
-      listInt (physicalpage, 1);
-      listLine;
-
-      listStrL (headerline, headerlength);
-      listLine;
-
-      listStrL (sharedPtr^.filename, sharedPtr^.filenameLength); { Print current filename }
-      lastfileptr := thisfileptr; { don't print this name again }
-      listLine;
-
-      listLine;
-
-      totallines := totallines + 4;
-      topofpage := false;
-
-      if (sharedPtr^.switcheverplus[debugging] or
-          sharedPtr^.switcheverplus[profiling]) and not sharedPtr^.switcheverplus[defineswitch] then
-        begin
-        listLine;
-        listStrL ('Line', leftmargin div 2);
-        listStrL ('Stmt', leftmargin div 2);
-        listLine;
-        pageline := pageline + 2;
-        totallines := totallines + 2;
-        end;
-
-    end;
-    {>>>}
     {<<<}
     procedure tab (tabfrom, tabto: integer);
 
@@ -422,17 +367,20 @@ var
       i: integer;
 
     begin
-      for i := tabfrom to tabto - 1 do listChr(' ');
+      for i := tabfrom to tabto - 1 do
+        listChr(' ');
     end;
     {>>>}
+
     {<<<}
     procedure pagelisting;
 
     begin
       if not topofpage then
         begin
-        if bufferCount > 0 then listLine;
-        page(listFile);
+        if bufferCount > 0 then
+          listLine;
+        page (listFile);
         end;
 
       pageline := 1;
@@ -442,17 +390,51 @@ var
     end;
     {>>>}
     {<<<}
-    procedure getnexterror;
+    procedure printTrailer;
+    { Only 3 lines are printed if errors are going to terminal }
 
     begin
-      if nexterror < sharedPtr^.lasterror then
-        begin
-        nexterror := nexterror + 1;
-        nexterrline := sharedPtr^.errortable[nexterror].errline
-        end
+      if sharedPtr^.forceList then
+        pageline := pageline + 3
       else
-        nexterrline := maxint
-      end;
+        pageline := pageline + 6;
+
+      if pageline > pagelimit then
+        pagelisting;
+
+      { Don't print invocation line if errors are going to terminal }
+      if not sharedPtr^.forceList then
+        begin
+        listLine;
+        listStr ('command line:');
+        listLine;
+
+        listStrL (sharedPtr^.cmdline, sharedPtr^.cmdlength); { Print user's command line }
+        listLine;
+        end;
+      listLine;
+
+      if lineswitherrors = 0 then
+        begin
+        listStr (' *** No lines with errors detected ***');
+        listLine;
+        end
+
+      else if lineswitherrors = 1 then
+        begin
+        listStr(' *** There was 1 line with errors detected ***');
+        listLine;
+        end
+
+      else
+        begin
+        listStr (' *** There were ');
+        listInt (lineswitherrors, 1);
+        listStr (' lines with errors detected ***');
+        listLine;
+        end;
+
+    end;
     {>>>}
 
     {<<<}
@@ -646,6 +628,58 @@ var
       mapstate;
     end;
     {>>>}
+
+    {<<<}
+    procedure sortErrorTable;
+
+    var
+      sorted: boolean;
+      temp: errorrecord;
+      i, top: integer;
+
+      {<<<}
+      function posgtr (i, j: integer): boolean;
+      { Determines whether or not the error messages should be swapped  -- preserves time order if errors overlap }
+
+      begin
+        with sharedPtr^.errortable[j] do
+          if sharedPtr^.errortable[i].errline = errline then
+            posgtr := sharedPtr^.errortable[i].errcolumn > errcolumn + digits(ord(err)) + 1
+          else
+            posgtr := sharedPtr^.errortable[i].errline > errline;
+      end;
+      {>>>}
+
+    begin
+      top := sharedPtr^.lasterror - 1;
+
+      repeat
+        sorted := true;
+        for i := 1 to top do
+          if posgtr (i, i + 1) then
+            begin
+            temp := sharedPtr^.errortable[i];
+            sharedPtr^.errortable[i] := sharedPtr^.errortable[i + 1];
+            sharedPtr^.errortable[i + 1] := temp;
+            sorted := false;
+            top := i - 1;
+            end;
+      until sorted;
+    end;
+    {>>>}
+    {<<<}
+    procedure getNextError;
+
+    begin
+      if nexterror < sharedPtr^.lasterror then
+        begin
+        nexterror := nexterror + 1;
+        nextErrLine := sharedPtr^.errortable[nexterror].errline
+        end
+      else
+        nextErrLine := maxint
+      end;
+    {>>>}
     {<<<}
     procedure processLine;
 
@@ -656,49 +690,104 @@ var
       temppos1, temppos2: integer; {for getpos, because statement file is packed}
 
       {<<<}
-      procedure printlineno;
+      procedure printLineNum;
 
+        {<<<}
+        procedure title;
 
-        begin {printlineno}
-          if (not topofpage) and (lastfileptr <> thisfileptr) then
-            if not sharedPtr^.forceList and (pageline + 4 > pagelimit) then
-              begin {Start new page}
-              pagelisting;
-              physicalpage := physicalpage + 1;
-              end
-            else
-              begin {Just print new current filename}
-              if not sharedPtr^.forceList then listLine;
-              listStrL(sharedPtr^.filename, sharedPtr^.filenameLength);
-              listLine;
-              listLine;
-              lastfileptr := thisfileptr;
-              pageline := pageline + 2 + ord(not sharedPtr^.forceList);
-              end;
+        var
+          i: cmdindex;
 
-          if topofpage then
-            title;
-
-          { if ((sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling]) and
-             (sharedPtr^.lasterror = 0) and not sharedPtr^.switcheverplus[defineswitch]) then
-            msdos, unix, apollo: getpos (listing, temppos1, temppos2);
-          }
-
-          if sharedPtr^.sourcelevel > 1 then
-            listInt (sharedPtr^.sourcelevel, 1)
-          else
-            listChr (' ');
-          listInt (linecount - save[sharedPtr^.sourcelevel].line, leftmargin div 2 - 1);
-          if stmtno <> 0 then
-            listInt (stmtno, leftmargin div 2)
-          else
-            listStrL ('  ', leftmargin div 2);
+        begin
+          listStr ('Pascal-2 ');
+          listStr (systemtitle);
           listChr (' ');
-          first := false;
-        end {printlineno} ;
+
+          listStr (versionstring);
+          listChr (' ');
+
+          listStr (todaystring);
+          listInt ((hour + 11) mod 12 + 1, 4);
+          listChr (':');
+          listInt (minute div 10, 1);
+          listInt (minute mod 10, 1);
+          listChr (' ');
+
+          listChr (ampm);
+          listStr ('M ');
+          listStr ('    Page ');
+          listInt (pagecount, 1);
+          listChr ('-');
+          listInt (physicalpage, 1);
+          listLine;
+
+          listStrL (sharedPtr^.filename, sharedPtr^.filenameLength); { Print current filename }
+          lastfileptr := thisfileptr; { don't print this name again }
+          listLine;
+
+          listLine;
+
+          totallines := totallines + 4;
+          topofpage := false;
+
+          if (sharedPtr^.switcheverplus[debugging] or
+              sharedPtr^.switcheverplus[profiling]) and not sharedPtr^.switcheverplus[defineswitch] then
+            begin
+            listLine;
+            listStrL ('Line', leftmargin div 2);
+            listStrL ('Stmt', leftmargin div 2);
+            listLine;
+
+            pageline := pageline + 2;
+            totallines := totallines + 2;
+            end;
+
+        end;
+        {>>>}
+
+      begin
+        if (not topofpage) and (lastfileptr <> thisfileptr) then
+          if not sharedPtr^.forceList and (pageline + 4 > pagelimit) then
+            begin
+            { Start new page }
+            pagelisting;
+            physicalpage := physicalpage + 1;
+            end
+          else
+            begin {Just print new current filename}
+            if not sharedPtr^.forceList then listLine;
+            listStrL(sharedPtr^.filename, sharedPtr^.filenameLength);
+            listLine;
+            listLine;
+            lastfileptr := thisfileptr;
+            pageline := pageline + 2 + ord(not sharedPtr^.forceList);
+            end;
+
+        if topofpage then
+          title;
+
+        { if ((sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling]) and
+           (sharedPtr^.lasterror = 0) and not sharedPtr^.switcheverplus[defineswitch]) then
+          msdos, unix, apollo: getpos (listing, temppos1, temppos2);
+        }
+        if sharedPtr^.sourcelevel > 1 then
+          listInt (sharedPtr^.sourcelevel, 1)
+        else
+          listChr (' ');
+
+        listInt (linecount - save[sharedPtr^.sourcelevel].line, leftmargin div 2 - 1);
+
+        if stmtno <> 0 then
+          listInt (stmtno, leftmargin div 2)
+        else
+          listStrL ('  ', leftmargin div 2);
+        listChr (' ');
+
+        first := false;
+      end;
       {>>>}
       {<<<}
-      function stopconditions: boolean;
+      function stopConditions: boolean;
 
 
         begin {stopconditions}
@@ -712,6 +801,7 @@ var
         pagelisting;
       pagenextline := false;
       endofpage := false;
+
       first := true;
       column := 1;
       stmtno := 0;
@@ -721,7 +811,7 @@ var
           (sharedPtr^.lasterror = 0) and not sharedPtr^.switcheverplus[defineswitch]) then
         (sharedPtr^.linecount, sharedPtr^.stmtno);
       }
-      while not stopconditions do
+      while not stopConditions do
         begin
         getch;
         newcolumn := column;
@@ -730,14 +820,16 @@ var
           begin
           if (ch = chr(tabch)) and (sourcestate <> skippingstring) then
             newcolumn := ((newcolumn - 1) div tabspace) * tabspace + tabspace + 1
-          else newcolumn := newcolumn + 1;
+          else
+            newcolumn := newcolumn + 1;
           getch;
           end;
 
         if newcolumn <> column then
           begin
-          if first then printlineno;
-          tab(column + leftmargin, newcolumn + leftmargin);
+          if first then
+            printLineNum;
+          tab (column + leftmargin, newcolumn + leftmargin);
           column := newcolumn;
           end;
 
@@ -748,8 +840,9 @@ var
           end
         else
           begin
-          if first then printlineno;
-          listChr(ch);
+          if first then
+            printLineNum;
+          listChr (ch);
           column := column + 1;
           end;
         end;
@@ -759,6 +852,7 @@ var
         getch;
 
       if endofpage then
+        {<<<  end of page}
         begin
         pagecount := pagecount + 1;
         physicalpage := 1;
@@ -766,10 +860,12 @@ var
         if ch = chr(formfeed) then
           processLine;
         end
+        {>>>}
       else
+        {<<<  print line}
         begin
         if first and not endofinput then
-          printlineno;
+          printLineNum;
         listLine;
 
         {getpos(listing, temppos1, temppos2); }
@@ -783,6 +879,126 @@ var
 
         linecount := linecount + 1;
         pageline := pageline + 1;
+        end;
+        {>>>}
+    end;
+    {>>>}
+    {<<<}
+    procedure processErrorLine;
+
+    var
+      firsterror, lasterror, lastprinted: errorindex;
+      errorlines: integer;
+
+      {<<<}
+      procedure listErrors;
+
+      var
+        i, size: integer;
+        linepos: 1..linelen;
+
+      begin
+        linepos := 1;
+        tab (1, leftmargin + 1);
+        for i := firsterror to lasterror do
+          with sharedPtr^.errortable[i] do
+            begin
+            size := digits(ord(err));
+            if (errcolumn >= linepos) and (errcolumn + size < linelen) then
+              begin
+              tab (linepos + leftmargin, errcolumn + leftmargin);
+              listChr('^');
+              listInt (ord(err), size);
+              linepos := errcolumn + size + 1;
+              end;
+            end;
+
+        listLine;
+        totallines := totallines + 1;
+
+        for i := firsterror to lasterror do
+          with sharedPtr^.errortable[i] do
+            if uniqueerrs[err] then
+              begin
+              uniqueerrs[err] := false;
+              listStr ('*** ');
+              listInt (ord(err), 2);
+              listStr (': ');
+              listOneError (err);
+              listLine;
+              totallines := totallines + 1;
+              errorsreported := errorsreported + 1;
+              end;
+
+        listLine;
+        totallines := totallines + 1;
+      end;
+      {>>>}
+      {<<<}
+      procedure listBriefErrors;
+
+      var
+        i: integer;
+
+      begin
+        for i := firsterror to lasterror do
+          with sharedPtr^.errortable[i] do
+            if uniqueerrs[err] then
+              begin
+
+              uniqueerrs[err] := false;
+              listStrL(sharedPtr^.filename, sharedPtr^.filenameLength);
+              listChr('(');
+              listInt(max(1, linecount - save[sharedPtr^.sourcelevel].line), 1);
+              listStr(') : ');
+
+              listOneError(err);
+              listLine;
+
+              totallines := totallines + 1;
+              errorsreported := errorsreported + 1;
+              end;
+      end;
+      {>>>}
+
+    begin
+      lineswitherrors := lineswitherrors + 1;
+
+      firsterror := nexterror;
+      lasterror := nexterror;
+      lastprinted := nexterror;
+      errorlines := 1;
+
+      uniqueerrs[sharedPtr^.errortable[firsterror].err] := true;
+      getNextError;
+
+      while nextErrLine = linecount do
+        begin
+        lasterror := nexterror;
+        with sharedPtr^.errortable[lastprinted] do
+          if sharedPtr^.errortable[nexterror].errcolumn > digits(ord(err)) + errcolumn then
+            begin
+            uniqueerrs[sharedPtr^.errortable[nexterror].err] := true;
+            errorlines := errorlines + 1;
+            lastprinted := nexterror;
+            end;
+        getNextError;
+        end;
+
+      if pageline + errorlines + 2 > pagelimit then
+        begin
+        pagelisting;
+        physicalpage := physicalpage + 1;
+        end
+      else
+        pageline := pageline + errorlines + 2;
+
+      if sharedPtr^.switcheverplus[editlist] then
+        listBriefErrors
+      else
+        begin
+        processLine;
+        listErrors;
         end;
     end;
     {>>>}
@@ -1055,209 +1271,6 @@ var
     end;
     {>>>}
     {<<<}
-    procedure processErrorLine;
-
-    var
-      firsterror, lasterror, lastprinted: errorindex;
-      errorlines: integer;
-
-      {<<<}
-      procedure listErrors;
-
-      var
-        i, size: integer;
-        linepos: 1..linelen;
-
-      begin
-        linepos := 1;
-        tab (1, leftmargin + 1);
-        for i := firsterror to lasterror do
-          with sharedPtr^.errortable[i] do
-            begin
-            size := digits(ord(err));
-            if (errcolumn >= linepos) and (errcolumn + size < linelen) then
-              begin
-              tab (linepos + leftmargin, errcolumn + leftmargin);
-              listChr('^');
-              listInt (ord(err), size);
-              linepos := errcolumn + size + 1;
-              end;
-            end;
-
-        listLine;
-        totallines := totallines + 1;
-
-        for i := firsterror to lasterror do
-          with sharedPtr^.errortable[i] do
-            if uniqueerrs[err] then
-              begin
-              uniqueerrs[err] := false;
-              listStr ('*** ');
-              listInt (ord(err), 2);
-              listStr (': ');
-              listOneError (err);
-              listLine;
-              totallines := totallines + 1;
-              errorsreported := errorsreported + 1;
-              end;
-
-        listLine;
-        totallines := totallines + 1;
-      end;
-      {>>>}
-      {<<<}
-      procedure listBriefErrors;
-
-      var
-        i: integer;
-
-      begin
-        for i := firsterror to lasterror do
-          with sharedPtr^.errortable[i] do
-            if uniqueerrs[err] then
-              begin
-              uniqueerrs[err] := false;
-              listStrL(sharedPtr^.filename, sharedPtr^.filenameLength);
-              listChr('(');
-              listInt(max(1, linecount - save[sharedPtr^.sourcelevel].line), 1);
-              listStr(') : ');
-              listOneError(err);
-              listLine;
-              totallines := totallines + 1;
-              errorsreported := errorsreported + 1;
-              end;
-      end;
-      {>>>}
-
-    begin
-      lineswitherrors := lineswitherrors + 1;
-
-      firsterror := nexterror;
-      lasterror := nexterror;
-      lastprinted := nexterror;
-      errorlines := 1;
-
-      uniqueerrs[sharedPtr^.errortable[firsterror].err] := true;
-      getnexterror;
-
-      while nexterrline = linecount do
-        begin
-        lasterror := nexterror;
-        with sharedPtr^.errortable[lastprinted] do
-          if sharedPtr^.errortable[nexterror].errcolumn >
-             digits(ord(err)) + errcolumn then
-            begin
-            uniqueerrs[sharedPtr^.errortable[nexterror].err] := true;
-            errorlines := errorlines + 1;
-            lastprinted := nexterror;
-            end;
-        getnexterror;
-        end;
-
-      if pageline + errorlines + 2 > pagelimit then
-        begin
-        pagelisting;
-        physicalpage := physicalpage + 1;
-        end
-      else
-        pageline := pageline + errorlines + 2;
-
-      if sharedPtr^.switcheverplus[editlist] then
-        listBriefErrors
-      else
-        begin
-        processLine;
-        listErrors;
-        end;
-    end;
-    {>>>}
-    {<<<}
-    procedure sortErrorTable;
-
-    var
-      sorted: boolean;
-      temp: errorrecord;
-      i, top: integer;
-
-      {<<<}
-      function posgtr (i, j: integer): boolean;
-      { Determines whether or not the error messages should be swapped  -- preserves time order if errors overlap }
-
-      begin
-        with sharedPtr^.errortable[j] do
-          if sharedPtr^.errortable[i].errline = errline then
-            posgtr := sharedPtr^.errortable[i].errcolumn > errcolumn + digits(ord(err)) + 1
-          else
-            posgtr := sharedPtr^.errortable[i].errline > errline;
-      end;
-      {>>>}
-
-    begin
-      top := sharedPtr^.lasterror - 1;
-
-      repeat
-        sorted := true;
-        for i := 1 to top do
-          if posgtr (i, i + 1) then
-            begin
-            temp := sharedPtr^.errortable[i];
-            sharedPtr^.errortable[i] := sharedPtr^.errortable[i + 1];
-            sharedPtr^.errortable[i + 1] := temp;
-            sorted := false;
-            top := i - 1;
-            end;
-      until sorted;
-    end;
-    {>>>}
-
-    {<<<}
-    procedure printTrailer;
-    { Only 3 lines are printed if errors are going to terminal }
-
-    begin
-      if sharedPtr^.forceList then
-        pageline := pageline + 3
-      else
-        pageline := pageline + 6;
-
-      if pageline > pagelimit then
-        pagelisting;
-
-      { Don't print invocation line if errors are going to terminal }
-      if not sharedPtr^.forceList then
-        begin
-        listLine;
-        listStr ('command line:');
-        listLine;
-
-        listStrL (sharedPtr^.cmdline, sharedPtr^.cmdlength); { Print user's command line }
-        listLine;
-        end;
-      listLine;
-
-      if lineswitherrors = 0 then
-        begin
-        listStr (' *** No lines with errors detected ***');
-        listLine;
-        end
-
-      else if lineswitherrors = 1 then
-        begin
-        listStr(' *** There was 1 line with errors detected ***');
-        listLine;
-        end
-
-      else
-        begin
-        listStr (' *** There were ');
-        listInt (lineswitherrors, 1);
-        listStr (' lines with errors detected ***');
-        listLine;
-        end;
-
-    end;
-    {>>>}
-    {<<<}
     procedure skipWithErrors (limit: integer);
 
     var
@@ -1276,14 +1289,15 @@ var
           column := 1;
           endofpage := (pseudopageline > pagelimit);
 
-          while not (endofinput or endofline or endofpage or
-                (pseudopageline > pagelimit)) do
+          while not (endofinput or endofline or endofpage or (pseudopageline > pagelimit)) do
             begin
             getch;
             if ch = chr(tabch) then
               column := (column div tabspace) * tabspace + tabspace
-            else if ch = chr(formfeed) then endofpage := true
-            else column := column + 1;
+            else if ch = chr(formfeed) then
+              endofpage := true
+            else
+              column := column + 1;
             end;
 
           if endofpage then
@@ -1311,10 +1325,10 @@ var
     begin
       skipmode := true;
       pseudopageline := pageline;
-      while nexterrline < limit do
+      while nextErrLine < limit do
         begin
-        skip (nexterrline);
-        processerrorline;
+        skip (nextErrLine);
+        processErrorLine;
         end;
 
       skip (limit)
@@ -1335,9 +1349,9 @@ var
     begin
       skipmode := false;
 
-      while nexterrline < limit do
+      while nextErrLine < limit do
         begin
-        listsource (nexterrline);
+        listsource (nextErrLine);
         processErrorLine;
         end;
 
@@ -1386,9 +1400,9 @@ var
 
     dateTime;
     sortErrorTable;
+    getNextError;
 
     i := 1;
-    getnexterror;
     while i <= sharedPtr^.lastList do
       begin
       with sharedPtr^.listTable[i] do
