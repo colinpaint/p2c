@@ -1,2 +1,12 @@
 p68
 *.c
+*.log
+*.sa
+*.ro
+*.tmp
+*.token
+*.inter
+*.pseudo
+*.rel
+*.local
+*.tree
