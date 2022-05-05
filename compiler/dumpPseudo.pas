@@ -1,3 +1,4 @@
+PROGRAM dumpPseudo (output);
 { dumpPseudo.pas }
 %include 'common.def';
 %include 'pseudo.def';
@@ -126,11 +127,12 @@ var
 
   begin
     dumping := true;
+
     with pseudoSharedPtr^.pseudobuff do
       begin
       if (op = blockentry) then
         begin
-        writeln('op': 12, 'len': 8, 'key': 4, 'ref': 4, 'copy': 5, 'left': 7, 'right': 6, 'target': 7);
+        writeln ('op': 12, 'len': 8, 'key': 4, 'ref': 4, 'copy': 5, 'left': 7, 'right': 6, 'target': 7);
         writeln;
         write ('blockentry': 15);
         end
@@ -405,7 +407,6 @@ begin
   new (pseudoSharedPtr);
 
   reset (pseudoSharedPtr^.pseudoFile, 'output.pseudo');
-
   nextpseudofile := 0;
 
   init;
@@ -420,8 +421,7 @@ begin
     getPseudoBuff;
     end;
 
-  writeln ('*** end pseudocode ***');
-  writeln ('Highest key: ', highestkey: 1);
+  writeln ('*** end of pseudocode *** Highest key: ', highestkey: 1);
 
   close (output);
   close (pseudoSharedPtr^.pseudoFile);

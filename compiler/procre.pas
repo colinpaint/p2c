@@ -1,7 +1,4 @@
 {<<<}
-{[b+]}
-
-
 { NOTICE OF COPYRIGHT AND OWNERSHIP OF SOFTWARE:
 
   Copyright (C) 1986 Oregon Software, Inc.
@@ -69,12 +66,12 @@ Update release version for PU-VV0-GS0 at 2.3.0.1
   was obtained from Pascal News, and modified at Oregon Software to add the
   following capabilities:
 
-	1.  Command line scanning.
-	2.  Multiple source and %include files.
-	3.  Remove requirement for "program" header
-	4.  Allow external procedure (no main body)
-	5.  Reverse (called by) references
-	6.  Tabs in input lines.
+        1.  Command line scanning.
+        2.  Multiple source and %include files.
+        3.  Remove requirement for "program" header
+        4.  Allow external procedure (no main body)
+        5.  Reverse (called by) references
+        6.  Tabs in input lines.
 
   In addition, the program as distributed contained a major bug in the
   handling of field names, and any field name in a record with the
@@ -88,27 +85,26 @@ Update release version for PU-VV0-GS0 at 2.3.0.1
 
 }
 {>>>}
-
-label 99; 
+label 99;
 {<<<}
 const
   sigcharlimit = 16; {This constant is the number of significant characters
-		      kept in the identifier entries. It can readily be
-		      changed. It is not advised that it be reduced below
-		      10 (reserved words get to 9). }
+                      kept in the identifier entries. It can readily be
+                      changed. It is not advised that it be reduced below
+                      10 (reserved words get to 9). }
 
   uclcdisplacement = 32; {This constant is used to convert upper-case
-			  letters to lower-case and vice-versa. It should
-			  be equal to ord('a') - ord('A').}
+                          letters to lower-case and vice-versa. It should
+                          be equal to ord('a') - ord('A').}
 
   linelimit = 161; {This constant determines the size of the input line
-		    buffer. The maximum acceptable input line is one
-		    smaller because a sentinel space is appended to every
-		    line.}
+                    buffer. The maximum acceptable input line is one
+                    smaller because a sentinel space is appended to every
+                    line.}
 
   linewidth = 80; {This constant determines the default maximum width of the
-		   printing of the second cross-reference table. The
-		   program deduces how many names will fit on a line.}
+                   printing of the second cross-reference table. The
+                   program deduces how many names will fit on a line.}
 
   indentation = 4; {This determines the indentation of the lex-levels.}
 
@@ -166,7 +162,7 @@ type
   setofchar = set of char;
 
   prockind = (fwdhalf, allfwd, shortform, formal, outside, outsidedef,
-	      notproc);
+              notproc);
 
   ptrtoentry = ^entry;
 
@@ -175,7 +171,7 @@ type
   ptrtostackcell = ^stackcell;
 
   tokentype = (othersy, namesy, lparensy, rparensy, colonsy, semicolsy,
-	       periodsy, assignsy, subrangesy);
+               periodsy, assignsy, subrangesy);
 
   filelabel = packed array [1..labelsize] of char;
 
@@ -197,9 +193,9 @@ type
       called: listofusages;
       localtree: ptrtoentry;
       case status: prockind of
-	fwdhalf, shortform, formal, outside, notproc: ();
-	allfwd, outsidedef:
-	  (forwardblock: lineref {line where forward label found} );
+        fwdhalf, shortform, formal, outside, notproc: ();
+        allfwd, outsidedef:
+          (forwardblock: lineref {line where forward label found} );
     end;
 
   usagecell =
@@ -285,9 +281,9 @@ const
   %include 'csicon'; {constants for VMS opsys configuration}
  type
   ArgType = (UnknownArg,
-	     InputFileArg, OutputFileArg,
-	     IncludeArg, WidthArg,
-	     MalformedArg, MissingArg);
+             InputFileArg, OutputFileArg,
+             IncludeArg, WidthArg,
+             MalformedArg, MissingArg);
   SubArgType = 0..0;
 
   %include csityp; {types used in csi processing}
@@ -332,7 +328,7 @@ procedure csi;
 
   type
     ErrorMsg = (UnknownArgMsg, MalformedArgMsg, MissingArgMsg,
-		ExtraOutputMsg, BadWidthMsg);
+                ExtraOutputMsg, BadWidthMsg);
 
   var
     OutputFlg: (No, Yes, Unknown); {current condition of output file}
@@ -341,19 +337,19 @@ procedure csi;
     j,k: iArgValue;
 
   procedure SetupError(msg: ErrorMsg;
-		       arg: ArgValue);
+                       arg: ArgValue);
 
   { Print error message and flag error occurred.
   }
 
     begin
       case msg of
-	UnknownArgMsg: write('Unknown argument');
-	MalformedArgMsg: write('Bad argument syntax');
-	MissingArgMsg: write('Required argument missing');
-	ExtraOutputMsg: write('Extra output file');
-	BadWidthMsg: write('Value out of range');
-	end;
+        UnknownArgMsg: write('Unknown argument');
+        MalformedArgMsg: write('Bad argument syntax');
+        MissingArgMsg: write('Required argument missing');
+        ExtraOutputMsg: write('Extra output file');
+        BadWidthMsg: write('Value out of range');
+        end;
       if arg.Len > 0 then write(' (', arg.txt: arg.Len, ')');
       writeln;
       error := true;
@@ -371,41 +367,41 @@ procedure csi;
 
     begin
       case typ of
-	UnknownArg: SetupError(UnknownArgMsg, arg);
-	InputFileArg:
-	  begin
-	  FixFileArg(arg, ActualFile, iExtVar, arg);
-	  new(NewElement);
-	  NewElement^.next := nil;
-	  NewElement^.arg := arg;
-	  if InputListHead = nil then InputListHead := NewElement else
-	    NextInput^.next := NewElement;
-	  NextInput := NewElement;
-	  end;
-	OutputFileArg:
-	  begin
-	  if OutputFlg <> Unknown then SetupError(ExtraOutputMsg, arg);
-	  OutputArg := arg;
-	  OutputFlg := Yes;
-	  end;
+        UnknownArg: SetupError(UnknownArgMsg, arg);
+        InputFileArg:
+          begin
+          FixFileArg(arg, ActualFile, iExtVar, arg);
+          new(NewElement);
+          NewElement^.next := nil;
+          NewElement^.arg := arg;
+          if InputListHead = nil then InputListHead := NewElement else
+            NextInput^.next := NewElement;
+          NextInput := NewElement;
+          end;
+        OutputFileArg:
+          begin
+          if OutputFlg <> Unknown then SetupError(ExtraOutputMsg, arg);
+          OutputArg := arg;
+          OutputFlg := Yes;
+          end;
        IncludeArg:
-	  begin
-	  new(NewElement);
-	  NewElement^.next := nil;
-	  NewElement^.arg := arg;
-	  if IncludeListHead = nil then IncludeListHead := NewElement else
-	    NextInclude^.next := NewElement;
-	  NextInclude := NewElement;
-	  end;
-	WidthArg:
-	  begin
-	  CnvNumericArg(arg, outwidth, numerror);
-	  if numerror or (outwidth < 2 * sigcharlimit + 5) then
-	    SetupError(BadWidthMsg, arg);
-	  end;
-	MalformedArg: SetupError(MalformedArgMsg, arg);
-	MissingArg: SetupError(MissingArgMsg, arg);
-	end;
+          begin
+          new(NewElement);
+          NewElement^.next := nil;
+          NewElement^.arg := arg;
+          if IncludeListHead = nil then IncludeListHead := NewElement else
+            NextInclude^.next := NewElement;
+          NextInclude := NewElement;
+          end;
+        WidthArg:
+          begin
+          CnvNumericArg(arg, outwidth, numerror);
+          if numerror or (outwidth < 2 * sigcharlimit + 5) then
+            SetupError(BadWidthMsg, arg);
+          end;
+        MalformedArg: SetupError(MalformedArgMsg, arg);
+        MissingArg: SetupError(MissingArgMsg, arg);
+        end;
     end;
 
 
@@ -426,7 +422,7 @@ procedure csi;
   end; {csi}
 {>>>}
 {<<<}
-function GetNextInput(var nextfile: Argvalue ): boolean;
+function GetNextInput (var nextfile: Argvalue ): boolean;
 
 { Retrieve next input file from saved argument list and return "true"
   if found.
@@ -448,7 +444,7 @@ function GetNextInput(var nextfile: Argvalue ): boolean;
   end; {GetNextInput}
 {>>>}
 {<<<}
-procedure openerror(includefile: boolean {true if include file});
+procedure openerror (includefile: boolean {true if include file});
 
 { Crash due to a file open error.
 }
@@ -461,8 +457,8 @@ procedure openerror(includefile: boolean {true if include file});
   end;
 {>>>}
 {<<<}
-procedure extractlabel(from: ArgValue; {full file name}
-		       var result: filelabel {resulting file label} );
+procedure extractlabel (from: ArgValue; {full file name}
+                       var result: filelabel {resulting file label} );
 
 { Extract filename and extension for label.
 }
@@ -475,19 +471,19 @@ procedure extractlabel(from: ArgValue; {full file name}
       FixFileArg(from, DisplayFile, iExtVar, Arg);
       result := blanklabel;
       with Arg do
-	begin
-	i := 0;
-	while (i < len) and (i < labelsize) do
-	  begin
-	  i := i + 1;
-	  result[i] := txt[i];
-	  end;
-	end;
+        begin
+        i := 0;
+        while (i < len) and (i < labelsize) do
+          begin
+          i := i + 1;
+          result[i] := txt[i];
+          end;
+        end;
   end; {extractlabel}
 {>>>}
 {<<<}
-function openinput(newfile: ArgValue; {file name to attach}
-		    var s: sourcedescriptor {source level} ): boolean;
+function openinput (newfile: ArgValue; {file name to attach}
+                    var s: sourcedescriptor {source level} ): boolean;
 
 { Open an input file at the current source level and return "true"
   if found.
@@ -502,13 +498,13 @@ function openinput(newfile: ArgValue; {file name to attach}
       reset(inputfile, newfile.txt,, check);
       if check < 0 then openinput := false
       else
-	begin
-	openinput := true;
-	lineno := 0;
-	chno := 0;
-	total := 0;
-	extractlabel(newfile, currentlabel);
-	end;
+        begin
+        openinput := true;
+        lineno := 0;
+        chno := 0;
+        total := 0;
+        extractlabel(newfile, currentlabel);
+        end;
       end;
   end; {openinput}
 {>>>}
@@ -522,14 +518,14 @@ procedure printlabel;
   begin
     with source[sourcelevel] do
       if currentlabel <> lastlabel then
-	begin
-	lastlabel := currentlabel;
-	writeln(outputfile);
-	for i := 1 to labelsize do
-	  if lastlabel[i] <> ' ' then write(outputfile, lastlabel[i]);
-	writeln(outputfile, ':');
-	writeln(outputfile);
-	end;
+        begin
+        lastlabel := currentlabel;
+        writeln(outputfile);
+        for i := 1 to labelsize do
+          if lastlabel[i] <> ' ' then write(outputfile, lastlabel[i]);
+        writeln(outputfile, ':');
+        writeln(outputfile);
+        end;
   end; {printlabel}
 
 {>>>}
@@ -548,35 +544,35 @@ procedure printline;
       i := 1;
       {is this the first time in a run or not?}
       if adjustment = first then
-	begin
-	{ignore any leading spaces there happen to be. }
-	while (i < total) and (line[i] = ' ') do i := succ(i);
-	{compute the adjustment needed for other lines. }
-	movement := (level * indentation) - (i - 1);
-	adjustment := other;
-	{insert any necessary indentation.}
-	if level > 0 then write(outputfile, ' ': (level * indentation));
-	end
+        begin
+        {ignore any leading spaces there happen to be. }
+        while (i < total) and (line[i] = ' ') do i := succ(i);
+        {compute the adjustment needed for other lines. }
+        movement := (level * indentation) - (i - 1);
+        adjustment := other;
+        {insert any necessary indentation.}
+        if level > 0 then write(outputfile, ' ': (level * indentation));
+        end
       else
-	begin
-	{it wasn't the first, so try to adjust to align with its mother}
-	if movement > 0 then write(outputfile, ' ': movement)
-	else if movement < 0 then
-	  while (i < total) and (line[i] = ' ') and (i <= - movement) do
-	    i := succ(i);
-	end;
+        begin
+        {it wasn't the first, so try to adjust to align with its mother}
+        if movement > 0 then write(outputfile, ' ': movement)
+        else if movement < 0 then
+          while (i < total) and (line[i] = ' ') and (i <= - movement) do
+            i := succ(i);
+        end;
       {write out the line. }
       while i < total do
-	begin
-	write(outputfile, line[i]);
-	i := succ(i);
-	end;
+        begin
+        write(outputfile, line[i]);
+        i := succ(i);
+        end;
       writeln(outputfile);
       end; {with}
   end {printline} ;
 {>>>}
 {<<<}
-procedure error(e: positive);
+procedure error (e: positive);
  {this procedure is the error message repository.}
 
 
@@ -604,50 +600,50 @@ procedure nextch;
   begin
     with source[sourcelevel] do
       if (chno = total) and eof(inputfile) then
-	begin
-	close(inputfile);
-	if sourcelevel > 1 then sourcelevel := sourcelevel - 1
-	else
-	  if not getnextinput(currentfile) then goto 99 {all done}
-	  else
-	    if not openinput(currentfile, source[1]) then openerror(false);
-	end;
+        begin
+        close(inputfile);
+        if sourcelevel > 1 then sourcelevel := sourcelevel - 1
+        else
+          if not getnextinput(currentfile) then goto 99 {all done}
+          else
+            if not openinput(currentfile, source[1]) then openerror(false);
+        end;
     with source[sourcelevel] do
       if chno = total then
-	begin
-	if printflag then printline;
-	total := 0;
-	while not eoln(inputfile) do
-	  begin
-	  total := succ(total);
-	  read(inputfile, line[total]);
-	  if line[total] = chr(ff) then total := pred(total)
-	  else if line[total] = chr(ht) then
-	    begin
-	    line[total] := ' ';
-	    while total mod tabinterval <> 0 do
-	      begin
-	      total := succ(total);
-	      line[total] := ' ';
-	      end;
-	    end;
-	  end;
-	total := succ(total);
-	line[total] := ' ';
-	readln(inputfile);
-	lineno := lineno + 1;
-	chno := 1;
-	ch := line[1];
-	end
+        begin
+        if printflag then printline;
+        total := 0;
+        while not eoln(inputfile) do
+          begin
+          total := succ(total);
+          read(inputfile, line[total]);
+          if line[total] = chr(ff) then total := pred(total)
+          else if line[total] = chr(ht) then
+            begin
+            line[total] := ' ';
+            while total mod tabinterval <> 0 do
+              begin
+              total := succ(total);
+              line[total] := ' ';
+              end;
+            end;
+          end;
+        total := succ(total);
+        line[total] := ' ';
+        readln(inputfile);
+        lineno := lineno + 1;
+        chno := 1;
+        ch := line[1];
+        end
       else
-	begin
-	chno := succ(chno);
-	ch := line[chno];
-	end;
+        begin
+        chno := succ(chno);
+        ch := line[chno];
+        end;
   end {nextch} ;
 {>>>}
 {<<<}
-procedure push(newscope: ptrtoentry);
+procedure push (newscope: ptrtoentry);
 
   var
     newlevel: ptrtostackcell;
@@ -678,9 +674,9 @@ procedure pop;
   end {pop} ;
 {>>>}
 {<<<}
-procedure findnode(var match: boolean;
-		   var follow: ptrtoentry;
-		   thisnode: ptrtoentry);
+procedure findnode (var match: boolean;
+                   var follow: ptrtoentry;
+                   thisnode: ptrtoentry);
 
 
   begin
@@ -690,14 +686,14 @@ procedure findnode(var match: boolean;
       follow := thisnode;
       if savesymbol < thisnode^.procname then thisnode := thisnode^.left
       else if savesymbol > thisnode^.procname then
-	thisnode := thisnode^.right
+        thisnode := thisnode^.right
       else match := true;
       end
   end {findnode} ;
 {>>>}
 {<<<}
-function makeentry(mainprog: boolean;
-		   proc: boolean): ptrtoentry;
+function makeentry (mainprog: boolean;
+                   proc: boolean): ptrtoentry;
   { The first parameter is true if the name in symbol is the
    program indetifier, which has no scope. The second parameter
    is true if the name in symbol is that of a procedure of function.
@@ -724,34 +720,34 @@ function makeentry(mainprog: boolean;
        name.}
 
       var
-	subroot: ptrtoentry;
+        subroot: ptrtoentry;
 
 
       begin
-	subroot := superroot;
-	while subroot <> nil do
-	  begin
-	  place := subroot;
-	  if savesymbol < subroot^.procname then subroot := subroot^.before
-	  else subroot := subroot^.after;
-	  end
+        subroot := superroot;
+        while subroot <> nil do
+          begin
+          place := subroot;
+          if savesymbol < subroot^.procname then subroot := subroot^.before
+          else subroot := subroot^.after;
+          end
       end {findleaf} ;
 
 
     begin {puttosupertree}
       if superroot = nil then
-	begin
-	{nothing in the supertree yet.}
-	superroot := newnode
-	end
+        begin
+        {nothing in the supertree yet.}
+        superroot := newnode
+        end
       else
-	begin
-	{seek the right place}
-	findleaf;
-	with place^ do
-	  if savesymbol < procname then before := newnode
-	  else after := newnode
-	end
+        begin
+        {seek the right place}
+        findleaf;
+        with place^ do
+          if savesymbol < procname then before := newnode
+          else after := newnode
+        end
     end {PutToSuperTree} ;
 
 
@@ -770,41 +766,41 @@ function makeentry(mainprog: boolean;
       { seek the identifier in the tree.}
       findnode(located, node, stack^.scopetree);
       if not located then
-	begin
-	{normal case, make an entry.}
-	new(newentry);
-	with node^ do
-	  if symbol < procname then left := newentry
-	  else right := newentry
-	end
+        begin
+        {normal case, make an entry.}
+        new(newentry);
+        with node^ do
+          if symbol < procname then left := newentry
+          else right := newentry
+        end
       end;
     if not located then
       begin
       {Here we initialize all the fields}
       with newentry^, source[sourcelevel] do
-	begin
-	procname := symbol;
-	procuppers := symbolcase;
-	linenumber.line := lineno;
-	linenumber.fileref := currentlabel;
-	startofbody.line := 0;
-	startofbody.fileref := blanklabel;
-	if proc then status := shortform
-	else status := notproc;
-	left := nil;
-	right := nil;
-	before := nil;
-	after := nil;
-	calls := nil;
-	called := nil;
-	localtree := nil;
-	end;
+        begin
+        procname := symbol;
+        procuppers := symbolcase;
+        linenumber.line := lineno;
+        linenumber.fileref := currentlabel;
+        startofbody.line := 0;
+        startofbody.fileref := blanklabel;
+        if proc then status := shortform
+        else status := notproc;
+        left := nil;
+        right := nil;
+        before := nil;
+        after := nil;
+        calls := nil;
+        called := nil;
+        localtree := nil;
+        end;
       makeentry := newentry;
       if proc then
-	begin
-	puttosupertree(newentry);
-	push(newentry);
-	end
+        begin
+        puttosupertree(newentry);
+        push(newentry);
+        end
       end
     else
       begin
@@ -812,20 +808,20 @@ function makeentry(mainprog: boolean;
       makeentry := node;
       push(node);
       if (node^.status = fwdhalf) or (node^.status = outside) then
-	with source[sourcelevel] do
-	  begin
-	  stack^.scopetree := node^.localtree;
-	  if node^.status = fwdhalf then node^.status := allfwd
-	  else node^.status := outsidedef;
-	  node^.forwardblock.line := lineno;
-	  node^.forwardblock.fileref := currentlabel;
-	  end
+        with source[sourcelevel] do
+          begin
+          stack^.scopetree := node^.localtree;
+          if node^.status = fwdhalf then node^.status := allfwd
+          else node^.status := outsidedef;
+          node^.forwardblock.line := lineno;
+          node^.forwardblock.fileref := currentlabel;
+          end
       else error(5)
       end
   end {makeentry} ;
 {>>>}
 {<<<}
-procedure printtree(root: ptrtoentry);
+procedure printtree (root: ptrtoentry);
 
   var
     thiscell: listofusages;
@@ -840,9 +836,9 @@ procedure printtree(root: ptrtoentry);
 
     begin
       for s := 1 to sigcharlimit do
-	if p^.procuppers[s] then
-	  write(outputfile, chr(ord(p^.procname[s]) - uclcdisplacement))
-	else write(outputfile, p^.procname[s])
+        if p^.procuppers[s] then
+          write(outputfile, chr(ord(p^.procname[s]) - uclcdisplacement))
+        else write(outputfile, p^.procname[s])
     end {namewrite} ;
 
 
@@ -854,16 +850,16 @@ procedure printtree(root: ptrtoentry);
 
     begin {Print a line reference in the form "filelabel: line".}
       with thisline do
-	begin
-	for c := 1 to labelsize do
-	  if fileref[c] <> ' ' then write(outputfile, fileref[c]);
-	write(outputfile, ', ', line: 1);
-	end;
+        begin
+        for c := 1 to labelsize do
+          if fileref[c] <> ' ' then write(outputfile, fileref[c]);
+        write(outputfile, ', ', line: 1);
+        end;
     end; {writelineref}
 
 
   procedure listrefs(firstline: prefixname; {header for first line}
-		     thiscell: listofusages {usages to list} );
+                     thiscell: listofusages {usages to list} );
 
 
     begin {list a set of references}
@@ -871,17 +867,17 @@ procedure printtree(root: ptrtoentry);
       write(outputfile, firstline: sigcharlimit - 1, '  ');
       count := 0;
       while thiscell <> nil do
-	begin
-	if ((count mod namesperline) = 0) and (count <> 0) then
-	  begin
-	  writeln(outputfile);
-	  write(outputfile, ' ': sigcharlimit + 1);
-	  end;
-	write(outputfile, ' ');
-	namewrite(thiscell^.what);
-	thiscell := thiscell^.next;
-	count := count + 1;
-	end;
+        begin
+        if ((count mod namesperline) = 0) and (count <> 0) then
+          begin
+          writeln(outputfile);
+          write(outputfile, ' ': sigcharlimit + 1);
+          end;
+        write(outputfile, ' ');
+        namewrite(thiscell^.what);
+        thiscell := thiscell^.next;
+        count := count + 1;
+        end;
       writeln(outputfile);
     end; {listrefs}
 
@@ -889,46 +885,46 @@ procedure printtree(root: ptrtoentry);
   begin {printtree}
     if root <> nil then
       with root^ do
-	begin
-	printtree(before);
-	if (root <> superroot) or (calls <> nil) then
-	  begin
-	  writeln(outputfile);
-	  writeln(outputfile);
-	  namewrite(root);
-	  write(outputfile, '  Head: ');
-	  writelineref(linenumber);
-	  if startofbody.line <> 0 then
-	    begin
-	    write(outputfile, '  Body: ');
-	    writelineref(startofbody);
-	    end;
-	  case status of
-	    fwdhalf, notproc: write(outputfile, '  Incomplete');
-	    formal: write(outputfile, '  formal');
-	    outside: write(outputfile, '  external');
-	    shortform: ;
-	    outsidedef:
-	      begin
-	      writeln(outputfile);
-	      write(outputfile, ' ': sigcharlimit + 2,
-		    'External Def, header stub: ');
-	      writelineref(forwardblock);
-	      end;
-	    allfwd:
-	      begin
-	      writeln(outputfile);
-	      write(outputfile, ' ': sigcharlimit + 2,
-		    'Forward, header stub: ');
-	      writelineref(forwardblock);
-	      end;
-	    end;
-	  writeln(outputfile);
-	  if calls <> nil then listrefs('Calls    ', calls);
-	  if called <> nil then listrefs('Called by', called);
-	  end;
-	printtree(after);
-	end;
+        begin
+        printtree(before);
+        if (root <> superroot) or (calls <> nil) then
+          begin
+          writeln(outputfile);
+          writeln(outputfile);
+          namewrite(root);
+          write(outputfile, '  Head: ');
+          writelineref(linenumber);
+          if startofbody.line <> 0 then
+            begin
+            write(outputfile, '  Body: ');
+            writelineref(startofbody);
+            end;
+          case status of
+            fwdhalf, notproc: write(outputfile, '  Incomplete');
+            formal: write(outputfile, '  formal');
+            outside: write(outputfile, '  external');
+            shortform: ;
+            outsidedef:
+              begin
+              writeln(outputfile);
+              write(outputfile, ' ': sigcharlimit + 2,
+                    'External Def, header stub: ');
+              writelineref(forwardblock);
+              end;
+            allfwd:
+              begin
+              writeln(outputfile);
+              write(outputfile, ' ': sigcharlimit + 2,
+                    'Forward, header stub: ');
+              writelineref(forwardblock);
+              end;
+            end;
+          writeln(outputfile);
+          if calls <> nil then listrefs('Calls    ', calls);
+          if called <> nil then listrefs('Called by', called);
+          end;
+        printtree(after);
+        end;
   end {printtree} ;
 {>>>}
 {<<<}
@@ -948,8 +944,8 @@ procedure nexttoken;
     begin
       nextch;
       repeat
-	while (ch <> '*') and (ch <> '}') do nextch;
-	if ch = '*' then nextch;
+        while (ch <> '*') and (ch <> '}') do nextch;
+        if ch = '*' then nextch;
       until (ch = ')') or (ch = '}');
       nextch;
     end {Ignorecomment} ;
@@ -969,18 +965,18 @@ procedure nexttoken;
       the following tests are always defined. It is to get
       rid of tokens which begin with a period like .. & .) }
       if (ch = '.') then
-	with source[sourcelevel] do
-	  if (line[chno + 1] in digits) then
-	    begin
-	    nextch;
-	    while ch in digits do nextch
-	    end;
+        with source[sourcelevel] do
+          if (line[chno + 1] in digits) then
+            begin
+            nextch;
+            while ch in digits do nextch
+            end;
       if (ch = 'E') or (ch = 'e') then
-	begin
-	nextch;
-	if (ch = '+') or (ch = '-') then nextch;
-	while ch in digits do nextch
-	end
+        begin
+        nextch;
+        if (ch = '+') or (ch = '-') then nextch;
+        while ch in digits do nextch
+        end
       else if (ch = 'B') or (ch = 'b') then nextch;
     end {ignorenumbers} ;
 
@@ -998,16 +994,16 @@ procedure nexttoken;
       symbolcase := lowers;
       j := 1;
       while (j <= sigcharlimit) and (ch in alphanums) do
-	begin
-	if ch in uppercase then
-	  begin
-	  symbol[j] := chr(ord(ch) + uclcdisplacement);
-	  symbolcase[j] := true;
-	  end
-	else symbol[j] := ch;
-	j := j + 1;
-	nextch;
-	end;
+        begin
+        if ch in uppercase then
+          begin
+          symbol[j] := chr(ord(ch) + uclcdisplacement);
+          symbolcase[j] := true;
+          end
+        else symbol[j] := ch;
+        j := j + 1;
+        nextch;
+        end;
       {In case there is a tail, skip it.}
       while (ch in alphanums) do nextch;
     end {readident} ;
@@ -1034,17 +1030,17 @@ procedure nexttoken;
       function FileExists: boolean;
 
       { Check if a target directory contains the file. This routine
-	assumes that "prefix" contains a directory string, and calls
-	"FixFileInclude" to create a complete name. The function
-	returns "true" if the file exists in the directory.
+        assumes that "prefix" contains a directory string, and calls
+        "FixFileInclude" to create a complete name. The function
+        returns "true" if the file exists in the directory.
       }
 
       var
-	arg: ArgValue; {complete file name}
+        arg: ArgValue; {complete file name}
 
       begin
-	FixFileInclude(currentfile, prefix, iExtVar, arg);
-	FileExists := openinput(arg, source[sourcelevel]);
+        FixFileInclude(currentfile, prefix, iExtVar, arg);
+        FileExists := openinput(arg, source[sourcelevel]);
       end;                    {FileExists}
 
 
@@ -1052,47 +1048,47 @@ procedure nexttoken;
       sourcelevel := sourcelevel + 1;
       prefix.len := 0;            {no prefix for current directory}
       if not FileExists then begin {check other directories}
-	found := false;
-	NextElement := IncludeListHead;
-	while (NextElement <> NIL) and not found do
-	  begin
-	  prefix := NextElement^.arg;
-	  NextElement := NextElement^.next;
-	  found := FileExists;
-	  end;
-	if not found then openerror(true);
-	end;
+        found := false;
+        NextElement := IncludeListHead;
+        while (NextElement <> NIL) and not found do
+          begin
+          prefix := NextElement^.arg;
+          NextElement := NextElement^.next;
+          found := FileExists;
+          end;
+        if not found then openerror(true);
+        end;
     end;                          { openincludefile }
 
 
     begin
       nextch;
       if ch in alphabet then
-	begin
-	readident;
-	if symbol = sinclude then
-	  begin
-	  while ch = ' ' do nextch;
-	  testset := [' ',';'];
-	  with currentfile do
-	    begin
-	    len := 0;
-	    if ch = '''' then
-	     begin
-	      testset := testset + [ch];
-	      nextch;
-	     end;
-	    while not (ch in testset) do
-	      begin
-	      len := len + 1;
-	      txt[len] := ch;
-	      nextch;
-	      end;
-	    end;
-	  openincludefile;
-	  nextch;
-	  end;
-	end;
+        begin
+        readident;
+        if symbol = sinclude then
+          begin
+          while ch = ' ' do nextch;
+          testset := [' ',';'];
+          with currentfile do
+            begin
+            len := 0;
+            if ch = '''' then
+             begin
+              testset := testset + [ch];
+              nextch;
+             end;
+            while not (ch in testset) do
+              begin
+              len := len + 1;
+              txt[len] := ch;
+              nextch;
+              end;
+            end;
+          openincludefile;
+          nextch;
+          end;
+        end;
       token := othersy;
     end; {lexicaldirective}
 
@@ -1102,72 +1098,72 @@ procedure nexttoken;
     repeat
       case ch of
 
-	')':
-	  begin
-	  nextch;
-	  token := rparensy;
-	  end;
+        ')':
+          begin
+          nextch;
+          token := rparensy;
+          end;
 
-	'(':
-	  begin
-	  nextch;
-	  if ch = '*' then ignorecomment
-	  else token := lparensy
-	  end;
+        '(':
+          begin
+          nextch;
+          if ch = '*' then ignorecomment
+          else token := lparensy
+          end;
 
-	'{': ignorecomment;
+        '{': ignorecomment;
 
-	'''':
-	  begin
-	  nextch;
-	  while ch <> '''' do nextch;
-	  nextch;
-	  end;
+        '''':
+          begin
+          nextch;
+          while ch <> '''' do nextch;
+          nextch;
+          end;
 
-	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9': ignorenumbers;
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': ignorenumbers;
 
-	':':
-	  begin
-	  nextch;
-	  if ch = '=' then
-	    begin
-	    token := assignsy;
-	    nextch;
-	    end
-	  else token := colonsy;
-	  end;
+        ':':
+          begin
+          nextch;
+          if ch = '=' then
+            begin
+            token := assignsy;
+            nextch;
+            end
+          else token := colonsy;
+          end;
 
-	'.':
-	  begin
-	  nextch;
-	  if ch <> '.' then token := periodsy
-	  else
-	    begin
-	    token := subrangesy;
-	    nextch;
-	    end;
-	  end;
+        '.':
+          begin
+          nextch;
+          if ch <> '.' then token := periodsy
+          else
+            begin
+            token := subrangesy;
+            nextch;
+            end;
+          end;
 
-	';':
-	  begin
-	  nextch;
-	  token := semicolsy;
-	  end;
+        ';':
+          begin
+          nextch;
+          token := semicolsy;
+          end;
 
-	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-	'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-	'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-	'$':
-	  readident;
-	'%': lexicaldirective;
-	otherwise {uninteresting character } nextch;
-	end;
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+        'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+        'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+        '$':
+          readident;
+        '%': lexicaldirective;
+        otherwise {uninteresting character } nextch;
+        end;
     until token <> othersy;
   end {nexttoken} ;
 {>>>}
 {<<<}
-procedure processunit(programid: boolean);
+procedure processunit (programid: boolean);
   {this procedure processes a program unit. it is called on
    recognition of its leading token = program/procedure/function.
    The parameter records whether we currently have the main program
@@ -1193,10 +1189,10 @@ procedure processunit(programid: boolean);
       discovered := false;
       savesymbol := symbol;
       while (llevel <> nil) and not discovered do
-	begin
-	findnode(discovered, where, llevel^.scopetree);
-	if not discovered then llevel := llevel^.substack
-	end;
+        begin
+        findnode(discovered, where, llevel^.scopetree);
+        if not discovered then llevel := llevel^.substack
+        end;
       if discovered then nameisinscope := (where^.status <> notproc)
       else nameisinscope := false;
     end {nameisinscope} ;
@@ -1219,58 +1215,58 @@ procedure processunit(programid: boolean);
        possibly extended.}
 
       var
-	home: ptrtoentry;
-	slevel: ptrtostackcell;
-	found: boolean;
+        home: ptrtoentry;
+        slevel: ptrtostackcell;
+        found: boolean;
 
 
       procedure makeref(var log: listofusages; {list to add ref to}
-			usage: ptrtoentry {entry being used} );
+                        usage: ptrtoentry {entry being used} );
 
-	var
-	  found: boolean; {usage already noted}
-	  ptr: listofusages; {place to put next usage note}
-	  nextptr: listofusages; {scans list of usages}
-	  newcell: listofusages; {new usage entry being created}
+        var
+          found: boolean; {usage already noted}
+          ptr: listofusages; {place to put next usage note}
+          nextptr: listofusages; {scans list of usages}
+          newcell: listofusages; {new usage entry being created}
 
 
-	begin
-	  found := false;
-	  nextptr := log;
-	  if nextptr <> nil then
-	    repeat
-	      ptr := nextptr;
-	      found := (ptr^.what = usage);
-	      nextptr := ptr^.next;
-	    until found or (nextptr = nil)
-	  else ptr := nil;
-	  if not found then
-	    begin
-	    new(newcell);
-	    if ptr <> nil then ptr^.next := newcell
-	    else log := newcell;
-	    newcell^.what := usage;
-	    newcell^.next := nil;
-	    end;
-	end; {makeref}
+        begin
+          found := false;
+          nextptr := log;
+          if nextptr <> nil then
+            repeat
+              ptr := nextptr;
+              found := (ptr^.what = usage);
+              nextptr := ptr^.next;
+            until found or (nextptr = nil)
+          else ptr := nil;
+          if not found then
+            begin
+            new(newcell);
+            if ptr <> nil then ptr^.next := newcell
+            else log := newcell;
+            newcell^.what := usage;
+            newcell^.next := nil;
+            end;
+        end; {makeref}
 
 
       begin {crossreference}
-	slevel := stack;
-	found := false;
-	while (slevel <> nil) and not found do
-	  begin
-	  findnode(found, home, slevel^.scopetree);
-	  if not found then slevel := slevel^.substack;
-	  end;
-	if found then
-	  begin
-	  if home^.status <> notproc then
-	    begin
-	    makeref(home^.called, stack^.current);
-	    makeref(stack^.current^.calls, home);
-	    end;
-	  end;
+        slevel := stack;
+        found := false;
+        while (slevel <> nil) and not found do
+          begin
+          findnode(found, home, slevel^.scopetree);
+          if not found then slevel := slevel^.substack;
+          end;
+        if found then
+          begin
+          if home^.status <> notproc then
+            begin
+            makeref(home^.called, stack^.current);
+            makeref(stack^.current^.calls, home);
+            end;
+          end;
       end {crossreference} ;
 
 
@@ -1280,78 +1276,78 @@ procedure processunit(programid: boolean);
 
 
       begin
-	nexttoken;
-	while token <> namesy do nexttoken;
+        nexttoken;
+        while token <> namesy do nexttoken;
       end {scanforname} ;
 
 
     begin {processBlock}
       depth := 0;
       while (symbol <> sbegin) do
-	begin
-	while (symbol <> sbegin) and (symbol <> sprocedure) and
-	      (symbol <> sfunction) do
-	  begin
-	  scanforname;
-	  if symbol = srecord then depth := depth + 1
-	  else if symbol = send then depth := depth - 1
-	  else if (depth = 0) and nameisinscope then
-	    begin
-	    address := makeentry(false, false);
-	    {makeentry made its status notproc}
-	    end;
-	  end;
-	if symbol <> sbegin then
-	  begin
-	  processunit(false);
-	  scanforname;
-	  end;
-	end;
+        begin
+        while (symbol <> sbegin) and (symbol <> sprocedure) and
+              (symbol <> sfunction) do
+          begin
+          scanforname;
+          if symbol = srecord then depth := depth + 1
+          else if symbol = send then depth := depth - 1
+          else if (depth = 0) and nameisinscope then
+            begin
+            address := makeentry(false, false);
+            {makeentry made its status notproc}
+            end;
+          end;
+        if symbol <> sbegin then
+          begin
+          processunit(false);
+          scanforname;
+          end;
+        end;
       {We have now arrived at the body}
       depth := 1;
       with stack^.current^, source[sourcelevel] do
-	begin
-	startofbody.line := lineno;
-	startofbody.fileref := currentlabel;
-	end;
+        begin
+        startofbody.line := lineno;
+        startofbody.fileref := currentlabel;
+        end;
       nexttoken;
       while depth <> 0 do
-	begin
-	if token = periodsy then
-	  begin
-	  nexttoken;
-	  if token = namesy then nexttoken;
-	  end;
-	if token <> namesy then nexttoken
-	else
-	  begin
-	  if (symbol = sbegin) or (symbol = scase) then
-	    begin
-	    depth := depth + 1;
-	    nexttoken;
-	    end
-	  else if (symbol = send) then
-	    begin
-	    depth := depth - 1;
-	    nexttoken;
-	    end
-	  else
-	    begin
-		 {This name is a candidate call. But first we
-		  must eliminate assignments to function values.}
-	    savesymbol := symbol;
-	    nexttoken;
-	    if token <> assignsy then
-	      begin
-	      crossreference
-	      end
-	    else
-	      begin
-	      nexttoken;
-	      end;
-	    end
-	  end;
-	end;
+        begin
+        if token = periodsy then
+          begin
+          nexttoken;
+          if token = namesy then nexttoken;
+          end;
+        if token <> namesy then nexttoken
+        else
+          begin
+          if (symbol = sbegin) or (symbol = scase) then
+            begin
+            depth := depth + 1;
+            nexttoken;
+            end
+          else if (symbol = send) then
+            begin
+            depth := depth - 1;
+            nexttoken;
+            end
+          else
+            begin
+                 {This name is a candidate call. But first we
+                  must eliminate assignments to function values.}
+            savesymbol := symbol;
+            nexttoken;
+            if token <> assignsy then
+              begin
+              crossreference
+              end
+            else
+              begin
+              nexttoken;
+              end;
+            end
+          end;
+        end;
     end {processblock} ;
 
 
@@ -1371,51 +1367,51 @@ procedure processunit(programid: boolean);
 
 
       begin
-	nexttoken;
-	while token <> rparensy do
-	  begin
-	  if token = lparensy then scantillclose;
-	  nexttoken;
-	  end;
+        nexttoken;
+        while token <> rparensy do
+          begin
+          if token = lparensy then scantillclose;
+          nexttoken;
+          end;
       end {scantillclose} ;
 
 
     begin {scanParameters}
       nexttoken;
       while token <> rparensy do
-	begin
-	if (token = namesy) then
-	  begin
-	  if (symbol = sprocedure) or (symbol = sfunction) then
-	    begin
-	    { A formal procedural/functional parameter.}
-	    nexttoken;
-	    if token = namesy then
-	      begin
-	      which := makeentry(false, true);
-	      which^.status := formal;
-	      pop;
-	      nexttoken;
-	      if token = lparensy then
-		begin
-		{skip interior lists.}
-		scantillclose;
-		end;
-	      end
-	    else
-	      begin
-	      error(2);
-	      nexttoken;
-	      end;
-	    end
-	  else
-	    begin
-	    if nameisinscope then which := makeentry(false, false);
-	    nexttoken;
-	    end;
-	  end
-	else nexttoken;
-	end;
+        begin
+        if (token = namesy) then
+          begin
+          if (symbol = sprocedure) or (symbol = sfunction) then
+            begin
+            { A formal procedural/functional parameter.}
+            nexttoken;
+            if token = namesy then
+              begin
+              which := makeentry(false, true);
+              which^.status := formal;
+              pop;
+              nexttoken;
+              if token = lparensy then
+                begin
+                {skip interior lists.}
+                scantillclose;
+                end;
+              end
+            else
+              begin
+              error(2);
+              nexttoken;
+              end;
+            end
+          else
+            begin
+            if nameisinscope then which := makeentry(false, false);
+            nexttoken;
+            end;
+          end
+        else nexttoken;
+        end;
       nexttoken;
     end {scanparameters} ;
 
@@ -1437,38 +1433,38 @@ procedure processunit(programid: boolean);
       nexttoken;
       if token <> namesy then error(2)
       else
-	begin
-	{We now have the name to store away.}
-	at := makeentry(programid, true);
-	while not (token in [lparensy, semicolsy, colonsy]) do nexttoken;
-	if token = lparensy then scanparameters;
-	while token <> semicolsy do nexttoken;
-	printline;
-	{ We have now printed the procedure heading.}
-	printflag := false;
-	writeln(outputfile);
-	{Our next task is to see if there is an attached block.}
-	nexttoken;
-	if token <> namesy then error(3)
-	else
-	  begin
-	  if (symbol <> slabel) and (symbol <> sconst) and
-	     (symbol <> stype) and (symbol <> sprocedure) and
-	     (symbol <> sfunction) and (symbol <> svar) and
-	     (symbol <> sbegin) then
-	    begin
-	    {bloody directive, mate.}
-	    if symbol = sforward then at^.status := fwdhalf
-	    else at^.status := outside;
-	    pop;
-	    end
-	  else
-	    begin
-	    processblock;
-	    pop;
-	    end;
-	  end;
-	end;
+        begin
+        {We now have the name to store away.}
+        at := makeentry(programid, true);
+        while not (token in [lparensy, semicolsy, colonsy]) do nexttoken;
+        if token = lparensy then scanparameters;
+        while token <> semicolsy do nexttoken;
+        printline;
+        { We have now printed the procedure heading.}
+        printflag := false;
+        writeln(outputfile);
+        {Our next task is to see if there is an attached block.}
+        nexttoken;
+        if token <> namesy then error(3)
+        else
+          begin
+          if (symbol <> slabel) and (symbol <> sconst) and
+             (symbol <> stype) and (symbol <> sprocedure) and
+             (symbol <> sfunction) and (symbol <> svar) and
+             (symbol <> sbegin) then
+            begin
+            {bloody directive, mate.}
+            if symbol = sforward then at^.status := fwdhalf
+            else at^.status := outside;
+            pop;
+            end
+          else
+            begin
+            processblock;
+            pop;
+            end;
+          end;
+        end;
       end;
   end {processunit} ;
 {>>>}
@@ -1484,15 +1480,14 @@ procedure printheading;
 {>>>}
 
 { main }
-begin 
+begin
   superroot := nil;
 
   {Here we construct an outer-scope stack entry. This is needed
    to hold any pre-defined names. The Distributed version does not
    include any of these, but they are easily provided. See the
    outlines in the code marked with *** if you want this feature.}
-
-  new(stack);
+  new (stack);
   with stack^ do
     begin
     current := nil;
@@ -1503,27 +1498,20 @@ begin
   printflag := false;
 
   uppercase := ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
-	       'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-	       'Y', 'Z'];
-
+               'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
   lowercase := ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
-	       'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
-	       'y', 'z'];
-
+               'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
   alphabet := uppercase + lowercase;
 
   digits := ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-
   alphanums := alphabet + digits + ['$', '_'];
-
   usefulchars := alphabet + digits + ['(', ')', '{', '.', ':', ';', ''''];
 
-  for i := 1 to sigcharlimit do lowers[i] := false;
+  for i := 1 to sigcharlimit do 
+    lowers[i] := false;
 
   outwidth := linewidth;
-
   level := - 1;
-
   lastlabel := blanklabel;
 
   csi;
@@ -1535,23 +1523,26 @@ begin
   namesperline := (outwidth - (sigcharlimit + 2)) div (sigcharlimit + 1);
 
   printheading;
-  writeln(outputfile, ' Line Program/procedure/function heading');
-  for pretty := 1 to 43 do write(outputfile, '-');
-  writeln(outputfile);
+  writeln (outputfile, ' Line Program/procedure/function heading');
+  for pretty := 1 to 43 do 
+    write(outputfile, '-');
+  writeln (outputfile);
 
-  {now we need to get the first token, which should be program.}
+  { now we need to get the first token, which should be program.}
   nexttoken;
-  if token <> namesy then error(1)
-  else processunit(true);
+  if token <> namesy then 
+    error(1)
+  else 
+    processunit(true);
 
-  {Complete phase one - now for the next.}
+  { Complete phase one - now for the next.}
 99:
   if not errorflag then
     begin
-    page(outputfile);
+    page (outputfile);
     printheading;
-    writeln(outputfile, 'Cross Reference Listing');
-    printtree(superroot);
-    writeln(outputfile);
+    writeln (outputfile, 'Cross Reference Listing');
+    printtree (superroot);
+    writeln (outputfile);
     end;
 end.

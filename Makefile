@@ -12,9 +12,9 @@ OBJS = main.o stuff.o out.o comment.o lex.o parse.o decl.o expr.o pexpr.o funcs.
 
 all: p2c p2clib.a
 
-rebuild: 
+rebuild:
 	make clean
-	make all
+	make all -j8
 
 # p2c - app
 p2c: $(OBJS)
@@ -34,3 +34,4 @@ clean:
 	rm -f -v *.o
 	rm -f -v *.~*
 	rm -f -v *.*~
+	rm -f -v *~

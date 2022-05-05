@@ -23,34 +23,36 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #include <time.h>
 //{{{
 /* Roadmap:
-    main.h          Declarations for all public global variables, types,
-                    and macros.  Functions are declared in separate
-                    files p2c.{proto,hdrs} which are created
+    main.h          Declarations for all public global variables, types, and macros.  
+                    Functions are declared in separate files p2c.{proto,hdrs} which are created
                     mechanically by the makeproto program.
-    main.c          Main program.  Parses the p2crc file.  Also reserves
-                    storage for public globals in trans.h.
+    main.c          Main program.  Parses the p2crc file.  Also reserves storage for public globals in trans.h.
 
     stuff.c         Miscellaneous support routines.
-    out.c           Routines to handle the writing of C code to the output
-                    file.  This includes line breaking and indentation support.
+
+    out.c           Routines to handle the writing of C code to the output file.  
+                    This includes line breaking and indentation support.
 
     comment.c       Routines for managing comments and comment lists.
 
-    lex.c           Lexical analyzer.  Manages input files and streams,
-                    splits input stream into Pascal tokens.
-                    Parses compiler directives and special comments.
-                    Also keeps the symbol table.
+    lex.c           Lexical analyzer.  Manages input files and streams, splits input stream into Pascal tokens.
+                    Parses compiler directives and special comments. Also keeps the symbol table.
     parse.c         Parsing and writing statements and blocks.
+
     decl.c          Parsing and writing declarations.
+
     expr.c          Manipulating expressions.
+
     pexpr.c         Parsing and writing expressions.
+
     funcs.c         Built-in special functions and procedures.
 
     dir.c           Interface file to "external" functions and procedures such as hpmods and citmods.
+
     hpmods.c        Definitions for HP-supplied Pascal modules.
+
     citmods.c       Definitions for some Caltech-local Pascal modules.
-                    (Outside of Caltech this file is mostly useful
-                    as a large body of examples of how to write your
+                    (Outside of Caltech this file is mostly useful as a large body of examples of how to write your
                     own translator extensions.)
 
     p2crc           Control file (read when p2c starts up).
@@ -63,7 +65,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 
 //{{{
 #if !defined(NO_ISBOGUS) && (defined(mc68000) || defined(m68k) || defined(vax))
-   //{{{
    int ISBOGUS(p)
    char *p;
      {
@@ -78,7 +79,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 
      return 0;
      }
-   //}}}
 #else
   #define ISBOGUS(p) 0
 #endif
@@ -678,7 +678,7 @@ void showinitfile() {
     }
 
   while ((ch = getc(f)) != EOF)
-  putchar (ch);
+    putchar (ch);
   fclose (f);
   }
 //}}}
@@ -720,10 +720,10 @@ enum typekind kind;
 {
   #ifdef HASDUMPS
     if ((unsigned int)kind < (unsigned int)TK_LAST)
-        return typekindnames[(int) kind];
+      return typekindnames[(int) kind];
     else
   #endif /*HASDUMPS*/
-        return format_d("<type %d>", (int) kind);
+    return format_d("<type %d>", (int) kind);
 }
 //}}}
 //{{{
@@ -735,7 +735,7 @@ enum exprkind kind;
         return exprkindnames[(int) kind];
     else
   #endif /*HASDUMPS*/
-        return format_d("<expr %d>", (int) kind);
+    return format_d("<expr %d>", (int) kind);
 }
 //}}}
 //{{{
@@ -747,7 +747,7 @@ enum stmtkind kind;
         return stmtkindnames[(int) kind];
     else
   #endif /*HASDUMPS*/
-        return format_d("<stmt %d>", (int) kind);
+    return format_d("<stmt %d>", (int) kind);
 }
 //}}}
 
@@ -1014,114 +1014,114 @@ void dumptypename_file (f, tp)
 FILE *f;
 Type *tp;
 {
-    FILE *save = outf;
-    outf = f;
-    dumptypename(tp, 1);
-    outf = save;
+  FILE *save = outf;
+  outf = f;
+  dumptypename(tp, 1);
+  outf = save;
 }
 //}}}
 //{{{
 void dumpexpr (ex)
 Expr *ex;
 {
-    int i;
-    Type *type;
-    char *name;
+  int i;
+  Type *type;
+  char *name;
 
-    if (!ex) {
-      fprintf(outf, "<NULL>");
-      return;
+  if (!ex) {
+    fprintf(outf, "<NULL>");
+    return;
+    }
+  if (ISBOGUS(ex)) {
+    fprintf(outf, "0x%lX", (long)ex);
+    return;
+    }
+
+  if (ex->kind == EK_CONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
+    fprintf(outf, "%ld", ex->val.i);
+    return;
+    }
+  if (ex->kind == EK_LONGCONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
+    fprintf(outf, "%ldL", ex->val.i);
+    return;
+    }
+
+  name = exprkindname(ex->kind);
+  if (!strncmp(name, "EK_", 3))
+    name += 3;
+  fprintf(outf, "%s", name);
+
+#ifdef HASDUMPS
+  type = ex->val.type;
+  fprintf(outf, "/");
+  dumptypename(type, 1);
+  if (ex->val.i) {
+    switch (ex->kind) {
+          case EK_VAR:
+          case EK_FUNCTION:
+          case EK_CTX:
+            if (ISBOGUS(ex->val.i))
+              fprintf(outf, "[0x%lX]", ex->val.i);
+            else
+              fprintf(outf, "[\"%s\"]", ((Meaning *)ex->val.i)->name);
+            break;
+
+          default:
+            fprintf(outf, "[i=%ld]", ex->val.i);
+            break;
       }
-    if (ISBOGUS(ex)) {
-      fprintf(outf, "0x%lX", (long)ex);
-      return;
-      }
+    }
 
-    if (ex->kind == EK_CONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-      fprintf(outf, "%ld", ex->val.i);
-      return;
-      }
-    if (ex->kind == EK_LONGCONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-      fprintf(outf, "%ldL", ex->val.i);
-      return;
-      }
+  if (ISBOGUS(ex->val.s))
+    fprintf(outf, "[0x%lX]", (long)ex->val.s);
+  else if (ex->val.s) {
+    switch (ex->kind) {
+      case EK_BICALL:
+      case EK_NAME:
+      case EK_DOT:
+        fprintf(outf, "[s=\"%s\"]", ex->val.s);
+        break;
 
-    name = exprkindname(ex->kind);
-    if (!strncmp(name, "EK_", 3))
-      name += 3;
-    fprintf(outf, "%s", name);
-
-  #ifdef HASDUMPS
-    type = ex->val.type;
-    fprintf(outf, "/");
-    dumptypename(type, 1);
-    if (ex->val.i) {
-      switch (ex->kind) {
-            case EK_VAR:
-            case EK_FUNCTION:
-            case EK_CTX:
-              if (ISBOGUS(ex->val.i))
-                fprintf(outf, "[0x%lX]", ex->val.i);
-              else
-                fprintf(outf, "[\"%s\"]", ((Meaning *)ex->val.i)->name);
-              break;
-
-            default:
-              fprintf(outf, "[i=%ld]", ex->val.i);
-              break;
-        }
-      }
-
-    if (ISBOGUS(ex->val.s))
-      fprintf(outf, "[0x%lX]", (long)ex->val.s);
-    else if (ex->val.s) {
-      switch (ex->kind) {
-        case EK_BICALL:
-        case EK_NAME:
-        case EK_DOT:
-          fprintf(outf, "[s=\"%s\"]", ex->val.s);
-          break;
-
-        default:
-          switch (ex->val.type ? ex->val.type->kind : TK_VOID) {
-            case TK_STRING:
-              fprintf(outf, "[s=%s]", makeCstring(ex->val.s, ex->val.i));
-              break;
-            case TK_REAL:
-              fprintf(outf, "[s=%s]", ex->val.s);
-              break;
-            default:
-              fprintf(outf, "[s=%lx]", (long)ex->val.s);
-            }
-          break;
-        }
-      }
-
-    if (ex->nargs > 0) {
-      fprintf(outf, "(");
-      if (ex->nargs < 10) {
-        for (i = 0; i < ex->nargs; i++) {
-          if (i)
-            fprintf(outf, ", ");
-          dumpexpr(ex->args[i]);
+      default:
+        switch (ex->val.type ? ex->val.type->kind : TK_VOID) {
+          case TK_STRING:
+            fprintf(outf, "[s=%s]", makeCstring(ex->val.s, ex->val.i));
+            break;
+          case TK_REAL:
+            fprintf(outf, "[s=%s]", ex->val.s);
+            break;
+          default:
+            fprintf(outf, "[s=%lx]", (long)ex->val.s);
           }
-        }
-      else
-        fprintf(outf, "...");
-      fprintf(outf, ")");
+        break;
       }
-  #endif
-  }
+    }
+
+  if (ex->nargs > 0) {
+    fprintf(outf, "(");
+    if (ex->nargs < 10) {
+      for (i = 0; i < ex->nargs; i++) {
+        if (i)
+          fprintf(outf, ", ");
+        dumpexpr(ex->args[i]);
+        }
+      }
+    else
+      fprintf(outf, "...");
+    fprintf(outf, ")");
+    }
+#endif
+}
 //}}}
 //{{{
 void dumpexpr_file (f, ex)
 FILE *f;
 Expr *ex;
 {
-    FILE *save = outf;
-    outf = f;
-    dumpexpr(ex);
-    outf = save;
+  FILE *save = outf;
+  outf = f;
+  dumpexpr(ex);
+  outf = save;
 }
 //}}}
 //{{{
@@ -1129,7 +1129,6 @@ void innerdumpstmt (sp, indent)
 Stmt *sp;
 int indent;
 {
-
 #ifdef HASDUMPS
   if (!sp) {
     fprintf(outf, "<NULL>\n");
@@ -1181,8 +1180,8 @@ void dumpstmt (sp, indent)
 Stmt *sp;
 int indent;
 {
-    fprintf(outf, "%*s", indent, "");
-    innerdumpstmt(sp, indent);
+  fprintf(outf, "%*s", indent, "");
+  innerdumpstmt(sp, indent);
 }
 //}}}
 //{{{

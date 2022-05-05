@@ -787,40 +787,41 @@ type
             varname, param, varparam,
             fieldname, procparam, funcparam,
             confparam, varconfparam, boundid:
-              (offset: targetint; {runtime addr}
-               length: targetint; {data length in units}
-               varalloc: allockind; {how this variable is allocated}
-               vartype: p_symbolindex {data type of item}
+              (offset: targetint;     { runtime addr}
+               length: targetint;     { data length in units}
+               varalloc: allockind;   { how this variable is allocated}
+               vartype: p_symbolindex { data type of item}
               );
 
             procname,
             funcname:
-              (functype: p_symbolindex; {return type of function}
-               funclen: targetint; {returned data length of function}
-               funcoffset: targetint; {returned value offset}
-               id: targetint; {symbols for this proc have name field set to
-                               id}
-               firststmt: targetint; {first statement number for this block}
-               laststmt: targetint; {last statement for this block (ODB only)}
+              (functype: p_symbolindex; { return type of function}
+               funclen: targetint;      { returned data length of function}
+               funcoffset: targetint;   { returned value offset}
+               id: targetint;           { symbols for this proc have name field set to id}
+               firststmt: targetint;    { first statement number for this block}
+               laststmt: targetint;     { last statement for this block (ODB only)}
                firstname, lastname: p_symbolindex; {symbol table pointers}
-               level: targetint; {static nesting level}
-               paramsize: targetint; {size of parameters}
-               blocksize: targetint; {size (in units) of local storage}
-               entryaddress: targetint; {entry point filled in by code}
+               level: targetint;        { static nesting level}
+               paramsize: targetint;    { size of parameters}
+               blocksize: targetint;    { size (in units) of local storage}
+               entryaddress: targetint; { entry point filled in by code}
 
                { PDB has one mask set for each kind of register }
-               genregssaved: genregmask; {general registers saved on entry}
-               ptrregssaved: ptrregmask; {pointer registers saved on entry}
-               realregssaved: realregmask; {real registers saved on entry}
-               nextprocedure: p_symbolindex; {link to next procedure in file}
+               genregssaved: genregmask;     { general registers saved on entry}
+               ptrregssaved: ptrregmask;     { pointer registers saved on entry}
+               realregssaved: realregmask;   { real registers saved on entry}
+               nextprocedure: p_symbolindex; { link to next procedure in file}
               )
           );
         {>>>}
         {<<<}
         formdesc:
-          (packedflag: boolean; {true if user said 'packed'}
+          (
+           packedflag: boolean; {true if user said 'packed'}
            bitaddress: boolean; {true if item is bit, not unit accessed}
            size: targetint; {size in units or bits}
+
            case typ: types of
              subranges:
                (lowerord, upperord: targetint; {was declared
@@ -847,8 +848,8 @@ type
              sets: (basetype: p_symbolindex {set of basetype} );
              files: (filebasetype: p_symbolindex {file of filebasetype} );
              ptrs:
-               (ptrtype: p_symbolindex {^ptrtypename (field contains type)} ));
-
+               (ptrtype: p_symbolindex {^ptrtypename (field contains type)} )
+          );
         {>>>}
     end;
   {>>>}
@@ -890,6 +891,7 @@ type
     end;
   {>>>}
   proctable_block = array [0..proctablespan] of proctableentry;
+
   {<<<}
   {The cseregion table stores the lowest and highest addresses at each level
    modified by a particular procedure.  The first entry always records global
@@ -904,6 +906,7 @@ type
         low, high: addressrange;
       end;
   {>>>}
+
   vartableblockptr = ^vartableblock; {pointer to 1 page in vartable}
   {<<<}
   vartablerec =
@@ -957,12 +960,35 @@ const
   firstgenopt = lifetimes;
   lastgenopt = spare15;
 
+{ shared vars }
 type
   {<<<}
   sharedType = record
     debugfile: file of debugrecord;
     localFile:  file of localvartype;
 
+    { error, warning }
+    fatalflag: boolean; { true if fatal error found }
+    errortable: array [errorindex] of errorrecord; { list of errors found }
+    anynonlocalgotos: boolean; { true if non-local goto's used in this unit }
+    lasterror: errorindex;  { last error entered }
+    abortmsg: abortwarning; { reason for aborting }
+    current_line: integer;  { used by error }
+    current_stmt: integer;  { used by error }
+
+    { timing }
+    early, late, today: integer;               { date rollover check }
+    startday, startmonth, startyear: integer;  { starting date }
+    starthour, startmin, startsec: integer;    { starting time of day }
+    istarthour, istartmin, istartsec: integer; { for monitoring execution time }
+    endhour, endmin, endsec: integer;          { for monitoring execution time }
+
+    { commandLine }
+    cmdlength: cmdindex; {length of command line}
+    cmdline: cmdbuffer;  {actual command line}
+    savecmdline: cmdptr; {pointer to save buffer for listing when hostopsys = vdos }
+
+    { switches }
     switches: array [switchindex] of switchentry; { Logs switches found in the source file }
     switchcounters: switchcounterarray;   {current values of switches}
     originalswitches: switchcounterarray; {values at start of compilation}
@@ -970,38 +996,48 @@ type
     lastswitch: switchindex;    {last switch entry made by scan}
     currentswitch: switchindex; {last switch entry activated in current pass}
 
-    fatalflag: boolean; {true if fatal error found}
-    errortable: array [errorindex] of errorrecord; {list of errors found}
-    anynonlocalgotos: boolean; {true if non-local goto's used in this unit}
-    lasterror: errorindex;  { last error entered}
-    abortmsg: abortwarning; { reason for aborting}
-
+    { source file }
     sourcelevel: 0..sourcedepth; {current source include level}
     source: array [1..sourcedepth] of text; {files for including source}
+    SourceListHead: FilenameListPtr; {list of input filenames}
+    filerememberlist: filerememberptr; {input file name list head}
 
     filename_length: FilenameIndex; {length of name in filename buffer}
     filename: FilenameBuf; {temp file name}
 
-    outputname: packed array [1..maxprocnamelen] of char;
+    { these are global to all due to overlay considerations}
+    curfile: integer; {number of current source file}
+    morefiles: boolean; {set if more source files}
 
+    { output files }
+    outputname: packed array [1..maxprocnamelen] of char;
+    objname: FilenameListPtr; {object file name pointer or nil}
+    macname: FilenameListPtr; {macro file name pointer or nil}
+
+    listname: FilenameListPtr; {list file name pointer or nil}
+    fakelist: boolean; {fake a listing file to user's terminal}
     listtable: array [listindex] of listrecord; {OLD listing control entries list}
     lastlist: integer; {last entry in listtable}
     lastline: natural; {last line in program}
 
+    { stringtable }
     stringblkptrtbl: array [1..maxstringblks] of diskblock_ref;
-    stringblkptr: diskblock_ref; {pointer to string block}
+    stringblkptr: diskblock_ref;    { pointer to string block }
     stringfile: bytestream;
-    nextstringfile: 0..diskbufsize; {stringfile buffer pointer}
-    curstringblock: integer; {currently referenced string block}
-    stringfiledirty: boolean; {true if current string block changed}
+    nextstringfile: 0..diskbufsize; { stringfile buffer pointer }
+    curstringblock: integer;        { currently referenced string block }
+    stringfiledirty: boolean;       { true if current string block changed }
+
     stringtable: stringptr; {pointer to old-style string table}
     new_stringtable: stringbasearray; {block of new-style string table pointers}
     stringtabletop: stringindex; {next avail char in string table}
+    curstringbuf: boolean;
+    stringtablelimit: integer; { top of string + identifiers in string file }
+    consttablelimit: integer;  { top of constant table in string file }
+    stringfilecount: integer;  { top of strings in string file }
+    putlow, puthi, getlow, gethi: integer; { counts records put/got by current pass }
 
-    { 'Cache' is used by Analys, Travrs, Code for virtual memory }
-    cache: file of doublediskblock;
-
-    {references to standard identifiers when needed}
+    { references to standard identifiers when needed }
     standardidtable: array [standardids] of hashindex;
 
     targetintsize: integer;  { size of an integer variable on the target }
@@ -1016,20 +1052,9 @@ type
     definesize: addressrange;  { size of "defined" (i.e. global) variables }
     insertions: integer;       { number of distinct variables found }
 
-    startday, startmonth, startyear: integer;  { starting date }
-    starthour, startmin, startsec: integer;    { starting time of day }
-    istarthour, istartmin, istartsec: integer; { for monitoring execution time }
-    endhour, endmin, endsec: integer;          { for monitoring execution time }
-
-    curstringbuf: boolean;
-    stringtablelimit: integer; { top of string + identifiers in string file }
-    consttablelimit: integer;  { top of constant table in string file }
-    stringfilecount: integer;  { top of strings in string file }
     globalfiles: addressrange; { number of bytes allocated for input/output }
 
     lastlabel: labelrange; { last internal label value assigned }
-
-    putlow, puthi, getlow, gethi: integer; { counts records put/got by current pass }
 
     returnlinksize: addressrange;       { Length of return linkage for internal procs }
     extreturnlinksize: addressrange;    { Length of return linkage for externals }
@@ -1051,36 +1076,10 @@ type
     lastvartableentry: var_index;
     vartabodboffset: addressrange; {the last used offset in the vartable (VMS)}
 
-    { commandLine }
-    cmdlength: cmdindex; {length of command line}
-    cmdline: cmdbuffer;  {actual command line}
-    savecmdline: cmdptr; {pointer to save buffer for listing when hostopsys = vdos }
-
-    fakelist: boolean; {fake a listing file to user's terminal}
-
-    SourceListHead: FilenameListPtr; {list of input filenames}
-    objname: FilenameListPtr; {object file name pointer or nil}
-    macname: FilenameListPtr; {macro file name pointer or nil}
-    listname: FilenameListPtr; {list file name pointer or nil}
-    stmtname: filenamelistptr; {statment file name}
-    symtabname: filenamelistptr; {symbol table name}
-    filerememberlist: filerememberptr; {input file name list head}
-
     tblocknum: integer;                  { block number to trigger special diagnostics}
     genset: packed set of gentypes;      { set of optimizations to carry out in this block}
     overrideset: packed set of gentypes; { optimizations based on genoptmask}
     genoptmask: integer;                 { codegen optimization mask}
-
-    { these are global to all due to overlay considerations}
-    curfile: integer; {number of current source file}
-    morefiles: boolean; {set if more source files}
-
-    early, late, today: integer; { Date rollover check }
-    current_line: integer; { used by error }
-    current_stmt: integer; { used by error }
-
-    { Special VMS code parameters }
-    standardfilesreferenced: boolean; {there may be both own and global psects}
 
     codesect_string: stringtableindex; {pointer to codesect name}
     codesect_strlength: 0..linelen; {length of codesect name}

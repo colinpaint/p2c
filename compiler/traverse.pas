@@ -357,7 +357,7 @@ type
                end;
   {>>>}
   {<<<}
-  {used to dump the tree if necessary}
+  { used to dump the tree if necessary }
   dumpFileType = file of
     record
       case bblock: boolean of
@@ -6712,6 +6712,7 @@ var
 
 begin
   this_op := interSharedPtr^.interFile^.block[nextintcode].o;
+
   if this_op = drealop then
     begin
     getintfile;
@@ -6719,6 +6720,7 @@ begin
     getintreal (realval);
     genrealop (map[drealop, none], len, 0, 0, 0, realval);
     end
+
   else
     begin
     len := 0;
@@ -6786,6 +6788,7 @@ begin
     take_data_op;
     getintfile;
     end;
+
   getintfile; {skip the endexpr}
 end;
 {>>>}
@@ -12288,8 +12291,9 @@ begin
   pseudoSharedPtr := getPseudoSharedPtr;
 
   reset (sharedPtr^.localFile);
-  if debugtree then if sharedPtr^.switcheverplus[test] then
-    rewrite (dumpFile, 'tree.tmp');
+  if debugtree then
+    if sharedPtr^.switcheverplus[test] then
+      rewrite (dumpFile, 'tree.tmp');
 
   inittravrs;
 

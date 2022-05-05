@@ -2389,36 +2389,37 @@ procedure storagelimit (unsigned: boolean; {this is an unsigned value}
                        length: addressrange; {length of field}
                        packedfield: boolean; {a packed field}
                        var limit: integer);
-{ Finds the maximum value that the field defined by the arguments will hold.
-  This may well be greater than the range.
-}
+{ Finds the maximum value that the field defined by the arguments will hold This may well be greater than the range }
 
-  var
-    { these locals are for speed purposes, locals will go to registers
-    and the loop will run faster ( sorry iapx..) }
-    tlimit: integer; {temp to hold intermediate limit value}
-    tlength: addressrange; {temp to hold intermediate length value}
+var
+  { these locals are for speed purposes, locals will go to registers
+  and the loop will run faster ( sorry iapx..) }
+  tlimit: integer; {temp to hold intermediate limit value}
+  tlength: addressrange; {temp to hold intermediate length value}
 
+begin
+  tlength := length;
+  if not packedfield then
+    tlength := tlength * bitsperunit;
 
-  begin {storagelimit}
-    tlength := length;
-    if not packedfield then tlength := tlength * bitsperunit;
-    { 6/4/85 SFG Found a case where  this ran away on an undeclared
-    var. Got real tired of waiting for exit from the while loop!
-    new stuff from oregon has yet another way to fix this.
-    }
-    if not unsigned { and ( tlength <> 0 )} then tlength := tlength - 1;
-    { this solves looping problem also }
-    if tlength > sharedPtr^.targetintsize * bitsperunit then
-      tlength := sharedPtr^.targetintsize * bitsperunit;
-    tlimit := 0;
-    while tlength > 0 do
-      begin
-      tlimit := tlimit * 2 + 1;
-      tlength := tlength - 1;
-      end;
-    limit := tlimit;
-  end {storagelimit} ;
+  { 6/4/85 SFG Found a case where  this ran away on an undeclared
+  var. Got real tired of waiting for exit from the while loop!
+  new stuff from oregon has yet another way to fix this }
+  if not unsigned { and ( tlength <> 0 )} then
+    tlength := tlength - 1;
+
+  { this solves looping problem also }
+  if tlength > sharedPtr^.targetintsize * bitsperunit then
+    tlength := sharedPtr^.targetintsize * bitsperunit;
+
+  tlimit := 0;
+  while tlength > 0 do
+    begin
+    tlimit := tlimit * 2 + 1;
+    tlength := tlength - 1;
+    end;
+  limit := tlimit;
+end;
 {>>>}
 {<<<}
 procedure setconstrange (value1: integer; {value to use}
@@ -2440,18 +2441,14 @@ procedure setconstrange (value1: integer; {value to use}
   end {setconstrange} ;
 {>>>}
 {<<<}
-procedure settyperange (t: entryptr; {type containing range}
-                       var r: range {resulting range} );
+procedure settyperange (t: entryptr; var r: range);
+{ Set up a range according to the range of t }
 
-{ Set up a range according to the range of t.
-}
-
-
-  begin {settyperange}
-    r.minlimit := lower(t);
-    r.maxlimit := upper(t);
-    r.extended := t^.extendedrange;
-  end {settyperange} ;
+begin
+  r.minlimit := lower(t);
+  r.maxlimit := upper(t);
+  r.extended := t^.extendedrange;
+end;
 {>>>}
 {<<<}
 procedure setstoragerange (t: entryptr; {variable or field in question}
@@ -2479,302 +2476,281 @@ procedure setstoragerange (t: entryptr; {variable or field in question}
 {>>>}
 {<<<}
 procedure setvarrange (len: addressrange; {range of variable}
-                      packedfield: boolean; {this is a packed field}
-                      trustrange: boolean {trust the type range data} );
-
+                       packedfield: boolean; {this is a packed field}
+                       trustrange: boolean {trust the type range data} );
 { Set the range for a variable reference.  If we know that the variable
   contains only legal values, both optimistic and pessimistic estimates
   are set from the type data.  If the variable might be uninitialized,
   the pessimistic estimate is set to the limits which can be contained
   in the storage assigned to it's value.
-
   The type of the variable is taken from resulttype, and the result is
   placed in oprndstk[sp].value_range
 }
-
-
-  begin {setvarrange}
-    with oprndstk[sp].value_range do
-      begin
-      settyperange(resultptr, optimistic);
-      if trustrange then pessimistic := optimistic
-      else setstoragerange(resultptr, len, packedfield, pessimistic);
-      end;
-  end {setvarrange} ;
+begin
+  with oprndstk[sp].value_range do
+    begin
+    settyperange (resultptr, optimistic);
+    if trustrange then
+      pessimistic := optimistic
+    else
+      setstoragerange (resultptr, len, packedfield, pessimistic);
+    end;
+end;
 {>>>}
 {<<<}
 procedure binaryrange (var left, right: operand_range; {arguments}
-                      extended: boolean; {an extended range}
-                      procedure signedop(left, right: integer;
-                                         var result: integer;
-                                         var overflow: boolean);
-                      procedure unsignedop
-                           (left, right: integer;
-                            var result: integer;
-                            var overflow: boolean);
-                      procedure dorange(left, right: range;
-                                        var result: range;
-                                        procedure op
-                                             (l, r: integer;
-                                              var res: integer;
-                                              var overflow: boolean);
-                                        var mayoverflow: boolean);
-                      var result: operand_range;
-                      var mayoverflow: boolean);
-
+                       extended: boolean; {an extended range}
+                       procedure signedop (left, right: integer; var result: integer; var overflow: boolean);
+                       procedure unsignedop (left, right: integer; var result: integer; var overflow: boolean);
+                       procedure dorange (left, right: range; var result: range;
+                                          procedure op (l, r: integer; var res: integer; var overflow: boolean);
+                                          var mayoverflow: boolean);
+                       var result: operand_range;
+                       var mayoverflow: boolean);
 { Apply the appropriate operation to compute a binary range.
   This is broken out as a rather strange procedure to save a bit
   of space.  The "left" and "right" operands are passed as variable
   parameters solely to save space at the call.
 }
-  var
-    ov: boolean; {dummy overflow operation}
+var
+  ov: boolean; {dummy overflow operation}
 
-  begin {binaryrange}
-    if extended then
-      begin
-      dorange(left.optimistic, right.optimistic, result.optimistic, unsignedop,
-              mayoverflow);
-      dorange(left.pessimistic, right.pessimistic, result.pessimistic,
-              unsignedop, ov);
-      end
-    else
-      begin
-      dorange(left.optimistic, right.optimistic, result.optimistic, signedop,
-              mayoverflow);
-      dorange(left.pessimistic, right.pessimistic, result.pessimistic, signedop,
-              ov);
-      end;
-  end {binaryrange} ;
+begin
+  if extended then
+    begin
+    dorange(left.optimistic, right.optimistic, result.optimistic, unsignedop,
+            mayoverflow);
+    dorange(left.pessimistic, right.pessimistic, result.pessimistic,
+            unsignedop, ov);
+    end
+  else
+    begin
+    dorange(left.optimistic, right.optimistic, result.optimistic, signedop,
+            mayoverflow);
+    dorange(left.pessimistic, right.pessimistic, result.pessimistic, signedop,
+            ov);
+    end;
+end;
 {>>>}
 {<<<}
 procedure modrange (left, right: range; {operands}
-                   var result: range; {result}
-                   procedure op(left, right: integer;
-                                var result: integer;
-                                var overflow: boolean);
-                   var mayoverflow: boolean);
-  { Compute the resulting range for a "mod" operator.  In most cases, the
-    most you can say is that the range is determined by the divisor range.
-    If the dividend is constant, we can be a bit more explicit.
-  }
+                    var result: range; {result}
+                    procedure op(left, right: integer; var result: integer; var overflow: boolean);
+                    var mayoverflow: boolean);
+{ Compute the resulting range for a "mod" operator.  In most cases, the
+  most you can say is that the range is determined by the divisor range.
+  If the dividend is constant, we can be a bit more explicit }
 
-  var
-    ov: boolean; {dummy overflow operator}
+var
+  ov: boolean; {dummy overflow operator}
 
 
-  begin {modrange}
-    with right do
-      mayoverflow := (minlimit = 0) or not extended and (minlimit < 0);
-    with left do
-      if maxlimit = minlimit then
-        begin
-        op(maxlimit, right.maxlimit, result.maxlimit, ov);
-        result.minlimit := result.maxlimit;
-        end
-      else
-        begin
-        result.maxlimit := max(right.maxlimit - 1, 0);
-        result.minlimit := 0;
-        end;
-    result.extended := right.extended;
-  end {modrange} ;
+begin {modrange}
+  with right do
+    mayoverflow := (minlimit = 0) or not extended and (minlimit < 0);
+  with left do
+    if maxlimit = minlimit then
+      begin
+      op(maxlimit, right.maxlimit, result.maxlimit, ov);
+      result.minlimit := result.maxlimit;
+      end
+    else
+      begin
+      result.maxlimit := max(right.maxlimit - 1, 0);
+      result.minlimit := 0;
+      end;
+  result.extended := right.extended;
+end {modrange} ;
 {>>>}
 {<<<}
 procedure divrange (left, right: range; {operands}
-                   var result: range; {result}
-                   procedure op(left, right: integer;
-                                var result: integer;
-                                var overflow: boolean);
-                   var mayoverflow: boolean);
+                    var result: range; {result}
+                    procedure op(left, right: integer; var result: integer; var overflow: boolean);
+                    var mayoverflow: boolean);
 { Compute the resulting range for a divide operation.  This is
   extremely complicate, as each of the 9 possible sign combinations
   must be considered separately.
 }
+var
+  ov: boolean; {dummy for range divides}
+  temp: integer; {temp for negating}
+  maxmax, maxmin, minmax, minmin: integer; {cross terms}
+  rightpos, rightneg: boolean; {right is always ...}
 
-  var
-    ov: boolean; {dummy for range divides}
-    temp: integer; {temp for negating}
-    maxmax, maxmin, minmax, minmin: integer; {cross terms}
-    rightpos, rightneg: boolean; {right is always ...}
-
-  begin {divrange}
-    mayoverflow := false;
-    if (right.minlimit = 0) then
-      begin
-      right.minlimit := 1;
-      mayoverflow := true;
-      end
-    else if (right.maxlimit = 0) then
-      begin
-      right.maxlimit := - 1;
-      mayoverflow := true;
-      end;
-    op(left.maxlimit, right.maxlimit, maxmax, ov);
-    op(left.maxlimit, right.minlimit, maxmin, ov);
-    op(left.minlimit, right.maxlimit, minmax, ov);
-    op(left.minlimit, right.minlimit, minmin, ov);
-    rightpos := right.extended or (right.minlimit > 0);
-    rightneg := not right.extended and (right.maxlimit < 0);
-    with left do
-      if extended or (minlimit >= 0) then
-        begin {dividend always positive}
-        if rightpos then
-          begin {divisor always positive}
-          result.maxlimit := maxmin;
-          result.minlimit := minmax;
-          end
-        else if rightneg then
-          begin {divisor always negative}
-          result.maxlimit := minmin;
-          result.minlimit := maxmax;
-          end
-        else
-          begin {divisor crosses zero}
-          result.maxlimit := maxlimit;
-          negate(maxlimit, result.minlimit, ov);
-          end;
+begin
+  mayoverflow := false;
+  if (right.minlimit = 0) then
+    begin
+    right.minlimit := 1;
+    mayoverflow := true;
+    end
+  else if (right.maxlimit = 0) then
+    begin
+    right.maxlimit := - 1;
+    mayoverflow := true;
+    end;
+  op(left.maxlimit, right.maxlimit, maxmax, ov);
+  op(left.maxlimit, right.minlimit, maxmin, ov);
+  op(left.minlimit, right.maxlimit, minmax, ov);
+  op(left.minlimit, right.minlimit, minmin, ov);
+  rightpos := right.extended or (right.minlimit > 0);
+  rightneg := not right.extended and (right.maxlimit < 0);
+  with left do
+    if extended or (minlimit >= 0) then
+      begin {dividend always positive}
+      if rightpos then
+        begin {divisor always positive}
+        result.maxlimit := maxmin;
+        result.minlimit := minmax;
         end
-      else if (maxlimit < 0) then
-        begin {dividend always negative}
-        if rightpos then
-          begin {divisor always positive}
-          result.maxlimit := maxmax;
-          result.minlimit := minmin;
-          end
-        else if rightneg then
-          begin {divisor always negative}
-          result.maxlimit := minmax;
-          result.minlimit := maxmin;
-          mayoverflow := mayoverflow or (minlimit < sharedPtr^.targetminint) and
-                         (right.maxlimit = - 1);
-          end
-        else
-          begin {divisor crosses zero}
-          negate(minlimit, result.maxlimit, ov);
-          result.minlimit := minlimit;
-          mayoverflow := true;
-          end
+      else if rightneg then
+        begin {divisor always negative}
+        result.maxlimit := minmin;
+        result.minlimit := maxmax;
         end
       else
-        begin {dividend crosses zero}
-        if rightpos then
-          begin {divisor always positive}
-          result.maxlimit := maxmin;
-          result.minlimit := minmin;
-          end
-        else if rightneg then
-          begin {divisor always negative}
-          result.maxlimit := minmax;
-          result.minlimit := maxmax;
-          end
-        else
-          begin {divisor crosses zero}
-          negate(minlimit, temp, ov);
-          result.maxlimit := max(maxlimit, temp);
-          negate(maxlimit, temp, ov);
-          result.minlimit := min(temp, minlimit);
-          mayoverflow := true;
-          end;
+        begin {divisor crosses zero}
+        result.maxlimit := maxlimit;
+        negate(maxlimit, result.minlimit, ov);
         end;
-    result.extended := left.extended or right.extended;
-  end {divrange} ;
+      end
+    else if (maxlimit < 0) then
+      begin {dividend always negative}
+      if rightpos then
+        begin {divisor always positive}
+        result.maxlimit := maxmax;
+        result.minlimit := minmin;
+        end
+      else if rightneg then
+        begin {divisor always negative}
+        result.maxlimit := minmax;
+        result.minlimit := maxmin;
+        mayoverflow := mayoverflow or (minlimit < sharedPtr^.targetminint) and
+                       (right.maxlimit = - 1);
+        end
+      else
+        begin {divisor crosses zero}
+        negate(minlimit, result.maxlimit, ov);
+        result.minlimit := minlimit;
+        mayoverflow := true;
+        end
+      end
+    else
+      begin {dividend crosses zero}
+      if rightpos then
+        begin {divisor always positive}
+        result.maxlimit := maxmin;
+        result.minlimit := minmin;
+        end
+      else if rightneg then
+        begin {divisor always negative}
+        result.maxlimit := minmax;
+        result.minlimit := maxmax;
+        end
+      else
+        begin {divisor crosses zero}
+        negate(minlimit, temp, ov);
+        result.maxlimit := max(maxlimit, temp);
+        negate(maxlimit, temp, ov);
+        result.minlimit := min(temp, minlimit);
+        mayoverflow := true;
+        end;
+      end;
+  result.extended := left.extended or right.extended;
+end;
 {>>>}
 {<<<}
 procedure addrange (left, right: range; {operands}
-                   var result: range; {result}
-                   procedure op(left, right: integer;
-                                var result: integer;
-                                var overflow: boolean);
-                   var mayoverflow: boolean);
+                    var result: range; {result}
+                    procedure op(left, right: integer; var result: integer; var overflow: boolean);
+                    var mayoverflow: boolean);
 { Adjust the range of an operand as a result of an addition.
   If the operation may generate an overflow, the variable "mayoverflow"
   is set.
 }
-  var
-    overflow: boolean;
+var
+  overflow: boolean;
 
-  begin {addrange}
-    with result do
-      begin
-      op(left.minlimit, right.minlimit, minlimit, overflow);
-      op(left.maxlimit, right.maxlimit, maxlimit, mayoverflow);
-      mayoverflow := mayoverflow or overflow;
-      extended := left.extended or right.extended;
-      end;
-  end {addrange} ;
+begin
+  with result do
+    begin
+    op(left.minlimit, right.minlimit, minlimit, overflow);
+    op(left.maxlimit, right.maxlimit, maxlimit, mayoverflow);
+    mayoverflow := mayoverflow or overflow;
+    extended := left.extended or right.extended;
+    end;
+end;
 {>>>}
 {<<<}
 procedure subrange (left, right: range; {operands}
-                   var result: range; {result}
-                   procedure op(left, right: integer;
-                                var result: integer;
-                                var overflow: boolean);
-                   var mayoverflow: boolean);
+                    var result: range; {result}
+                    procedure op(left, right: integer; var result: integer; var overflow: boolean);
+                    var mayoverflow: boolean);
 { Adjust the range of an operand as a result of a subtracton.
   If the operation may generate an overflow, the variable "mayoverflow"
   is set.
 }
-  var
-    overflow: boolean;
+var
+  overflow: boolean;
 
-  begin {subrange}
-    with result do
-      begin
-      op(left.minlimit, right.maxlimit, minlimit, overflow);
-      op(left.maxlimit, right.minlimit, maxlimit, mayoverflow);
-      mayoverflow := mayoverflow or overflow;
-      extended := left.extended or right.extended;
-      end;
-  end {subrange} ;
+begin
+  with result do
+    begin
+    op(left.minlimit, right.maxlimit, minlimit, overflow);
+    op(left.maxlimit, right.minlimit, maxlimit, mayoverflow);
+    mayoverflow := mayoverflow or overflow;
+    extended := left.extended or right.extended;
+    end;
+end;
 {>>>}
 {<<<}
 procedure mulrange (left, right: range; {operands}
-                   var result: range; {result}
-                   procedure op(left, right: integer;
-                                var result: integer;
-                                var overflow: boolean);
-                   var mayoverflow: boolean);
+                    var result: range; {result}
+                    procedure op(left, right: integer; var result: integer; var overflow: boolean);
+                    var mayoverflow: boolean);
 { Compute the resulting range for an integer multiply.  This is
   a relatively complicated job, since different signs on the
   limits cause different terms to dominate.
 }
-  var
-    maxmax, maxmin, minmax, minmin: integer; {temp results}
-    ov: boolean; {operation overflowed}
+var
+  maxmax, maxmin, minmax, minmin: integer; {temp results}
+  ov: boolean; {operation overflowed}
 
-  begin {mulrange}
-    op(left.maxlimit, right.maxlimit, maxmax, mayoverflow);
-    op(left.maxlimit, right.minlimit, maxmin, ov);
-    mayoverflow := mayoverflow or ov;
-    op(left.minlimit, right.maxlimit, minmax, ov);
-    mayoverflow := mayoverflow or ov;
-    op(left.minlimit, right.minlimit, minmin, ov);
-    mayoverflow := mayoverflow or ov;
-    if (not left.extended and (left.minlimit <= 0) and (left.maxlimit > 0)) or
-       (not right.extended and (right.minlimit <= 0) and
-       (right.maxlimit > 0)) then
-      begin {one of them crosses zero}
-      result.maxlimit := max(maxmax, minmin);
+begin
+  op(left.maxlimit, right.maxlimit, maxmax, mayoverflow);
+  op(left.maxlimit, right.minlimit, maxmin, ov);
+  mayoverflow := mayoverflow or ov;
+  op(left.minlimit, right.maxlimit, minmax, ov);
+  mayoverflow := mayoverflow or ov;
+  op(left.minlimit, right.minlimit, minmin, ov);
+  mayoverflow := mayoverflow or ov;
+
+  if (not left.extended and (left.minlimit <= 0) and (left.maxlimit > 0)) or
+     (not right.extended and (right.minlimit <= 0) and
+     (right.maxlimit > 0)) then
+    begin {one of them crosses zero}
+    result.maxlimit := max(maxmax, minmin);
+    if (left.extended or right.extended) and mayoverflow then
+      result.minlimit := 0
+    else result.minlimit := min(maxmin, minmax);
+    end
+
+  else if left.extended or (left.minlimit > 0) then
+    if right.extended or (right.minlimit > 0) then
+      begin
+      result.maxlimit := maxmax;
       if (left.extended or right.extended) and mayoverflow then
         result.minlimit := 0
-      else result.minlimit := min(maxmin, minmax);
+      else result.minlimit := minmin;
       end
-    else if left.extended or (left.minlimit > 0) then
-      if right.extended or (right.minlimit > 0) then
-        begin
-        result.maxlimit := maxmax;
-        if (left.extended or right.extended) and mayoverflow then
-          result.minlimit := 0
-        else result.minlimit := minmin;
-        end
-      else
-        begin {right must be always negative}
-        result.maxlimit := minmax;
-        if left.extended and mayoverflow then result.minlimit := 0
-        else result.minlimit := maxmin;
-        end
-    else {must be < 0}
+    else
+      begin {right must be always negative}
+      result.maxlimit := minmax;
+      if left.extended and mayoverflow then result.minlimit := 0
+      else result.minlimit := maxmin;
+      end
+
+  else {must be < 0}
     if right.extended or (right.minlimit > 0) then
       begin
       result.maxlimit := maxmin;
@@ -2785,666 +2761,565 @@ procedure mulrange (left, right: range; {operands}
       result.maxlimit := minmin;
       result.minlimit := maxmax;
       end;
-    result.extended := left.extended or right.extended;
-  end {mulrange} ;
+
+  result.extended := left.extended or right.extended;
+end;
 {>>>}
 {<<<}
 procedure andrange (var left, right: range; {operands, var to save space}
                    var result: range {resulting range} );
+{ Compute the resulting range for an integer AND }
 
-{ Compute the resulting range for an integer AND
-}
-  var
-    minbits: integer; {value with fewest bits in representation}
-    ov: boolean; {dummy overflow result}
+var
+  minbits: integer; {value with fewest bits in representation}
+  ov: boolean; {dummy overflow result}
 
-  begin {andrange}
-    if (left.maxlimit = left.minlimit) and
-       (right.maxlimit = right.minlimit) then
-      begin
-      result.maxlimit := left.maxlimit and right.maxlimit;
-      result.minlimit := result.maxlimit;
-      end
-    else if left.extended or right.extended or (left.minlimit >= 0) or
-            (right.minlimit >= 0) then
-      begin
-      if (left.minlimit < 0) then minbits := right.maxlimit
-      else if (right.minlimit < 0) then minbits := left.maxlimit
-      else minbits := min(left.maxlimit, right.maxlimit);
-      storagelimit(true, bits(minbits), true, result.maxlimit);
-      result.minlimit := 0;
-      end
-    else
-      begin
-      storagelimit(false, sharedPtr^.targetintsize, false, result.maxlimit);
-      result.minlimit := - result.maxlimit - 1;
-      end;
-    result.extended := left.extended or right.extended;
-  end {andrange} ;
+begin
+  if (left.maxlimit = left.minlimit) and
+     (right.maxlimit = right.minlimit) then
+    begin
+    result.maxlimit := left.maxlimit and right.maxlimit;
+    result.minlimit := result.maxlimit;
+    end
+  else if left.extended or right.extended or (left.minlimit >= 0) or
+          (right.minlimit >= 0) then
+    begin
+    if (left.minlimit < 0) then minbits := right.maxlimit
+    else if (right.minlimit < 0) then minbits := left.maxlimit
+    else minbits := min(left.maxlimit, right.maxlimit);
+    storagelimit(true, bits(minbits), true, result.maxlimit);
+    result.minlimit := 0;
+    end
+  else
+    begin
+    storagelimit(false, sharedPtr^.targetintsize, false, result.maxlimit);
+    result.minlimit := - result.maxlimit - 1;
+    end;
+  result.extended := left.extended or right.extended;
+end;
 {>>>}
 {<<<}
 procedure orrange (var left, right: range; {operands, var to save space}
                   var result: range {resulting range} );
-{ Compute the resulting range for an integer OR
-}
-  var
-    maxbits: integer; {value with most bits in representation}
-    ov: boolean; {dummy overflow argument}
+{ Compute the resulting range for an integer OR }
 
+var
+  maxbits: integer; {value with most bits in representation}
+  ov: boolean; {dummy overflow argument}
 
-  begin {orrange}
-    if (left.maxlimit = left.minlimit) and
-       (right.maxlimit = right.minlimit) then
-      begin
-      result.maxlimit := left.maxlimit or right.maxlimit;
-      result.minlimit := result.maxlimit;
-      end
-    else if left.extended or right.extended or (left.minlimit >= 0) and
-            (right.minlimit >= 0) then
-      begin
-      if (left.maxlimit < 0) then maxbits := left.maxlimit
-      else if (right.maxlimit < 0) then maxbits := right.maxlimit
-      else maxbits := max(left.maxlimit, right.maxlimit);
-      storagelimit(true, bits(maxbits), true, result.maxlimit);
-      result.minlimit := 0;
-      end
-    else
-      begin
-      storagelimit(false, sharedPtr^.targetintsize, false, result.maxlimit);
-      result.minlimit := - result.maxlimit - 1;
-      end;
-    result.extended := left.extended or right.extended;
-  end {orrange} ;
+begin
+  if (left.maxlimit = left.minlimit) and
+     (right.maxlimit = right.minlimit) then
+    begin
+    result.maxlimit := left.maxlimit or right.maxlimit;
+    result.minlimit := result.maxlimit;
+    end
+  else if left.extended or right.extended or (left.minlimit >= 0) and
+          (right.minlimit >= 0) then
+    begin
+    if (left.maxlimit < 0) then maxbits := left.maxlimit
+    else if (right.maxlimit < 0) then maxbits := right.maxlimit
+    else maxbits := max(left.maxlimit, right.maxlimit);
+    storagelimit(true, bits(maxbits), true, result.maxlimit);
+    result.minlimit := 0;
+    end
+  else
+    begin
+    storagelimit(false, sharedPtr^.targetintsize, false, result.maxlimit);
+    result.minlimit := - result.maxlimit - 1;
+    end;
+  result.extended := left.extended or right.extended;
+end;
 {>>>}
 
 {<<<}
 procedure checkboolean;
 { Emit an error message if the result type of the current expression is
-  not boolean.  Emit no message if the result type is undefined, to avoid
-  redundant messages.
+  not boolean.  Emit no message if the result type is undefined, to avoid redundant messages.
 }
 
-  begin {checkboolean}
-    if (resultform <> none) and (resultform <> bools) then
-      warnbefore(booleanexpected);
-  end {checkboolean} ;
+begin
+  if (resultform <> none) and (resultform <> bools) then
+    warnbefore(booleanexpected);
+end;
 {>>>}
 {<<<}
 function computecost (i: integer { operand stack index } ): integer;
-{ Compute the cost of the operand specified by "i".
-}
+{ Compute the cost of the operand specified by "i" }
 
-  begin {computecost}
-    if oprndstk[i].operandkind = constoperand then computecost := 0
-    else computecost := oprndstk[i].cost;
-  end {computecost} ;
+begin
+  if oprndstk[i].operandkind = constoperand then
+    computecost := 0
+  else
+    computecost := oprndstk[i].cost;
+end;
 {>>>}
 {<<<}
 procedure genlit (i: integer {value to generate} );
 { generate a literal with value "i" }
 
-  begin {genlit}
-    genop(lit);
-    genint(i)
-  end {genlit} ;
-
+begin
+  genop(lit);
+  genint(i)
+end;
 {>>>}
 {<<<}
 function constcheck (i: integer {operand stack index} ): boolean;
 { True if operand i is a constant. }
 
-  begin {constcheck}
-    constcheck := oprndstk[i].operandkind = constoperand
-  end {constcheck} ;
+begin
+  constcheck := oprndstk[i].operandkind = constoperand
+end;
 {>>>}
 
 {<<<}
 procedure bumpsp;
 { Push a new operand on the stack if there is room. }
 
-  begin {bumpsp}
-    if sp = oprnddepth then
+begin
+  if sp = oprnddepth then
     analysFatal (compilerwritererr);
-    sp := sp + 1;
-  end {bumpsp} ;
+  sp := sp + 1;
+end;
 {>>>}
 
 {<<<}
 procedure genoprnd;
-
 { Make sure that the intermediate file outputs needed to access the
   top operand on the stack are generated, then pop the top operand.
   It is necessary to generate output only if the top operand is a
   constant, as the expression parsing routines will have generated
   access code for all other cases.
 }
+var
+  kludge: {convert to bytes or ints}
+    record
+      case integer of
+        1: (b: packed array [0..setvaluebytes] of hostfilebyte);
+        2: (s: setvalueblock);
+        3: (i: array [0..10] of integer);
+    end;
+  i: integer; {general use induction var}
+  newlim: integer; {new string file limit}
+  f: entryptr; {for access to a form entry}
+  emptyset: boolean; {true if set const is empty set}
+  setcount: integer; {address in string table of set}
 
-  var
-    kludge: {convert to bytes or ints}
-      record
-        case integer of
-          1: (b: packed array [0..setvaluebytes] of hostfilebyte);
-          2: (s: setvalueblock);
-          3: (i: array [0..10] of integer);
-      end;
-    i: integer; {general use induction var}
-    newlim: integer; {new string file limit}
-    f: entryptr; {for access to a form entry}
-    emptyset: boolean; {true if set const is empty set}
-    setcount: integer; {address in string table of set}
-
-
-  begin {genoprnd}
-    if sp = -1 then
-      analysFatal (compilerwritererr);
-    with oprndstk[sp] do
-      if operandkind = constoperand then
-        with cvalue do
-          case representation of
-            ptrs:
+begin {genoprnd}
+  if sp = -1 then
+    analysFatal (compilerwritererr);
+  with oprndstk[sp] do
+    if operandkind = constoperand then
+      with cvalue do
+        case representation of
+          ptrs:
+            begin
+            genop(ptrop);
+            genint(niladdressvalue);
+            end;
+          ints, chars, bools, scalars:
+            begin
+            genop(intop);
+            genint(intvalue);
+            end;
+          reals: genrealvalue(realop, realvalue.realbuffer);
+          doubles: genrealvalue(doubleop, realvalue.realbuffer);
+          strings, arrays, fields:
+            begin
+            f := ref(bigtable[typeindex]);
+            if f^.disposable and (typeindex = tabletop) then
               begin
-              genop(ptrop);
-              genint(niladdressvalue);
+              lastdebugrecord := lastdebugrecord - 2;
+              tabletop := tabletop - 2;
               end;
-            ints, chars, bools, scalars:
+            genop(structop);
+            genint(pos);
+            genint(oprndlen);
+            end;
+          sets:
+            begin
+            emptyset := setvalue^ = [];
+            if emptyset and emptysetgenerated then setcount := emptysetcount
+            else
               begin
-              genop(intop);
-              genint(intvalue);
-              end;
-            reals: genrealvalue(realop, realvalue.realbuffer);
-            doubles: genrealvalue(doubleop, realvalue.realbuffer);
-            strings, arrays, fields:
-              begin
-              f := ref(bigtable[typeindex]);
-              if f^.disposable and (typeindex = tabletop) then
+              newlim := forcealign (sharedPtr^.stringfilecount, setalign * hostfileunits, false);
+              while newlim > sharedPtr^.stringfilecount do
+                putbyte (0);
+              setcount := sharedPtr^.stringfilecount;
+
+              if emptyset then
                 begin
-                lastdebugrecord := lastdebugrecord - 2;
-                tabletop := tabletop - 2;
-                end;
-              genop(structop);
-              genint(pos);
-              genint(oprndlen);
-              end;
-            sets:
-              begin
-              emptyset := setvalue^ = [];
-              if emptyset and emptysetgenerated then setcount := emptysetcount
+                emptysetgenerated := true;
+                emptysetcount := setcount;
+                for i := 0 to setvaluebytes do
+                  putbyte (0);
+                end
               else
                 begin
-                newlim := forcealign (sharedPtr^.stringfilecount, setalign * hostfileunits, false);
-                while newlim > sharedPtr^.stringfilecount do
-                  putbyte (0);
-                setcount := sharedPtr^.stringfilecount;
-
-                if emptyset then
-                  begin
-                  emptysetgenerated := true;
-                  emptysetcount := setcount;
-                  for i := 0 to setvaluebytes do
-                    putbyte (0);
-                  end
-                else
-                  begin
-                  kludge.s := setvalue^;
-                  for i := 0 to oprndlen * hostfileunits - 1 do
-                    putbyte (kludge.b[i]);
-                  end;
+                kludge.s := setvalue^;
+                for i := 0 to oprndlen * hostfileunits - 1 do
+                  putbyte (kludge.b[i]);
                 end;
-
-              genop(structop);
-              genint(setcount);
-              genint(oprndlen);
-              dispose(setvalue);
               end;
-            otherwise; {in case of syntax errors}
+
+            genop(structop);
+            genint(setcount);
+            genint(oprndlen);
+            dispose(setvalue);
             end;
-    sp := sp - 1;
-  end {genoprnd} ;
+          otherwise; {in case of syntax errors}
+          end;
+  sp := sp - 1;
+end {genoprnd} ;
 {>>>}
 {<<<}
-procedure debugstmt (s: stmttype;
-                    line: integer;
-                    filepos: integer;
-                    fileIndex: integer);
+procedure debugstmt (s: stmttype; line: integer; filepos: integer; fileIndex: integer);
 
+begin
+  genstmt(s);
 
-  begin {debugstmt}
-    genstmt(s);
+  { Only need to do sourcestringindex once.  If source name changes,
+    and somebody sets to nonzero value, it'll be put out again }
+  if sourcestringindex <> fileIndex then
+    begin
+    sourcestringindex := fileIndex;
+    genint (fileIndex);
+    end
+  else
+    genint(0);
 
-    { Only need to do sourcestringindex once.  If source name changes,
-      and somebody sets to nonzero value, it'll be put out again.
-    }
-    if sourcestringindex <> fileIndex then
-      begin
-      sourcestringindex := fileIndex;
-      genint (fileIndex);
-      end
-    else
-      genint(0);
-
-    genint(line);
-
-  end {debugstmt} ;
+  genint(line);
+end;
 {>>>}
 {<<<}
 procedure newexprstmt (s: stmttype { statement to generate } );
-
 { Begin a new statement which has an expression as part of its structure.
 }
 
-
-  begin {newexprstmt}
-    debugstmt(s, thistoken.line, thistoken.filepos, thistoken.fileIndex);
-    intstate := opstate;
-  end {newexprstmt} ;
+begin {newexprstmt}
+  debugstmt(s, thistoken.line, thistoken.filepos, thistoken.fileIndex);
+  intstate := opstate;
+end {newexprstmt} ;
 {>>>}
 {<<<}
 procedure getexprstmt (s: stmttype { statement starting } );
-
 { Begin a new statement with expression and get the next token.
 }
-
-
-  begin {getexprstmt}
-    newexprstmt(s);
-    gettoken;
-  end {getexprstmt} ;
+begin {getexprstmt}
+  newexprstmt(s);
+  gettoken;
+end {getexprstmt} ;
 {>>>}
 {<<<}
 procedure genoprndstmt;
+{ Terminate the expression(s) being compiled and prepare for the next statement }
 
-{ Terminate the expression(s) being compiled and prepare for the
-  next statement.
-}
-
-
-  begin {genoprndstmt}
-    genoprnd;
-    genop(endexpr);
-    intstate := stmtstate;
-  end {genoprndstmt} ;
+begin {genoprndstmt}
+  genoprnd;
+  genop(endexpr);
+  intstate := stmtstate;
+end {genoprndstmt} ;
 {>>>}
 {<<<}
 procedure pushint (i: integer {value to push} );
-
 { Push an integer constant onto the operand stack.
 }
-
-
-  begin {pushint}
-    bumpsp;
-    with oprndstk[sp] do
-      begin
-      typeindex := intindex;
-      oprndlen := sharedPtr^.targetintsize;
-      operandkind := constoperand;
-      cvalue.representation := ints;
-      cvalue.intvalue := i;
-      cvalue.negated := false;
-      extended := false;
-      setconstrange(i, (i < 0), value_range);
-      end
-  end {pushint} ;
+begin {pushint}
+  bumpsp;
+  with oprndstk[sp] do
+    begin
+    typeindex := intindex;
+    oprndlen := sharedPtr^.targetintsize;
+    operandkind := constoperand;
+    cvalue.representation := ints;
+    cvalue.intvalue := i;
+    cvalue.negated := false;
+    extended := false;
+    setconstrange(i, (i < 0), value_range);
+    end
+end {pushint} ;
 {>>>}
 {<<<}
 procedure pushdummy;
-
 { Push a dummy operand on the stack.  This is strictly a place holder,
   and will generate no intermediate file output.
 }
-
-
-  begin {pushdummy}
-    pushint(0);
-    oprndstk[sp].operandkind := exproperand;
-    oprndstk[sp].cost := 0;
-  end {pushdummy} ;
+begin {pushdummy}
+  pushint(0);
+  oprndstk[sp].operandkind := exproperand;
+  oprndstk[sp].cost := 0;
+end {pushdummy} ;
 {>>>}
+
 {<<<}
 procedure checkrange (subject: operand; {does this fit?}
                      believeit: boolean; {if true, use optimistic estimate}
                      var outofbounds: boolean; {definitely out of bounds}
                      var lowermaybe: boolean; {lower range needs a check}
                      var uppermaybe: boolean {upper range needs a check} );
-
-{ Check the range associated with "subject" and see how it fits with the
-  type.  The boolean variables are used to determine runtime range
-  checking.  The "believeit" flag determines how much we believe the
-  range data.
+{ Check the range associated with "subject" and see how it fits with the type.
+  The boolean variables are used to determine runtime range checking.
+  The "believeit" flag determines how much we believe the range data.
   ****self hosted version
 }
+var
+  r: range; {range to check against}
+  usmin, usmax: unsignedint; {unsigned values for check}
+  l, u: integer; {lower and upper type limits}
+  typeptr: entryptr; {for access to typeindex data}
 
-  var
-    r: range; {range to check against}
-    usmin, usmax: unsignedint; {unsigned values for check}
-    l, u: integer; {lower and upper type limits}
-    typeptr: entryptr; {for access to typeindex data}
+begin
+  with subject, value_range do
+    begin
+    if believeit then
+      r := optimistic
+    else
+      r := pessimistic;
 
+    typeptr := ref(bigtable[typeindex]);
+    l := lower(typeptr);
+    u := upper(typeptr);
 
-  begin {checkrange}
-    with subject, value_range do
+    if typeptr^.extendedrange or r.extended then
       begin
-      if believeit then r := optimistic
-      else r := pessimistic;
-      typeptr := ref(bigtable[typeindex]);
-      l := lower(typeptr);
-      u := upper(typeptr);
-      if typeptr^.extendedrange or r.extended then
-        begin
-        usmin := optimistic.minlimit;
-        usmax := optimistic.maxlimit;
-        outofbounds := (usmax < l) or (usmin > u);
-        usmin := r.minlimit;
-        usmax := r.maxlimit;
-        lowermaybe := usmin < l;
-        uppermaybe := usmax > u;
-        end
-      else
-        begin
-        outofbounds := (optimistic.maxlimit < l) or (optimistic.minlimit > u);
-        lowermaybe := r.minlimit < l;
-        uppermaybe := r.maxlimit > u;
-        end;
+      usmin := optimistic.minlimit;
+      usmax := optimistic.maxlimit;
+      outofbounds := (usmax < l) or (usmin > u);
+      usmin := r.minlimit;
+      usmax := r.maxlimit;
+      lowermaybe := usmin < l;
+      uppermaybe := usmax > u;
+      end
+    else
+      begin
+      outofbounds := (optimistic.maxlimit < l) or (optimistic.minlimit > u);
+      lowermaybe := r.minlimit < l;
+      uppermaybe := r.maxlimit > u;
       end;
-  end {checkrange} ;
+    end;
+end;
 {>>>}
 {<<<}
 procedure newresulttype (newtype: tableIndex);
-
 { Set the value of resulttype to newtype and make it available in newptr.
 }
-
-
-  begin {newresulttype}
-    resulttype := newtype;
-    resultptr := ref(bigtable[resulttype]);
-    resultform := getform(resultptr);
-  end {newresulttype} ;
+begin
+  resulttype := newtype;
+  resultptr := ref(bigtable[resulttype]);
+  resultform := getform(resultptr);
+end;
 {>>>}
 {<<<}
 procedure pushconstant (follow: tokenset);
-
 { Parse and push a constant operand onto the stack.
 }
-
-
-  begin {pushconstant}
-    bumpsp;
-    constant(follow, true, oprndstk[sp]);
-    newresulttype(oprndstk[sp].typeindex);
-    with oprndstk[sp], cvalue do
-      if representation = ints then
-        setconstrange(intvalue, negated, value_range);
-  end {pushconstant} ;
+begin {pushconstant}
+  bumpsp;
+  constant(follow, true, oprndstk[sp]);
+  newresulttype(oprndstk[sp].typeindex);
+  with oprndstk[sp], cvalue do
+    if representation = ints then
+      setconstrange(intvalue, negated, value_range);
+end {pushconstant} ;
 {>>>}
 {<<<}
 procedure newstringtype (var newtype: tableIndex; {returns index of new string type}
                         newform: types; {arrays or strings}
                         len: addressrange {number of chars in string} );
-
 { Build a new type describing a string.  This can be either a standard
   "packed array [1..len] of char" string or extended "string[len]".
   Note from above description that "len" refers to data bytes, not including
   the length byte for an extended string, to be allocated.
 }
+var
+  t: tableIndex; {holds subrange}
+  t1: entryptr; {for filling in table entry}
 
-  var
-    t: tableIndex; {holds subrange}
-    t1: entryptr; {for filling in table entry}
 
-
-  begin {newstringtype}
-    enterform(subranges, t, t1);
-    with t1^ do
+begin {newstringtype}
+  enterform(subranges, t, t1);
+  with t1^ do
+    begin
+    size := sharedPtr^.targetintsize;
+    align := intalign;
+    parenttype := intindex;
+    parentform := ints;
+    if newform = arrays then lowerord := 1
+    else
       begin
-      size := sharedPtr^.targetintsize;
-      align := intalign;
-      parenttype := intindex;
-      parentform := ints;
-      if newform = arrays then lowerord := 1
-      else
-        begin
-        lowerord := 0;
-        len := len + 1;
-        upperord := len;
-        end;
+      lowerord := 0;
+      len := len + 1;
+      upperord := len;
       end;
-    enterform(newform, newtype, t1);
-    with t1^ do
-      begin
-      packedflag := true;
-      bitaddress := true;
-      containsfile := false;
-      disposable := true;
-      elementtype := chartypeindex;
-      stringtype := newform = arrays;
-      arraymembers := len;
-      indextype := t;
-      size := len div (bitsperunit div stringeltsize);
-      if len mod (bitsperunit div stringeltsize) <> 0 then size := size + 1;
-      size := size * bitsperunit;
-      elementsize := stringeltsize;
-      align := stringalign;
-      end;
-  end {newstringtype} ;
+    end;
+  enterform(newform, newtype, t1);
+  with t1^ do
+    begin
+    packedflag := true;
+    bitaddress := true;
+    containsfile := false;
+    disposable := true;
+    elementtype := chartypeindex;
+    stringtype := newform = arrays;
+    arraymembers := len;
+    indextype := t;
+    size := len div (bitsperunit div stringeltsize);
+    if len mod (bitsperunit div stringeltsize) <> 0 then size := size + 1;
+    size := size * bitsperunit;
+    elementsize := stringeltsize;
+    align := stringalign;
+    end;
+end {newstringtype} ;
 {>>>}
 {<<<}
-function range_length (r: range {return length of this range in bytes} ):
- addressrange;
-
-{ Computes the number of bytes required to compute result in the given
-  range.  This is machine dependent as in most cases we don't want to
-  compute lengths not supported by the machine.
+function range_length (r: range {return length of this range in bytes} ): addressrange;
+{ Computes the number of bytes required to compute result in the given range.
+  This is machine dependent as in most cases we don't want to compute lengths not supported by the machine.
 }
+var
+  l: addressrange;
+  result: addressrange; {hold the result}
 
-  var
-    l: addressrange;
-    result: addressrange; {hold the result}
-
-
-  begin {range_length}
-
-    case targetmachine of
-      {a virtual "nop" routine on the vax, because all integers
-       are stored in a "long", and there is full 32-bit support.
-       The alternative code shrinks short operations to 16 bits.
-
-       {note: might want to use shorter range for comparisions at a
-              later date.
-      }
-      vax, pdp11: range_length := sharedPtr^.targetintsize;
-      iapx86:
-        begin
-        with r do
-          if extended then result := sharedPtr^.targetintsize
-          else
-            begin
-            l := bits(max(abs(minlimit + 1), abs(maxlimit)));
-            {allow for sign bit and unsigned 16-bit operations}
-            if (minlimit < 0) or (sharedPtr^.switchcounters[truncatesw] <= 0) then
-              l := l + 1;
-            if l <= 16 then result := 2
-            else result := 4;
-            end;
-        range_length := min(result, sharedPtr^.targetintsize);
-        end;
-      i80386:
-        begin
-        with r do
-          if extended then result := sharedPtr^.targetintsize
-          else
-            begin
-            l := bits(max(abs(minlimit + 1), abs(maxlimit)));
-            {allow for sign bit and unsigned 16-bit operations}
-            if (minlimit < 0) or (sharedPtr^.switchcounters[truncatesw] <= 0) then
-              l := l + 1;
-            if l <= 16 then result := 2
-            else result := 4;
-            end;
-        range_length := min(result, sharedPtr^.targetintsize);
-        end;
-      otherwise {mc68000, ns32k}
-        begin
-        with r do
-          if extended then result := sharedPtr^.targetintsize
-          else
-            begin
-            l := bits(max(abs(minlimit + 1), abs(maxlimit)));
-            if (targetmachine = mc68000) or (minlimit < 0) then l := l + 1;
-            {allow for sign bit and signed 16-bit relative mode on 68K}
-            if l <= 16 then result := 2
-            else result := 4;
-            end;
-        range_length := min(result, sharedPtr^.targetintsize);
-        end;
+begin
+  with r do
+    if extended then
+      result := sharedPtr^.targetintsize
+    else
+      begin
+      l := bits(max(abs(minlimit + 1), abs(maxlimit)));
+      if then
+        l := l + 1;
+      {allow for sign bit and signed 16-bit relative mode on 68K}
+      if l <= 16 then
+        result := 2
+      else
+        result := 4;
       end;
-  end {range_length} ;
+
+  range_length := min(result, sharedPtr^.targetintsize);
+end;
 {>>>}
 
 {<<<}
 function getintvalue (i: integer {operand stack index} ): integer;
-
 { Return the integer value of operand i, which is assumed to
   be an integer constant.
 }
-
-
-  begin {getintvalue}
-    if oprndstk[i].cvalue.representation = ints then
-      getintvalue := oprndstk[i].cvalue.intvalue
-    else getintvalue := 1;
-  end {getintvalue} ;
+begin {getintvalue}
+  if oprndstk[i].cvalue.representation = ints then
+    getintvalue := oprndstk[i].cvalue.intvalue
+  else getintvalue := 1;
+end {getintvalue} ;
 {>>>}
 {<<<}
 function getrealvalue (i: integer {operand stack index} ): real;
-
 { Return the real value of operand i, which is assumed to be a
   real constant in host format.
 }
-
-
-  begin {getrealvalue}
-    if (oprndstk[i].cvalue.representation = reals) or
-       (oprndstk[i].cvalue.representation = doubles) then
-      getrealvalue := oprndstk[i].cvalue.realvalue.realbinary
-    else getrealvalue := 1.0;
-  end {getrealvalue} ;
+begin {getrealvalue}
+  if (oprndstk[i].cvalue.representation = reals) or
+     (oprndstk[i].cvalue.representation = doubles) then
+    getrealvalue := oprndstk[i].cvalue.realvalue.realbinary
+  else getrealvalue := 1.0;
+end {getrealvalue} ;
 {>>>}
 {<<<}
 function getrealbuffer (i: integer {operand stack index} ): realarray;
 { Return the real value of operand i, which is assumed to be a real constant in any supported format format }
 
-  begin {getrealbuffer}
-    if (oprndstk[i].cvalue.representation = reals) or
-       (oprndstk[i].cvalue.representation = doubles) then
-      getrealbuffer := oprndstk[i].cvalue.realvalue.realbuffer
-    else
-      begin
-      getrealbuffer[1] := 1;
-      getrealbuffer[2] := 1;
-      getrealbuffer[3] := 1;
-      getrealbuffer[4] := 1;
-      end;
-  end {getrealbuffer} ;
+begin {getrealbuffer}
+  if (oprndstk[i].cvalue.representation = reals) or
+     (oprndstk[i].cvalue.representation = doubles) then
+    getrealbuffer := oprndstk[i].cvalue.realvalue.realbuffer
+  else
+    begin
+    getrealbuffer[1] := 1;
+    getrealbuffer[2] := 1;
+    getrealbuffer[3] := 1;
+    getrealbuffer[4] := 1;
+    end;
+end {getrealbuffer} ;
 {>>>}
 
 {<<<}
 procedure power2check (n: integer; { number to check }
                       var power2: boolean; {true if n = power of 2}
                       var power2value: integer {resulting power} );
-
 { Find out if n is an even power of 2, and return the exponent if so.
   ****self hosted version
 }
-
-
-  begin {power2check}
-    power2value := 0;
-    while (n > 0) and not odd(n) do
-      begin
-      n := n div 2;
-      power2value := power2value + 1;
-      end;
-    power2 := (n = 1);
-  end {power2check} ;
+begin {power2check}
+  power2value := 0;
+  while (n > 0) and not odd(n) do
+    begin
+    n := n div 2;
+    power2value := power2value + 1;
+    end;
+  power2 := (n = 1);
+end {power2check} ;
 {>>>}
 {<<<}
 procedure foldcommon;
-
 { Common part of binary folding routines.  Pops the stack and sets isconst
   for the returned value.
 }
-
-
-  begin {foldcommon}
-    sp := sp - 1;
-    oprndstk[sp].operandkind := constoperand;
-  end {foldcommon} ;
+begin {foldcommon}
+  sp := sp - 1;
+  oprndstk[sp].operandkind := constoperand;
+end {foldcommon} ;
 {>>>}
 
 {<<<}
 procedure returnint (intvalue: integer; {value to return}
                     negated: boolean {value has been negated} );
-
 { Leave an integer constant "intvalue" on the stack in the place of two
   operands.  Used in constant operation folding.
 }
-
-
-  begin {returnint}
-    foldcommon;
-    oprndstk[sp].cvalue.representation := ints;
-    oprndstk[sp].cvalue.intvalue := intvalue;
-    oprndstk[sp].cvalue.negated := negated;
-    oprndstk[sp].extended := (intvalue < 0) and not negated;
-    setconstrange(intvalue, negated, oprndstk[sp].value_range);
-  end {returnint} ;
+begin {returnint}
+  foldcommon;
+  oprndstk[sp].cvalue.representation := ints;
+  oprndstk[sp].cvalue.intvalue := intvalue;
+  oprndstk[sp].cvalue.negated := negated;
+  oprndstk[sp].extended := (intvalue < 0) and not negated;
+  setconstrange(intvalue, negated, oprndstk[sp].value_range);
+end {returnint} ;
 {>>>}
 {<<<}
 procedure returnreal (realvalue: real {value to return} );
-
 { Leave a real constant "realvalue" on the stack in the place of two
   operands.  Used in constant operation folding.
 }
-
-
-  begin {returnreal}
-    foldcommon;
-    oprndstk[sp].cvalue.representation := reals; {!!!}
-    oprndstk[sp].cvalue.realvalue.realbinary := realvalue;
-  end {returnreal} ;
+begin {returnreal}
+  foldcommon;
+  oprndstk[sp].cvalue.representation := reals; {!!!}
+  oprndstk[sp].cvalue.realvalue.realbinary := realvalue;
+end {returnreal} ;
 {>>>}
 {<<<}
 procedure returnoprnd (i: integer {operand stack index} );
-
 { Leave operand i on the stack in the place of two operands.
   Used in constant operation folding.
 }
+var
+  o: operand; {temp storage for top of stack}
 
-  var
-    o: operand; {temp storage for top of stack}
-
-
-  begin {returnoprnd}
-    o := oprndstk[i];
-    foldcommon;
-    oprndstk[sp] := o;
-    oprndstk[sp].value_range := result_range;
-  end {returnoprnd} ;
+begin {returnoprnd}
+  o := oprndstk[i];
+  foldcommon;
+  oprndstk[sp] := o;
+  oprndstk[sp].value_range := result_range;
+end {returnoprnd} ;
 {>>>}
 {<<<}
 procedure returnresult (overflowed: boolean);
-
 { Return the value computed in result_range and give an error
   if overflowed is true.
 }
-
-
-  begin {returnresult}
-    with result_range.optimistic do
-      returnint(maxlimit, (maxlimit < 0) and not divide_extended);
-    if overflowed then warnbefore(overflow);
-  end {returnresult} ;
+begin {returnresult}
+  with result_range.optimistic do
+    returnint(maxlimit, (maxlimit < 0) and not divide_extended);
+  if overflowed then warnbefore(overflow);
+end {returnresult} ;
 {>>>}
 
 {<<<}
@@ -4530,73 +4405,73 @@ procedure genbinary { op:operator; (operation to generate) form: types (type of 
   the operation will be folded.  The operand stack is updated to reflect
   the result of the operation.
 }
-  var
-    lrange, rrange: addressrange; {size of operands, based on range}
-    comparision: boolean; {use different length analysis if op is comparision}
-    same_signedness: boolean; {true if l and r both unsigned/signed}
+var
+  lrange, rrange: addressrange; {size of operands, based on range}
+  comparision: boolean; {use different length analysis if op is comparision}
+  same_signedness: boolean; {true if l and r both unsigned/signed}
 
-  begin {genbinary}
-    if sp >= 1 then
+begin {genbinary}
+  if sp >= 1 then
+    begin
+    l := sp - 1;
+    r := sp;
+    lconst := constcheck(l);
+    rconst := constcheck(r);
+    c1 := computecost(l);
+    c2 := computecost(r);
+    result_range := oprndstk[r].value_range;
+    newlen := max(oprndstk[l].oprndlen, oprndstk[r].oprndlen);
+    if c1 = c2 then newcost := c1 + 1
+    else newcost := max(c1, c2);
+    oextended := oprndstk[l].extended or oprndstk[r].extended;
+    binaryop := op; {may be modified by foldbinary}
+    binaryform := form; {may be modified by foldbinary}
+
+    foldbinary;
+
+    if (binaryform = ints) and
+       not (binaryop in [indxop, aindxop, addrop, indrop] {addressing
+         operators} ) then
       begin
-      l := sp - 1;
-      r := sp;
-      lconst := constcheck(l);
-      rconst := constcheck(r);
-      c1 := computecost(l);
-      c2 := computecost(r);
-      result_range := oprndstk[r].value_range;
-      newlen := max(oprndstk[l].oprndlen, oprndstk[r].oprndlen);
-      if c1 = c2 then newcost := c1 + 1
-      else newcost := max(c1, c2);
-      oextended := oprndstk[l].extended or oprndstk[r].extended;
-      binaryop := op; {may be modified by foldbinary}
-      binaryform := form; {may be modified by foldbinary}
-
-      foldbinary;
-
-      if (binaryform = ints) and
-         not (binaryop in [indxop, aindxop, addrop, indrop] {addressing
-           operators} ) then
+      lrange := range_length(oprndstk[l].value_range.optimistic);
+      rrange := range_length(oprndstk[r].value_range.optimistic);
+      if sharedPtr^.switchcounters[truncatesw] <= 0 then
         begin
-        lrange := range_length(oprndstk[l].value_range.optimistic);
-        rrange := range_length(oprndstk[r].value_range.optimistic);
-        if sharedPtr^.switchcounters[truncatesw] <= 0 then
+        newlen := range_length(result_range.optimistic);
+        if divfolded or not foldedbinary then
           begin
-          newlen := range_length(result_range.optimistic);
-          if divfolded or not foldedbinary then
-            begin
-            if lrange > newlen then newlen := lrange;
-            if rrange > newlen then newlen := rrange;
-            end;
-          end
-        else {truncate} newlen := max(lrange, rrange);
-        end;
+          if lrange > newlen then newlen := lrange;
+          if rrange > newlen then newlen := rrange;
+          end;
+        end
+      else {truncate} newlen := max(lrange, rrange);
+      end;
+    if not foldedbinary then
+      begin
+      genoprnd;
+      genoprnd;
+      if lconst then genop(switchstack);
+      sp := sp + 1;
+      genop(binaryop);
+      genint(newlen);
+      genint(newcost);
+      genform(binaryform);
+      end;
+
+    with oprndstk[sp] do
+      begin
+      typeindex := resulttype;
+      value_range := result_range;
       if not foldedbinary then
         begin
-        genoprnd;
-        genoprnd;
-        if lconst then genop(switchstack);
-        sp := sp + 1;
-        genop(binaryop);
-        genint(newlen);
-        genint(newcost);
-        genform(binaryform);
-        end;
-
-      with oprndstk[sp] do
-        begin
-        typeindex := resulttype;
-        value_range := result_range;
-        if not foldedbinary then
-          begin
-          oprndlen := newlen;
-          operandkind := exproperand;
-          cost := newcost;
-          end;
+        oprndlen := newlen;
+        operandkind := exproperand;
+        cost := newcost;
         end;
       end;
-    resultptr := ref(bigtable[resulttype]);
-  end {genbinary} ;
+    end;
+  resultptr := ref(bigtable[resulttype]);
+end {genbinary} ;
 {>>>}
 {<<<}
 procedure setdefaulttargetintsize;
@@ -4604,40 +4479,39 @@ procedure setdefaulttargetintsize;
   particular, integer arguments to many support library routines must
   be extended to this length.
 }
-
-  begin {setdefaulttargetintsize}
-    oprndstk[sp].oprndlen := defaulttargetintsize;
-  end {setdefaulttargetintsize} ;
+begin {setdefaulttargetintsize}
+  oprndstk[sp].oprndlen := defaulttargetintsize;
+end {setdefaulttargetintsize} ;
 {>>>}
 {<<<}
 procedure genpushint (i: integer);
 { Cause i to be pushed at runtime. }
 
-  begin {genpushint}
-    pushint(i);
-    genunary(pushvalue, ints);
-  end {genpushint} ;
+begin {genpushint}
+  pushint(i);
+  genunary(pushvalue, ints);
+end {genpushint} ;
 {>>>}
 {<<<}
 procedure genpushdefaultint (i: integer);
 { Cause i to be pushed at runtime. }
 
-  begin {genpushdefaultint}
-    pushint(i);
-    setdefaulttargetintsize;
-    genunary(pushvalue, ints);
-  end {genpushdefaultint} ;
+begin {genpushdefaultint}
+  pushint(i);
+  setdefaulttargetintsize;
+  genunary(pushvalue, ints);
+end {genpushdefaultint} ;
 {>>>}
 {<<<}
 procedure genpushbool (b: boolean);
 { Cause b to be pushed at runtime. }
 
-  begin {genpushbool}
-    pushint(ord(b));
-    oprndstk[sp].typeindex := boolindex;
-    oprndstk[sp].oprndlen := 1;
-    genunary(pushvalue, bools);
-  end {genpushbool} ;
+begin {genpushbool}
+  pushint(ord(b));
+  oprndstk[sp].typeindex := boolindex;
+  oprndstk[sp].oprndlen := 1;
+  genunary(pushvalue, bools);
+end {genpushbool} ;
 {>>>}
 {<<<}
 procedure computeresult (maybestring: boolean {force char to string?});
@@ -4657,187 +4531,187 @@ procedure computeresult (maybestring: boolean {force char to string?});
   ever the operands MIGHT be allowable as strings.
 }
 
-  type
-    castreal = record
-      case boolean of
-        true:  (b: realarray);
-        false: (s: real)
-    end;
+type
+  castreal = record
+    case boolean of
+      true:  (b: realarray);
+      false: (s: real)
+  end;
 
-  var
-    lefttype, righttype: tableIndex; {formentry's for operands}
-    f: entryptr; {used for access to formentries}
-    leftshortstring, rightshortstring: boolean; {left or right is/are short
-                                                 'standard' strings}
-    leftstringtype: boolean; {left type is packed array [1..n] of char}
-    leftform, rightform: types; {operand types}
-    tival: integer; {temporary integer value}
-    bscast: castreal;
+var
+  lefttype, righttype: tableIndex; {formentry's for operands}
+  f: entryptr; {used for access to formentries}
+  leftshortstring, rightshortstring: boolean; {left or right is/are short
+                                               'standard' strings}
+  leftstringtype: boolean; {left type is packed array [1..n] of char}
+  leftform, rightform: types; {operand types}
+  tival: integer; {temporary integer value}
+  bscast: castreal;
 
-  begin {computeresult}
-    if sp > 0 then lefttype := oprndstk[sp - 1].typeindex
-    else lefttype := noneindex;
-    if sp >= 0 then righttype := oprndstk[sp].typeindex
-    else righttype := noneindex;
-    newresulttype(noneindex);
+begin {computeresult}
+  if sp > 0 then lefttype := oprndstk[sp - 1].typeindex
+  else lefttype := noneindex;
+  if sp >= 0 then righttype := oprndstk[sp].typeindex
+  else righttype := noneindex;
+  newresulttype(noneindex);
 
-    f := ref(bigtable[lefttype]);
-    leftform := getform(f);
-    leftstringtype := (leftform = arrays) and f^.stringtype;
-    leftshortstring := leftstringtype and (f^.arraymembers = 1);
+  f := ref(bigtable[lefttype]);
+  leftform := getform(f);
+  leftstringtype := (leftform = arrays) and f^.stringtype;
+  leftshortstring := leftstringtype and (f^.arraymembers = 1);
 
-    f := ref(bigtable[righttype]);
-    rightform := getform(f);
-    rightshortstring := (rightform = arrays) and f^.stringtype and (f^.arraymembers = 1);
-    if leftshortstring and (rightform = chars) and
-       (sharedPtr^.switchcounters[standard] <= 0) then
+  f := ref(bigtable[righttype]);
+  rightform := getform(f);
+  rightshortstring := (rightform = arrays) and f^.stringtype and (f^.arraymembers = 1);
+  if leftshortstring and (rightform = chars) and
+     (sharedPtr^.switchcounters[standard] <= 0) then
+    begin
+    newstringtype(resulttype, arrays, 1);
+    newresulttype(resulttype);
+    oprndstk[sp].typeindex := resulttype;
+    end
+  else if rightshortstring and (leftform = chars) and
+          (sharedPtr^.switchcounters[standard] <= 0) then
+    begin
+    newstringtype(resulttype, arrays, 1);
+    newresulttype(resulttype);
+    oprndstk[sp - 1].typeindex := resulttype;
+    end
+  else
+    begin
+    if (maybestring and ((leftform = chars) or leftstringtype) or
+       (leftform = strings)) and (rightform = chars) then
       begin
-      newstringtype(resulttype, arrays, 1);
-      newresulttype(resulttype);
-      oprndstk[sp].typeindex := resulttype;
+      genunary(chrstrop, strings);
+      righttype := resulttype;
+      rightform := strings;
+      end;
+    if (maybestring and ((leftform = chars) or leftstringtype) or
+       (leftform = strings)) and (rightform = arrays) and
+       f^.stringtype then
+      begin
+      genunary(arraystrop, strings);
+      righttype := resulttype;
+      rightform := strings;
+      end;
+    if (rightform = strings) and (leftstringtype or
+       (leftform = chars)) then
+      begin
+      sp := sp - 1;
+      if not constcheck(sp) and not constcheck(sp + 1) then
+        genop(switchstack);
+      if leftstringtype then genunary(arraystrop, strings)
+      else genunary(chrstrop, strings);
+      if not constcheck(sp) and not constcheck(sp + 1) then
+        genop(switchstack);
+      sp := sp + 1;
       end
-    else if rightshortstring and (leftform = chars) and
-            (sharedPtr^.switchcounters[standard] <= 0) then
+    else if (leftform = ints) and (rightform = reals) then
       begin
-      newstringtype(resulttype, arrays, 1);
-      newresulttype(resulttype);
-      oprndstk[sp - 1].typeindex := resulttype;
-      end
-    else
-      begin
-      if (maybestring and ((leftform = chars) or leftstringtype) or
-         (leftform = strings)) and (rightform = chars) then
+      if not constcheck(sp - 1) or not realfolding then
         begin
-        genunary(chrstrop, strings);
-        righttype := resulttype;
-        rightform := strings;
-        end;
-      if (maybestring and ((leftform = chars) or leftstringtype) or
-         (leftform = strings)) and (rightform = arrays) and
-         f^.stringtype then
-        begin
-        genunary(arraystrop, strings);
-        righttype := resulttype;
-        rightform := strings;
-        end;
-      if (rightform = strings) and (leftstringtype or
-         (leftform = chars)) then
-        begin
+        if not constcheck(sp) and not constcheck(sp - 1) then
+          genop(switchstack);
         sp := sp - 1;
-        if not constcheck(sp) and not constcheck(sp + 1) then
-          genop(switchstack);
-        if leftstringtype then genunary(arraystrop, strings)
-        else genunary(chrstrop, strings);
-        if not constcheck(sp) and not constcheck(sp + 1) then
-          genop(switchstack);
-        sp := sp + 1;
-        end
-      else if (leftform = ints) and (rightform = reals) then
-        begin
-        if not constcheck(sp - 1) or not realfolding then
-          begin
-          if not constcheck(sp) and not constcheck(sp - 1) then
-            genop(switchstack);
-          sp := sp - 1;
-          genunary(float, ints);
-          sp := sp + 1;
-          if not constcheck(sp) then genop(switchstack);
-          end
-        else if realfolding then
-          with oprndstk[sp - 1], cvalue do
-            begin
-            tival := intvalue;
-            typeindex := realindex;
-            representation := reals;
-            realvalue.realbinary := tival;
-            end;
-        newresulttype(realindex);
-        end
-      else if (leftform = reals) and (rightform = ints) then
-        begin
         genunary(float, ints);
-        newresulttype(realindex);
+        sp := sp + 1;
+        if not constcheck(sp) then genop(switchstack);
         end
-      else if (leftform = ints) and (rightform = doubles) then
-        begin
-        if not constcheck(sp - 1) or not realfolding then
+      else if realfolding then
+        with oprndstk[sp - 1], cvalue do
           begin
-          if not constcheck(sp) and not constcheck(sp - 1) then
-            genop(switchstack);
-          sp := sp - 1;
-          genunary(float_double, ints);
-          sp := sp + 1;
-          if not constcheck(sp) then genop(switchstack);
-          end
-        else if realfolding then
-          with oprndstk[sp - 1], cvalue do
-            begin
-            tival := intvalue;
-            typeindex := doubleindex;
-            representation := doubles;
-            realvalue.realbinary := tival;
-            end;
-        newresulttype(doubleindex);
-        end
-      else if (leftform = doubles) and (rightform = ints) then
+          tival := intvalue;
+          typeindex := realindex;
+          representation := reals;
+          realvalue.realbinary := tival;
+          end;
+      newresulttype(realindex);
+      end
+    else if (leftform = reals) and (rightform = ints) then
+      begin
+      genunary(float, ints);
+      newresulttype(realindex);
+      end
+    else if (leftform = ints) and (rightform = doubles) then
+      begin
+      if not constcheck(sp - 1) or not realfolding then
         begin
+        if not constcheck(sp) and not constcheck(sp - 1) then
+          genop(switchstack);
+        sp := sp - 1;
         genunary(float_double, ints);
-        newresulttype(doubleindex);
+        sp := sp + 1;
+        if not constcheck(sp) then genop(switchstack);
         end
-      else if (leftform = reals) and (rightform = doubles) then
-        begin
-        if not constcheck(sp - 1) or not realfolding then
+      else if realfolding then
+        with oprndstk[sp - 1], cvalue do
           begin
-          if not constcheck(sp) and not constcheck(sp - 1) then
-            genop(switchstack);
-          sp := sp - 1;
-          oprndstk[sp].oprndlen := doublesize;
-          genunary(real_to_dbl, reals);
-          sp := sp + 1;
-          if not constcheck(sp) then genop(switchstack);
-          end
-        else
-          with oprndstk[sp - 1], cvalue do
-            begin
-            bscast.b := realvalue.realbuffer;
-            realvalue.realbinary := bscast.s;
-            typeindex := doubleindex;
-            representation := doubles;
-            end;
-        newresulttype(doubleindex);
-        end
-      else if (leftform = doubles) and (rightform = reals) then
+          tival := intvalue;
+          typeindex := doubleindex;
+          representation := doubles;
+          realvalue.realbinary := tival;
+          end;
+      newresulttype(doubleindex);
+      end
+    else if (leftform = doubles) and (rightform = ints) then
+      begin
+      genunary(float_double, ints);
+      newresulttype(doubleindex);
+      end
+    else if (leftform = reals) and (rightform = doubles) then
+      begin
+      if not constcheck(sp - 1) or not realfolding then
         begin
+        if not constcheck(sp) and not constcheck(sp - 1) then
+          genop(switchstack);
+        sp := sp - 1;
         oprndstk[sp].oprndlen := doublesize;
         genunary(real_to_dbl, reals);
-        newresulttype(doubleindex);
+        sp := sp + 1;
+        if not constcheck(sp) then genop(switchstack);
         end
-      else if compatible(lefttype, righttype) then newresulttype(lefttype)
-      else warnbefore(typesincomp)
-      end;
-  end {computeresult} ;
+      else
+        with oprndstk[sp - 1], cvalue do
+          begin
+          bscast.b := realvalue.realbuffer;
+          realvalue.realbinary := bscast.s;
+          typeindex := doubleindex;
+          representation := doubles;
+          end;
+      newresulttype(doubleindex);
+      end
+    else if (leftform = doubles) and (rightform = reals) then
+      begin
+      oprndstk[sp].oprndlen := doublesize;
+      genunary(real_to_dbl, reals);
+      newresulttype(doubleindex);
+      end
+    else if compatible(lefttype, righttype) then newresulttype(lefttype)
+    else warnbefore(typesincomp)
+    end;
+end {computeresult} ;
 {>>>}
 {<<<}
 procedure gencheck (op: operator; {operator to generate}
                    checktype: tableIndex {type for check} );
 { If the top of the operand stack can be checked, check it. }
 
-  var
-    generate: boolean; {actually generate a check}
-    checkptr: entryptr; {for access to checktype entry}
+var
+  generate: boolean; {actually generate a check}
+  checkptr: entryptr; {for access to checktype entry}
 
-  begin {gencheck}
-    checkptr := ref(bigtable[checktype]);
-    with checkptr^ do
-      if typ = subranges then
-        generate := (lowerord <> 0) or (upperord <> maxusint)
-      else generate := typ in [bools, chars, scalars];
-    if generate then
-      begin
-      oprndstk[sp].typeindex := checktype;
-      genunary(op, ints);
-      end;
-  end {gencheck} ;
+begin {gencheck}
+  checkptr := ref(bigtable[checktype]);
+  with checkptr^ do
+    if typ = subranges then
+      generate := (lowerord <> 0) or (upperord <> maxusint)
+    else generate := typ in [bools, chars, scalars];
+  if generate then
+    begin
+    oprndstk[sp].typeindex := checktype;
+    genunary(op, ints);
+    end;
+end {gencheck} ;
 {>>>}
 
 {<<<}
@@ -4847,11 +4721,10 @@ procedure setshorttargetintsize;
   integers.  Checking code is emitted to ensure that nothing naughty goes
   on behind our backs.
 }
-
-  begin {setshorttargetintsize}
-    gencheck(rangechkop, shortintindex);
-    oprndstk[sp].oprndlen := shorttargetintsize;
-  end {setshorttargetintsize} ;
+begin {setshorttargetintsize}
+  gencheck(rangechkop, shortintindex);
+  oprndstk[sp].oprndlen := shorttargetintsize;
+end {setshorttargetintsize} ;
 {>>>}
 {<<<}
 function checkforstack (varindex: tableIndex; {variable to check}
@@ -4862,17 +4735,16 @@ function checkforstack (varindex: tableIndex; {variable to check}
   compiler to check for the assignment rules, and to allocate this variable
   to a register for the duration of the for statement.
 }
+var
+  i: forstackindex; {induction var for search}
 
-  var
-    i: forstackindex; {induction var for search}
-
-  begin {checkforstack}
-    forstack[0].forindex := varindex;
-    i := forsp;
-    while forstack[i].forindex <> varindex do i := i - 1;
-    where := i;
-    checkforstack := (i <> 0);
-  end {checkforstack} ;
+begin {checkforstack}
+  forstack[0].forindex := varindex;
+  i := forsp;
+  while forstack[i].forindex <> varindex do i := i - 1;
+  where := i;
+  checkforstack := (i <> 0);
+end {checkforstack} ;
 {>>>}
 
 {<<<}
@@ -4888,47 +4760,46 @@ procedure getlevel (lev: levelindex; {level to reference}
   Note: origin code depends on level 0 being equal to a dummy
   absolute 0 address reference
 }
-  var
-    i: levelindex; {induction var for levop generation}
+var
+  i: levelindex; {induction var for levop generation}
 
-
-  begin {getlevel}
-    if lev = 0 then
+begin {getlevel}
+  if lev = 0 then
+    begin
+    genop(levop);
+    genint(0);
+    genint(0);
+    end
+  else if lev = 1 then genop(globalop)
+  else
+    begin
+    if not param or (lev < level) then genop(localop);
+    for i := level - 1 downto lev + 1 do
       begin
       genop(levop);
+      genint(i);
       genint(0);
-      genint(0);
-      end
-    else if lev = 1 then genop(globalop)
-    else
+      end;
+    if param or (lev < level) then
       begin
-      if not param or (lev < level) then genop(localop);
-      for i := level - 1 downto lev + 1 do
-        begin
-        genop(levop);
-        genint(i);
+      genop(levop);
+      genint(lev);
+      if param then
+        genint (sharedPtr^.blockref)
+      else
         genint(0);
-        end;
-      if param or (lev < level) then
-        begin
-        genop(levop);
-        genint(lev);
-        if param then
-          genint (sharedPtr^.blockref)
-        else
-          genint(0);
-        end;
       end;
-    bumpsp;
-    with oprndstk[sp] do
-      begin
-      typeindex := intindex;
-      oprndlen := sharedPtr^.ptrsize;
-      extended := false;
-      operandkind := exproperand;
-      cost := 0
-      end;
-  end {getlevel} ;
+    end;
+  bumpsp;
+  with oprndstk[sp] do
+    begin
+    typeindex := intindex;
+    oprndlen := sharedPtr^.ptrsize;
+    extended := false;
+    operandkind := exproperand;
+    cost := 0
+    end;
+end {getlevel} ;
 {>>>}
 
 {<<<}
@@ -4939,14 +4810,12 @@ procedure setnowunpacking (packedflag: boolean; {packed structure?}
   generate unpacking code.  It is possible for the structure to be packed,
   but the particular field falls on a word boundry, and no unpacking code
   is necessary.
-
   This routine uses the global "resultptr" to determine size.
 }
-
-  begin {setnowunpacking}
-    nowunpacking := packedflag and ((offset mod bitsperunit <> 0) or
-                    ((offset + sizeof(resultptr, true)) mod bitsperunit <> 0));
-  end {setnowunpacking} ;
+begin {setnowunpacking}
+  nowunpacking := packedflag and ((offset mod bitsperunit <> 0) or
+                  ((offset + sizeof(resultptr, true)) mod bitsperunit <> 0));
+end {setnowunpacking} ;
 {>>>}
 {<<<}
 procedure startunpacking (nowunpacking: boolean; {unpacking now?}
@@ -4956,20 +4825,19 @@ procedure startunpacking (nowunpacking: boolean; {unpacking now?}
   of the word address and set the "unpacking" flag.  The constpart will
   now be a bit address, so is set to zero.
 }
-
-  begin {startunpacking}
-    if nowunpacking and not unpacking then
+begin {startunpacking}
+  if nowunpacking and not unpacking then
+    begin
+    if constpart <> 0 then
       begin
-      if constpart <> 0 then
-        begin
-        genlit(constpart);
-        oprndstk[sp].oprndlen := unitsize;
-        genunary(indxop, ints);
-        end;
-      constpart := 0;
-      unpacking := true;
+      genlit(constpart);
+      oprndstk[sp].oprndlen := unitsize;
+      genunary(indxop, ints);
       end;
-  end {startunpacking} ;
+    constpart := 0;
+    unpacking := true;
+    end;
+end {startunpacking} ;
 {>>>}
 {<<<}
 procedure lastindex (var unpacking: boolean; {unpacking a field}
@@ -4981,37 +4849,36 @@ procedure lastindex (var unpacking: boolean; {unpacking a field}
         ( pindxop(len, cost, 'ints')" |
           indxop(len, cost, 'ints')" )  .
 }
+var
+  power2: boolean;
+  power2dummy: integer;
 
-  var
-    power2: boolean;
-    power2dummy: integer;
 
-
-  begin {lastindex}
-    if not unpacking and (resultptr^.typ = subranges) then {we have an
-                                                           inconveniently-sized
-                                                            scalar entity}
+begin {lastindex}
+  if not unpacking and (resultptr^.typ = subranges) then {we have an
+                                                         inconveniently-sized
+                                                          scalar entity}
+    begin
+    power2check(len, power2, power2dummy);
+    if not power2 then
       begin
-      power2check(len, power2, power2dummy);
-      if not power2 then
-        begin
-        len := len * bitsperunit;
-        startunpacking(true, constpart, unpacking);
-        end;
+      len := len * bitsperunit;
+      startunpacking(true, constpart, unpacking);
       end;
-    if unpacking then
-      begin
-      genlit(constpart);
-      oprndstk[sp].oprndlen := len;
-      genunary(pindxop, ints);
-      end
-    else
-      begin
-      genlit(constpart);
-      oprndstk[sp].oprndlen := len;
-      genunary(indxop, ints);
-      end;
-  end {lastindex} ;
+    end;
+  if unpacking then
+    begin
+    genlit(constpart);
+    oprndstk[sp].oprndlen := len;
+    genunary(pindxop, ints);
+    end
+  else
+    begin
+    genlit(constpart);
+    oprndstk[sp].oprndlen := len;
+    genunary(indxop, ints);
+    end;
+end {lastindex} ;
 {>>>}
 {<<<}
 procedure updatelabelnest;
@@ -5022,21 +4889,21 @@ procedure updatelabelnest;
   that has not yet been defined, since it's too late for it to be defined
   in this nesting level.
 }
-  var
-    p: labelptr; { used to traverse the list of labels active in this block }
+var
+  p: labelptr; { used to traverse the list of labels active in this block }
 
-  begin {updatelabelnest}
-    p := display[level].labellist;
-    while p <> labelflag do
-      with p^ do
-        begin
-        if (nest = maxlegalnest) and (definednest = 0) then
-          jumpoutnest := min(jumpoutnest, nest - 1);
-        if (nest = maxlegalnest) or (nest = definednest) then
-          maxlegalnest := nest - 1;
-        p := nextlabel;
-        end;
-  end {updatelabelnest} ;
+begin
+  p := display[level].labellist;
+  while p <> labelflag do
+    with p^ do
+      begin
+      if (nest = maxlegalnest) and (definednest = 0) then
+        jumpoutnest := min(jumpoutnest, nest - 1);
+      if (nest = maxlegalnest) or (nest = definednest) then
+        maxlegalnest := nest - 1;
+      p := nextlabel;
+      end;
+end;
 {>>>}
 {<<<}
 procedure statement (follow: tokenset {legal following symbols} );
@@ -5692,10 +5559,6 @@ procedure statement (follow: tokenset {legal following symbols} );
                     registercandidate := false;
                     if newflag then nestedmod := true;
                     end;
-
-                  if (varalloc = normalalloc) and (varlev = 1) and
-                     ((varindex = outputindex) or (varindex = inputindex)) then
-                    sharedPtr^.standardfilesreferenced := true;
 
                   if varalloc = ownalloc then
                     begin
@@ -7145,7 +7008,6 @@ procedure statement (follow: tokenset {legal following symbols} );
               if sharedPtr^.switchcounters[nilcheck] > 0 then
                 genunary (ptrchkop, ints);
               genunary (definelazyop, files);
-              sharedPtr^.standardfilesreferenced := true;
               if not inputdeclared then
                 warnnonstandard (inputnotdeclared);
               end
@@ -7769,8 +7631,10 @@ procedure statement (follow: tokenset {legal following symbols} );
                 varptr := ref(bigtable[varindex]);
                 with varptr^ do
                   case namekind of
-                    noname: illegalident(varindex);
+                    noname:
+                      illegalident(varindex);
                     constname, scalarname, typename:
+                      {<<<}
                       begin
                       pushconstant(follow);
                       if token in [lbrack, dot, uparrow] then
@@ -7791,32 +7655,40 @@ procedure statement (follow: tokenset {legal following symbols} );
                         lastindex(unpacking, constpart, constantlen);
                         if unsigned(resultptr, constantlen, unpacking) then
                           genop(unsvarop)
-                        else genop(varop);
+                        else
+                          genop(varop);
+
                         with oprndstk[sp].value_range do
                           begin
                           settyperange(resultptr, optimistic);
                           pessimistic := optimistic;
                           end;
-                        genint(constantlen);
-                        genint(0);
-                        genint(lastfilekey);
-                        genint(0);
+
+                        genint (constantlen);
+                        genint (0);
+                        genint (lastfilekey);
+                        genint (0);
                         lastfilekey := lastfilekey - 1;
                         oprndstk[sp].oprndlen := sizeof(resultptr, false);
                         end;
                       end;
+                      {>>>}
                     varname, fieldname, param, varparam, confparam, varconfparam,
                     boundid:
                       variable(true, true, true, false, true, varindex);
                     forwardfunc, externalfunc, funcname: procedurecall(varindex);
                     funcparam: paramcall(varindex);
                     procname, forwardproc, externalproc, procparam, standardproc:
+                      {<<<}
                       begin
                       warn(badprocfunc);
                       illegalident(varindex);
                       end;
-                    undefname, undeftypename: illegalident(varindex);
-                    standardfunc: standardfunctions(procid);
+                      {>>>}
+                    undefname, undeftypename:
+                      illegalident(varindex);
+                    standardfunc:
+                      standardfunctions(procid);
                     end;
                 end;
               end;
@@ -8204,22 +8076,22 @@ procedure statement (follow: tokenset {legal following symbols} );
             begin
             typeindex := resulttype;
             oprndlen := scalarsize;
-            { Set new result range however if we already have the result
-              due to folding don't throw it away!
-            }
+            { Set new result range however if we already have the result due to folding don't throw it away! }
             if operandkind <> constoperand then
               begin
-              settyperange(resultptr, optimistic);
+              settyperange (resultptr, optimistic);
               pessimistic := optimistic;
               end;
             end;
           verify1(follow + [rpar] + begexprset, badexprerr);
           end;
+
         while not (rpar in follow) and (token = rpar) do
           begin
           warn(badrparerr);
           gettoken
           end;
+
         verify1(follow, badexprerr);
       end {expression} ;
   {>>>}
@@ -8612,7 +8484,6 @@ procedure statement (follow: tokenset {legal following symbols} );
               begin
               if not inputdeclared then
                 warnnonstandard (inputnotdeclared);
-              sharedPtr^.standardfilesreferenced := true;
               genoneread;
               end;
             while token in [comma, ident] do
@@ -8631,12 +8502,14 @@ procedure statement (follow: tokenset {legal following symbols} );
         begin
           genop(bldnil);
           readflag := procid = readid;
-          if readflag and (token <> lpar) then warnbetween(noreadarg)
-          else if token = lpar then readparams
+          if readflag and (token <> lpar) then 
+            warnbetween(noreadarg)
+          else if token = lpar then 
+            readparams
           else
             begin
-            if not inputdeclared then warnnonstandard(inputnotdeclared);
-            sharedPtr^.standardfilesreferenced := true;
+            if not inputdeclared then 
+              warnnonstandard(inputnotdeclared);
             end;
         end;
   {>>>}
@@ -8656,7 +8529,6 @@ procedure statement (follow: tokenset {legal following symbols} );
 
 
         procedure writeparams;
-
   { Parse the parameters to a write procedure.
   }
 
@@ -8766,17 +8638,18 @@ procedure statement (follow: tokenset {legal following symbols} );
                 end
               else
                 begin
-                if not outputdeclared then warnnonstandard(outputnotdeclared);
+                if not outputdeclared then 
+                  warnnonstandard(outputnotdeclared);
                 onewriteparam (true);
-                sharedPtr^.standardfilesreferenced := true;
                 end
               end
             else
               begin
-              if not outputdeclared then warnnonstandard(outputnotdeclared);
+              if not outputdeclared then 
+                warnnonstandard(outputnotdeclared);
               onewriteparam(false);
-              sharedPtr^.standardfilesreferenced := true;
               end;
+
             while token in
                   [comma, eql..andsym, ident, intconst..stringconst, lbrack,
                   lpar, notsym, nilsym] do
@@ -8793,11 +8666,14 @@ procedure statement (follow: tokenset {legal following symbols} );
           writeflag := (procid = writeid);
           if not writeflag and (token <> lpar) then
             begin
-            if not outputdeclared then warnnonstandard(outputnotdeclared);
-            sharedPtr^.standardfilesreferenced := true;
+            if not outputdeclared then 
+              warnnonstandard(outputnotdeclared);
             end;
-          if writeflag then verify([lpar], begexprset, nolparerr);
-          if token in begexprset then writeparams;
+
+          if writeflag then 
+            verify([lpar], begexprset, nolparerr);
+          if token in begexprset then 
+            writeparams;
         end {writeprocedure} ;
   {>>>}
   {<<<}
@@ -8959,7 +8835,6 @@ procedure statement (follow: tokenset {legal following symbols} );
           else
             begin
             if not outputdeclared then warnnonstandard(outputnotdeclared);
-            sharedPtr^.standardfilesreferenced := true;
             end;
         end {page} ;
   {>>>}
@@ -9854,10 +9729,12 @@ procedure statement (follow: tokenset {legal following symbols} );
               end
             end;
           end;
+
         forvarptr := ref(bigtable[forvar]);
         with forvarptr^ do
           if namekind in [varname, fieldname, param, varparam] then
             modified := true;
+
         oldcheck := checkundefs;
         checkundefs := false;
         nest := nest + 1;
@@ -10024,69 +9901,94 @@ procedure statement (follow: tokenset {legal following symbols} );
       end {gotostatement} ;
   {>>>}
 
-  begin {statement}
-    sp := - 1;
-    if token = intconst then assignlabel;
-    if token in [intconst, charconst, realconst, dblrealconst, stringconst] then
+begin {statement}
+  sp := - 1;
+
+  if token = intconst then
+    assignlabel;
+
+  if token in [intconst, charconst, realconst, dblrealconst, stringconst] then
+    illegalassign
+
+  else if token = ident then
+    begin
+    search (varindex);
+    if varindex = 0 then
       illegalassign
-    else if token = ident then
-      begin
-      search(varindex);
-      if varindex = 0 then illegalassign
-      else
-        begin
-        varptr := ref(bigtable[varindex]);
-        case varptr^.namekind of
-          standardproc: standardprocedures(varptr^.procid);
-          varname, fieldname, param, varparam, confparam, varconfparam:
-            begin
-            newexprstmt(simple);
-            assignment;
-            end;
-          forwardproc, externalproc, procname:
-            begin
-            newexprstmt(simple);
-            procedurecall(varindex);
-            genoprndstmt
-            end;
-          procparam:
-            begin
-            newexprstmt(simple);
-            paramcall(varindex);
-            genoprndstmt
-            end;
-          funcname:
-            begin
-            varptr^.funcassigned := true;
-            newexprstmt(simple);
-            if (lev >= level) or (varindex <> display[lev + 1].blockname) then
-              begin
-              warn(badfuncassign);
-              illegalassign
-              end
-            else assignment;
-            end;
-          otherwise illegalassign
-          end;
-        end;
-      end
     else
-      case token of
-        beginsym: compoundstatement;
-        ifsym: ifstatement;
-        casesym: casestatement;
-        whilesym: whilestatement;
-        repeatsym: repeatstatement;
-        forsym: forstatement;
-        withsym: withstatement;
-        gotosym: gotostatement;
-        elsesym:
-          if not (elsesym in follow) then badelseclause;
-        otherwisesym:
-          if not (otherwisesym in follow) then badelseclause;
-        otherwise;
+      begin
+      varptr := ref(bigtable[varindex]);
+      case varptr^.namekind of
+        standardproc: standardprocedures(varptr^.procid);
+        varname, fieldname, param, varparam, confparam, varconfparam:
+          {<<<}
+          begin
+          newexprstmt(simple);
+          assignment;
+          end;
+          {>>>}
+        forwardproc, externalproc, procname:
+          {<<<}
+          begin
+          newexprstmt(simple);
+          procedurecall(varindex);
+          genoprndstmt
+          end;
+          {>>>}
+        procparam:
+          {<<<}
+          begin
+          newexprstmt(simple);
+          paramcall(varindex);
+          genoprndstmt
+          end;
+          {>>>}
+        funcname:
+          {<<<}
+          begin
+          varptr^.funcassigned := true;
+          newexprstmt(simple);
+          if (lev >= level) or (varindex <> display[lev + 1].blockname) then
+            begin
+            warn(badfuncassign);
+            illegalassign
+            end
+          else assignment;
+          end;
+          {>>>}
+        otherwise
+          illegalassign
         end;
-  end {statement} ;
+      end;
+    end
+
+  else
+    case token of
+      beginsym:
+        compoundstatement;
+      ifsym:
+        ifstatement;
+      casesym:
+        casestatement;
+      whilesym:
+        whilestatement;
+      repeatsym:
+        repeatstatement;
+      forsym:
+        forstatement;
+      withsym:
+        withstatement;
+      gotosym:
+        gotostatement;
+      elsesym:
+        if not (elsesym in follow) then
+          badelseclause;
+      otherwisesym:
+        if not (otherwisesym in follow) then
+          badelseclause;
+      otherwise;
+      end;
+end;
 {>>>}
 
 {<<<}
@@ -10270,8 +10172,8 @@ end;
 {<<<}
 procedure exitblock (level: levelindex {level of block being exited} );
 { Called to exit the block at "level".
-  All forms defined in the block are disposed of, 
-  and any names declared in the block are removed from the name table and the key map. 
+  All forms defined in the block are disposed of,
+  and any names declared in the block are removed from the name table and the key map.
   Finally, the block id and table tops are reset to the value on entry to the block.
 }
 {<<<}
@@ -10283,7 +10185,7 @@ var
   localvar: localvartype; { for writing to file }
 {>>>}
 
-begin 
+begin
   { Since for UMAX our global registers cannot overlap Unix-destroyed
     registers, there is no need to restrict global allocation based on
     nonpascal references. }
@@ -11616,7 +11518,7 @@ procedure onevar (id: integer; {Scope in which to enter ident}
                   var where: tableIndex; {where in symtable it ends up}
                   sharedvar: boolean {if in 'shared' definition} );
 {<<<}
-{ Syntactic routine to parse a single component of a variable list, 
+{ Syntactic routine to parse a single component of a variable list,
   which can be part of a variable-list, parameter-list, or field-list.
   "Varkind" determines the kind of variable list being parsed.
   x-identifier = identifier [use/define 'name' | origin nnn]
@@ -11633,7 +11535,7 @@ var
   vartab_state: (new_entry, reuse_entry, no_entry); {used with multidef switch to handle mutiple definitions}
   entry: integer; {Current vartableentry index}
 
-begin 
+begin
   {The following actually consumes the token}
   enterident(id, where, undefname);
   p := ref(bigtable[where]);
@@ -13033,7 +12935,7 @@ var
   startpos: integer; {position of first var in source file}
   startline: integer; {line number of first var}
 
-begin 
+begin
   startpos := thistoken.filepos;
   startline := thistoken.line;
   gettoken;
@@ -14187,7 +14089,6 @@ procedure analys;
 
     nullboundindex := 0;
     inputdeclared := false;
-    sharedPtr^.standardfilesreferenced := false;
     new (labelflag);
 
     lastdebugrecord := 0;

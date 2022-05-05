@@ -408,7 +408,7 @@ Static int memberfuncwithlevel;
 #define SF_FIRST   0x4
 #define SF_IF    0x8
 //{{{
-Static Stmt *p_stmt(slist, sflags)
+Static Stmt* p_stmt(slist, sflags)
 Stmt *slist;
 int sflags;
 {
@@ -1277,7 +1277,7 @@ int opts;
 
 #define outspnl(spflag) output((spflag) ? " " : "\n")
 //{{{
-Meaning *outcontext;
+Meaning* outcontext;
 
 Static void outnl(serial)
 int serial;
@@ -1927,7 +1927,7 @@ int nearret;
 //{{{
 /* Replace all occurrences of one expression with another expression */
 
-Expr *replaceexprexpr (ex, oldex, newex, keeptype)
+Expr* replaceexprexpr (ex, oldex, newex, keeptype)
 Expr *ex, *oldex, *newex;
 int keeptype;
 {
@@ -1976,7 +1976,7 @@ Expr *oldex, *newex;
 }
 //}}}
 //{{{
-Stmt *mixassignments (sp, mp)
+Stmt* mixassignments (sp, mp)
 Stmt *sp;
 Meaning *mp;
 {
@@ -2222,7 +2222,7 @@ Stmt *sp;
 //}}}
 
 //{{{
-Expr *print_func (ex)
+Expr* print_func (ex)
 Expr *ex;
 {
     if (!ex || ex->kind != EK_BICALL)
@@ -2281,7 +2281,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr *chg_printf (ex)
+Expr* chg_printf (ex)
 Expr *ex;
 {
     Expr *fex;
@@ -2317,7 +2317,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr *mix_printf (ex, ex2)
+Expr* mix_printf (ex, ex2)
 Expr *ex, *ex2;
 {
     int i;
@@ -2488,7 +2488,7 @@ int prop;
 }
 //}}}
 //{{{
-Expr *flow_fixexpr (ex, sp, env)
+Expr* flow_fixexpr (ex, sp, env)
 Expr *ex;
 Stmt *sp;
 int env;
@@ -4042,7 +4042,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Expr *initfilevar (ex)
+Expr* initfilevar (ex)
 Expr *ex;
 {
     Expr *ex2;

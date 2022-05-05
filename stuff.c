@@ -47,7 +47,7 @@ void debughook()
 /* The "Strlist" data type, like in NEWASM */
 //{{{
 /* Add a string to end of strlist */
-Strlist *strlist_append (base, s)
+Strlist* strlist_append (base, s)
 register Strlist **base;
 register char *s;
 {
@@ -64,7 +64,7 @@ register char *s;
 //}}}
 //{{{
 /* Insert a string at front of strlist */
-Strlist *strlist_insert (base, s)
+Strlist* strlist_insert (base, s)
 register Strlist **base;
 register char *s;
 {
@@ -80,7 +80,7 @@ register char *s;
 //}}}
 //{{{
 /* Add a string to a sorted strlist */
-Strlist *strlist_add (base, s)
+Strlist* strlist_add (base, s)
 register Strlist **base;
 register char *s;
 {
@@ -177,7 +177,7 @@ register Strlist **base, *sl;
 //}}}
 //{{{
 /* Find the first occurrence of a string */
-Strlist *strlist_find (base, s)
+Strlist* strlist_find (base, s)
 register Strlist *base;
 register char *s;
 {
@@ -190,7 +190,7 @@ register char *s;
 //}}}
 //{{{
 /* Case-insensitive version of strlist_find */
-Strlist *strlist_cifind (base, s)
+Strlist* strlist_cifind (base, s)
 register Strlist *base;
 register char *s;
 {
@@ -286,7 +286,7 @@ char *fn;
 //}}}
 //{{{
 /* Dynamically-allocated strings */
-char *stralloc (s)
+char* stralloc (s)
 char *s;
 {
     register char *buf = ALLOC(strlen(s) + 1, char, strings);
@@ -711,7 +711,7 @@ int c;
   }
 //}}}
 
-Static char *tok_ptr;
+Static char* tok_ptr;
 //{{{
 char* my_strtok (cp, delim)
 char *cp, *delim;

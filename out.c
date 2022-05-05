@@ -87,7 +87,7 @@ Static int editpos[MAXEDITS], besteditpos[MAXEDITS];
 Static char editold[MAXEDITS], editnew[MAXEDITS];
 Static char besteditold[MAXEDITS], besteditnew[MAXEDITS];
 
-Static Paren *parenlist;
+Static Paren* parenlist;
 
 Static long numalts, bestnumalts;
 Static int randombreaks;
@@ -1341,7 +1341,7 @@ Strlist *cmt;
 }
 //}}}
 //{{{
-Strlist *outcomments (cmt)
+Strlist* outcomments (cmt)
 Strlist *cmt;
 {
     char *cp;
@@ -1520,7 +1520,7 @@ int kind, serial;
 //}}}
 
 //{{{
-char *rawCstring (fmt, s, len, special)
+char* rawCstring (fmt, s, len, special)
 char *fmt;
 register char *s;
 int len, special;
@@ -1576,7 +1576,7 @@ int len, special;
 }
 //}}}
 //{{{
-char *makeCstring (s, len)
+char* makeCstring (s, len)
 register char *s;
 int len;
 {
@@ -1584,7 +1584,7 @@ int len;
 }
 //}}}
 //{{{
-char *makeCchar (ich)
+char* makeCchar (ich)
 int ich;
 {
     char buf[500];

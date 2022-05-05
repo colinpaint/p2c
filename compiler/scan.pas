@@ -45,16 +45,13 @@
 {<<<}
 const
   { Machine Dependent parameters for scanner }
-  maxscanswitch = 40; { max number of recognized embedded switches }
+  maxscanswitch = 40;    { max number of recognized embedded switches }
   maxscanswitchlen = 14; { max length is NoPointerCheck }
 
-  { Language specific parameters for scanner }
-  tabspace = 8; { The number of spaces a tab input becomes }
-
-  reservedcount = 42; {Number of reserved words}
-  minreslen = 2; {Length of shortest reserved word}
-  maxreslen = 9; {Length of longest reserved word}
-  maxreslen1 = 10; {maxreslen + 1}
+  minreslen = 2;      { length of shortest reserved word }
+  maxreslen = 9;      { length of longest reserved word }
+  maxreslen1 = 10;    { maxreslen + 1 }
+  reservedcount = 42; { number of reserved words }
 
   { special characters - ignore nul and convert tabch, formfeed to ' ' }
   nul = 0;
@@ -63,50 +60,51 @@ const
   cr = 13;
   lowercase = 32; {difference between ord of upper case and lower case char}
 
-  { real number conversion parameters }
-  DECformat = 0; { format used by PDP-11 and VAX }
-  IEEEformat = 256; { format used by M68000 and N16000 }
+  { Language specific parameters for scanner }
+  tabspace = 8; { The number of spaces a tab input becomes }
+
+  { real number }
+  DECformat = 0;     { format used by PDP-11 and VAX }
+  IEEEformat = 256;  { format used by M68000 and N16000 }
   INTELformat = 512; { same as IEEE, except result gets stored backwards }
-  IBMformat = 768; { hexadecimal format used by 360/370/31xx/43xx, etc. }
+  IBMformat = 768;   { hexadecimal format used by 360/370/31xx/43xx, etc. }
 
   SinglePrecision = 0;
   DoublePrecision = 16;
   QuadPrecision = 32; { not currently implemented }
 
-  inputbufsize = 40; {length of input line if using fixed arrays}
+  inputbufsize = 40; { length of input line if using fixed arrays }
 
-  { read real }
-  bitsperbyte   =     8 ;       { number of bits per binary byte }
-  nibblesize    =    16 ;       { number of elements in nibble }
-  bytesize      =   256 ;       { number of elements in byte }
-  { wordsize      = 65536 }       { number of elements in word }
-  { maxnibble     =    15 }       { nibblesize - 1 }
-  maxbyte       =   255 ;       { bytesize - 1  }
-  maxuword       = 65535 ;       { wordsize - 1 }
+  bitsperbyte   =     8 ;   { number of bits per binary byte }
+  nibblesize    =    16 ;   { number of elements in nibble }
+  bytesize      =   256 ;   { number of elements in byte }
+  maxbyte       =   255 ;   { bytesize - 1  }
+  maxuword       = 65535 ;  { wordsize - 1 }
 
-  halfwordsize  = 32768 ;       { wordsize div 2 }
-  halfmaxword   = 32767 ;       { maxword div 2 }
+  halfwordsize  = 32768 ;   { wordsize div 2 }
+  halfmaxword   = 32767 ;   { maxword div 2 }
 
-  maxrealbytes  =     8 ;       { maximum number of bytes per real }
-  maxrealbits   =    64 ;       { maximum number of bits per real }
+  maxrealbytes  =     8 ;   { maximum number of bytes per real }
+  maxrealbits   =    64 ;   { maximum number of bits per real }
 {>>>}
 {<<<}
 type
-  lineindex = 0..linelen; {index into input line}
+  lineindex = 0..linelen; { index into input line}
 
-  halfrealsize = 0..65535; {subrange which is half size of single real}
+  halfrealsize = 0..65535; { subrange which is half size of single real}
 
-  alfa = packed array [1..10] of char; {to hold directives}
+  alfa = packed array [1..10] of char; { to hold directives}
 
   reswordtype = packed array [1..maxreslen] of char; {reserved word spelling}
-  reservedindex = 1..reservedcount; {index for reserved words}
-  identifierrange = 0..1000; {some arbitrary range}
+  reservedindex = 1..reservedcount; { index for reserved words}
+
+  identifierrange = 0..1000; { some arbitrary range}
 
   { scan switches }
   internalswitch = (codesectsw, modulesw, identsw, xshortsectsw, xversionsw, xsectionsw);
-  scanswitchindex = 0..maxscanswitch; {switchtable switch}
-  switchvalue = - maxswitchvalue..maxswitchvalue; {bumpvalue}
-  switchname = packed array [1..maxscanswitchlen] of char; {name of switch}
+  scanswitchindex = 0..maxscanswitch; { switchtable switch}
+  switchvalue = - maxswitchvalue..maxswitchvalue; { bumpvalue}
+  switchname = packed array [1..maxscanswitchlen] of char; { name of switch}
   {<<<}
   scanswitchentry = record
                       n: switchname; {name of switch}
@@ -145,9 +143,10 @@ type
                    end;
   {>>>}
 
-  { readreal }
+  { real number }
   byte          = 0..maxbyte ;
   word          = 0..maxuword ;
+
   RealFormat    = (DECformat1 , IEEEformat1 , INTELformat1 , IBMformat1);
   RealPrecision = (SinglePrecision1 , DoublePrecision1 , QuadPrecision1);
   RealRounding  = (ToNearest, ToZero, ToPosInf, ToNegInf);
@@ -233,16 +232,12 @@ var
   { Puts an integer value to the token file as successive bytes. }
 
   var
-    { This fudges an integer into bytes.  The constant "32" is }
-    { simply a large enough number to include all probable systems. }
-    fudge:
-      record
-        case boolean of
-          true: (int: integer);
-          false: (byte: packed array [1..32] of hostfilebyte);
-      end;
-
     j: 1..32;
+    fudge: record
+             case boolean of
+               true:  (int: integer);
+               false: (byte: packed array [1..32] of hostfilebyte);
+           end;
 
   begin
     if (i >= 0) and (i < hostfilelim) then
@@ -268,20 +263,18 @@ var
   { Put a real value to the token file as successive bytes }
 
   var
-    { this fudges a real into a bytes.  The constant "32" is }
-    { simply a large enough number to include all probable systems. }
-    fudge:
-      record
-        case boolean of
-          true: (rl: realarray);
-          false: (byte: packed array [1..32] of hostfilebyte);
-      end;
-    j: 1..32; {induction var}
+    j: 1..32;
+    fudge: record
+             case boolean of
+               true:  (rl: realarray);
+               false: (byte: packed array [1..32] of hostfilebyte);
+           end;
 
-
-  begin {putReal}
-    for j := 1 to 32 do fudge.byte[j] := 0;
+  begin
+    for j := 1 to 32 do
+      fudge.byte[j] := 0;
     fudge.rl := tokenSharedPtr^.nexttoken.realvalue;
+
     for j := 1 to size(realarray) do
       begin
       tokenSharedPtr^.tokenFile^.byte := fudge.byte[j];
