@@ -9042,7 +9042,6 @@ begin
 end;
 {>>>}
 {>>>}
-{<<<  genblk utils}
 {<<<  externals}
 procedure fmtx; external;
 
@@ -9516,7 +9515,7 @@ procedure fpfunc2(op: standardids);
 procedure fmovecrfn;
   forward;
 {>>>}
-
+{<<<  genblk utils}
 {<<<}
 function get_stringfile_byte{(loc: integer): integer};
 
@@ -10660,8 +10659,8 @@ procedure reserve_dreg{k: keyindex; ( key to check )
     else markdreg(r); { blast the sucker! }
   end; { reserve_dreg }
 {>>>}
-
-{ Register allocation procedures }
+{>>>}
+{<<<  Register allocation procedures}
 {<<<}
 function countdreg: integer;
 
@@ -11120,7 +11119,8 @@ begin
   else is_sp := false;
 end;
 {>>>}
-
+{>>>}
+{<<<  internal loop}
 {<<<}
 { Internal loop generation.
 
@@ -11630,7 +11630,8 @@ procedure finishloop;
            stackoffset := - keytable[stackcounter].oprnd.offset;
   end {finishloop} ;
 {>>>}
-
+{>>>}
+{<<<  reference}
 {<<<}
 procedure firstreference{k: keyindex (loop address counter) };
 
@@ -11688,143 +11689,8 @@ procedure onlyreference{k: keyindex (loop address counter) };
         else if loopupflag then m := autoi;
   end {onlyreference} ;
 {>>>}
-
-{ Data movement routines }
-{<<<}
-procedure genblockmove{src, dst: keyindex (move operands) ;
-                       minpiecesize: integer (minimum size chunk to move) };
-
-{ Generate a block move.  Less than four words are moved inline,
-  otherwise a loop is generated.  Double precision real constants are a
-  special case, and are handled here by breaking the quadword into two
-  longwords of immediate data.
-}
-
-  var
-    loop: boolean; {set if a loop is actually used}
-    pieces: integer; {number of internal instructions to generate}
-    i: integer; {induction var for internal generation}
-    source: keyindex; {tempkeys used to split double reals}
-    temp: unsigned; { holds structured constant }
-    carray: packed array [1..4] of uns_byte; { holds bytes of constant }
-    length: integer; {length of move}
-    oldlen: integer; {length of source, before possible truncation}
-
-
-  begin {genblockmove}
-    { The caller knows more than we do if the minimum piece size is more
-      than a byte.  Setting knowneven allows initloop to use word or long
-      moves.
-    }
-    if minpiecesize > byte then
-      begin
-      keytable[left].knowneven := true;
-      keytable[right].knowneven := true;
-      end;
-
-    length := min(keytable[src].len, keytable[dst].len);
-
-    if (keytable[src].oprnd.m in [immediate, immediatelong, immediatequad]) then
-      if length <= long then
-
-        { This check protects structured constant moves of word or long
-          length that are not word aligned.
-        }
-        if (minpiecesize = byte) and not (keytable[src].knowneven and
-           keytable[dst].knowneven) then
-          with keytable[src], oprnd do
-            begin
-            temp := offset;
-
-            for i := 1 to length do
-              begin
-              carray[i] := temp mod 16#100;
-              temp := temp div 16#100;
-              end;
-
-            { If going to the stack, force space to be allocated first
-              because a series -(sp) moves of bytes won't work.
-            }
-            aligntemps;
-
-            settempimmediate(byte, 0);
-
-            for i := length downto 1 do
-              begin
-              keytable[tempkey].oprnd.offset := carray[i];
-              gendouble(move, tempkey, dst);
-              with keytable[dst].oprnd do offset := offset + 1;
-              end;
-
-            tempkey := tempkey + 1;
-            end
-        else gensimplemove(src, dst)
-      else
-        begin {it's a double precision real constant}
-        with keytable[src].oprnd do
-          if m = immediatequad then
-            begin
-            temp := offset1;
-            settemp(long, immediatelong, 0, 0, false,
-                    temp mod 65536, temp div 65536,
-                    1, unknown);
-            temp := offset;
-            settemp(long, immediatelong, 0, 0, false,
-                    temp mod 65536, temp div 65536,
-                    1, unknown);
-            source := tempkey;
-            end
-          else {immediatelong}
-            begin
-            temp := offset1;
-            settemp(long, immediatelong, 0, 0, false,
-                    temp mod 65536, temp div 65536,
-                    1, unknown);
-            temp := offset;
-            settemp(long, immediatelong, 0, 0, false,
-                    temp mod 65536, temp div 65536,
-                    1, unknown);
-            source := tempkey;
-            end;
-
-        if pushing(dst) then
-          begin
-          settemp(long, autod, sp, 0, false, 0, 0, 1, unknown);
-          gen2(move, long, source, tempkey);
-          gen2(move, long, source + 1, tempkey);
-          stackoffset := -keytable[stackcounter].oprnd.offset;
-          end
-        else
-          with keytable[dst].oprnd do
-            begin
-            forcerelative(dst, false, true, long, false);
-            settemp(long, m, reg, indxr, indxlong, offset, offset1, scale,
-                    commonlong_reloc);
-            gen2(move, long, source + 1, tempkey);
-            keytable[tempkey].oprnd.offset :=
-              keytable[tempkey].oprnd.offset + long;
-            gen2(move, long, source, tempkey);
-            end;
-        end
-    else if not equivaddr(src, dst) then
-      begin
-      oldlen := keytable[src].len;
-      keytable[src].len := length;
-      initloop(src, dst, dst, maxint, 4, {long, minpiecesize,} loop, pieces);
-      onlyreference(loopsrc);
-      onlyreference(loopdst);
-      for i := 1 to pieces do
-        begin
-        gen2(move, piecesize, loopsrc, loopdst);
-        bumploop(dbra, loop);
-        end;
-      finishloop;
-      keytable[src].len := oldlen;
-      end;
-  end {genblockmove} ;
 {>>>}
-
-{ Reference count book-keeping }
+{<<<  Reference count book-keeping}
 {<<<}
 procedure dereference{k: keyindex (operand) };
 
@@ -12051,8 +11917,142 @@ procedure addressboth;
     unlock(right);
   end {addressboth} ;
 {>>>}
+{>>>}
+{<<<  loading routines}
+{<<<}
+procedure genblockmove{src, dst: keyindex (move operands) ;
+                       minpiecesize: integer (minimum size chunk to move) };
 
-{ General register operand loading routines. }
+{ Generate a block move.  Less than four words are moved inline,
+  otherwise a loop is generated.  Double precision real constants are a
+  special case, and are handled here by breaking the quadword into two
+  longwords of immediate data.
+}
+
+  var
+    loop: boolean; {set if a loop is actually used}
+    pieces: integer; {number of internal instructions to generate}
+    i: integer; {induction var for internal generation}
+    source: keyindex; {tempkeys used to split double reals}
+    temp: unsigned; { holds structured constant }
+    carray: packed array [1..4] of uns_byte; { holds bytes of constant }
+    length: integer; {length of move}
+    oldlen: integer; {length of source, before possible truncation}
+
+
+  begin {genblockmove}
+    { The caller knows more than we do if the minimum piece size is more
+      than a byte.  Setting knowneven allows initloop to use word or long
+      moves.
+    }
+    if minpiecesize > byte then
+      begin
+      keytable[left].knowneven := true;
+      keytable[right].knowneven := true;
+      end;
+
+    length := min(keytable[src].len, keytable[dst].len);
+
+    if (keytable[src].oprnd.m in [immediate, immediatelong, immediatequad]) then
+      if length <= long then
+
+        { This check protects structured constant moves of word or long
+          length that are not word aligned.
+        }
+        if (minpiecesize = byte) and not (keytable[src].knowneven and
+           keytable[dst].knowneven) then
+          with keytable[src], oprnd do
+            begin
+            temp := offset;
+
+            for i := 1 to length do
+              begin
+              carray[i] := temp mod 16#100;
+              temp := temp div 16#100;
+              end;
+
+            { If going to the stack, force space to be allocated first
+              because a series -(sp) moves of bytes won't work.
+            }
+            aligntemps;
+
+            settempimmediate(byte, 0);
+
+            for i := length downto 1 do
+              begin
+              keytable[tempkey].oprnd.offset := carray[i];
+              gendouble(move, tempkey, dst);
+              with keytable[dst].oprnd do offset := offset + 1;
+              end;
+
+            tempkey := tempkey + 1;
+            end
+        else gensimplemove(src, dst)
+      else
+        begin {it's a double precision real constant}
+        with keytable[src].oprnd do
+          if m = immediatequad then
+            begin
+            temp := offset1;
+            settemp(long, immediatelong, 0, 0, false,
+                    temp mod 65536, temp div 65536,
+                    1, unknown);
+            temp := offset;
+            settemp(long, immediatelong, 0, 0, false,
+                    temp mod 65536, temp div 65536,
+                    1, unknown);
+            source := tempkey;
+            end
+          else {immediatelong}
+            begin
+            temp := offset1;
+            settemp(long, immediatelong, 0, 0, false,
+                    temp mod 65536, temp div 65536,
+                    1, unknown);
+            temp := offset;
+            settemp(long, immediatelong, 0, 0, false,
+                    temp mod 65536, temp div 65536,
+                    1, unknown);
+            source := tempkey;
+            end;
+
+        if pushing(dst) then
+          begin
+          settemp(long, autod, sp, 0, false, 0, 0, 1, unknown);
+          gen2(move, long, source, tempkey);
+          gen2(move, long, source + 1, tempkey);
+          stackoffset := -keytable[stackcounter].oprnd.offset;
+          end
+        else
+          with keytable[dst].oprnd do
+            begin
+            forcerelative(dst, false, true, long, false);
+            settemp(long, m, reg, indxr, indxlong, offset, offset1, scale,
+                    commonlong_reloc);
+            gen2(move, long, source + 1, tempkey);
+            keytable[tempkey].oprnd.offset :=
+              keytable[tempkey].oprnd.offset + long;
+            gen2(move, long, source, tempkey);
+            end;
+        end
+    else if not equivaddr(src, dst) then
+      begin
+      oldlen := keytable[src].len;
+      keytable[src].len := length;
+      initloop(src, dst, dst, maxint, 4, {long, minpiecesize,} loop, pieces);
+      onlyreference(loopsrc);
+      onlyreference(loopdst);
+      for i := 1 to pieces do
+        begin
+        gen2(move, piecesize, loopsrc, loopdst);
+        bumploop(dbra, loop);
+        end;
+      finishloop;
+      keytable[src].len := oldlen;
+      end;
+  end {genblockmove} ;
+{>>>}
+
 {<<<}
 function stackcovers: boolean;
 
@@ -13105,8 +13105,8 @@ procedure forcebranch{k: keyindex; (operand to test)
         end;
   end {forcebranch} ;
 {>>>}
-
-{ Routines to access operands}
+{>>>}
+{<<<  Routines to access operands}
 {<<<}
 procedure dolevelx;
 
@@ -15194,8 +15194,8 @@ procedure jumpcond{inv: boolean (invert the sense of the branch) };
       context[contextsp].lastbranch := lastnode;
   end {jumpcond} ;
 {>>>}
-
-{ Pascal label and goto routines }
+{>>>}
+{<<<  Pascal label and goto routines}
 {<<<}
 procedure pascallabelx;
 
@@ -16079,9 +16079,9 @@ procedure callroutinex{s: boolean (signed function value) };
     dontchangevalue := dontchangevalue - 1;
   end {callroutinex} ;
 {>>>}
-
-{ Case statement generation.
-  The general scheme is to generate a case branch followed directly by
+{>>>}
+{<<<  Case statement generation}
+{ The general scheme is to generate a case branch followed directly by
   as many caseelt's as needed.  Tying a caseelt to the code for that case
   is done by the labels generated
 {<<<}
@@ -16362,7 +16362,8 @@ procedure openarrayx;
       end;
   end; {openarrayx}
 {>>>}
-
+{>>>}
+{<<<  file operations}
 {<<<}
 { File operations.  Calls to standard i/o procedures are translated into
   special operators rather than procedure calls.  These procedures implement
@@ -16594,7 +16595,7 @@ procedure calliosupport{libroutine: libroutines; (support routine to call)
   end {calliosupport} ;
 {>>>}
 
-{ Formatted I/O Routines.}
+{ formatted I/O Routines }
 {<<<}
 procedure dumpstack;
 
@@ -16952,7 +16953,8 @@ procedure reloadloop;
       end;
   end {reloadloop} ;
 {>>>}
-
+{>>>}
+{<<<  higher level code genration}
 {<<<}
 { We now begin the higher-level code generation routines.  These routines
   are called from the main generation procedure based on the most recent
@@ -17388,6 +17390,7 @@ procedure defforindexx{sgn, ( true if signed induction var )
 
   end {defforindexx} ;
 {>>>}
+
 {<<<}
 procedure fortopx{signedbr, unsignedbr: insttype ( proper exit branch ) };
 
@@ -17785,6 +17788,7 @@ procedure forerrchkx;
     definelastlabel;
   end {forerrchkx} ;
 {>>>}
+
 {<<<}
 procedure movintx;
 
@@ -18016,6 +18020,7 @@ procedure movrealx;
   else movx(false, dreg, getdreg);
   end;
 {>>>}
+
 {<<<}
 procedure cmprealx{brinst: insttype; (true branch)
                    double_call: libroutines; (routine numbers)
@@ -18082,6 +18087,7 @@ procedure cmplitrealx{brinst: insttype; (true branch)
     cmprealx(brinst, double_call, mc68881_inst);
   end {cmplitrealx} ;
 {>>>}
+
 {<<<}
 procedure unaryrealx{inst: insttype ('bchg' for neg, 'bclr' for abs) };
 
@@ -18899,6 +18905,7 @@ procedure shiftlintx{backwards: boolean};
     keytable[key].signed := keytable[left].signed;
   end {shiftlintx} ;
 {>>>}
+
 {<<<}
 procedure cvtrdx;
 { Convert a 4 byte real to an 8 byte real }
@@ -18970,6 +18977,7 @@ procedure cvtdrx;
     end;
   end; {cvtdrx}
 {>>>}
+
 {<<<}
 procedure castrealx;
 { Convert one size of a real number to another.  For the mc68881 this
@@ -20646,7 +20654,7 @@ begin
 end;
 {>>>}
 {<<<}
-function getlabelnode(l: integer {label desired} ): nodeindex;
+function getlabelnode (l: integer {label desired} ): nodeindex;
 { Returns the node index of the node with label "l" }
 
 begin
@@ -20654,7 +20662,7 @@ begin
 end;
 {>>>}
 {<<<}
-function eqinst(n, n1: nodeindex {nodes to compare} ): boolean;
+function eqinst (n, n1: nodeindex {nodes to compare} ): boolean;
 { Returns true if the instructions (including their operands) indexed by "n" and "n1" are equivalent }
 
 var
@@ -22891,8 +22899,6 @@ begin
 end;
 {>>>}
 
-{ The following 4 procedures handle the pseudo operators doint, doptr, doreal, and dolevel,
-  where the level is local or global. Placed here to shorten genblk a bit. }
 {<<<}
 procedure dointx;
 { Access a constant integer operand.  The value is in oprnds[1].
