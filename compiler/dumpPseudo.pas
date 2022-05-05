@@ -133,7 +133,6 @@ var
       if (op = blockentry) then
         begin
         writeln ('op': 12, 'len': 8, 'key': 4, 'ref': 4, 'copy': 5, 'left': 7, 'right': 6, 'target': 7);
-        writeln;
         write ('blockentry': 15);
         end
 

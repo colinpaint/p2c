@@ -69,7 +69,7 @@ clean:
 	rm -f -v *.psuedo
 	rm -f -v *.rel
 	rm -f -v *.local
-	rm -f -v *.pseudo
+	rm -f -v *.tree
 #
 	rm -f -v pmt
 	rm -f -v formatted.pas
