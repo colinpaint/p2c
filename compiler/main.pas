@@ -972,7 +972,7 @@ procedure parseCommandLine;
         qualsset := qualsset + [listq]
       else if (qualsset * [debugq, profileq] = []) then
         begin
-        sharedPtr^.fakelist := true;
+        sharedPtr^.forceList := true;
         qualsset := qualsset + [errorsq]
         end;
 
@@ -1295,8 +1295,8 @@ begin
   for i := l to h do
     write (pass[i]);
   writeln (' took ', deltasec: 1, ' sec, ',
-           sharedPtr^.lastline: 1, ' lines, ',
-           (sharedPtr^.lastline * 60) div deltasec: 1, ' lines/min');
+           sharedPtr^.lastLine: 1, ' lines, ',
+           (sharedPtr^.lastLine * 60) div deltasec: 1, ' lines/min');
 end;
 {>>>}
 
@@ -1388,8 +1388,8 @@ begin
                                     60 * (sharedPtr^.endhour - sharedPtr^.starthour)), 1);
 
     writeln ('took ', sharedPtr^.endsec:1, 'sec, ',
-             sharedPtr^.lastline: 1, ' lines, ',
-             (sharedPtr^.lastline * 60) div sharedPtr^.endsec: 1, ' lines/min');
+             sharedPtr^.lastLine: 1, ' lines, ',
+             (sharedPtr^.lastLine * 60) div sharedPtr^.endsec: 1, ' lines/min');
     end;
     {>>>}
 99:
@@ -1404,24 +1404,24 @@ begin
   if (sharedPtr^.lastlist > 0) then
     {<<<  not sure}
     begin
-    if (sharedPtr^.listtable[sharedPtr^.lastlist].count = 0) then
-      with sharedPtr^.listtable[sharedPtr^.lastlist] do
-        count := sharedPtr^.lastline - start + 1;
+    if (sharedPtr^.listTable[sharedPtr^.lastlist].count = 0) then
+      with sharedPtr^.listTable[sharedPtr^.lastlist] do
+        count := sharedPtr^.lastLine - start + 1;
     end
     {>>>}
   else if sharedPtr^.lasterror > 0 then
     {<<<  still not sure}
     begin
     sharedPtr^.lastlist := sharedPtr^.lastlist + 1;
-    with sharedPtr^.listtable[sharedPtr^.lastlist] do
+    with sharedPtr^.listTable[sharedPtr^.lastlist] do
       begin
-      start := sharedPtr^.lastline + 1;
+      start := sharedPtr^.lastLine + 1;
       count := 0;
       end;
     end;
     {>>>}
 
-  if not sharedPtr^.fakelist or (sharedPtr^.lasterror > 0) then
+  if not sharedPtr^.forceList or (sharedPtr^.lasterror > 0) then
     begin
     resetswitches;
     list;

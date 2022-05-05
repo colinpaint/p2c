@@ -59,8 +59,8 @@ begin
   sharedPtr^.lastswitch := 0;
   sharedPtr^.genoptmask := 0;
 
-  sharedPtr^.lastlist := 0;
-  sharedPtr^.fakelist := false;
+  sharedPtr^.lastList := 0;
+  sharedPtr^.forceList := false;
 
   sharedPtr^.sourceListHead := nil;
   sharedPtr^.objname := nil;

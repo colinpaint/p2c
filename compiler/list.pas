@@ -35,25 +35,9 @@ Update release version for PC-VV0-GS0 at 2.3.0.1
 procedure list;
 { Make program listing.  Goes to standard output if no explicit listing or error file has been specified. }
 
-{<<<}
-const
-  tabch = 9; {tab character}
-  formfeed = 12; {formfeed character}
-  tabspace = 8; {the number of spaces a tab input becomes}
-{>>>}
-{<<<}
 var
   sharedPtr: sharedPtrType;
-
   listFile: text;     {listing output file}
-
-  curfileptr: fileRememberPtr;  { used to step through input files }
-  thisfileptr: fileRememberPtr; { the file that is open }
-  lastfileptr: fileRememberPtr; { the last file name printed in listing }
-
-  buffer: packed array [1..180] of char;
-  bufferCount: integer;
-{>>>}
 
   {<<<}
   procedure listing (var listFile: text);
@@ -61,6 +45,10 @@ var
   const
     leftmargin = 11; { keep this odd }
     pagelimit = 54;
+
+    tabch = 9; {tab character}
+    formfeed = 12; {formfeed character}
+    tabspace = 8; {the number of spaces a tab input becomes}
   {>>>}
   {<<<}
   type
@@ -113,6 +101,13 @@ var
     headerlength: integer; {length of site header line}
 
     save: array [1..sourcedepth] of save_rec;
+
+    buffer: packed array [1..180] of char;
+    bufferCount: integer;
+
+    curfileptr: fileRememberPtr;  { used to step through input files }
+    thisfileptr: fileRememberPtr; { the file that is open }
+    lastfileptr: fileRememberPtr; { the last file name printed in listing }
   {>>>}
 
     {<<<}
@@ -168,9 +163,8 @@ var
       {>>>}
 
     begin
-      sharedPtr^.morefiles := (curfileptr <> nil);
       sharedPtr^.filename_length := 0;
-      if sharedPtr^.morefiles then
+      if curfileptr <> nil then
         begin
         seekStringFile (sharedPtr^.stringfilecount + curfileptr^.offset - 1);
         while sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile] <> 0 do
@@ -196,7 +190,7 @@ var
     begin
       writeln (listFile, buffer: bufferCount);
       bufferCount := 0;
-    end; 
+    end;
     {>>>}
     {<<<}
     procedure wl_chr (c: char);
@@ -214,7 +208,7 @@ var
     var
       i: integer;
 
-    begin 
+    begin
       for i := 1 to high do
         if s[i] <> chr(0) then
           begin
@@ -230,7 +224,7 @@ var
     var
       i: integer;
 
-    begin 
+    begin
       for i := 1 to n - high do
         begin
         bufferCount := bufferCount + 1;
@@ -627,17 +621,8 @@ var
           save[1].fileptr := thisfileptr;
           save[1].line := linecount;
 
-          if sharedPtr^.morefiles then
-            begin
-            close (sharedPtr^.source[sharedPtr^.sourcelevel]);
-            openSource;
-            read (sharedPtr^.source[sharedPtr^.sourcelevel], nextch);
-            end
-          else
-            begin
-            endofinput := true;
-            nextch := ' ';
-            end;
+          endofinput := true;
+          nextch := ' ';
           end;
         end
 
@@ -671,19 +656,19 @@ var
 
       begin {printlineno}
         if (not topofpage) and (lastfileptr <> thisfileptr) then
-          if not sharedPtr^.fakelist and (pageline + 4 > pagelimit) then
+          if not sharedPtr^.forceList and (pageline + 4 > pagelimit) then
             begin {Start new page}
             pagelisting;
             physicalpage := physicalpage + 1;
             end
           else
             begin {Just print new current filename}
-            if not sharedPtr^.fakelist then wl_line;
+            if not sharedPtr^.forceList then wl_line;
             wl_str_l(sharedPtr^.filename, sharedPtr^.filename_length);
             wl_line;
             wl_line;
             lastfileptr := thisfileptr;
-            pageline := pageline + 2 + ord(not sharedPtr^.fakelist);
+            pageline := pageline + 2 + ord(not sharedPtr^.forceList);
             end;
 
         if topofpage then
@@ -1230,7 +1215,7 @@ var
 
     begin
       { Only 3 lines are printed if errors are going to terminal }
-      if sharedPtr^.fakelist then
+      if sharedPtr^.forceList then
         pageline := pageline + 3
       else
         pageline := pageline + 6;
@@ -1239,7 +1224,7 @@ var
         pagelisting;
 
       { Don't print invocation line if errors are going to terminal }
-      if not sharedPtr^.fakelist then
+      if not sharedPtr^.forceList then
         begin
         wl_line;
         wl_str ('command line:');
@@ -1359,6 +1344,8 @@ var
     {>>>}
 
   begin
+    bufferCount := 0;
+
     save[1].line := 0;
     sharedPtr^.curfile := 1;
     sharedPtr^.sourcelevel := 1;
@@ -1403,7 +1390,7 @@ var
     getnexterror;
     while i <= sharedPtr^.lastlist do
       begin
-      with sharedPtr^.listtable[i] do
+      with sharedPtr^.listTable[i] do
         begin
         skipwitherrors (start);
         listwitherrors (start + count);
@@ -1420,9 +1407,7 @@ var
 begin
   sharedPtr := getSharedPtr;
 
-  bufferCount := 0;
-
-  if sharedPtr^.fakelist then
+  if sharedPtr^.forceList then
     listing (output)
   else
     begin
@@ -1430,11 +1415,11 @@ begin
     rewrite (listFile, 'output.txt');
 
     { If the last region of the file is nolisted and the list command line option is used,
-      this dummy listing line will force a fakelist of any errors in the nolisted region.
+      this dummy listing line will force a forceList of any errors in the nolisted region.
       This fix causes no harm in the normal case }
     sharedPtr^.lastlist := sharedPtr^.lastlist + 1;
-    sharedPtr^.listtable[sharedPtr^.lastlist].start := sharedPtr^.lastline;
-    sharedPtr^.listtable[sharedPtr^.lastlist].count := 0;
+    sharedPtr^.listTable[sharedPtr^.lastlist].start := sharedPtr^.lastLine;
+    sharedPtr^.listTable[sharedPtr^.lastlist].count := 0;
 
     listing (listFile);
     close (listFile);

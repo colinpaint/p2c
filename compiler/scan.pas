@@ -451,7 +451,7 @@ begin
   close (sharedPtr^.source[sharedPtr^.sourcelevel]);
 
   sharedPtr^.sourcelevel := 0;
-  warnat (err, sharedPtr^.lastline, chpos);
+  warnat (err, sharedPtr^.lastLine, chpos);
 end;
 {>>>}
 {<<<}
@@ -484,7 +484,7 @@ begin
   q^.next := nil;
   q^.offset := curFileIndex;
   if sharedPtr^.sourcelevel = 1 then
-    tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastline - 1;
+    tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastLine - 1;
 
   if sharedPtr^.filerememberlist <> nil then
     begin
@@ -534,7 +534,7 @@ procedure getCh;
       else if (nextch <> chr(nul)) and (nextch <> chr(cr)) then
         begin
         { other control character, warn and ignore }
-        warnat (badchar, sharedPtr^.lastline, charcount - 1);
+        warnat (badchar, sharedPtr^.lastLine, charcount - 1);
         nextch := ' ';
         end
       end
@@ -547,8 +547,8 @@ procedure getCh;
   {Line too long, issue warning}
 
   begin
-    warnat (linetoolong, sharedPtr^.lastline, linelen);
-    sharedPtr^.lastline := sharedPtr^.lastline + 1;
+    warnat (linetoolong, sharedPtr^.lastLine, linelen);
+    sharedPtr^.lastLine := sharedPtr^.lastLine + 1;
     charcount := 1;
   end;
   {>>>}
@@ -587,7 +587,7 @@ procedure getCh;
       chpos := charcount;
       end
     else
-      warnat (badchar, sharedPtr^.lastline, chpos);
+      warnat (badchar, sharedPtr^.lastLine, chpos);
   end;
   {>>>}
   {<<<}
@@ -607,9 +607,9 @@ procedure getCh;
         sharedPtr^.filename_length := savefilename_length;
         end;
 
-      tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastline - baseLine[sharedPtr^.sourcelevel];
+      tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastLine - baseLine[sharedPtr^.sourcelevel];
       if endOfLine then
-        sharedPtr^.lastline := sharedPtr^.lastline + 1;
+        sharedPtr^.lastLine := sharedPtr^.lastLine + 1;
 
       { pop the source stack }
       sharedPtr^.sourcelevel := sharedPtr^.sourcelevel - 1;
@@ -638,7 +638,7 @@ procedure getCh;
       if (sharedPtr^.sourcelevel = 1) or not eof (sharedPtr^.source[sharedPtr^.sourcelevel]) then
         begin
         endOfLine := true;
-        sharedPtr^.lastline := sharedPtr^.lastline + 1;
+        sharedPtr^.lastLine := sharedPtr^.lastLine + 1;
         end;
       end
     else
@@ -754,7 +754,7 @@ var
       We are actually reading the next token while
       processing the current token so we delay the effect of counting switches
       (this normally happens while analys is reading in the intermediate file).
-      If this switch affects the state of the listing, an entry is made in the global "listtable" for the listing pass. }
+      If this switch affects the state of the listing, an entry is made in the global "listTable" for the listing pass. }
 
     const
       checkswitchcount = 5; {nr of checking switches}
@@ -922,14 +922,14 @@ var
             { Detect the case where $double occurs after the first token }
             if (s = doublereals) and firstTokenSeen then
               if sharedPtr^.switchcounters[standard] <= 0 then
-                warnat (baddouble, sharedPtr^.lastline, chpos)
+                warnat (baddouble, sharedPtr^.lastLine, chpos)
               else
                 i := 0; {ignore if standard active}
 
             { Detect the case where $case occurs after the first token }
             if (s = caseswitch) and firstTokenSeen then
               if sharedPtr^.switchcounters[standard] <= 0 then
-                warnat(badcase, sharedPtr^.lastline, chpos)
+                warnat(badcase, sharedPtr^.lastLine, chpos)
               else
                 i := 0; {ignore if standard active}
             end;
@@ -1067,21 +1067,21 @@ var
             else
               bumpswitch (s, v * ((1 - ord(nofound)) * 2  - 1));
             if s = listcount then
-              {<<<  list and nolist are entered into a special table, 'listtable'}
+              {<<<  list and nolist are entered into a special table, 'listTable'}
               begin
               if (oldcount + sharedPtr^.switchcounters[listcount] = 1) and
                  sharedPtr^.switcheverplus[listcount] then
                 { Transition occurred }
-                if (oldcount = 0) and (sharedPtr^.lastlist < listtablesize) then
+                if (oldcount = 0) and (sharedPtr^.lastlist < listTablesize) then
                   begin
                   sharedPtr^.lastlist := sharedPtr^.lastlist + 1;
-                  sharedPtr^.listtable[sharedPtr^.lastlist].start := sharedPtr^.lastline;
-                  sharedPtr^.listtable[sharedPtr^.lastlist].count := 0;
+                  sharedPtr^.listTable[sharedPtr^.lastlist].start := sharedPtr^.lastLine;
+                  sharedPtr^.listTable[sharedPtr^.lastlist].count := 0;
                   end
 
                 else if oldcount > 0 then
-                  sharedPtr^.listtable[sharedPtr^.lastlist].count :=
-                    sharedPtr^.lastline - sharedPtr^.listtable[sharedPtr^.lastlist].start + 1;
+                  sharedPtr^.listTable[sharedPtr^.lastlist].count :=
+                    sharedPtr^.lastLine - sharedPtr^.listTable[sharedPtr^.lastlist].start + 1;
               end
               {>>>}
             else
@@ -1156,7 +1156,7 @@ var
     convertingcase := true;
 
     if incomment then
-      warnat (eofincomment, sharedPtr^.lastline - 1, chpos)
+      warnat (eofincomment, sharedPtr^.lastLine - 1, chpos)
     else if not endOfInput then
       getCh; {skip past delimiter if present}
 
@@ -1240,7 +1240,7 @@ var
           filenamebuilt := true;
           end
         else
-          warnat (longstring, sharedPtr^.lastline - 1, chpos);
+          warnat (longstring, sharedPtr^.lastLine - 1, chpos);
         end
         {>>>}
       else
@@ -1291,10 +1291,10 @@ var
 
         sharedPtr^.filename_length := newfilename_length;
         logInputFilename;
-        baseLine[sharedPtr^.sourcelevel] := sharedPtr^.lastline - tokenSharedPtr^.nexttoken.baseLine - ord(endOfLine);
+        baseLine[sharedPtr^.sourcelevel] := sharedPtr^.lastLine - tokenSharedPtr^.nexttoken.baseLine - ord(endOfLine);
         if not endOfLine then
-          sharedPtr^.lastline := sharedPtr^.lastline + 1;
-        tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastline - 1;
+          sharedPtr^.lastLine := sharedPtr^.lastLine + 1;
+        tokenSharedPtr^.nexttoken.baseLine := sharedPtr^.lastLine - 1;
 
         endOfLine := true;
         end;
@@ -1356,10 +1356,10 @@ var
 
     begin
       with tokenSharedPtr^.nexttoken do
-        if sharedPtr^.lastline = line then
+        if sharedPtr^.lastLine = line then
           warnat (err, line, (left + chpos - 1) div 2)
         else
-          warnat (err, sharedPtr^.lastline, (2 + right) div 2)
+          warnat (err, sharedPtr^.lastLine, (2 + right) div 2)
     end;
     {>>>}
     {<<<}
@@ -2295,7 +2295,7 @@ var
           radix := 8;
           for i := 1 to length do {check for 8's or 9's}
             if digits[i] >= 8 then
-              warnat(badoctal, sharedPtr^.lastline, chpos + i - length - 2);
+              warnat(badoctal, sharedPtr^.lastLine, chpos + i - length - 2);
           convertinteger (intvalue);
           end {octal 'b' form}
 
@@ -2432,7 +2432,7 @@ var
 
       getCh;
       if (sharedPtr^.switchcounters[standard] > 0) and (ch in ['$', '_']) then
-        warnat (badchar, sharedPtr^.lastline, chpos);
+        warnat (badchar, sharedPtr^.lastLine, chpos);
       until not (ch in ['$', '_', 'A'..'Z', 'a'..'z', '0'..'9']);
       {>>>}
 
@@ -2504,7 +2504,7 @@ var
       end;
 
     if not ok then
-      warnat (badconsterr, sharedPtr^.lastline, chpos);
+      warnat (badconsterr, sharedPtr^.lastLine, chpos);
 
     getCh;
   end;
@@ -2533,7 +2533,7 @@ var
         stringbuf[sharedPtr^.curstringbuf, stringpos] := ch
         end
       else
-        warnat (longstring, sharedPtr^.lastline, chpos);
+        warnat (longstring, sharedPtr^.lastLine, chpos);
     end;
     {>>>}
 
@@ -2554,7 +2554,7 @@ var
       inliteralstring := false;
       convertingcase := true;
       if endOfLine then
-        warnat (longstring, sharedPtr^.lastline - 1, chpos)
+        warnat (longstring, sharedPtr^.lastLine - 1, chpos)
       else
         begin
         getCh;
@@ -2630,7 +2630,7 @@ begin
         begin
         if nextch = '*' then
           begin
-          warnat(obsoletecomments, sharedPtr^.lastline, chpos);
+          warnat(obsoletecomments, sharedPtr^.lastLine, chpos);
           commentch := '/';
           getCh;
           skipcomment;
@@ -2640,7 +2640,7 @@ begin
         end;
         {>>>}
       '%':
-        scannerdirective (sharedPtr^.lastline, chpos);
+        scannerdirective (sharedPtr^.lastLine, chpos);
       '$', '''', ')', '*', '+', ',', '-', '.', ':', ';', '<', '=', '>', '@',
       '#', '[', ']', '^', '_', '0', '1', '2', '3', '4', '5', '6', '7', '8',
       '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -2655,7 +2655,7 @@ begin
           getCh
         else
           begin
-          warnat (badchar, sharedPtr^.lastline, chpos);
+          warnat (badchar, sharedPtr^.lastLine, chpos);
           getCh;
           end;
         end;
@@ -2676,7 +2676,7 @@ begin
   firstTokenSeen := true;
   with tokenSharedPtr^.nexttoken do
     begin
-    line := sharedPtr^.lastline;
+    line := sharedPtr^.lastLine;
     left := chpos;
     filePos := currentFilePos;
 
@@ -2785,7 +2785,7 @@ begin
            {<<<}
            begin
            if (sharedPtr^.switchcounters[standard] > 0) then
-             warnat (badchar, sharedPtr^.lastline, chpos);
+             warnat (badchar, sharedPtr^.lastLine, chpos);
 
            identifier;
            end;
@@ -2796,7 +2796,7 @@ begin
           {<<<}
           begin
           if (targetopsys <> msdos) or (sharedPtr^.switchcounters[standard] > 0) then
-            warnat (badchar, sharedPtr^.lastline, chpos);
+            warnat (badchar, sharedPtr^.lastLine, chpos);
 
           charliteral;
           end;
@@ -2804,17 +2804,17 @@ begin
         otherwise
           {<<<}
           begin
-          warnat (badchar, sharedPtr^.lastline, chpos);
+          warnat (badchar, sharedPtr^.lastLine, chpos);
 
           getCh;
           end
           {>>>}
         end;
 
-    if not endOfLine and (sharedPtr^.lastline > line) then
+    if not endOfLine and (sharedPtr^.lastLine > line) then
       begin
       left := 1;
-      line := sharedPtr^.lastline
+      line := sharedPtr^.lastLine
       end;
 
     right := oldchpos;
@@ -3274,7 +3274,7 @@ procedure scan1;
     incomment := false;
     inliteralstring := false;
     charcount := 0;
-    sharedPtr^.lastline := 1;
+    sharedPtr^.lastLine := 1;
 
     baseLine[1] := 0;
     lastBaseLine := -1;
@@ -3316,7 +3316,7 @@ begin
   with tokenSharedPtr^.nexttoken do
     begin
     token := eofsym;
-    line := sharedPtr^.lastline;
+    line := sharedPtr^.lastLine;
     left := chpos;
     right := chpos
     end;

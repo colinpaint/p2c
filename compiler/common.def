@@ -108,7 +108,7 @@ const
   switchtablesize = 200; { max number of switches allowed in program }
 
   errortablesize = 200; { max number of errors before we give up hope }
-  listtablesize = 200;  { max number of listing control switches }
+  listTableSize = 200;  { max number of listing control switches }
 
   maxprocnamelen = 15; {max characters in assembly proc name}
   maxnamestring = 16;  {max characters in a name string}
@@ -604,7 +604,7 @@ type
   hashindex = 0..hashtablesize;
   switchindex = 0..switchtablesize;
   errorindex = 0..errortablesize;
-  listindex = 1..listtablesize;
+  listindex = 1..listTableSize;
   proctableindex = 0..proctablesize;
   var_index = 0..vartablesize;
   cseregionindex = 0..cseregions;
@@ -999,6 +999,7 @@ type
     source: array [1..sourcedepth] of text; { files for including source }
     sourceListHead: FilenameListPtr;        { list of input filenames }
 
+    lastLine: natural;                 { last line in program}
     fileRememberList: fileRememberPtr; { input file name list head }
 
     filename_length: FilenameIndex; { length of name in filename buffer }
@@ -1006,18 +1007,16 @@ type
 
     { these are global to all due to overlay considerations}
     curfile: integer; {number of current source file}
-    morefiles: boolean; {set if more source files}
 
     { output files }
     outputname: packed array [1..maxprocnamelen] of char;
     objname: FilenameListPtr; {object file name pointer or nil}
     macname: FilenameListPtr; {macro file name pointer or nil}
 
-    listname: FilenameListPtr; {list file name pointer or nil}
-    fakelist: boolean; {fake a listing file to user's terminal}
-    listtable: array [listindex] of listrecord; {OLD listing control entries list}
-    lastlist: integer; {last entry in listtable}
-    lastline: natural; {last line in program}
+    listname: FilenameListPtr; { list file name pointer or nil }
+    forceList: boolean;        { force listing file to output }
+    lastList: integer;         { last entry in listTable}
+    listTable: array [listindex] of listrecord; {OLD listing control entries list }
 
     { vartable }
     vartable: array [1..maxvarptrs] of vartableblockptr;
