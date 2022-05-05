@@ -225,10 +225,10 @@ procedure putToken;
 { put current token to token file }
 
 var
-  diff: hostfilebyte; {difference in line numbers}
+  diff: hostfilebyte; { difference in line numbers }
 
   {<<<}
-  procedure putInt (i: integer {value to put} );
+  procedure putInt (i: integer);
   { Puts an integer value to the token file as successive bytes. }
 
   var
@@ -245,10 +245,12 @@ var
       tokenSharedPtr^.tokenFile^.byte := i;
       put (tokenSharedPtr^.tokenFile);
       end
+
     else
       begin
       tokenSharedPtr^.tokenFile^.byte := hostfilelim;
       put (tokenSharedPtr^.tokenFile);
+
       fudge.int := i;
       for j := 1 to hostintsize * hostfileunits do
         begin
@@ -421,8 +423,8 @@ end;
 {>>>}
 {<<<}
 procedure dumpIdentifiers;
-{ Dumpidentifiers -- dumps stringtable into stringfile.
-  Analys and Code occasionally need the character representation of an identifier
+{ dumpidentifiers -- dumps stringtable into stringfile.
+  analysis and code occasionally need the character representation of an identifier
 }
 var
   i: stringindex;
@@ -593,7 +595,7 @@ procedure getCh;
 
   begin
     if sharedPtr^.sourcelevel > 1 then { in include, pop to parent level}
-      begin 
+      begin
       close (sharedPtr^.source[sharedPtr^.sourcelevel]);
       with saveInput[sharedPtr^.sourcelevel] do
         begin
@@ -610,11 +612,11 @@ procedure getCh;
         sharedPtr^.lastline := sharedPtr^.lastline + 1;
 
       { pop the source stack }
-      sharedPtr^.sourcelevel := sharedPtr^.sourcelevel - 1; 
+      sharedPtr^.sourcelevel := sharedPtr^.sourcelevel - 1;
       end
 
     else { end of main source file, quit }
-      begin 
+      begin
       endOfInput := true;
       nextch := ' ';
       skippingblanks := false;

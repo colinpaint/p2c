@@ -51,6 +51,7 @@ clean:
 	rm -f -v *.~*
 	rm -f -v *.*~
 	rm -f -v *~
+	rm -f -v .~*
  #
 	rm -f -v *.o
 	rm -f -v *.c
@@ -70,6 +71,7 @@ clean:
 	rm -f -v *.rel
 	rm -f -v *.local
 	rm -f -v *.tree
+	rm -f -v *.txt
 #
 	rm -f -v pmt
 	rm -f -v formatted.pas

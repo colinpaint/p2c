@@ -466,162 +466,154 @@ var
 procedure add (left, right: integer;  var result: integer; var overflow: boolean);
 { Add two target integers.  If the operation overflows, "overflow" will
   be set, and "result" will be set to the max value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
+  This will have to be changed if the target integers are not the same size as the host integers;
 }
-
-
-  begin {add}
-    overflow := ((left >= 0) = (right >= 0)) and ((left >= 0) and
-                (sharedPtr^.targetmaxint - right < left) or (left < 0) and
-                ( - sharedPtr^.targetmaxint - 1 - right > left));
-    if overflow then
-      if left >= 0 then result := sharedPtr^.targetmaxint
-      else result := - sharedPtr^.targetmaxint - 1 {two's complement}
-    else result := left + right;
-  end {add} ;
+begin
+  overflow := ((left >= 0) = (right >= 0)) and ((left >= 0) and
+              (sharedPtr^.targetmaxint - right < left) or (left < 0) and
+              ( - sharedPtr^.targetmaxint - 1 - right > left));
+  if overflow then
+    if left >= 0 then result := sharedPtr^.targetmaxint
+    else result := - sharedPtr^.targetmaxint - 1 {two's complement}
+  else result := left + right;
+end;
 {>>>}
 {<<<}
 procedure usadd (left, right: integer;  var result: integer; var overflow: boolean);
 { Unsigned add of two target integers.  If the operation overflows,
   "overflow"  is set, and "result" will be set to the max value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
+  This will have to be changed if the target integers are not the same size as the host integers;
 }
+var
+  usleft, usright: unsignedint;
 
-  var
-    usleft, usright: unsignedint;
-
-
-  begin {usadd}
-    usleft := left;
-    usright := right;
-    overflow := maxusint - usleft < usright;
-    if overflow then result := maxusint
-    else result := usleft + usright;
-  end {usadd} ;
+begin
+  usleft := left;
+  usright := right;
+  overflow := maxusint - usleft < usright;
+  if overflow then result := maxusint
+  else result := usleft + usright;
+end;
 {>>>}
 
 {<<<}
 procedure negate (operand: integer; var result: integer; var overflow: boolean);
 { Negate a target integer.  If it overflows, the result will be set to
   the limit at the appropriate sign.
-  ****Self hosted version
 }
-
-
-  begin {negate}
-    overflow := operand = ( - sharedPtr^.targetmaxint - 1);
-    if overflow then result := sharedPtr^.targetmaxint
-    else result := - operand;
-  end {negate} ;
+begin
+  overflow := operand = ( - sharedPtr^.targetmaxint - 1);
+  if overflow then
+    result := sharedPtr^.targetmaxint
+  else
+    result := - operand;
+end;
 {>>>}
 {<<<}
 procedure subtract (left, right: integer; var result: integer; var overflow: boolean);
 { Subtract two target integers.  If the operation overflows, "overflow" will
   be set, and "result" will be set to the max value possible.
-  ****Self hosted version
  }
-
-
-  begin {subtract}
-    overflow := ((left >= 0) <> (right >= 0)) and ((left >= 0) and
-                (sharedPtr^.targetmaxint + right < left) or (left < 0) and
-                ( - sharedPtr^.targetmaxint - 1 + right > left));
-    if overflow then
-      if left >= 0 then result := sharedPtr^.targetmaxint
-      else result := - sharedPtr^.targetmaxint - 1 {two's complement}
-    else result := left - right;
-  end {subtract} ;
+begin
+  overflow := ((left >= 0) <> (right >= 0)) and ((left >= 0) and
+              (sharedPtr^.targetmaxint + right < left) or (left < 0) and
+              ( - sharedPtr^.targetmaxint - 1 + right > left));
+  if overflow then
+    if left >= 0 then
+      result := sharedPtr^.targetmaxint
+    else
+      result := - sharedPtr^.targetmaxint - 1 {two's complement}
+  else
+    result := left - right;
+end;
 {>>>}
 {<<<}
 procedure ussubtract (left, right: integer; var result: integer; var overflow: boolean);
-{ Unsigned subtract.  The result is required to be unsigned as well
-  or overflow will be set.
-  ****Self hosted version
-}
+{ Unsigned subtract.  The result is required to be unsigned as well or overflow will be set }
 
-  var
-    usleft, usright: unsignedint;
+var
+  usleft, usright: unsignedint;
 
-
-  begin {ussubtract}
-    usleft := left;
-    usright := right;
-    overflow := usleft < usright;
-    if overflow then result := 0
-    else result := usleft - usright;
-  end {ussubtract} ;
+begin
+  usleft := left;
+  usright := right;
+  overflow := usleft < usright;
+  if overflow then
+    result := 0
+  else
+    result := usleft - usright;
+end;
 {>>>}
 
 {<<<}
 procedure multiply (left, right: integer;  var result: integer; var overflow: boolean);
 { Multiply two target integers.  If the operation overflows, "overflow"
   will be set and "result" will be set to the max signed value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
+  This will have to be changed if the target integers are not the same size as the host integers;
 }
+begin
+  if left = -1 then
+    overflow := right = (- sharedPtr^.targetmaxint - 1)
+  else if right = -1 then
+    overflow := left = (- sharedPtr^.targetmaxint - 1)
+  else if (left <> 0) and (right <> 0) then
+    overflow := ((left > 0) = (right > 0)) and ((left > 0) and
+                (sharedPtr^.targetmaxint div left < right) or (left < 0) and
+                (sharedPtr^.targetmaxint div left > right)) or
+                ((left > 0) <> (right > 0)) and ((left > 0) and
+                (( - sharedPtr^.targetmaxint - 1) div left > right) or (left < 0) and
+                (( - sharedPtr^.targetmaxint - 1) div right > left))
+  else
+    overflow := false;
 
-
-  begin {multiply}
-    if left = -1 then overflow := right = (- sharedPtr^.targetmaxint - 1)
-    else if right = -1 then overflow := left = (- sharedPtr^.targetmaxint - 1)
-    else if (left <> 0) and (right <> 0) then
-      overflow := ((left > 0) = (right > 0)) and ((left > 0) and
-                  (sharedPtr^.targetmaxint div left < right) or (left < 0) and
-                  (sharedPtr^.targetmaxint div left > right)) or
-                  ((left > 0) <> (right > 0)) and ((left > 0) and
-                  (( - sharedPtr^.targetmaxint - 1) div left > right) or (left < 0) and
-                  (( - sharedPtr^.targetmaxint - 1) div right > left))
-    else overflow := false;
-    if overflow then
-      if (left > 0) = (right > 0) then result := maxint
-      else result := - maxint - 1
-    else result := left * right;
-  end {multiply} ;
+  if overflow then
+    if (left > 0) = (right > 0) then
+      result := maxint
+    else
+      result := - maxint - 1
+  else
+    result := left * right;
+end;
 {>>>}
 {<<<}
 procedure usmultiply (left, right: integer; var result: integer; var overflow: boolean);
+{ Unsigned equivalent of the multiply routine }
 
-{ Unsigned equivalent of the multiply routine
-  ****self hosted version
-}
+var
+  usright, usleft: unsignedint;
 
-  var
-    usright, usleft: unsignedint;
+begin
+  usright := right;
+  usleft := left;
+  if (usright = 0) or (usleft = 0) then
+    overflow := false
+  else
+    overflow := maxusint div usright < usleft;
 
-
-  begin {usmultiply}
-    usright := right;
-    usleft := left;
-    if (usright = 0) or (usleft = 0) then overflow := false
-    else overflow := maxusint div usright < usleft;
-    if overflow then result := maxusint
-    else result := usleft * usright;
-  end {usmultiply} ;
+  if overflow then
+    result := maxusint
+  else
+    result := usleft * usright;
+end;
 {>>>}
 
 {<<<}
 procedure divide (left, right: integer;  var result: integer; var overflow: boolean);
 { Divide two target integers.  If the operation overflows, "overflow"
   will be set and "result" will be set to the max signed value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
+  This will have to be changed if the target integers are not the same size as the host integers;
 }
-
-
-  begin {divide}
-    overflow := (right = 0) or (left = ( - sharedPtr^.targetmaxint - 1)) and
-                (right = - 1);
-    if overflow then
-      if (left > 0) or (right = - 1) then result := sharedPtr^.targetmaxint
-      else result := - sharedPtr^.targetmaxint - 1
-    else result := left div right;
-  end {divide} ;
+begin
+  overflow := (right = 0) or (left = ( - sharedPtr^.targetmaxint - 1)) and
+              (right = - 1);
+  if overflow then
+    if (left > 0) or (right = - 1) then
+      result := sharedPtr^.targetmaxint
+    else
+      result := - sharedPtr^.targetmaxint - 1
+  else
+    result := left div right;
+end;
 {>>>}
 {<<<}
 procedure usdivide (left, right: integer;  var result: integer; var overflow: boolean);
@@ -629,74 +621,75 @@ procedure usdivide (left, right: integer;  var result: integer; var overflow: bo
   *****16 bit 68K on a PDP11.  The PDP11 doesn't really have an unsigned
   divide instruction, so we have to fake it.
 }
+var
+  usleft, usright: unsignedint;
 
-  var
-    usleft, usright: unsignedint;
-
-
-  begin {usdivide}
-    usleft := left;
-    usright := right;
-    overflow := usright = 0;
-    if overflow then result := maxusint
-    else if usright > sharedPtr^.targetmaxint then
-      if usright > usleft then result := 0
-      else result := 1
-    else result := usleft div usright;
-  end {usdivide} ;
+begin
+  usleft := left;
+  usright := right;
+  overflow := usright = 0;
+  if overflow then
+    result := maxusint
+  else if usright > sharedPtr^.targetmaxint then
+    if usright > usleft then
+      result := 0
+    else
+      result := 1
+  else
+    result := usleft div usright;
+end;
 {>>>}
 
 {<<<}
 procedure remainder (left, right: integer;  var result: integer; var overflow: boolean);
-{ Take the mod for target integers;  If "right" is zero, the result
-  will be zero, and "overflow" will be set.
-  ****self hosted version
-}
+{ Take the mod for target integers;  If "right" is zero, the result will be zero, and "overflow" will be set }
 
+begin
+  overflow := right = 0;
+  if overflow or (left = ( - sharedPtr^.targetmaxint - 1)) and ((right = - 1) or
+     (right = ( - sharedPtr^.targetmaxint - 1))) then
+    result := 0
+  else if (right = ( - sharedPtr^.targetmaxint - 1)) then
+    result := left
+  else if left < 0 then
+    if right < 0 then
+      result := ( - left) mod ( - right)
+    else
+      result := - ( - left) mod right
+  else if right < 0 then
+    result := - (left mod ( - right))
+  else
+    result := left mod right;
 
-  begin {remainder}
-    overflow := right = 0;
-    if overflow or (left = ( - sharedPtr^.targetmaxint - 1)) and ((right = - 1) or
-       (right = ( - sharedPtr^.targetmaxint - 1))) then
-      result := 0
-    else if (right = ( - sharedPtr^.targetmaxint - 1)) then result := left
-    else if left < 0 then
-      if right < 0 then result := ( - left) mod ( - right)
-      else result := - ( - left) mod right
-    else if right < 0 then result := - (left mod ( - right))
-    else result := left mod right;
-    { Now that we have the arithmetic remainder, we can "correct"
-      it to conform to the Pascal definition of "mod". }
-    if true {we want the positive modulus} then
-      if result < 0 then result := result + abs(right);
-  end {remainder} ;
+  { Now that we have the arithmetic remainder, we can "correct"
+    it to conform to the Pascal definition of "mod". }
+  if true {we want the positive modulus} then
+    if result < 0 then
+      result := result + abs(right);
+end;
 {>>>}
 {<<<}
 procedure usremainder (left, right: integer;  var result: integer; var overflow: boolean);
-{ unsigned version of remainder
-  ****self hosted version
-}
+{ unsigned version of remainder }
 
-  var
-    usright, usleft: unsignedint;
+var
+  usright, usleft: unsignedint;
 
-
-  begin {usremainder}
-    usright := right;
-    usleft := left;
-    overflow := usright = 0;
-    if overflow then result := 0
-    else result := usleft mod usright;
-  end {usremainder} ;
+begin
+  usright := right;
+  usleft := left;
+  overflow := usright = 0;
+  if overflow then result := 0
+  else result := usleft mod usright;
+end;
 {>>>}
 
 {<<<}
 procedure comparereal (left, right: real; var result: boolean; op: operator);
- { Fold the compare of a pair of real operands. }
+{ Fold the compare of a pair of real operands. }
 
-
-  begin {comparereal}
-   if realfolding then
+begin
+  if realfolding then
     begin
     case op of
       lsslit: result := left < right;
@@ -706,48 +699,47 @@ procedure comparereal (left, right: real; var result: boolean; op: operator);
       eqlit: result := left = right;
       neqlit: result := left <> right;
       end;
-   end
-  end {comparereal} ;
+    end
+end;
 {>>>}
 {<<<}
 procedure uscompareint (left, right: unsignedint; var result: boolean; op: operator);
- { Fold the compare of a pair of unsigned integer operands. }
+{ Fold the compare of a pair of unsigned integer operands. }
 
-
-  begin
-    { NOTE: it seems at first glance that we should take into
-    account whether the other operand is signed and compensate
-    However if this were done at runtime the code generator
-    would generate an unsigned compare which would give different
-    results than what we would do here. For consistency give the
-    runtime result here. E.G.  -1 < x::0..maxusint-1 but a
-    runtime this would be false since -1 = maxusint and we do
-    a simple unsigned compare.
-    }
-    case op of
-      lsslit: result := left < right;
-      leqlit: result := left <= right;
-      gtrlit: result := left > right;
-      geqlit: result := left >= right;
-      eqlit: result := left = right;
-      neqlit: result := left <> right;
-      end;
-  end; {uscompareint}
+begin
+  { NOTE: it seems at first glance that we should take into
+  account whether the other operand is signed and compensate
+  However if this were done at runtime the code generator
+  would generate an unsigned compare which would give different
+  results than what we would do here. For consistency give the
+  runtime result here. E.G.  -1 < x::0..maxusint-1 but a
+  runtime this would be false since -1 = maxusint and we do
+  a simple unsigned compare.
+  }
+  case op of
+    lsslit: result := left < right;
+    leqlit: result := left <= right;
+    gtrlit: result := left > right;
+    geqlit: result := left >= right;
+    eqlit: result := left = right;
+    neqlit: result := left <> right;
+    end;
+end;
 {>>>}
 {<<<}
 procedure compareint (left, right: integer; var result: boolean; op: operator);
 { Fold the compare of a pair of unsigned integer operands. }
 
-  begin
-    case op of
-      lsslit: result := left < right;
-      leqlit: result := left <= right;
-      gtrlit: result := left > right;
-      geqlit: result := left >= right;
-      eqlit: result := left = right;
-      neqlit: result := left <> right;
-      end;
-  end; {compareint}
+begin
+  case op of
+    lsslit: result := left < right;
+    leqlit: result := left <= right;
+    gtrlit: result := left > right;
+    geqlit: result := left >= right;
+    eqlit: result := left = right;
+    neqlit: result := left <> right;
+    end;
+end;
 {>>>}
 {>>>}
 {<<<  utils}
@@ -1977,75 +1969,75 @@ end;
 {<<<}
 procedure dumpform (f: entryptr; id: tableIndex; level: levelindex);
 
-  var
-    p: entryptr;
+var
+  p: entryptr;
 
-  begin {dumpform}
-    with f^ do
-      if dbgsymbol > 0 then
-        begin
-        seek (sharedPtr^.debugfile, dbgsymbol);
-        sharedPtr^.debugfile^.kind := formdesc;
-        sharedPtr^.debugfile^.packedflag := packedflag;
-        sharedPtr^.debugfile^.bitaddress := bitaddress;
-        sharedPtr^.debugfile^.size := size;
-        sharedPtr^.debugfile^.typ := typ;
-        case typ of
-          scalars:
-            begin
-            sharedPtr^.debugfile^.lastord := lastord;
-            sharedPtr^.debugfile^.firstscalar := 0;
-            end;
-          subranges:
-            begin
-            sharedPtr^.debugfile^.lowerord := lowerord;
-            sharedPtr^.debugfile^.upperord := upperord;
-            sharedPtr^.debugfile^.extended := extendedrange;
-            p := ref(bigtable[parenttype]);
-            sharedPtr^.debugfile^.parenttype := p^.dbgsymbol;
-            end;
-          fields:
-            begin
-            sharedPtr^.debugfile^.fieldid := fieldid;
-            sharedPtr^.debugfile^.fieldlevel := level;
-            { new....... speed up pdb }
-            sharedPtr^.debugfile^.firstfield := 0;
-            sharedPtr^.debugfile^.lastfield := 0;
-            p := ref(bigtable[f^.firstfield]);
-            { modify the first field name to help pdb }
-            if not p^.form and (p^.namekind = fieldname) then
-              p^.sparelink := id;
-            end;
-          strings, arrays, conformantarrays:
-            begin
-            sharedPtr^.debugfile^.elementsize := elementsize;
-            p := ref(bigtable[indextype]);
-            sharedPtr^.debugfile^.indextype := p^.dbgsymbol;
-            p := ref(bigtable[elementtype]);
-            sharedPtr^.debugfile^.elementtype := p^.dbgsymbol;
-            end;
-          sets:
-            begin
-            p := ref(bigtable[basetype]);
-            sharedPtr^.debugfile^.basetype := p^.dbgsymbol;
-            end;
-          files:
-            begin
-            p := ref(bigtable[filebasetype]);
-            sharedPtr^.debugfile^.filebasetype := p^.dbgsymbol;
-            end;
-          ptrs:
-            if ptrtypename <> 0 then
-              begin
-              p := ref(bigtable[ptrtypename]);
-              p := ref(bigtable[p^.typeindex]);
-              sharedPtr^.debugfile^.ptrtype := p^.dbgsymbol
-              end;
-          otherwise;
+begin
+  with f^ do
+    if dbgsymbol > 0 then
+      begin
+      seek (sharedPtr^.debugfile, dbgsymbol);
+      sharedPtr^.debugfile^.kind := formdesc;
+      sharedPtr^.debugfile^.packedflag := packedflag;
+      sharedPtr^.debugfile^.bitaddress := bitaddress;
+      sharedPtr^.debugfile^.size := size;
+      sharedPtr^.debugfile^.typ := typ;
+      case typ of
+        scalars:
+          begin
+          sharedPtr^.debugfile^.lastord := lastord;
+          sharedPtr^.debugfile^.firstscalar := 0;
           end;
-        put(sharedPtr^.debugfile);
+        subranges:
+          begin
+          sharedPtr^.debugfile^.lowerord := lowerord;
+          sharedPtr^.debugfile^.upperord := upperord;
+          sharedPtr^.debugfile^.extended := extendedrange;
+          p := ref(bigtable[parenttype]);
+          sharedPtr^.debugfile^.parenttype := p^.dbgsymbol;
+          end;
+        fields:
+          begin
+          sharedPtr^.debugfile^.fieldid := fieldid;
+          sharedPtr^.debugfile^.fieldlevel := level;
+          { new....... speed up pdb }
+          sharedPtr^.debugfile^.firstfield := 0;
+          sharedPtr^.debugfile^.lastfield := 0;
+          p := ref(bigtable[f^.firstfield]);
+          { modify the first field name to help pdb }
+          if not p^.form and (p^.namekind = fieldname) then
+            p^.sparelink := id;
+          end;
+        strings, arrays, conformantarrays:
+          begin
+          sharedPtr^.debugfile^.elementsize := elementsize;
+          p := ref(bigtable[indextype]);
+          sharedPtr^.debugfile^.indextype := p^.dbgsymbol;
+          p := ref(bigtable[elementtype]);
+          sharedPtr^.debugfile^.elementtype := p^.dbgsymbol;
+          end;
+        sets:
+          begin
+          p := ref(bigtable[basetype]);
+          sharedPtr^.debugfile^.basetype := p^.dbgsymbol;
+          end;
+        files:
+          begin
+          p := ref(bigtable[filebasetype]);
+          sharedPtr^.debugfile^.filebasetype := p^.dbgsymbol;
+          end;
+        ptrs:
+          if ptrtypename <> 0 then
+            begin
+            p := ref(bigtable[ptrtypename]);
+            p := ref(bigtable[p^.typeindex]);
+            sharedPtr^.debugfile^.ptrtype := p^.dbgsymbol
+            end;
+        otherwise;
         end;
-  end {dumpform} ;
+      put(sharedPtr^.debugfile);
+      end;
+end;
 {>>>}
 {<<<}
 procedure dumpname (p: entryptr; level: levelindex; idno: integer);
@@ -2198,18 +2190,17 @@ end;
 {<<<}
 procedure dumpsymboltable {level: levelindex; (level of block to dump) regok:
                            boolean (ok to allocate global reg variables)} ;
-
 { PDB only
-Dump the symbol table entries for this block to the debug file.
-First all forms are dumped, followed by the name table for the
-block. The first name entry is the block name, then
-parameters, then other names
+  Dump the symbol table entries for this block to the debug file.
+  First all forms are dumped, followed by the name table for the
+  block. The first name entry is the block name, then
+  parameters, then other names
 }
-  var
-    i: tableIndex; {for stepping through symbol table}
-    p: entryptr; {for pointing to what we step on}
-    t: integer; {for tracking this block's name definition}
-    firstfieldname: targetint; {debugrecord containing first field name}
+var
+  i: tableIndex; {for stepping through symbol table}
+  p: entryptr; {for pointing to what we step on}
+  t: integer; {for tracking this block's name definition}
+  firstfieldname: targetint; {debugrecord containing first field name}
 
 begin
   with display[level] do
@@ -2302,40 +2293,37 @@ procedure dbg_alloc {index: integer; (index into debugfile) new_alloc:
                      allockind; (new allocation of var) new_offset:
                      addressrange (new register number)} ;
 { Called by improve to dump register allocation info into the debugfile.
-  Hidden in a language-depended routine to keep improve sharable between C, Modula-2 and Pascal }
-
-begin {dbg_alloc}
+  Hidden in a language-depended routine to keep improve sharable between C, Modula-2 and Pascal 
+}
+begin
   seek (sharedPtr^.debugfile, index);
   sharedPtr^.debugfile^.varalloc := new_alloc;
   sharedPtr^.debugfile^.offset := new_offset;
-  put(sharedPtr^.debugfile);
+  put (sharedPtr^.debugfile);
 end;
 {>>>}
 {<<<}
 procedure dbg_regs {(index: m_symbolindex; {procedure name to be updated}
                    {var reg: array[lo..hi: integer] of boolean;
                    {var pc_index: integer) {map file index for pc} ;
-
 { Modify the symbol file to reflect the actual register usage for a procedure.
   Used by code after register usage is known.  pc_index, if non-zero, is
-  the location in the map file to place the function starting pc. }
+  the location in the map file to place the function starting pc. 
+}
 var
   i: integer;
 
-
-begin { dbg_regs }
+begin
   seek(sharedPtr^.debugfile, index + 2); {get procdescm}
   { NOTE: Left unspecified.  Choice must be made to either map to existing
     debugfile format or to change.  If change is the answer it might be
     wise to preserve the old debug format for those systems where PDB is
-    still in use, rather than burning bridges to the past arbitrarily.
-  }
-
+    still in use, rather than burning bridges to the past arbitrarily }
   pc_index := 0; { We don't want the caller to touch the map file, yet}
   writeln('dbg_regs not yet implemented for P2 ODB interface');
 
   put(sharedPtr^.debugfile);
-end {dbg_regs} ;
+end;
 {>>>}
 
 {<<<}
@@ -13013,7 +13001,7 @@ begin
   for i := firstparam to lastparam do
     begin
     p := ref(bigtable[i]);
-    if not p^.form and (p^.name <> deadscope) then 
+    if not p^.form and (p^.name <> deadscope) then
       p^.name := n;
     end;
 end;
@@ -13609,7 +13597,7 @@ begin
           end
           {>>>}
         else
-          {<<<  external, nonpascal, fortran, interrupt }
+          {<<<  external, nonpascal, fortran, interrupt}
           begin
           if forwardbody then
             warn(dupforward);

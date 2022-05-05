@@ -653,14 +653,13 @@ type
                  end;
   {>>>}
 
-  filerememberptr = ^fileremember;
+  fileRememberPtr = ^fileRemember;
   {<<<}
   { one fileremember is built for each input file, in order of opening }
-  fileremember =
-    packed record
-      next: filerememberptr; {link to next}
-      offset: stringtableindex; {offset in stringtable of the file name}
-    end {fileremember} ;
+  fileRemember = packed record
+                   next: fileRememberPtr; { link to next }
+                   offset: stringtableindex; { offset in stringtable of the file name }
+                 end;
   {>>>}
 
   extension = packed array [1..maxextension] of char; {default extension}
@@ -996,13 +995,14 @@ type
     currentswitch: switchindex; {last switch entry activated in current pass}
 
     { source file }
-    sourcelevel: 0..sourcedepth; {current source include level}
-    source: array [1..sourcedepth] of text; {files for including source}
-    sourceListHead: FilenameListPtr; {list of input filenames}
-    filerememberlist: filerememberptr; {input file name list head}
+    sourcelevel: 0..sourcedepth;            { current source include level }
+    source: array [1..sourcedepth] of text; { files for including source }
+    sourceListHead: FilenameListPtr;        { list of input filenames }
 
-    filename_length: FilenameIndex; {length of name in filename buffer}
-    filename: FilenameBuf; {temp file name}
+    fileRememberList: fileRememberPtr; { input file name list head }
+
+    filename_length: FilenameIndex; { length of name in filename buffer }
+    filename: FilenameBuf;          { temp file name }
 
     { these are global to all due to overlay considerations}
     curfile: integer; {number of current source file}
