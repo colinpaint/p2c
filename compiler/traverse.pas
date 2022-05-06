@@ -1166,471 +1166,411 @@ procedure compareint (left, right: integer; var result: boolean; op: operator);
   end; {compareint}
 {>>>}
 {>>>}
+
 {<<<  walk utils}
 {<<<}
 function getlabel (blk: basicblockptr): labelrange;
-{
-    Purpose:
-      return the blocklabel of basic block pointed to by blk.
-
-    Inputs:
-      blk : pointer to block we want label of
-
-    Outputs:
-      getlabel : the label of the block.
-
-    Algorithm:
-      If jumping to a block that is empty, then search successor lists
-      until reaching final destination, then if the block has a blocklabel
-      assigned the return it else assign a new label and return it.
-
-    Sideeffects:
-      basic block is modified.
-
-    Last Modified: 1/21/86
-
+{ return the blocklabel of basic block pointed to by blk.
+  If jumping to a block that is empty, then search successor lists
+  until reaching final destination, then if the block has a blocklabel
+  assigned the return it else assign a new label and return it.
 }
+begin
+  { get the final destination of the jump }
+  while not blk^.forcelabel and (blk^.beginstmt = 0) and (blk^.successor <> nil) do
+    blk := blk^.successor^.suc;
 
-
-  begin {getlabel}
-    { get the final destination of the jump }
-
-    while not blk^.forcelabel and (blk^.beginstmt = 0) and
-          (blk^.successor <> nil) do
-      blk := blk^.successor^.suc;
-    with blk^ do
-      begin
-      if blocklabel = 0 then blocklabel := newlabel;
-      getlabel := blocklabel;
-      end;
-  end {getlabel} ;
+  with blk^ do
+    begin
+    if blocklabel = 0 then
+      blocklabel := newlabel;
+    getlabel := blocklabel;
+    end;
+end;
 {>>>}
 {<<<}
 function exitlabel (blk: basicblockptr): labelrange;
-{
-    Purpose:
-      return the blocklabel of basic block pointed to by blk.
+{ return the blocklabel of basic block pointed to by blk.
+  NOTE: Used only by for statements because of the "free" labeling done
+  by genblk. In genblk fortop labels controlled block for free and
+  forbottom labels itself for free, because of this we can't jump
+  to final destination without screwing up block labels.  Otherwise
+  blocks can be labelled twice or labels never generated.
+  If genblk were changed to label code only on "label" pseudoops
+  the world would be a better place.
 
-    Inputs:
-      blk : pointer to block we want label of
-
-    Outputs:
-      exitlabel : the label of the block.
-
-    Algorithm:
-      NOTE: Used only by for statements because of the "free" labeling done
-      by genblk. In genblk fortop labels controlled block for free and
-      forbottom labels itself for free, because of this we can't jump
-      to final destination without screwing up block labels.  Otherwise
-      blocks can be labelled twice or labels never generated.
-      If genblk were changed to label code only on "label" pseudoops
-      the world would be a better place.
-
-      If the block has a blocklabel assigned the return it else
-      assign a new label and return that.
-
-    Sideeffects:
-      basic block is modified.
-
-    Last Modified: 1/21/86
-
+  If the block has a blocklabel assigned the return it else
+  assign a new label and return that.
 }
 
-
-  begin {exitlabel}
-    if blk = nil then exitlabel := 0
-    else
-      with blk^ do
-        begin
-        if blocklabel = 0 then blocklabel := newlabel;
-        exitlabel := blocklabel;
-        end;
-  end {exitlabel} ;
+begin
+  if blk = nil then
+    exitlabel := 0
+  else
+    with blk^ do
+      begin
+      if blocklabel = 0 then
+        blocklabel := newlabel;
+      exitlabel := blocklabel;
+      end;
+end;
 {>>>}
 
 {<<<}
 procedure clearkeys;
-
-{ Clear all reusable keys.  A key is reusable when it has a reference
-  count of zero, and all keys greater than it are reusable.  This allows
+{ count of zero, and all keys greater than it are reusable.  This allows
   the code generator to keep track of useful keys with a simple pointer
   to the key for the last pseudocode read.
 }
+var
+  done: boolean; {true when no more keys reusable}
+  ptr: nodeptr; {used for access to key nodes}
 
-  var
-    done: boolean; {true when no more keys reusable}
-    ptr: nodeptr; {used for access to key nodes}
-
-
-  begin
-    if oktoclear then
-      with context[contextsp] do
+begin
+  if oktoclear then
+    with context[contextsp] do
+      begin
+      done := high < low;
+      while not done do
         begin
-        done := high < low;
-        while not done do
-          begin
-          ptr := ref(bignodetable[keytable[high]]);
-          if (keytable[high] = 0) or (ptr^.refcount = 0) then high := high - 1
-          else done := true;
-          done := done or (high < low);
-          end;
+        ptr := ref(bignodetable[keytable[high]]);
+        if (keytable[high] = 0) or (ptr^.refcount = 0) then high := high - 1
+        else done := true;
+        done := done or (high < low);
         end;
-  end {clearkeys} ;
+      end;
+end;
 {>>>}
 
 {<<<}
 procedure definelabel (l: labelrange {label to define} );
-
 { Generate pseudocode to define a label with number "l".  The label
   will refer to the next pseudocode generated.
 }
-
-
-  begin
-    genpseudo(pseudolabel, 0, 0, 0, 0, l, 0, 0);
-  end {definelabel} ;
+begin
+  genpseudo (pseudolabel, 0, 0, 0, 0, l, 0, 0);
+end;
 {>>>}
 {<<<}
 procedure definesavelabel (l: labelrange {label to define} );
-
 { Begin a new context level, and emit pseudocode which both defines a
   label and informs the code generator that a new context level is
   being entered.  This is the code generator analog of "savecontext",
   and handles context overflow by emitting a pseudolabel rather
   than savelabel to prevent overflow in the code generator.
 }
+begin
+  clearkeys;
 
-
-  begin
-    clearkeys;
-    if contextsp = contextdepth then
+  if contextsp = contextdepth then
+    begin
+    overflowdepth := overflowdepth + 1;
+    definelabel (l);
+    end
+  else
+    begin
+    genpseudo (savelabel, 0, 0, 0, 0, l, 0, 0);
+    contextsp := contextsp + 1;
+    with context[contextsp] do
       begin
-      overflowdepth := overflowdepth + 1;
-      definelabel(l);
-      end
-    else
-      begin
-      genpseudo(savelabel, 0, 0, 0, 0, l, 0, 0);
-      contextsp := contextsp + 1;
-      with context[contextsp] do
-        begin
-        high := context[contextsp - 1].high;
-        low := high + 1;
-        origlow := low;
-        end;
+      high := context[contextsp - 1].high;
+      low := high + 1;
+      origlow := low;
       end;
-  end {definesavelabel} ;
+    end;
+end;
 {>>>}
 {<<<}
 procedure definerestorelabel (l: labelrange {label to define} );
-
 { End a context level, restoring prior keys, and emit pseudocode which
   both defines a label and informs the code generator to restore a
   previously saved context.  If we are in a context overlow situation,
   a pseudolabel operator is emitted and no context operation performed.
 }
+begin
+  {The following is a dead code elimination kludge}
+  {please explain. }
+  if overflowdepth <= 0 then
+    with context[contextsp] do
+      low := origlow;
 
-
-  begin
-    {The following is a dead code elimination kludge}
-    {please explain. }
-    if overflowdepth <= 0 then
-      with context[contextsp] do low := origlow;
-    clearkeys;
-    if overflowdepth > 0 then
-      begin
-      overflowdepth := overflowdepth - 1;
-      definelabel(l);
-      end
-    else
-      begin
-      genpseudo(restorelabel, 0, 0, 0, 0, l, 0, 0);
-      contextsp := contextsp - 1;
-      end;
-  end {definerestorelabel} ;
+  clearkeys;
+  if overflowdepth > 0 then
+    begin
+    overflowdepth := overflowdepth - 1;
+    definelabel (l);
+    end
+  else
+    begin
+    genpseudo (restorelabel, 0, 0, 0, 0, l, 0, 0);
+    contextsp := contextsp - 1;
+    end;
+end;
 {>>>}
 {<<<}
 procedure defineclearlabel (l: labelrange {label to define} );
-
 { Emit pseudocode which both defines a label and informs the code generator
   that all keys in the current context are invalid and should be cleared.
 }
-
-
-  begin
-    genpseudo(clearlabel, 0, 0, 0, 0, l, 0, 0);
-    clearkeys;
-  end {defineclearlabel} ;
+begin
+  genpseudo (clearlabel, 0, 0, 0, 0, l, 0, 0);
+  clearkeys;
+end;
 {>>>}
 {<<<}
 procedure definejoinlabel (l: labelrange {label to define} );
-
 { Emit pseudocode which both defines a label and informs the code generator
   that contexts just joined, and keys should be updated accordingly.
 }
-
-
-  begin
-    genpseudo(joinlabel, 0, 0, 0, 0, l, 0, 0);
-    clearkeys;
-  end {joinlabel} ;
+begin
+  genpseudo (joinlabel, 0, 0, 0, 0, l, 0, 0);
+  clearkeys;
+end;
 {>>>}
 
-{ Actual tree walking procedures }
-procedure walknode (root: nodeindex; var key: keyindex; targetkey: keyindex; counting: boolean); forward;
-procedure walkboolean (root: nodeindex; var key: keyindex; tlabel: labelrange; flabel: labelrange); forward;}
-procedure walkvalue (root: nodeindex; var key: keyindex; targetkey: keyindex); forward;}
-
 {<<<}
-procedure shortvisit (root: nodeindex; {tree to visit}
-                     inpushaddr: boolean {true sez part of a pshaddr} );
+function newkey : keyindex;
+{ Return the next highest key.  If none available, give panic error and stop compilation }
 
+begin
+  if context[contextsp].high = keysize then
+    abort (manykeys)
+  else
+    newkey := context[contextsp].high + 1;
+end;
+{>>>}
+{<<<}
+function targetpresent (p: nodeindex {node to check} ): boolean;
+{ True if the target node is used in the expression represented by "p".
+  This simply checks "p" and its operands (or class representative for
+  a copy operation) for the target flag.
+}
+var
+  cnt: 0..3; {induction var for checking operands}
+  found: boolean; {set if target found}
+  ptr: nodeptr; {used to access nodes}
+
+begin
+  found := false;
+
+  ptr := ref(bignodetable[p]) ;
+  if ptr^.action = recopy then
+    found := targetpresent (ptr^.oldlink)
+  else
+    begin
+    found := ptr^.target;
+    cnt := 0;
+    while (cnt < 3) and not found do
+      begin
+      cnt := cnt + 1;
+      if ptr^.nodeoprnd[cnt] then
+        found := targetpresent (ptr^.oprnds[cnt]);
+      end;
+
+    if not found and (ptr^.op < intop) and (ptr^.slink <> 0) then
+      found := targetpresent (ptr^.slink);
+    end;
+
+  targetpresent := found;
+end;
+{>>>}
+
+procedure walknode (root: nodeindex; var key: keyindex; targetkey: keyindex; counting: boolean); forward;
+{<<<}
+procedure shortvisit (root: nodeindex; inpushaddr: boolean);
 { This procedure visits all nodes in the tree rooted in "root" and
   generates pseudocode for those nodes with ref count > 1.  This is
   used for components of a short-circuit expression to make sure
   that all common subexpressions which are used later get generated
-  no matter what portion of the expression is actually executed at
-  runtime.
+  no matter what portion of the expression is actually executed at runtime.
 }
+var
+  j: 1..3; {induction for operand scan}
+  k: keyindex; {dummy argument to walknode}
+  ptr: nodeptr; {used for access to root node}
+  op: operator; {operator for this node}
+  oprndptr: nodeptr; {used for access one level down}
+  newroot: nodeindex; {used in rem/quo hack}
 
-  var
-    j: 1..3; {induction for operand scan}
-    k: keyindex; {dummy argument to walknode}
-    ptr: nodeptr; {used for access to root node}
-    op: operator; {operator for this node}
-    oprndptr: nodeptr; {used for access one level down}
-    newroot: nodeindex; {used in rem/quo hack}
-
-
-  begin
-    ptr := ref(bignodetable[root]);
-    newroot := root;
-    op := ptr^.op;
-    if ptr^.action = visit then
+begin
+  ptr := ref(bignodetable[root]);
+  newroot := root;
+  op := ptr^.op;
+  if ptr^.action = visit then
+    begin
+    if (op in [quoop, remop]) and (ptr^.refcount = 1) then
       begin
-      if (op in [quoop, remop]) and (ptr^.refcount = 1) then
-        begin
-        newroot := ptr^.oprnds[1];
-        ptr := ref(bignodetable[ptr^.oprnds[1]]);
-        end;
-      if not ptr^.local and ((ptr^.refcount > 1) or (ptr^.op = mulop) and
-         (ptr^.form = ints) or
-         (op in
-         [pushcvalue, divop, quoop, remop, paindxop, chrstrop, arraystrop, commaop]) or
-         sharedPtr^.switcheverplus[largemodel] and ((ptr^.op = filebufindrop) or
-         (ptr^.op = indrop))) then
-        walknode(root, k, 0, false)
-      else
-        begin
-        inpushaddr := inpushaddr or (op = pushaddr) or (op = pushstraddr);
-        if inpushaddr then
-          for j := 1 to 3 do
-            if ptr^.nodeoprnd[j] then
-              begin
-              oprndptr := ref(bignodetable[ptr^.oprnds[j]]);
-              if (oprndptr^.op in
-                 [originop, call, callparam, unscall, unscallparam]) or
-                 (oprndptr^.form in [sets, strings]) then
-                begin
-                walknode(ptr^.oprnds[j], k, 0, false);
-                ptr := ref(bignodetable[newroot]);
-                end;
-              end;
+      newroot := ptr^.oprnds[1];
+      ptr := ref(bignodetable[ptr^.oprnds[1]]);
+      end;
+
+    if not ptr^.local and ((ptr^.refcount > 1) or (ptr^.op = mulop) and
+       (ptr^.form = ints) or
+       (op in [pushcvalue, divop, quoop, remop, paindxop, chrstrop, arraystrop, commaop]) or
+       sharedPtr^.switcheverplus[largemodel] and ((ptr^.op = filebufindrop) or
+       (ptr^.op = indrop))) then
+      walknode (root, k, 0, false)
+
+    else
+      begin
+      inpushaddr := inpushaddr or (op = pushaddr) or (op = pushstraddr);
+      if inpushaddr then
         for j := 1 to 3 do
           if ptr^.nodeoprnd[j] then
             begin
-            shortvisit(ptr^.oprnds[j], inpushaddr);
-            ptr := ref(bignodetable[newroot]);
+            oprndptr := ref(bignodetable[ptr^.oprnds[j]]);
+            if (oprndptr^.op in [originop, call, callparam, unscall, unscallparam]) or
+               (oprndptr^.form in [sets, strings]) then
+              begin
+              walknode(ptr^.oprnds[j], k, 0, false);
+              ptr := ref(bignodetable[newroot]);
+              end;
             end;
-        if (ptr^.op < intop) and (ptr^.slink <> 0) then
-          shortvisit(ptr^.slink, false);
-        end;
+
+      for j := 1 to 3 do
+        if ptr^.nodeoprnd[j] then
+          begin
+          shortvisit (ptr^.oprnds[j], inpushaddr);
+          ptr := ref(bignodetable[newroot]);
+          end;
+
+      if (ptr^.op < intop) and (ptr^.slink <> 0) then
+        shortvisit (ptr^.slink, false);
       end;
-  end {shortvisit} ;
+    end;
+end;
 {>>>}
 {<<<}
-procedure unnestsets (root: nodeindex {tree to visit} );
-
+procedure unnestsets (root: nodeindex);
 { This procedure visits all nodes in the tree rooted in "root" and
   generates pseudocode for any bldset nodes. This is done so that the
   code generator doesn't have to keep track of nested set targets.
   In the rare (!) case that a set element involves another set, we
   walk the nested set here.  Called only by bldsetnode.
 }
+var
+  j: 1..3; {induction for operand scan}
+  k: keyindex; {dummy argument to walknode}
+  ptr: nodeptr; {used for access to root node}
 
-  var
-    j: 1..3; {induction for operand scan}
-    k: keyindex; {dummy argument to walknode}
-    ptr: nodeptr; {used for access to root node}
-
-
-  begin {unnestsets}
-    ptr := ref(bignodetable[root]);
-    if ptr^.action = visit then
-      if ptr^.op = bldset then walknode(root, k, 0, false)
-      else
-        begin
-        for j := 1 to 3 do
-          if ptr^.nodeoprnd[j] then
-            begin
-            unnestsets(ptr^.oprnds[j]);
-            ptr := ref(bignodetable[root]) ;
-            end;
-        if (ptr^.op < intop) and (ptr^.slink <> 0) then unnestsets(ptr^.slink);
-        end;
-  end {unnestsets} ;
-{>>>}
-{<<<}
-function targetpresent (p: nodeindex {node to check} ): boolean;
-
-{ True if the target node is used in the expression represented by "p".
-  This simply checks "p" and its operands (or class representative for
-  a copy operation) for the target flag.
-}
-
-  var
-    cnt: 0..3; {induction var for checking operands}
-    found: boolean; {set if target found}
-    ptr: nodeptr; {used to access nodes}
-
-
-  begin
-    found := false;
-    ptr := ref(bignodetable[p]) ;
-    if ptr^.action = recopy then found := targetpresent(ptr^.oldlink)
+begin
+  ptr := ref(bignodetable[root]);
+  if ptr^.action = visit then
+    if ptr^.op = bldset then
+      walknode (root, k, 0, false)
     else
       begin
-      found := ptr^.target;
-      cnt := 0;
-      while (cnt < 3) and not found do
-        begin
-        cnt := cnt + 1;
-        if ptr^.nodeoprnd[cnt] then
+      for j := 1 to 3 do
+        if ptr^.nodeoprnd[j] then
           begin
-          found := targetpresent(ptr^.oprnds[cnt]);
+          unnestsets (ptr^.oprnds[j]);
+          ptr := ref(bignodetable[root]) ;
           end;
-        end;
-      if not found and (ptr^.op < intop) and (ptr^.slink <> 0) then
-        found := targetpresent(ptr^.slink);
+
+      if (ptr^.op < intop) and (ptr^.slink <> 0) then
+        unnestsets (ptr^.slink);
       end;
-    targetpresent := found;
-  end {targetpresent} ;
-{>>>}
-{<<<}
-function newkey : keyindex;
-
-{ Return the next highest key.  If none available, give panic error
-  and stop compilation.
-}
-
-
-  begin
-    if context[contextsp].high = keysize then abort(manykeys)
-    else newkey := context[contextsp].high + 1;
-  end {newkey} ;
-{>>>}
-
+end;
 {>>>}
 
 {<<<}
-procedure walkboolean
-                       {root: nodeindex; (root of tree to walk)
-                        var key: keyindex; (resulting key)
-                        tlabel: labelrange; (lab for true result)
-                        flabel: labelrange; (lab for false result)} ;
-
+procedure walkboolean (root: nodeindex; var key: keyindex; tlabel: labelrange; flabel: labelrange);
 { Do a shortcircuit evaluation of a boolean expression using "tlabel"
   and "flabel" as truelabel and falselabel.
 }
+begin
+  inverted := false;
+  trueused := false;
+  falseused := false;
+  truelabel := tlabel;
+  falselabel := flabel;
 
+  shortvisit (root, false);
+  genpseudo (saveactkeys, 0, 0, 0, 0, 0, 0, 0);
+  walknode (root, key, 0, true);
 
-  begin
-    inverted := false;
-    trueused := false;
-    falseused := false;
-    truelabel := tlabel;
-    falselabel := flabel;
-    shortvisit(root, false);
-    genpseudo(saveactkeys, 0, 0, 0, 0, 0, 0, 0);
-    walknode(root, key, 0, true);
-    if inverted then genpseudo(jumpt, 0, 0, 0, 0, flabel, key, 0)
-    else genpseudo(jumpf, 0, 0, 0, 0, flabel, key, 0);
-    falseused := true;
-  end {walkboolean} ;
+  if inverted then
+    genpseudo (jumpt, 0, 0, 0, 0, flabel, key, 0)
+  else
+    genpseudo (jumpf, 0, 0, 0, 0, flabel, key, 0);
+
+  falseused := true;
+end;
 {>>>}
 {<<<}
-procedure walkvalue;
-
+procedure walkvalue (root: nodeindex; var key: keyindex; targetkey: keyindex);
 { Walk an expression, returning a value.  If the result is a boolean
-  relation, the shortcircuit boolean evaluation is converted into a
-  value on the stack.
+  relation, the shortcircuit boolean evaluation is converted into a value on the stack.
 }
+var
+  rootp: nodeptr; {used to access root node}
+
+  {<<<}
+  procedure convertrelation;
+  { Convert relational expression to a value.  Note: booleans are assumed to be one unit long here }
 
   var
-    rootp: nodeptr; {used to access root node}
+    oldinv: boolean; {local save for "inverted"}
+    oldt, oldf: labelrange; {local saves for "truelabel", "falselabel"}
+    oldtused, oldfused: boolean; {local saves for "trueused", "falseused"}
+    tlabel, flabel: labelrange; {new labels for converting to value}
+    k, k1: keyindex; {new key for false portion of value}
+    oldclearok: boolean; {old value of oktoclear}
+    valsize: addressrange; {the size of the value, different for diff. lang}
 
+  begin
+    oldclearok := oktoclear;
+    oktoclear := false;
+    oldinv := inverted;
+    oldt := truelabel;
+    oldf := falselabel;
+    oldtused := trueused;
+    oldfused := falseused;
+    valsize := unitsize;
+    tlabel := newlabel;
+    flabel := newlabel;
 
-  procedure convertrelation;
+    if (targetkey <> 0) and targetpresent (root) then
+      targetkey := 0;
+    k := newkey;
 
-{ Convert relational expression to a value.  Note: booleans are
-  assumed to be one unit long here.
-}
+    context[contextsp].high := k;
+    keytable[k] := 0;
+    genpseudo (createfalse, valsize, k, 1, 0, 0, 0, targetkey);
+    walkboolean (root, k1, tlabel, flabel);
 
-    var
-      oldinv: boolean; {local save for "inverted"}
-      oldt, oldf: labelrange; {local saves for "truelabel", "falselabel"}
-      oldtused, oldfused: boolean; {local saves for "trueused", "falseused"}
-      tlabel, flabel: labelrange; {new labels for converting to value}
-      k, k1: keyindex; {new key for false portion of value}
-      oldclearok: boolean; {old value of oktoclear}
-      valsize: addressrange; {the size of the value, different for diff. lang}
+    if trueused then
+      definelabel (tlabel);
 
+    key := newkey;
+    context[contextsp].high := key;
 
-    begin {convertrelation}
-      oldclearok := oktoclear;
-      oktoclear := false;
-      oldinv := inverted;
-      oldt := truelabel;
-      oldf := falselabel;
-      oldtused := trueused;
-      oldfused := falseused;
-      valsize := unitsize;
-      tlabel := newlabel;
-      flabel := newlabel;
-      if (targetkey <> 0) and targetpresent(root) then targetkey := 0;
-      k := newkey;
-      context[contextsp].high := k;
-      keytable[k] := 0;
-      genpseudo(createfalse, valsize, k, 1, 0, 0, 0, targetkey);
-      walkboolean(root, k1, tlabel, flabel);
-      if trueused then definelabel(tlabel);
-      key := newkey;
-      context[contextsp].high := key;
-      keytable[key] := root;
-      if keytable[k1] = root then keytable[k1] := 0; { use value, not relation,
-                                                       in future }
-      genpseudo(createtrue, valsize, key, 1, 0, k, 0, 0);
-      definelabel(flabel);
-      inverted := oldinv;
-      truelabel := oldt;
-      falselabel := oldf;
-      trueused := oldtused;
-      falseused := oldfused;
-      oktoclear := oldclearok;
-    end {convertrelation} ;
+    keytable[key] := root;
+    if keytable[k1] = root then
+      keytable[k1] := 0; { use value, not relation, in future }
 
+    genpseudo (createtrue, valsize, key, 1, 0, k, 0, 0);
+    definelabel (flabel);
 
-  begin {walkvalue}
-    rootp := ref(bignodetable[root]);
-    if rootp^.relation then convertrelation
-    else walknode(root, key, targetkey, true);
-  end {walkvalue} ;
+    inverted := oldinv;
+    truelabel := oldt;
+    falselabel := oldf;
+    trueused := oldtused;
+    falseused := oldfused;
+    oktoclear := oldclearok;
+  end;
+  {>>>}
+
+begin
+  rootp := ref(bignodetable[root]);
+  if rootp^.relation then
+    convertrelation
+  else
+    walknode (root, key, targetkey, true);
+end;
 {>>>}
 {<<<}
-procedure walknode {root: nodeindex; (root of tree to walk)
-                    var key: keyindex; (resulting key)
-                    targetkey: keyindex; (target (0 if none))
-                    counting: boolean (decr ref counts)} ;
+procedure walknode (root: nodeindex; var key: keyindex; targetkey: keyindex; counting: boolean);
 {<<<}
 { Walk the expression tree rooted in "root", generating code as needed.
   The key for the root node is returned in "key".  "targetkey" is
@@ -1745,33 +1685,37 @@ var
       first node, since it will not be able to make use of it.  Only the
       final calculation in an expression can change the target.
     }
+    var
+      lefttarget, righttarget: nodeindex; {target to pass to left or right operand}
 
-      var
-        lefttarget, righttarget: nodeindex; {target to pass to left or right
-                                             operand}
+    begin
+      if (targetkey <> 0) and (l <> r) and targetpresent(l) then
+        righttarget := 0
+      else
+        righttarget := targetkey;
 
+      if (targetkey <> 0) and (l <> r) and targetpresent(r) then
+        lefttarget := 0
+      else
+        lefttarget := targetkey;
 
-      begin {walkboth}
-        if (targetkey <> 0) and (l <> r) and targetpresent(l) then
-          righttarget := 0
-        else righttarget := targetkey;
-        if (targetkey <> 0) and (l <> r) and targetpresent(r) then
-          lefttarget := 0
-        else lefttarget := targetkey;
-        if cost(l) >= cost(r) then
-          begin
-          walkvalue(l, lkey, lefttarget);
-          if lefttarget <> 0 then righttarget := 0;
-          walkvalue(r, rkey, righttarget);
-          end
-        else
-          begin
-          walkvalue(r, rkey, righttarget);
-          if righttarget <> 0 then lefttarget := 0;
-          walkvalue(l, lkey, lefttarget);
-          end;
-        mapkey;
-      end {walkboth} ;
+      if cost(l) >= cost(r) then
+        begin
+        walkvalue (l, lkey, lefttarget);
+        if lefttarget <> 0 then
+          righttarget := 0;
+        walkvalue (r, rkey, righttarget);
+        end
+      else
+        begin
+        walkvalue (r, rkey, righttarget);
+        if righttarget <> 0 then
+          lefttarget := 0;
+        walkvalue (l, lkey, lefttarget);
+        end;
+
+      mapkey;
+    end;
     {>>>}
     {<<<}
     { Node-specific walking routines.
@@ -3274,6 +3218,7 @@ var
 
 begin
   key := 0;
+
   while root <> 0 do
     begin
     rootp := ref(bignodetable[root]);
@@ -3291,16 +3236,21 @@ begin
     with rootp^ do
       case action of
         visit:
+          {<<<}
           begin
           action := revisit;
           visitnode
           end;
+          {>>>}
         copy:
+          {<<<}
           begin
           action := recopy;
           copynode
           end;
-        revisit, recopy: mapkey;
+          {>>>}
+        revisit, recopy:
+          mapkey;
         end;
 
     if counting then
@@ -3314,8 +3264,9 @@ begin
     end;
 end;
 {>>>}
+{>>>}
 {<<<}
-procedure walknodelist (p: nodeindex {start of node chain} );
+procedure walknodelist (p: nodeindex);
 { Walk each node in a chain linked by "prelink".  This is used to walk the
   "preconditions" of a basic block, or for initially writing the contents
   of context[1], which contains common and constant nodes.
@@ -3336,7 +3287,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure walkstmtlist (firststmt: nodeindex {start of statement list} );
+procedure walkstmtlist (firststmt: nodeindex);
 { Statement walking routines
   These routines walk the statement tree, inserting labels for control flow and walking expressions as needed.
   As the statements are walked, they are disposed of, since they don't
@@ -3344,13 +3295,13 @@ procedure walkstmtlist (firststmt: nodeindex {start of statement list} );
   Walk each statement in a list using "walkstmt", and dispose of the
   statement header afterwards.  All of the real work is done in "walkstmt".
 }
-  var
-    p: nodeptr; { for access to statement node }
-    newcontrolstmt: boolean; { used to prevent extra readaccess call }
-    s: nodeindex; { local copy of firststmt }
+var
+  p: nodeptr; { for access to statement node }
+  newcontrolstmt: boolean; { used to prevent extra readaccess call }
+  s: nodeindex; { local copy of firststmt }
 
   {<<<}
-  procedure walkstmt(stmt: nodeindex {statement to walk} );
+  procedure walkstmt (stmt: nodeindex);
   { Walk a single statement.  The actual walking is done by statement-specific
     routines which are local to this routine.  The statement routines may
     recursively call "walkstmtlist" to walk nested constructs.
@@ -4051,23 +4002,25 @@ procedure walkstmtlist (firststmt: nodeindex {start of statement list} );
   end;
   {>>>}
 
-  begin {walkstmtlist}
-    controlstmt := true;
-    branchstmt := false;
-    targetstmt := false;
-    while firststmt <> 0 do
-      begin
-      s := firststmt;
-      p := ref(bignodetable[firststmt]);
-      firststmt := p^.nextstmt;
-      if p^.stmtkind in [rpthdr, whilehdr, foruphdr, fordnhdr, cforhdr] then
-        controlstmt := true;
-      { do this now to avoid readaccess call }
-      newcontrolstmt := not (p^.stmtkind in [withhdr, simplehdr, syscallhdr]);
-      walkstmt(s);
-      controlstmt := newcontrolstmt;
-      end;
-  end {walkstmtlist} ;
+begin 
+  controlstmt := true;
+  branchstmt := false;
+  targetstmt := false;
+
+  while firststmt <> 0 do
+    begin
+    s := firststmt;
+    p := ref(bignodetable[firststmt]);
+    firststmt := p^.nextstmt;
+    if p^.stmtkind in [rpthdr, whilehdr, foruphdr, fordnhdr, cforhdr] then
+      controlstmt := true;
+
+    { do this now to avoid readaccess call }
+    newcontrolstmt := not (p^.stmtkind in [withhdr, simplehdr, syscallhdr]);
+    walkstmt (s);
+    controlstmt := newcontrolstmt;
+    end;
+end;
 {>>>}
 {<<<}
 procedure walk;
@@ -4534,59 +4487,39 @@ procedure loops;
 
 {>>>}
 
-  var
-    blk: basicblockptr; { for walking blocks }
-    ptr: nodeptr; { for access to stmt node }
-    nextblk: basicblockptr; { next block to examine }
-    anyinvars: boolean; { used for testing purposes }
+var
+  blk: basicblockptr; { for walking blocks }
+  ptr: nodeptr; { for access to stmt node }
+  nextblk: basicblockptr; { next block to examine }
+  anyinvars: boolean; { used for testing purposes }
 
-
+  {<<<}
   procedure examineloop(loopblk, bottomblk: basicblockptr);
-{
-    Purpose:
-      Examine loop for invariant expressions
+  { Examine loop for invariant expressions }
 
-    Inputs:
-      loopblk : ptr of the block describing loophdr of loop to examine.
-      bottomblk : ptr to final block in the loop.
+  var
+    p: nodeindex; { for walking hoist chains }
+    ptr, ptr2: nodeptr; { for access to nodes }
+    stmt: nodeindex; { current stmt in basic block }
+    lasthoist: nodeindex; { index of last invariant hoisted in this loop }
+    currenthoist: nodeindex; { index of current invariant from inner loop }
+    nexthoist: nodeindex; { index of next invariant from inner loop }
+    previoushoist: nodeindex; { index of previous invariant from inner loop }
+    current: basicblockptr; { basic block being examined }
+    innerloop: basicblockptr; { basic block containing an innerloop }
+    secondlevel: boolean; { true if examining expressions that have already
+                           been hoisted in some other loop }
+    finalwrite: nodeindex; { index of 1st write outside loop's writes }
+    temp: addressrange; { for building write list }
+    fixnode: nodeindex; { index of node that points to pushfinal }
+    newoprnd: nodeindex; { index of pushfinal oprnd }
+    finalexpr: nodeindex; { index of for final expression }
+    initexpr: nodeindex; { index of for index variable }
+    dominating: boolean; { true if current block dominates loopblks exit and loopblk executes }
 
-    Outputs:
-      modified graph
-
-    Algorithm:
-
-
-    Sideeffects:
-      invariants marked.
-
-    Last Modified: 9/9/85
-
-}
-
-    var
-      p: nodeindex; { for walking hoist chains }
-      ptr, ptr2: nodeptr; { for access to nodes }
-      stmt: nodeindex; { current stmt in basic block }
-      lasthoist: nodeindex; { index of last invariant hoisted in this loop }
-      currenthoist: nodeindex; { index of current invariant from inner loop }
-      nexthoist: nodeindex; { index of next invariant from inner loop }
-      previoushoist: nodeindex; { index of previous invariant from inner loop }
-      current: basicblockptr; { basic block being examined }
-      innerloop: basicblockptr; { basic block containing an innerloop }
-      secondlevel: boolean; { true if examining expressions that have already
-                             been hoisted in some other loop }
-      finalwrite: nodeindex; { index of 1st write outside loop's writes }
-      temp: addressrange; { for building write list }
-      fixnode: nodeindex; { index of node that points to pushfinal }
-      newoprnd: nodeindex; { index of pushfinal oprnd }
-      finalexpr: nodeindex; { index of for final expression }
-      initexpr: nodeindex; { index of for index variable }
-      dominating: boolean; { true if current block dominates loopblks exit and
-                            loopblk executes }
-
-
+    {<<<}
     procedure definecontext(outerblk, innerblk: basicblockptr);
-{
+    {
     Purpose:
       Find the context stack of the basicblock "innerblk".
 
@@ -4607,7 +4540,7 @@ procedure loops;
 
     Last Modified: 11/26/86
 
-}
+    }
 
       var
         overflow: shortint; { depth of context overflow }
@@ -4637,30 +4570,14 @@ procedure loops;
         until outerblk = innerblk^.dfolist;
 
       end; {definecontext}
-
-
+    {>>>}
+    {<<<}
     procedure hoistit(expr: nodeindex);
-{
-    Purpose:
-      Link expression into the precode chain of loopblk and mark all of
+    { Link expression into the precode chain of loopblk and mark all of
       the graph below it as hoisted by loopblk.
-
-    Inputs:
-      expr : expression to be hoisted.
-
-    Outputs:
-      modified graph.
-
-    Algorithm:
       If a copy is present must search the subgraph for the nodes which point
       to copies and make them point directly to the copied expression.
-
-    Sideeffects:
-      modified graph.
-
-    Last Modified: 6/27/85
-
-}
+    }
 
       var
         ptr: nodeptr; { for access to node }
@@ -4670,28 +4587,10 @@ procedure loops;
         newexpr: nodeindex; { the node to hoist if copies needed }
         sp: contextindex; { induction var }
 
-
-      procedure flood(expr: nodeindex;
-                      forceflood: boolean);
-{
-    Purpose:
-      Mark expression rooted in expr as hoisted.
-
-    Inputs:
-      expr : index of node to mark as hoisted.
-
-    Outputs:
-      modified graph
-
-    Algorithm:
-      recursive descent of graph.
-
-    Sideeffects:
-      modified graph.
-
-    Last Modified: 7/6/85
-
-}
+      {<<<}
+      procedure flood(expr: nodeindex; forceflood: boolean);
+      { Mark expression rooted in expr as hoisted recursive descent of graph.
+      }
 
         var
           i: 1..3; {induction vars }
@@ -4719,31 +4618,12 @@ procedure loops;
             end;
 
         end {flood} ;
-
-
-      procedure removecopies(depth: contextindex; {depth to which we remove 'em}
-                             expr: nodeindex);
-{
-    Purpose:
-      Remove copies in expr which are at least as deep as the target context
-      depth to which we will hoist.
-
-    Inputs:
-      depth: how deep to go, presumed > 0.
-      expr : index of expression graph to search.
-
-    Outputs:
-      modified graph
-
-    Algorithm:
-      recursive descent of graph.
-
-    Sideeffects:
-      modified graph.
-
-    Last Modified: 7/6/85
-
-}
+      {>>>}
+      {<<<}
+      procedure removecopies(depth: contextindex; {depth to which we remove 'em} expr: nodeindex);
+      { Remove copies in expr which are at least as deep as the target context
+        depth to which we will hoist. recursive descent of graph.
+      }
 
         var
           i: 1..3; {induction vars }
@@ -4796,14 +4676,11 @@ procedure loops;
             end;
 
         end {removecopies} ;
-
-
+      {>>>}
+      {<<<}
       procedure onecopy(sp: contextindex; { current context level}
                         c: nodeindex {where to build copy node} );
-
-        { Build one copy access node in chain leading to hoisted expr
-        }
-
+      { Build one copy access node in chain leading to hoisted expr }
 
         begin {onecopy}
 
@@ -4824,7 +4701,7 @@ procedure loops;
           lastcopy := c;
           copied := ptr;
         end {onecopy} ;
-
+      {>>>}
 
       begin {hoistit}
         ptr := ref(bignodetable[expr]);
@@ -4902,31 +4779,15 @@ procedure loops;
 
         flood(expr, true);
       end; {hoistit}
-
-
+    {>>>}
+    {<<<}
     function simpleinvar(oprnd: nodeindex; {pushfinal's oprnd}
                          other: nodeindex {deffor... op} ): boolean;
-
-{   Purpose:
-      Examine the expression indexed by oprnd and see if it is a simple
+    { Examine the expression indexed by oprnd and see if it is a simple
       variable which is invariant in the current loop, but is NOT the
       loop variable.
-
-    Inputs:
-      oprnd: index of the expression to examine.
-      other: index of the deffor operator, for comparison.
-
-    Outputs:
-      simplevar: true if oprnd is a simple invariant variable reference.
-
-    Algorithm:
       Examine the writes for the current loop.
-
-    Sideeffects:
-      none
-
-    Last Modified: 9/26/86 (Rick)
-}
+    }
 
       var
         ptr: nodeptr; { for access to nodes }
@@ -4980,71 +4841,21 @@ procedure loops;
             end {indxop} ;
           end {varop} ;
       end {simpleinvar} ;
+    {>>>}
 
-
-    procedure examineexpression(expression: nodeindex;
-                                hoistsubtrees: boolean);
-      forward;
-{
-    Purpose:
-      Examine the oprnd indexed by expression and find any invariant
-      subexpressions it contains and hoist them.
-
-    Inputs:
-      expression : index of the expression operand to be examined.
-        This expression cannot be hoisted because it is either unsafe
-        or not applicable.
-
-      hoistsubtrees: if true, we may hoist any subtrees which are invariant.
-
-    Outputs:
-      modified graph.
-
-    Algorithm:
-      Examines each operand of the node "expression". For each
-      invariant it finds it hoists it. If the expressions has sequential
-      expressions connected to it each of those expressions are examined.
-
-    Sideeffects:
-      graph is changed.
-
-    Last Modified: 7/22/85
-
-}
-
-
+    procedure examineexpression(expression: nodeindex; hoistsubtrees: boolean); forward;
+    {<<<}
     function invariantoprnd(oprnd: nodeindex;
                             var worthit: boolean;
                             hoistsubtrees: boolean): boolean;
-{
-    Purpose:
-      Examine the oprnd indexed by oprnd and see if it is invariant in
+    { Examine the oprnd indexed by oprnd and see if it is invariant in
       the current loop context.
       And hoistable.
-
-    Inputs:
-      oprnd : index of the expression operand to be examined.
-      copyfound : true if earlier caller found a copy node in this subgraph.
-      hoistsubtrees: true if we should hoist invariant subtrees
-
-    Outputs:
-      returns true if oprnd is invariant and can be hoisted.
-      copyfound : true if oprnd was a copy node.
-      worthit : true if oprnd is invariant and worth ( or legal ) to
-                be hoisted.
-
-    Algorithm:
       If oprnd is not hoistable type of operator calls examineexpression
       to search for invariants beneath this operator. Otherwise recursively
       examines each operand of the node "oprnd" if all of it's
       subexpressions are invariant then returns true.
-
-    Sideeffects:
-      none.
-
-    Last Modified: 7/22/85
-
-}
+     }
 
       var
         i: 0..contextdepth; {induction var }
@@ -5060,26 +4871,9 @@ procedure loops;
         aindxkludge: boolean; { true if aindx should be hoisted anyway}
 
 
+      {<<<}
       function varisinvar: boolean;
-{
-    Purpose:
-      determine if the (uns)varop is invariant.
-
-    Inputs:
-      expr : copy of the varop node.
-
-    Outputs:
-      true : if the variable is invariant in this context.
-
-    Algorithm:
-      Obvious!
-
-    Sideeffects:
-      Who me?
-
-    Last Modified: 6/27/85
-
-}
+      { determine if the (uns)varop is invariant }
 
         var
           currentvar: nodeindex; { for walking write chains }
@@ -5122,6 +4916,7 @@ procedure loops;
             else varisinvar := true;
             end;
         end {varisinvar} ;
+      {>>>}
 
 
       begin {invariantoprnd}
@@ -5247,51 +5042,55 @@ procedure loops;
           end; {action = visit}
         invariantoprnd := invar and not blockhoist;
       end {invariantoprnd} ;
-
-
+    {>>>}
+    {<<<}
     procedure examineexpression {expression: nodeindex} ;
+     { Examine the oprnd indexed by expression and find any invariant
+       subexpressions it contains and hoist them.
+       Examines each operand of the node "expression". For each
+       invariant it finds it hoists it. If the expressions has sequential
+       expressions connected to it each of those expressions are examined.
+     }
+    var
+      i: 1..3; {induction var }
+      ptr: nodeptr; { for node access }
+      operands: operandarray; { local copy of oprnd field }
+      nodeoperands: nodeoperandarray; { local copy of nodeoprnd field }
+      valuable: boolean; { true if invariant worth hoisting }
 
-      var
-        i: 1..3; {induction var }
-        ptr: nodeptr; { for node access }
-        operands: operandarray; { local copy of oprnd field }
-        nodeoperands: nodeoperandarray; { local copy of nodeoprnd field }
-        valuable: boolean; { true if invariant worth hoisting }
+    begin {examineexpression}
+      repeat
+        ptr := ref(bignodetable[expression]);
+        if ptr^.action = visit then
+          begin
 
-
-      begin {examineexpression}
-        repeat
-          ptr := ref(bignodetable[expression]);
-          if ptr^.action = visit then
-            begin
-
-            operands := ptr^.oprnds;
-            nodeoperands := ptr^.nodeoprnd;
-              {
-                this expression may contain several parallel expressions
-                which should be examined also
-              }
-            if ptr^.op < intop then expression := ptr^.slink
-            else expression := 0;
-            for i := 1 to 3 do
-                {
-                  Examine each operand to determine if expression is
-                  invariant.  If it is hoist it.
-                }
-              if nodeoperands[i] then
-                begin
-                if invariantoprnd(operands[i], valuable, hoistsubtrees) then
-                  if valuable and hoistsubtrees then hoistit(operands[i]);
-                end;
-            end
+          operands := ptr^.oprnds;
+          nodeoperands := ptr^.nodeoprnd;
+            {
+              this expression may contain several parallel expressions
+              which should be examined also
+            }
+          if ptr^.op < intop then expression := ptr^.slink
           else expression := 0;
-        until expression = 0;
-      end {examineexpression} ;
-
-
+          for i := 1 to 3 do
+              {
+                Examine each operand to determine if expression is
+                invariant.  If it is hoist it.
+              }
+            if nodeoperands[i] then
+              begin
+              if invariantoprnd(operands[i], valuable, hoistsubtrees) then
+                if valuable and hoistsubtrees then hoistit(operands[i]);
+              end;
+          end
+        else expression := 0;
+      until expression = 0;
+    end {examineexpression} ;
+    {>>>}
+    {<<<}
     procedure examineinvariant(var expression: nodeindex;
                                previous: nodeindex);
-{
+    {
     Purpose:
       Examine an expression found to be invariant in an inner loop and
       hoist any part of it found to be invariant in this loop.
@@ -5314,10 +5113,7 @@ procedure loops;
 
     Sideeffects:
       modified graph.
-
-    Last Modified: 7/3/85
-
-}
+    }
 
       var
         ptr: nodeptr; { for access to node }
@@ -5352,244 +5148,204 @@ procedure loops;
         secondlevel := false;
 
       end {examineinvariantoprnd} ;
+    {>>>}
 
-
-    begin {examineloop}
-
-      { see if this loop is too deeply nested, and ignore it if so}
-
-      if not (loopblk^.deadloop or loopblk^.isdead) then
+  begin
+    { see if this loop is too deeply nested, and ignore it if so}
+    if not (loopblk^.deadloop or loopblk^.isdead) then
+      begin
+      { find the last node in the precode chain, loops rarely have any already unless they are within a with statement }
+      p := loopblk^.precode;
+      lasthoist := 0;
+      currenthoist := 0;
+      while p <> 0 do
         begin
-          { find the last node in the precode chain, loops rarely have any already
-            unless they are within a with statement.
-           }
+        if loopblk^.looplabel = 0 then loopblk^.looplabel := newlabel;
+        ptr := ref(bignodetable[p]);
+        lasthoist := p;
+        p := ptr^.prelink;
+        end;
 
-        p := loopblk^.precode;
-        lasthoist := 0;
-        currenthoist := 0;
-        while p <> 0 do
+      { find the first write outside of this loop }
+      if loopblk^.lastwrite <> 0 then
+        begin
+        ptr := ref(bignodetable[loopblk^.lastwrite]);
+        finalwrite := ptr^.looplink;
+        end
+      else
+        finalwrite := 0;
+
+      current := bottomblk;
+
+      { examine each basic block within the loop }
+      while current <> loopblk^.rdfolist do
+        begin
+        { define the context of the current block }
+        definecontext(loopblk, current);
+
+        { examine each statement in this block }
+        if not current^.isdead and (current^.beginstmt <> 0) then
           begin
-          if loopblk^.looplabel = 0 then loopblk^.looplabel := newlabel;
-          ptr := ref(bignodetable[p]);
-          lasthoist := p;
-          p := ptr^.prelink;
-          end;
+          stmt := current^.beginstmt;
+          ptr := ref(bignodetable[stmt]);
 
-        { find the first write outside of this loop }
-
-        if loopblk^.lastwrite <> 0 then
-          begin
-          ptr := ref(bignodetable[loopblk^.lastwrite]);
-          finalwrite := ptr^.looplink;
-          end
-        else finalwrite := 0;
-
-        current := bottomblk;
-
-        { examine each basic block within the loop }
-
-        while current <> loopblk^.rdfolist do
-          begin
-
-          { define the context of the current block }
-
-          definecontext(loopblk, current);
-
-          { examine each statement in this block }
-          if not current^.isdead and (current^.beginstmt <> 0) then
+          { see if we just backed into a new loop }
+          if (current <> bottomblk) and
+             (ptr^.stmtkind in [forbothdr, cforbothdr, whilebothdr, untilhdr, loopbothdr]) then
             begin
-            stmt := current^.beginstmt;
-            ptr := ref(bignodetable[stmt]);
+            if ptr^.stmtkind = untilhdr then innerloop := ptr^.falseblock
+            else innerloop := ptr^.looptop;
+            examineloop(innerloop, current);
 
-            { see if we just backed into a new loop }
-            if (current <> bottomblk) and
-               (ptr^.stmtkind in
-               [forbothdr, cforbothdr, whilebothdr, untilhdr, loopbothdr]) then
+            { examine the expressions hoisted out of inner loop(s) }
+            definecontext(loopblk, current);
+
+            if innerloop^.dominates and (innerloop^.precode <> 0) then
               begin
-              if ptr^.stmtkind = untilhdr then innerloop := ptr^.falseblock
-              else innerloop := ptr^.looptop;
-              examineloop(innerloop, current);
-
-              { examine the expressions hoisted out of inner loop(s) }
-
-              definecontext(loopblk, current);
-
-              if innerloop^.dominates and (innerloop^.precode <> 0) then
-                begin
-
-                { see if we can hoist any invariants from innerloop }
-
-                dominating := loopblk^.willexecute;
-                previoushoist := 0;
-                currenthoist := innerloop^.precode;
-                repeat
-                  ptr := ref(bignodetable[currenthoist]);
-                  nexthoist := ptr^.prelink;
-                  if ptr^.action = visit then
-                    examineinvariant(currenthoist, previoushoist);
-
-                  { if entire expression wasn't hoisted make it previous}
-
-                  if currenthoist <> 0 then previoushoist := currenthoist;
-                  currenthoist := nexthoist;
-                until currenthoist = 0;
-                end; {precode <> 0}
-              current := innerloop;
-              end {current <> bottomblk}
-
-              { if this block doesn't dominate loop exit ignore it }
-
-            else if (current = loopblk) or current^.dominates then
-              begin
-
-              { examine each stmts expressions }
-
-              if current = loopblk then dominating := current^.dominates
-              else dominating := loopblk^.willexecute and current^.dominates;
+              { see if we can hoist any invariants from innerloop }
+              dominating := loopblk^.willexecute;
+              previoushoist := 0;
+              currenthoist := innerloop^.precode;
               repeat
-                ptr := ref(bignodetable[stmt]);
-                { get next stmt while it's cheap }
-                stmt := ptr^.nextstmt;
-                secondlevel := false;
-                if (ptr^.stmtkind in
-                   [ifhdr, whilehdr, withhdr, simplehdr, untilhdr,
-                   syscallhdr]) and (ptr^.expr1 <> 0) then
-                  examineexpression(ptr^.expr1, true)
+                ptr := ref(bignodetable[currenthoist]);
+                nexthoist := ptr^.prelink;
+                if ptr^.action = visit then
+                  examineinvariant(currenthoist, previoushoist);
 
-                else if ptr^.stmtkind = casehdr then
-                  begin
-                  examineexpression(ptr^.selector, true);
-                  end;
-              until stmt = 0;
-              end; {else}
-            end; {beginstmt<>0}
+                { if entire expression wasn't hoisted make it previous}
+                if currenthoist <> 0 then
+                  previoushoist := currenthoist;
+                currenthoist := nexthoist;
+              until currenthoist = 0;
+              end; {precode <> 0}
 
-          current := current^.rdfolist;
-          end; {while}
+            current := innerloop;
+            end {current <> bottomblk}
 
-          { finally if this loop is a for loop and the final limit is a
-            simple invariant var then no need to "pushfinal" it just
-            reference it.
-          }
-        if loopblk^.beginstmt <> 0 then
-          begin
-          fixnode := loopblk^.beginstmt;
-          ptr := ref(bignodetable[fixnode]);
-          if (ptr^.stmtkind = foruphdr) or (ptr^.stmtkind = fordnhdr) then
+            { if this block doesn't dominate loop exit ignore it }
+          else if (current = loopblk) or current^.dominates then
             begin
-            finalexpr := ptr^.expr1;
-            initexpr := ptr^.expr2;
-            ptr := ref(bignodetable[ptr^.expr2]);
-            temp := ptr^.len; {length of index variable}
-            ptr := ref(bignodetable[finalexpr]);
-            if ptr^.op in [forupchkop, fordnchkop, forerrchkop] then
-              begin
-              fixnode := finalexpr;
-              ptr := ref(bignodetable[ptr^.oprnds[1]]);
-              if ptr^.op = pushfinal then
+            { examine each stmts expressions }
+            if current = loopblk then
+              dominating := current^.dominates
+            else
+              dominating := loopblk^.willexecute and current^.dominates;
+            repeat
+              ptr := ref(bignodetable[stmt]);
+              { get next stmt while it's cheap }
+              stmt := ptr^.nextstmt;
+              secondlevel := false;
+              if (ptr^.stmtkind in [ifhdr, whilehdr, withhdr, simplehdr, untilhdr, syscallhdr]) and
+                 (ptr^.expr1 <> 0) then
+                examineexpression(ptr^.expr1, true)
+
+              else if ptr^.stmtkind = casehdr then
                 begin
-                newoprnd := ptr^.oprnds[1];
-                ptr := ref(bignodetable[newoprnd]);
-                if simpleinvar(newoprnd, initexpr) and (temp = ptr^.len) then
-                  begin
-                  { delete the pushfinal op }
-                  ptr2 := ref(bignodetable[fixnode]);
-                  ptr2^.oprnds[1] := newoprnd;
-                  end;
+                examineexpression(ptr^.selector, true);
                 end;
-              end
-            else if ptr^.op = pushfinal then
+
+            until stmt = 0;
+            end; {else}
+          end; {beginstmt<>0}
+
+        current := current^.rdfolist;
+        end; {while}
+
+      { finally if this loop is a for loop and the final limit is a
+        simple invariant var then no need to "pushfinal" it just reference it }
+      if loopblk^.beginstmt <> 0 then
+        begin
+        fixnode := loopblk^.beginstmt;
+        ptr := ref(bignodetable[fixnode]);
+        if (ptr^.stmtkind = foruphdr) or (ptr^.stmtkind = fordnhdr) then
+          begin
+          finalexpr := ptr^.expr1;
+          initexpr := ptr^.expr2;
+          ptr := ref(bignodetable[ptr^.expr2]);
+          temp := ptr^.len; {length of index variable}
+          ptr := ref(bignodetable[finalexpr]);
+          if ptr^.op in [forupchkop, fordnchkop, forerrchkop] then
+            begin
+            fixnode := finalexpr;
+            ptr := ref(bignodetable[ptr^.oprnds[1]]);
+            if ptr^.op = pushfinal then
               begin
               newoprnd := ptr^.oprnds[1];
               ptr := ref(bignodetable[newoprnd]);
-              if simpleinvar(newoprnd, initexpr) and (temp = ptr^.len) then
+              if simpleinvar (newoprnd, initexpr) and (temp = ptr^.len) then
                 begin
                 { delete the pushfinal op }
                 ptr2 := ref(bignodetable[fixnode]);
-                ptr2^.expr1 := newoprnd;
+                ptr2^.oprnds[1] := newoprnd;
                 end;
               end;
-            end; { forloop}
-          end { <> 0 } ;
+            end
+          else if ptr^.op = pushfinal then
+            begin
+            newoprnd := ptr^.oprnds[1];
+            ptr := ref(bignodetable[newoprnd]);
+            if simpleinvar(newoprnd, initexpr) and (temp = ptr^.len) then
+              begin
+              { delete the pushfinal op }
+              ptr2 := ref(bignodetable[fixnode]);
+              ptr2^.expr1 := newoprnd;
+              end;
+            end;
+          end; { forloop}
+        end { <> 0 } ;
 
-        if (lasthoist > 0) and (loopblk^.looplabel = 0) then
-          loopblk^.looplabel := newlabel;
-        end;
-    end {examineloop} ;
+      if (lasthoist > 0) and (loopblk^.looplabel = 0) then
+        loopblk^.looplabel := newlabel;
+      end;
+  end;
+  {>>>}
 
+ begin
+   anyinvars := false;
 
-  begin {loops}
-    anyinvars := false;
-
-    { walk the blocks until we find a loophdr }
-
-    blk := tail;
-    repeat
-      { this test will be unneeded when empty basic blocks are removed }
-      if not blk^.isdead and (blk^.beginstmt <> 0) then
-        begin
-        ptr := ref(bignodetable[blk^.beginstmt]);
-        if (ptr^.nodeform = stmtnode) and
-           (ptr^.stmtkind in
-           [loopbothdr, whilebothdr, forbothdr, cforbothdr, untilhdr]) then
-          begin
-          { get next blk now while its cheap }
-          if ptr^.stmtkind = untilhdr then nextblk := ptr^.falseblock^.rdfolist
-          else nextblk := ptr^.looptop^.rdfolist;
-          examineloop(nextblk^.dfolist, blk);
-          blk := nextblk;
-          end
-        else blk := blk^.rdfolist;
-        end
-      else blk := blk^.rdfolist;
-    until blk = nil;
-
-  end {loops} ;
+   { walk the blocks until we find a loophdr }
+   blk := tail;
+   repeat
+     { this test will be unneeded when empty basic blocks are removed }
+     if not blk^.isdead and (blk^.beginstmt <> 0) then
+       begin
+       ptr := ref(bignodetable[blk^.beginstmt]);
+       if (ptr^.nodeform = stmtnode) and
+          (ptr^.stmtkind in [loopbothdr, whilebothdr, forbothdr, cforbothdr, untilhdr]) then
+         begin
+         { get next blk now while its cheap }
+         if ptr^.stmtkind = untilhdr then
+           nextblk := ptr^.falseblock^.rdfolist
+         else
+           nextblk := ptr^.looptop^.rdfolist;
+         examineloop (nextblk^.dfolist, blk);
+         blk := nextblk;
+         end
+       else
+         blk := blk^.rdfolist;
+       end
+     else
+       blk := blk^.rdfolist;
+   until blk = nil;
+end;
 {>>>}
 {<<<}
 procedure smooth;
-{
-    Purpose:
-      Smooth out size of expression.
-
-    Inputs:
-      none.
-
-    Outputs:
-      none.
-
-    Algorithm:
-      For each basic block, examine each statement and call
-      smoothexpr to all the work.
-
-    Sideeffects:
-      Graph is changed.
-
-    Last Modified: 11/12/85
-
+{ Smooth out size of expression.
+  For each basic block, examine each statement and call moothexpr to all the work.
 }
+var
+  ptr: nodeptr; { for access to nodes }
+  stmt: nodeindex; { current stmt in basic block }
+  blk: basicblockptr; { block being examined }
 
-  var
-    ptr: nodeptr; { for access to nodes }
-    stmt: nodeindex; { current stmt in basic block }
-    blk: basicblockptr; { block being examined }
-
-
-  procedure smoothexpr(expression: nodeindex;
+  {<<<}
+  procedure smoothexpr (expression: nodeindex;
                        initial: addressrange);
-{
-    Purpose:
+  {
       Convert the length of all arithmetic operators in an
       expression the size of the widest length contained in
       the expression.
-
-    Inputs:
-      expression : index of the expression to be examined.
-
-    Outputs:
-      none.
-
-    Algorithm:
       Walk all of the nodes of the expression recording the
       max and min values of the length field. If after walking
       the entire expression min <> max the rewalk the expression
@@ -5598,20 +5354,13 @@ procedure smooth;
       ( e.g. varop ) and others ( e.g. aindxop ) have bogus lengths.
       Whenever an aindxop is seen the index expression is set to
       be targetintsize regardless of max and min size of the expression.
+  }
+  var
+    maxlen, minlen: addressrange; { size ranges of expression }
 
-    Sideeffects:
-      Graph is changed.
-
-    Last Modified: 11/12/85
-
-}
-
-    var
-      maxlen, minlen: addressrange; { size ranges of expression }
-
-
+    {<<<}
     procedure getsize(expr: nodeindex);
-{
+    {
     Purpose:
       Find the maximum and minimum size of expression rooted in expr
 
@@ -5632,7 +5381,7 @@ procedure smooth;
     Note: this could have been coded to take maxlen and minlen as
     var parameters but this simply wastes stack space.
 
-}
+    }
 
       var
         i: 1..3; { induction var }
@@ -5708,10 +5457,10 @@ procedure smooth;
           getsize(ptr^.directlink);
           end;
       end; {getsize}
-
-
+    {>>>}
+    {<<<}
     procedure setsize(expr: nodeindex);
-{
+    {
     Purpose:
       Set the size of the expression to maxlen
 
@@ -5731,8 +5480,7 @@ procedure smooth;
 
     Note: this could have been coded to take maxlen as a parameter
     but this simply wastes stack space.
-
-}
+    }
 
       var
         i: 1..3; { induction var }
@@ -5782,75 +5530,55 @@ procedure smooth;
           setsize(ptr^.directlink);
           end;
       end; {setsize}
+    {>>>}
 
+  begin
+    maxlen := initial;
+    minlen := sharedPtr^.targetintsize;
 
-    begin {smoothexpr}
-      maxlen := initial;
-      minlen := sharedPtr^.targetintsize;
+    getsize(expression);
+    { only smoothing integer expressions }
+    { temp let codegen blowup if smooth wrong thing }
+    if (maxlen > minlen) { ( maxlen <= sharedPtr^.targetintsize ) } then
+      setsize(expression);
+  end;
+  {>>>}
 
-      getsize(expression);
-      { only smoothing integer expressions }
-      { temp let codegen blowup if smooth wrong thing }
-      if (maxlen > minlen) { ( maxlen <= sharedPtr^.targetintsize ) } then
-        setsize(expression);
-    end {smoothexpr} ;
-
-
-  begin {smooth}
-    blk := root;
-    repeat
-      { examine each stmts expressions }
-      stmt := blk^.beginstmt;
-      while stmt <> 0 do
+begin
+  blk := root;
+  repeat
+    { examine each stmts expressions }
+    stmt := blk^.beginstmt;
+    while stmt <> 0 do
+      begin
+      ptr := ref(bignodetable[stmt]);
+      { get next stmt while it's cheap }
+      stmt := ptr^.nextstmt;
+      if ptr^.stmtkind in [ifhdr, whilehdr, withhdr, simplehdr, untilhdr, syscallhdr] then
         begin
-        ptr := ref(bignodetable[stmt]);
-        { get next stmt while it's cheap }
-        stmt := ptr^.nextstmt;
-        if ptr^.stmtkind in
-           [ifhdr, whilehdr, withhdr, simplehdr, untilhdr, syscallhdr] then
-          begin
-          smoothexpr(ptr^.expr1, 0);
-          end
-        else if ptr^.stmtkind = casehdr then
-          begin
-          smoothexpr(ptr^.selector, 0);
-          end
-        end;
-      blk := blk^.dfolist;
-    until blk = tail;
-  end {smooth} ;
+        smoothexpr (ptr^.expr1, 0);
+        end
+      else if ptr^.stmtkind = casehdr then
+        begin
+        smoothexpr (ptr^.selector, 0);
+        end
+      end;
+    blk := blk^.dfolist;
+  until blk = tail;
+end;
 {>>>}
 {<<<}
 procedure improve;
-{
-    Purpose:
-      Optimize the flow graph.
+{ Optimize the flow graph. calls various improving procedures }
 
-    Inputs:
-      A flow graph rooted in "root"
-
-    Outputs:
-      An improved flow graph.
-
-    Algorithm(s):
-      calls various improving procedures
-
-    Sideeffects:
-      Graph is changed.
-
-    Last Modified: 7/3/85
-
-}
-
-  begin {improve}
-    assignregs;
-    { smooth before hoisting }
-    { Smoothing causes poor code for these machines. }
-    { smooth; }
-
-    if (hoisting in sharedPtr^.genset) and not irreducible then
-      loops;
-  end {improve} ;
+begin
+  assignregs;
+  { smooth before hoisting }
+  { Smoothing causes poor code for these machines. }
+  { smooth; }
+  if (hoisting in sharedPtr^.genset) and not irreducible then
+    loops;
+end;
 {>>>}
 
 {<<<}
@@ -6231,6 +5959,95 @@ var
   caselab_found: boolean; {we found a case label}
   b: basicblockptr; {for scanning the blocks}
 {>>>}
+
+  {<<<}
+  procedure enterloop (blkid: basicblockptr);
+  { Set up to calculate loop dominators and monitor reads and writes in the loop }
+
+  var
+    i: levelindex;
+
+  begin
+    loopfactor := loopfactor + 5;
+
+    if loopdepth = maxloopdepth then
+      begin
+      loopoverflow := loopoverflow + 1;
+      blkid^.deadloop := true;
+      end
+    else
+      begin
+      loopdepth := loopdepth + 1;
+      with loopstack[loopdepth] do
+        begin
+        loopblock := blkid;
+        reads := 0;
+        writes := 0;
+        lastwrite := 0;
+        for i := 0 to maxlevel do
+          deadlevels[i] := false;
+        fonmin := foncount;
+        end;
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure exitloop;
+  { Set up to calculate loop dominators, adjust local var's lifetimes and join write chain to any outer loop Inputs:
+    Adjusts the lifetime of any var mentioned in the loop to encompass the entire loop.
+    Actually by making every var reach the bottom their lifetimes will conflict producing the desired result.
+    Any write's taking place in this loop are tacked onto the end of the write's of the enclosing (if any) loop }
+
+  var
+    ptr: nodeptr; { for access to nodes }
+    bptr: basicblockptr; { copy of loopblock ptr }
+    i: reghashindex; { induction var }
+
+  begin
+    { fix the lifetimes of vars mentioned in the loop }
+    for i := 0 to regtablelimit do
+      begin
+      with regvars[i], varlife do
+        begin
+        if (worth > 0) and ((fonmin >= loopstack[loopdepth].fonmin) or
+           (fonmax >= loopstack[loopdepth].fonmin)) then
+          begin
+          lonmax := lastnode;
+          { never let fonmax decrease!}
+          if foncount > fonmax then fonmax := foncount;
+          end;
+        end;
+      end;
+
+    loopfactor := loopfactor - 5;
+    if loopoverflow > 0 then
+      loopoverflow := loopoverflow - 1
+    else
+      begin
+      with loopstack[loopdepth] do
+        begin
+        bptr := loopblock;
+        bptr^.reads := reads;
+        bptr^.writes := writes;
+        bptr^.lastwrite := lastwrite;
+        bptr^.deadlevels := deadlevels;
+        end;
+      loopdepth := loopdepth - 1;
+
+      { now hook inner loops writes to this loop }
+      if (loopdepth > 0) and (bptr^.lastwrite <> 0) then
+        begin
+        ptr := ref(bignodetable[bptr^.lastwrite]);
+        with loopstack[loopdepth] do
+          begin
+          ptr^.looplink := writes;
+          writes := bptr^.writes;
+          if lastwrite = 0 then lastwrite := bptr^.lastwrite;
+          end;
+        end;
+      end;
+  end;
+  {>>>}
 
   {<<<}
   { Dead code elimination -
@@ -10389,11 +10206,11 @@ var
         if gotodead = deadcount then deadcode := false;
 
         clearcontext;
-        newblock(hdrblock, currentblock, true);
+        newblock (hdrblock, currentblock, true);
         hdrblock^.blocklabel := newlabel;
-        enterloop(hdrblock);
-        newblock(tailblock, nil, false);
-        newblock(exit_block, nil, false);
+        enterloop (hdrblock);
+        newblock (tailblock, nil, false);
+        newblock (exit_block, nil, false);
         currentblock := hdrblock;
         hdrblock^.clearop := not start_dead; ;
 
@@ -11487,95 +11304,6 @@ var
       end;
     rootnode^.dfolist := prevblock;
     prevblock := rootnode;
-  end;
-  {>>>}
-
-  {<<<}
-  procedure enterloop (blkid: basicblockptr);
-  { Set up to calculate loop dominators and monitor reads and writes in the loop }
-
-  var
-    i: levelindex;
-
-  begin
-    loopfactor := loopfactor + 5;
-
-    if loopdepth = maxloopdepth then
-      begin
-      loopoverflow := loopoverflow + 1;
-      blkid^.deadloop := true;
-      end
-    else
-      begin
-      loopdepth := loopdepth + 1;
-      with loopstack[loopdepth] do
-        begin
-        loopblock := blkid;
-        reads := 0;
-        writes := 0;
-        lastwrite := 0;
-        for i := 0 to maxlevel do
-          deadlevels[i] := false;
-        fonmin := foncount;
-        end;
-      end;
-  end;
-  {>>>}
-  {<<<}
-  procedure exitloop;
-  { Set up to calculate loop dominators, adjust local var's lifetimes and join write chain to any outer loop Inputs:
-    Adjusts the lifetime of any var mentioned in the loop to encompass the entire loop.
-    Actually by making every var reach the bottom their lifetimes will conflict producing the desired result.
-    Any write's taking place in this loop are tacked onto the end of the write's of the enclosing (if any) loop }
-
-  var
-    ptr: nodeptr; { for access to nodes }
-    bptr: basicblockptr; { copy of loopblock ptr }
-    i: reghashindex; { induction var }
-
-  begin
-    { fix the lifetimes of vars mentioned in the loop }
-    for i := 0 to regtablelimit do
-      begin
-      with regvars[i], varlife do
-        begin
-        if (worth > 0) and ((fonmin >= loopstack[loopdepth].fonmin) or
-           (fonmax >= loopstack[loopdepth].fonmin)) then
-          begin
-          lonmax := lastnode;
-          { never let fonmax decrease!}
-          if foncount > fonmax then fonmax := foncount;
-          end;
-        end;
-      end;
-
-    loopfactor := loopfactor - 5;
-    if loopoverflow > 0 then
-      loopoverflow := loopoverflow - 1;
-    else
-      begin
-      with loopstack[loopdepth] do
-        begin
-        bptr := loopblock;
-        bptr^.reads := reads;
-        bptr^.writes := writes;
-        bptr^.lastwrite := lastwrite;
-        bptr^.deadlevels := deadlevels;
-        end;
-      loopdepth := loopdepth - 1;
-
-      { now hook inner loops writes to this loop }
-      if (loopdepth > 0) and (bptr^.lastwrite <> 0) then
-        begin
-        ptr := ref(bignodetable[bptr^.lastwrite]);
-        with loopstack[loopdepth] do
-          begin
-          ptr^.looplink := writes;
-          writes := bptr^.writes;
-          if lastwrite = 0 then lastwrite := bptr^.lastwrite;
-          end;
-        end;
-      end;
   end;
   {>>>}
 
