@@ -611,36 +611,29 @@ type
 
   {<<<}
   keyx = packed record
-      refcount, copycount: 0..maxrefcount; {reference info from pseudocode}
-      len: integer; {length of this operand, from pseudocode}
-      copylink: keyindex; {node we copied, if created by copyaccess op}
-      access: accesstype; {type of entry}
-      properreg: keyindex; {reference to non-volatile storage of oprnd.r}
-      properindxr: keyindex; {ditto for oprnd.indxr}
-      tempflag: boolean; {if a stack temp, set true when referenced}
-      validtemp: boolean; {if a stack temp, set true when allocated}
-      regsaved: boolean; {true if oprnd.r has been saved (in
-                          keytable[properreg])}
-      indxrsaved: boolean; {ditto for oprnd.indxr}
-      regvalid: boolean; {true if oprnd.r field is valid, set false when
-                          register is stepped on}
-      indxrvalid: boolean; {ditto oprnd.indxr, not indxrvalid ->
-                            indxrsaved}
-      packedaccess: boolean; {true if length is bits, not bytes, and a
-                              packed field is being accessed}
-      joinreg: boolean; {true if regvalid should be set false upon next
-                         joinlabel pseudoop}
-      joinindxr: boolean; {ditto indxrvalid}
-      signed: boolean; {true if operand contains signed data}
-      signlimit: addressrange; {size for which this key is still signed}
-      knowneven: boolean; {true if word or long instruction will work
-                           here}
-      high_word_dirty: boolean; {true if register contains the result of
-                                 a 16-bit divide inst.}
-      instmark: nodeindex; {set to first instruction of stream which
-                            created value described in this record}
-      oprnd: operand; {the machine description of the operand}
-      brinst: insttype; {use this instruction for 'true' branch}
+      refcount: 0..maxrefcount;  { reference info from pseudocode}
+      copycount: 0..maxrefcount; { reference info from pseudocode}
+      len: integer;              { length of this operand, from pseudocode}
+      copylink: keyindex;        { node we copied, if created by copyaccess op}
+      access: accesstype;        { type of entry}
+      properreg: keyindex;       { reference to non-volatile storage of oprnd.r}
+      properindxr: keyindex;     { ditto for oprnd.indxr}
+      tempflag: boolean;         { if a stack temp, set true when referenced}
+      validtemp: boolean;        { if a stack temp, set true when allocated}
+      regsaved: boolean;         { true if oprnd.r has been saved (in keytable[properreg])}
+      indxrsaved: boolean;       { ditto for oprnd.indxr}
+      regvalid: boolean;         { true if oprnd.r field is valid, set false when register is stepped on}
+      indxrvalid: boolean;       { ditto oprnd.indxr, not indxrvalid -> indxrsaved}
+      packedaccess: boolean;     { true if length is bits, not bytes, and a packed field is being accessed}
+      joinreg: boolean;          { true if regvalid should be set false upon next joinlabel pseudoop}
+      joinindxr: boolean;        { ditto indxrvalid}
+      signed: boolean;           { true if operand contains signed data}
+      signlimit: addressrange;   { size for which this key is still signed}
+      knowneven: boolean;        { true if word or long instruction will work here}
+      high_word_dirty: boolean;  { true if register contains the result of a 16-bit divide inst.}
+      instmark: nodeindex;       { set to first instruction of stream which created value described in this record}
+      oprnd: operand;            { the machine description of the operand}
+      brinst: insttype;          { use this instruction for 'true' branch}
     end;
   {>>>}
 
@@ -2221,13 +2214,13 @@ begin {instlength}
   p := ref(bignodetable[n]);
   if p^.kind <> instnode then { filter the pretenders }
     if (p^.kind = stmtref) or (p^.kind = errornode) or
-       (p^.kind = sectionnode) then 
+       (p^.kind = sectionnode) then
       len := 0
-    else if p^.kind = labeldeltanode then 
+    else if p^.kind = labeldeltanode then
       len := word
-    else if p^.kind = datanode then 
+    else if p^.kind = datanode then
       len := word
-    else if p^.kind = adconnode then 
+    else if p^.kind = adconnode then
       len := long
     else
       begin
@@ -2245,21 +2238,21 @@ begin {instlength}
     else if inst = movem then
       begin
       p := ref(bignodetable[n + 2]);
-      if p^.oprnd.m = relative then 
-        len := long + word 
-      else 
+      if p^.oprnd.m = relative then
+        len := long + word
+      else
         len := long;
       end
-    else if inst = fmovem then 
+    else if inst = fmovem then
       len := long
-    else if inst = link then 
+    else if inst = link then
       len := word + oplen { 68020 allows long }
     else
       begin
       { Handle the strange ones here. }
       len := word;
       if mc68020 and (((inst = muls) or (inst = mulu)) and (oplen = long)) or
-         (inst in [divsl, divul, chk2, bfclr, bfexts, bfextu, bfins, bfset, bftst]) or 
+         (inst in [divsl, divul, chk2, bfclr, bfexts, bfextu, bfins, bfset, bftst]) or
          (inst in [fp_first..fp_last] - fpbranches) then
         len := long;
 
@@ -2273,7 +2266,7 @@ begin {instlength}
           labelnode: len := len + p^.labelcost;
           oprndnode:
             case p^.oprnd.m of
-              nomode, areg, dreg, indr, 
+              nomode, areg, dreg, indr,
               autoi, autod, bit_field_const,
               twodregs, twofpregs, special_immediate:
                 { no additional length } ;
@@ -2290,7 +2283,7 @@ begin {instlength}
                     double_real: len := len + quad;
                     extended_real: len := len + 12;
                     end
-                else if not (inst in shortinsts) then 
+                else if not (inst in shortinsts) then
                   len := len + oplen;
                 {>>>}
               relative:
@@ -20580,8 +20573,7 @@ end;
 {>>>}
 
 {<<<}
-procedure insert (m: nodeindex; {instruction to insert after}
-                  n: nodeindex {number of nodes to insert} );
+procedure insert (m: nodeindex; n: nodeindex);
 { Insert "n" nodes after node "m".  This attempts to overlay noop's
   if they exist, but it may move instructions if it needs to.  If it does
   move instructions, it will have to adjust the "savemark" fields of any
@@ -20679,7 +20671,7 @@ begin
 end;
 {>>>}
 {<<<}
-function getlabelnode (l: integer {label desired} ): nodeindex;
+function getlabelnode (l: integer): nodeindex;
 { Returns the node index of the node with label "l" }
 
 begin
@@ -20687,7 +20679,7 @@ begin
 end;
 {>>>}
 {<<<}
-function eqinst (n, n1: nodeindex {nodes to compare} ): boolean;
+function eqinst (n, n1: nodeindex): boolean;
 { Returns true if the instructions (including their operands) indexed by "n" and "n1" are equivalent }
 
 var
@@ -22869,7 +22861,6 @@ procedure putblock;
   to produce the greatest possible effect.  The other alternative is to call
   each routine multiple times until no change is noted, an expensive approach.
 }
-
 var
   r: regindex;
   regssaved : array [0..23] of boolean;
@@ -22940,8 +22931,7 @@ end;
 {>>>}
 {<<<}
 procedure dofptrx;
-{ Access a constant function pointer.  The procref is in oprnds[1].
-}
+{ Access a constant function pointer.  The procref is in oprnds[1] }
 
 begin
   keytable[key].access := valueaccess;
@@ -23023,58 +23013,60 @@ begin
 end {dorealx} ;
 {>>>}
 {<<<}
-procedure dostaticlevels(ownflag: boolean {true says own sect def} );
-{ Generate a reference to the data area for the level specified in
-  opernds[1].  This is a direct reference to the global area for level 1,
-  and a reference relative to sp for the local frame.  There is another
-  procedure, dolevelx, in genblk which handles intermediate level references.
+procedure dostaticlevels (ownflag: boolean);
+{ Generate a reference to the data area for the level specified in opernds[1].
+  This is a direct reference to the global area for level 1,
+  and a reference relative to sp for the local frame.
+  There is another procedure, dolevelx, in genblk which handles intermediate level references.
   These two cases (global+current vs. intermediate levels) are split up
-  purely to save space and to facilitate inclusion of blockcodex in this
-  overlay.
+  purely to save space and to facilitate inclusion of blockcodex in this overlay.
 }
+var
+  reg: regindex; {reg for indirect reference}
 
- var
-   reg: regindex; {reg for indirect reference}
+begin
+  keytable[key].access := valueaccess;
+  with keytable[key], oprnd do
+    begin
+    if ownflag then
+      begin
+      if $pic then
+        begin
+        m := relative;
+        reg := pic_own_base;
+        end
+      else
+        begin
+        m := commonlong;
+        commonlong_reloc := own_section;
+        end;
+      offset := 0;
+      end
 
- begin
-   keytable[key].access := valueaccess;
-   with keytable[key], oprnd do
-     begin
-     if ownflag then
-       begin
-       if $pic then
-         begin
-         m := relative;
-         reg := pic_own_base;
-         end
-       else
-         begin
-         m := commonlong;
-         commonlong_reloc := own_section;
-         end;
-       offset := 0;
-       end
-     else if left = 0 then
-       begin
-       m := abslong;
-       offset := 0;
-       end
-     else if left = 1 then
-       begin
-       m := relative;
-       offset := globalbase;
-       reg := gp;
-       end
-     else if left = level then
-       begin
-       m := relative;
-       offset := - blksize;
-       reg := fp;
-       end;
-     knowneven := true;
-     len := long;
-     end;
- end {dostaticlevels} ;
+    else if left = 0 then
+      begin
+      m := abslong;
+      offset := 0;
+      end
+
+    else if left = 1 then
+      begin
+      m := relative;
+      offset := globalbase;
+      reg := gp;
+      end
+
+    else if left = level then
+      begin
+      m := relative;
+      offset := - blksize;
+      reg := fp;
+      end;
+
+    knowneven := true;
+    len := long;
+    end;
+end;
 {>>>}
 
 {<<<}
@@ -23278,7 +23270,11 @@ begin
   { If generating PIC for the 68020, pic_own_base (currently A3) is needed only if there is an own section pointer }
   if $pic and (sharedPtr^.ownsize > 0) and sharedPtr^.proctable[sharedPtr^.blockref].ownused then
     aregisters[pic_own_base] := 100000;
-  if level = 1 then mainhdr else prochdr;
+
+  if level = 1 then
+    mainhdr
+  else
+    prochdr;
 
   context[1].lastbranch := lastnode;
   context[1].firstnode := lastnode;
@@ -23488,21 +23484,21 @@ begin
 
     if anyfound then
       begin
-      write('Found registers with non-zero use counts');
-      abort(inconsistent); { Display procedure name }
+      write ('Found registers with non-zero use counts');
+      abort (inconsistent); { Display procedure name }
 
       for i := 0 to lastareg do
         if aregisters[i] <> 0 then
-          write('  A', i:1, ' = ', aregisters[i]:1);
+          write ('  A', i:1, ' = ', aregisters[i]:1);
 
       for i := 0 to lastdreg do
         if dregisters[i] <> 0 then
-          write('  D', i:1, ' = ', dregisters[i]:1);
+          write ('  D', i:1, ' = ', dregisters[i]:1);
 
       if mc68881 then
         for i := 0 to lastfpreg do
           if fpregisters[i] <> 0 then
-            write('  FP', i:1, ' = ', fpregisters[i]:1);
+            write ('  FP', i:1, ' = ', fpregisters[i]:1);
 
       writeln;
       end;

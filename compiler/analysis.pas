@@ -8568,84 +8568,87 @@ procedure statement (follow: tokenset {legal following symbols} );
   end;
   {>>>}
   {<<<}
-      procedure pusharrayparam(packedarray, {which kind of array}
-                                assigning: boolean; {true if assigning new value}
-                               var indxtype: tableIndex; {type of index}
-                               var elttype: tableIndex {type of element} );
-
+  procedure pusharrayparam (packedarray, {which kind of array}
+                            assigning: boolean; {true if assigning new value}
+                            var indxtype: tableIndex; {type of index}
+                            var elttype: tableIndex {type of element} );
   { Push one array parameter for the intrinsic routines pack/unpack.
     Items pushed include the address of the array, lower/upper bounds,
     and size.  If packedarray is true, ord(bitaddress) is pushed as well.
   }
+  var
+    varindex: tableIndex; {used to search variable}
+    eltsize: addressrange; {size of one array element}
+    packedelt: boolean; {set true if element is < bitsperunit}
+    packing: boolean; {set if a packed array}
+    highid, lowid: tableIndex; {id's for bound identifiers}
+    f: entryptr; {used to get index and element data}
 
-        var
-          varindex: tableIndex; {used to search variable}
-          eltsize: addressrange; {size of one array element}
-          packedelt: boolean; {set true if element is < bitsperunit}
-          packing: boolean; {set if a packed array}
-          highid, lowid: tableIndex; {id's for bound identifiers}
-          f: entryptr; {used to get index and element data}
+  begin
+    if token = ident then 
+      search(varindex);
+    if assigning or (token <> ident) or (varindex = 0) then
+      modifyvariable (true, true)
+    else 
+      variable (true, true, false, true, true, varindex);
 
+    f := nil;
+    if resultform in [arrays, conformantarrays] then
+      begin
+      with resultptr^ do
+        begin
+        if packedflag <> packedarray then 
+          warnbefore (badparamerr);
+        elttype := elementtype;
+        indxtype := indextype;
+        eltsize := elementsize;
+        packedelt := packedflag;
+        packing := packedarray;
+        if resultform = conformantarrays then
+          begin
+          highid := highbound;
+          lowid := lowbound;
+          end
+        else 
+          f := ref(bigtable[indextype]);
+        end;
 
-        begin {pusharrayparam}
+      oprndstk[sp].oprndlen := sharedPtr^.ptrsize;
+      genunary (pushaddr, ints);
+      if resultform = conformantarrays then
+        begin
+        variable (true, false, false, false, false, lowid);
+        setdefaulttargetintsize;
+        genunary (pushvalue, ints);
+        variable (true, false, false, false, false, highid);
+        setdefaulttargetintsize;
+        genunary (pushvalue, ints);
+        end
+      else
+        begin
+        genpushdefaultint (lower(f));
+        genpushdefaultint (upper(f));
+        end;
+      if packedelt and (eltsize > bitsperunit) then
+        begin
+        packedelt := false;
+        eltsize := eltsize div bitsperunit;
+        end;
+      genpushdefaultint (eltsize);
 
-          if token = ident then search(varindex);
-          if assigning or (token <> ident) or (varindex = 0) then
-            modifyvariable(true, true)
-          else variable(true, true, false, true, true, varindex);
-
-          if resultform in [arrays, conformantarrays] then
-            begin
-            with resultptr^ do
-              begin
-              if packedflag <> packedarray then warnbefore(badparamerr);
-              elttype := elementtype;
-              indxtype := indextype;
-              eltsize := elementsize;
-              packedelt := packedflag;
-              packing := packedarray;
-              if resultform = conformantarrays then
-                begin
-                highid := highbound;
-                lowid := lowbound;
-                end
-              else f := ref(bigtable[indextype]);
-              end;
-            oprndstk[sp].oprndlen := sharedPtr^.ptrsize;
-            genunary(pushaddr, ints);
-            if resultform = conformantarrays then
-              begin
-              variable(true, false, false, false, false, lowid);
-              setdefaulttargetintsize;
-              genunary(pushvalue, ints);
-              variable(true, false, false, false, false, highid);
-              setdefaulttargetintsize;
-              genunary(pushvalue, ints);
-              end
-            else
-              begin
-              genpushdefaultint(lower(f));
-              genpushdefaultint(upper(f));
-              end;
-            if packedelt and (eltsize > bitsperunit) then
-              begin
-              packedelt := false;
-              eltsize := eltsize div bitsperunit;
-              end;
-            genpushdefaultint(eltsize);
-            if packing then
-              begin
-              genpushbool(packedelt);
-              f := ref(bigtable[elttype]);
-              genpushbool(unsigned(f, eltsize, packedelt));
-              end;
-            end
-          else
-            begin
-            warnbefore(arrayexpected);
-            elttype := noneindex;
-            end;
-        end {pusharrayparam} ;
+      if packing then
+        begin
+        genpushbool (packedelt);
+        f := ref(bigtable[elttype]);
+        genpushbool (unsigned(f, eltsize, packedelt));
+        end;
+      end
+    else
+      begin
+      warnbefore (arrayexpected);
+      elttype := noneindex;
+      end;
+  end;
   {>>>}
   {<<<}
       procedure pack;
@@ -11172,109 +11175,110 @@ var
     {<<<}
     procedure constrecord (eltloc: addressrange; {start of this element}
                           form: tableIndex {form for this record} );
-    { Syntactic routine to parse a constant record.
-    }
+    { Syntactic routine to parse a constant record }
 
-      var
-        currentfield: tableIndex; {name entry for this field}
-        finished: boolean; {we used all of the fields we have}
-
+    var
+      currentfield: tableIndex; {name entry for this field}
+      finished: boolean; {we used all of the fields we have}
 
       {<<<}
       procedure constfield;
       { Find the next field in this record and get a value for it. }
 
-        var
-          found: boolean; {field was found}
-          p: entryptr; {access to field names}
-          elttype: tableIndex; {form for a variant}
-          temp: operand; {temp value for variant}
-          written: boolean; {dummy argument to constvalue}
-          tagoffset: addressrange; {offset for tag field, if any}
-          localform: tableentry; {local copy of form entry}
-          f, f1: entryptr; {access to form data}
+      var
+        found: boolean; {field was found}
+        p: entryptr; {access to field names}
+        elttype: tableIndex; {form for a variant}
+        temp: operand; {temp value for variant}
+        written: boolean; {dummy argument to constvalue}
+        tagoffset: addressrange; {offset for tag field, if any}
+        localform: tableentry; {local copy of form entry}
+        f, f1: entryptr; {access to form data}
 
+      begin 
+        if finished then
+          constelement (eltloc, noneindex, unitsize, false, false)
+        else
+          begin
+          f := ref(bigtable[form]);
+          localform := f^;
+          found := false;
 
-        begin {constfield}
-          if finished then
-            constelement(eltloc, noneindex, unitsize, false, false)
+          p := nil;
+          while (currentfield < localform.lastfield) and not found do
+            begin
+            currentfield := currentfield + 1;
+            p := ref(bigtable[currentfield]);
+            if not p^.form then 
+              found := p^.name = localform.fieldid;
+            end;
+
+          if found then
+            begin
+            f1 := ref(bigtable[p^.vartype]);
+            constelement (p^.offset + eltloc, p^.vartype, 
+                          sizeof(f1, localform.packedflag), f1^.typ = strings, localform.packedflag)
+            end
+          else if localform.firstvariant = 0 then
+            begin
+            finished := true;
+            warnbefore (badconsterr);
+            constelement (curloc, noneindex, unitsize, false, false);
+            end
           else
             begin
+            tagoffset := 0;
+            if localform.tagfield <> 0 then
+              begin
+              p := ref(bigtable[localform.tagfield]);
+              elttype := p^.vartype;
+              tagoffset := p^.offset;
+              end
+            else if localform.firstvariant <> 0 then
+              begin
+              f := ref(bigtable[localform.firstvariant]);
+              if f^.firstlabel <> 0 then
+                begin
+                f := ref(bigtable[f^.firstlabel]);
+                elttype := f^.varlabtype;
+                end
+              else 
+                elttype := noneindex;
+              end
+            else 
+              elttype := noneindex;
+
+            constvalue (tagoffset + eltloc, elttype, false, localform.packedflag, temp, written);
+            if localform.tagfield <> 0 then
+              begin
+              f := ref(bigtable[elttype]);
+              putvalue (tagoffset + eltloc, false, false, localform.packedflag, sizeof(f, localform.packedflag), temp);
+              end;
+
+            searchvariants (form, temp);
             f := ref(bigtable[form]);
-            localform := f^;
-            found := false;
-            while (currentfield < localform.lastfield) and not found do
-              begin
-              currentfield := currentfield + 1;
-              p := ref(bigtable[currentfield]);
-              if not p^.form then found := p^.name = localform.fieldid;
-              end;
-            if found then
-              begin
-              f1 := ref(bigtable[p^.vartype]);
-              constelement(p^.offset + eltloc, p^.vartype, sizeof(f1,
-                           localform.packedflag), f1^.typ = strings,
-                           localform.packedflag)
-              end
-            else if localform.firstvariant = 0 then
-              begin
-              finished := true;
-              warnbefore(badconsterr);
-              constelement(curloc, noneindex, unitsize, false, false);
-              end
-            else
-              begin
-              tagoffset := 0;
-              if localform.tagfield <> 0 then
-                begin
-                p := ref(bigtable[localform.tagfield]);
-                elttype := p^.vartype;
-                tagoffset := p^.offset;
-                end
-              else if localform.firstvariant <> 0 then
-                begin
-                f := ref(bigtable[localform.firstvariant]);
-                if f^.firstlabel <> 0 then
-                  begin
-                  f := ref(bigtable[f^.firstlabel]);
-                  elttype := f^.varlabtype;
-                  end
-                else elttype := noneindex;
-                end
-              else elttype := noneindex;
-              constvalue(tagoffset + eltloc, elttype, false,
-                         localform.packedflag, temp, written);
-              if localform.tagfield <> 0 then
-                begin
-                f := ref(bigtable[elttype]);
-                putvalue(tagoffset + eltloc, false, false,
-                         localform.packedflag, sizeof(f, localform.packedflag), temp);
-                end;
-              searchvariants(form, temp);
-              f := ref(bigtable[form]);
-              currentfield := f^.firstfield - 1;
-              end;
+            currentfield := f^.firstfield - 1;
             end;
-        end {constfield} ;
+          end;
+      end;
       {>>>}
 
+    begin
+      finished := false;
+      f := ref(bigtable[form]);
+      currentfield := f^.firstfield - 1;
 
-      begin {constrecord}
-        finished := false;
-        f := ref(bigtable[form]);
-        currentfield := f^.firstfield - 1;
-
+      constfield;
+      while token in [lpar, comma] + begconstset do
+        begin
+        verifytoken (comma, nocommaerr);
         constfield;
-        while token in [lpar, comma] + begconstset do
-          begin
-          verifytoken(comma, nocommaerr);
-          constfield;
-          end;
+        end;
 
-        f := ref(bigtable[form]);
-        if (currentfield < f^.lastfield) or (f^.firstvariant <> 0) then
-          warnbefore(badconsterr);
-      end {constrecord} ;
+      f := ref(bigtable[form]);
+      if (currentfield < f^.lastfield) or (f^.firstvariant <> 0) then
+        warnbefore (badconsterr);
+    end;
     {>>>}
     {<<<}
     procedure badconst;

@@ -103,23 +103,23 @@ var
 
 { external utils }
 {<<<}
-function min;
+function myMin;
 
 begin
   if i < j then
-    min := i
+    myMin := i
   else
-    min := j
+    myMin := j
 end;
 {>>>}
 {<<<}
-function max;
+function myMax;
 
 begin
   if i > j then
-    max := i
+    myMax := i
   else
-    max := j
+    myMax := j
 end;
 {>>>}
 {<<<}
@@ -335,7 +335,7 @@ var
 
 begin
   getFileName (nil, true, true, sharedPtr^.filename, sharedPtr^.filenameLength);
-  limit := min (sharedPtr^.filenameLength, maxprocnamelen);
+  limit := myMin (sharedPtr^.filenameLength, maxprocnamelen);
 
   for i := 1 to limit do
     if (sharedPtr^.filename[i] >= 'a') and (sharedPtr^.filename[i] <= 'z') then
@@ -450,7 +450,7 @@ procedure parseCommandLine;
     sharedPtr^.cmdlength := 1;
     P_getcmdline (sharedPtr^.cmdLine, sharedPtr^.cmdlength);
 
-    sharedPtr^.cmdlength := min (cmdlinelength, sharedPtr^.cmdlength + 1);
+    sharedPtr^.cmdlength := myMin (cmdlinelength, sharedPtr^.cmdlength + 1);
     for i := sharedPtr^.cmdlength to cmdlinelength do
       sharedPtr^.cmdline[i] := ' ';
   end;
@@ -524,7 +524,7 @@ procedure parseCommandLine;
     with q^ do
       begin
       next := nil;
-      arglen := min(finish - start, filenamelen);
+      arglen := min (finish - start, filenamelen);
       for i := 1 to filenamelen do
         begin
         if start < finish then
@@ -1289,7 +1289,7 @@ begin
 
   if deltahour < sharedPtr^.istarthour then
     deltahour := deltahour + 24;
-  deltasec := max (deltasec - sharedPtr^.istartsec +
+  deltasec := myMax (deltasec - sharedPtr^.istartsec +
               60 * ((deltamin - sharedPtr^.istartmin) + 60 * (deltahour - sharedPtr^.istarthour)), 1);
 
   for i := l to h do
@@ -1358,7 +1358,7 @@ begin
     TimeStamp (day, month, year, sharedPtr^.endhour, sharedPtr^.endmin, sharedPtr^.endsec);
     if sharedPtr^.endhour < sharedPtr^.starthour then
       sharedPtr^.endhour := sharedPtr^.endhour + 24;
-    sharedPtr^.endsec := max (sharedPtr^.endsec - sharedPtr^.startsec +
+    sharedPtr^.endsec := myMax (sharedPtr^.endsec - sharedPtr^.startsec +
                               60 * ((sharedPtr^.endmin - sharedPtr^.startmin) +
                                     60 * (sharedPtr^.endhour - sharedPtr^.starthour)), 1);
 

@@ -1,7 +1,7 @@
 { main.def externs }
 
-function min (i, j: integer): integer; external;
-function max (i, j: integer): integer; external;
+function myMin (i, j: integer): integer; external;
+function myMax (i, j: integer): integer; external;
 
 procedure abort (msg: abortwarning {why we are aborting} ); external;
 procedure warnat (error: warning; line: integer; column: columnindex); external;
