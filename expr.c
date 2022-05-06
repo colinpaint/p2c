@@ -24,20 +24,19 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 void free_value (val)
 Value *val;
 {
-    if (!val || !val->type)
-  return;
-    switch (val->type->kind) {
+  if (!val || !val->type)
+    return;
 
-        case TK_STRING:
-        case TK_REAL:
-        case TK_ARRAY:
-        case TK_RECORD:
-        case TK_SET:
-            if (val->s)
-                FREE(val->s);
-            break;
-
-  default:
+  switch (val->type->kind) {
+    case TK_STRING:
+    case TK_REAL:
+    case TK_ARRAY:
+    case TK_RECORD:
+    case TK_SET:
+      if (val->s)
+        FREE(val->s);
+      break;
+    default:
       break;
     }
 }
@@ -378,29 +377,29 @@ long *smin, *smax;
 void freeexpr (ex)
 register Expr *ex;
 {
-    register int i;
+  register int i;
+  if (ex) {
+    for (i = 0; i < ex->nargs; i++)
+      freeexpr (ex->args[i]);
 
-    if (ex) {
-        for (i = 0; i < ex->nargs; i++)
-            freeexpr(ex->args[i]);
-        switch (ex->kind) {
+    switch (ex->kind) {
+      case EK_CONST:
+      case EK_LONGCONST:
+        free_value (&ex->val);
+        break;
 
-            case EK_CONST:
-            case EK_LONGCONST:
-                free_value(&ex->val);
-                break;
-
-            case EK_DOT:
-            case EK_NAME:
-            case EK_BICALL:
-                if (ex->val.s)
-                    FREE(ex->val.s);
-                break;
+      case EK_DOT:
+      case EK_NAME:
+      case EK_BICALL:
+        if (ex->val.s)
+          FREE(ex->val.s);
+        break;
 
       default:
-    break;
-        }
-        FREE(ex);
+        break;
+      }
+
+    FREE(ex);
     }
 }
 //}}}

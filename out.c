@@ -1084,142 +1084,162 @@ register char *msg;
     long time0, time0a, time1;
 
     debughook();
+
     if (outputmode) {
-  end_source();
-  while ((ch = *msg++) != 0) {
-      if (ch >= ' ') {
-    putc_outf(ch);
-      } else if (ch == '\n' || ch == '\r') {
-    putc_outf(ch);
-    flush_outfilebuf();
-    outf_lnum++;
+      end_source();
+      while ((ch = *msg++) != 0) {
+        if (ch >= ' ') {
+          putc_outf (ch);
+          } 
+        else if (ch == '\n' || ch == '\r') {
+          putc_outf (ch);
+          flush_outfilebuf();
+          outf_lnum++;
+          }
+        }
+      return;
       }
-  }
-  return;
-    }
+
     while ((ch = *msg++) != 0) {
-  if (ch == '\n' || ch == '\r') {
-      if (outbufpos == 0) {      /* blank line */
-    thisfutureindent = -1;
-    blanklines++;
-    continue;
-      }
-      if (sectionsize > blanklines)
-    blanklines = sectionsize;
-      sectionsize = 0;
-      if (eatblanks)
-    blanklines = 0;
-            while (blanklines > 0) {
-                blanklines--;
-    end_source();
-                putc_outf('\n');
-    flush_outfilebuf();
-    outf_lnum++;
-            }
-      if (thisindent + outbufcount >= linewidth && !dontbreaklines) {
-    numbreaks = 1;
-    bestnumbreaks = 0;
-    bestbadness = BIGBADNESS;
-    breakpos[0] = 0;
-    breakindent[0] = thisindent;
-    breakcount[0] = 0;
-    breakerrorflag = 1;
-    numedits = 0;
-    bestnumedits = 0;
-    savelimit = showbadlimit;
-    numalts = 0;
-    bestnumalts = 0;
-    savemaxlw = maxlinewidth;
-    time0 = time0a = getcurtime();
-    if (regression)
-        srand(17);
-    if (thisindent + outbufcount > linewidth*3/2) {
-        i = 0;
-        maxdepth = 0;
-        readparens(&i, 0);
-        maxdp = maxdepth;
-        for (;;) {    /* try some simple fixed methods first... */
-      for (i = 1; i <= 20; i++) {
-          randombreaks = -1;
-          trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-      }
-      randombreaks = -2;
-      trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-      for (i = 0; i <= maxdp+1; i++) {
-          randombreaks = i+1;
-          trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-      }
-      if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
-          maxlinewidth = 9999;   /* no choice but to relax */
+      if (ch == '\n' || ch == '\r') {
+        //{{{  lf or cr
+        if (outbufpos == 0) {      
+          //  blank line 
+          thisfutureindent = -1;
+          blanklines++;
+          continue;
+          }
+
+        if (sectionsize > blanklines)
+          blanklines = sectionsize;
+
+        sectionsize = 0;
+        if (eatblanks)
+          blanklines = 0;
+
+        while (blanklines > 0) {
+          //  more blank lines
+          blanklines--;
+          end_source();
+          putc_outf ('\n');
+          flush_outfilebuf();
+          outf_lnum++;
+          }
+
+        if (thisindent + outbufcount >= linewidth && !dontbreaklines) {
+          //{{{  try to break lines
+          numbreaks = 1;
+          bestnumbreaks = 0;
+          bestbadness = BIGBADNESS;
+          breakpos[0] = 0;
+          breakindent[0] = thisindent;
+          breakcount[0] = 0;
+          breakerrorflag = 1;
+          numedits = 0;
+          bestnumedits = 0;
+          savelimit = showbadlimit;
           numalts = 0;
-      } else
-          break;
+          bestnumalts = 0;
+          savemaxlw = maxlinewidth;
+          time0 = time0a = getcurtime();
+
+          if (regression)
+            srand(17);
+
+          if (thisindent + outbufcount > linewidth*3/2) {
+            //{{{  try some breaks
+            i = 0;
+            maxdepth = 0;
+            readparens(&i, 0);
+            maxdp = maxdepth;
+            for (;;) {    /* try some simple fixed methods first... */
+              for (i = 1; i <= 20; i++) {
+                randombreaks = -1;
+                trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+                }
+              randombreaks = -2;
+              trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+              for (i = 0; i <= maxdp+1; i++) {
+                randombreaks = i+1;
+                trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+                }
+              if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
+                maxlinewidth = 9999;   /* no choice but to relax */
+                numalts = 0;
+                } 
+              else
+                break;
+              }
+            time0a = getcurtime();
+            }
+            //}}}
+
+          randombreaks = 0;
+          trybreakline (0, 0, thisindent, 0.0, 0, NULL);
+          if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
+            numalts = 0;
+            maxlinewidth = 9999;   /* no choice but to relax this */
+            trybreakline (0, 0, thisindent, 0.0, 0, NULL);
+            }
+
+          time1 = getcurtime() - time0;
+          alts = numalts;
+          if (testinglinebreaker) {
+            if (savelimit < 0 && testinglinebreaker > 1) {
+              showbadlimit = bestbadness * (-savelimit);
+              numalts = 0;
+              bestnumalts = 0;
+              trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+              }
+            fprintf(outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld in %.3f sec */\n", bestnumalts, bestbadness, alts, time1/1000.0);
+            }
+
+          showbadlimit = savelimit;
+          maxlinewidth = savemaxlw;
+          flush_outbuf (bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
+
+          if (((USETIME && time1 > 1000) || alts >= maxalts) && !regression) {
+            sprintf (outbuf, "Line breaker spent %.1f", (time1 + time0 - time0a) / 1000.0);
+            if (time0 != time0a)
+              sprintf (outbuf + strlen(outbuf), "+%.2f", (time0a - time0) / 1000.0);
+            sprintf (outbuf + strlen(outbuf), " seconds, %ld tries on line %d [251]", alts, outf_lnum);
+            note (outbuf);
+            }
+          else if (verbose) {
+            fprintf (logfile, "%s, %d/%d: Line breaker spent %ld tries\n", infname, inf_lnum, outf_lnum, alts);
+            }
+          if (testinglinebreaker)
+            fprintf(outf, "#endif\n\n");
+          }
+          //}}}
+        else if (testinglinebreaker < 2)
+          flush_outbuf (0, NULL, NULL, 0, NULL, NULL, NULL);
+
+        thisfutureindent = -1;
+        outbufpos = 0;
+        outbufcount = 0;
         }
-        time0a = getcurtime();
-    }
-    randombreaks = 0;
-    trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-    if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
-        numalts = 0;
-        maxlinewidth = 9999;   /* no choice but to relax this */
-        trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-    }
-    time1 = getcurtime() - time0;
-    alts = numalts;
-    if (testinglinebreaker) {
-        if (savelimit < 0 && testinglinebreaker > 1) {
-      showbadlimit = bestbadness * (-savelimit);
-      numalts = 0;
-      bestnumalts = 0;
-      trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+        //}}}
+      else {
+        if (outbufpos == 0) {
+          // eat leading spaces
+          if (ch == ' ' && !dontbreaklines)    
+            continue;
+          thisindent = applydelta (outindent, deltaindent);
+          deltaindent = 0;
+          }
+
+        if (outbufpos == outbufsize) {
+          outbufsize *= 2;
+          outbuf = REALLOC(outbuf, outbufsize, char);
+          }
+
+        outbuf[outbufpos++] = ch;
+        if (ch >= ' ' || ch == '\f')
+          outbufcount++;
         }
-        fprintf(outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld in %.3f sec */\n", bestnumalts, bestbadness, alts, time1/1000.0);
-    }
-    showbadlimit = savelimit;
-    maxlinewidth = savemaxlw;
-    flush_outbuf(bestnumbreaks, bestbreakpos, bestbreakindent,
-           bestnumedits, besteditpos,
-           besteditold, besteditnew);
-    if (((USETIME && time1 > 1000) || alts >= maxalts) &&
-        !regression) {
-        sprintf(outbuf, "Line breaker spent %.1f",
-          (time1 + time0 - time0a) / 1000.0);
-        if (time0 != time0a)
-      sprintf(outbuf + strlen(outbuf),
-        "+%.2f", (time0a - time0) / 1000.0);
-        sprintf(outbuf + strlen(outbuf),
-          " seconds, %ld tries on line %d [251]", alts, outf_lnum);
-        note(outbuf);
-    } else if (verbose) {
-        fprintf(logfile, "%s, %d/%d: Line breaker spent %ld tries\n",
-          infname, inf_lnum, outf_lnum, alts);
-    }
-    if (testinglinebreaker)
-        fprintf(outf, "#endif\n\n");
-      } else {
-    if (testinglinebreaker < 2)
-        flush_outbuf(0, NULL, NULL, 0, NULL, NULL, NULL);
       }
-      thisfutureindent = -1;
-      outbufpos = 0;
-      outbufcount = 0;
-  } else {
-      if (outbufpos == 0) {
-    if (ch == ' ' && !dontbreaklines)    /* eat leading spaces */
-        continue;
-    thisindent = applydelta(outindent, deltaindent);
-    deltaindent = 0;
-      }
-      if (outbufpos == outbufsize) {
-    outbufsize *= 2;
-    outbuf = REALLOC(outbuf, outbufsize, char);
-      }
-      outbuf[outbufpos++] = ch;
-      if (ch >= ' ' || ch == '\f')
-    outbufcount++;
-  }
     }
-}
 //}}}
 //{{{
 void out_n_spaces (n)
@@ -1342,119 +1362,128 @@ Strlist *cmt;
 //}}}
 //{{{
 Strlist* outcomments (cmt)
-Strlist *cmt;
+Strlist* cmt;
 {
-    char *cp;
+    char* cp;
     int saveindent = outindent, savesingle = deltaindent, theindent;
     int saveeat = eatcomments;
     int i = 0;
     int slash;
 
     if (!cmt)
-  return NULL;
+      return NULL;
+
     if (!commentvisible(cmt)) {
-  setcommentkind(cmt, CMT_DONE);
-  return cmt->next;
-    }
+      setcommentkind(cmt, CMT_DONE);
+      return cmt->next;
+      }
+
     if (*cmt->s == '\001') {
-  if (cmtdebug)
-      output(format_sd("[]  [%s:%d]",
-           CMT_NAMES[getcommentkind(cmt)],
-           cmt->value & CMT_MASK));
-  cp = cmt->s;
-  if (cp[1] == '\014') {
-      output("\f\n");
-      cp += 2;
-      if (*cp == '\001')
-    cp++;
-  }
-  for ( ; *cp; cp++) {
-      output("\n");
-      if (cmtdebug && cp[1])
-    output("[]");
-  }
-  setcommentkind(cmt, CMT_DONE);
-  return cmt->next;
-    }
+      if (cmtdebug)
+        output(format_sd("[]  [%s:%d]", CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK));
+      cp = cmt->s;
+      if (cp[1] == '\014') {
+        output("\f\n");
+        cp += 2;
+        if (*cp == '\001')
+          cp++;
+        }
+
+      for ( ; *cp; cp++) {
+        output("\n");
+        if (cmtdebug && cp[1])
+          output("[]");
+        }
+
+      setcommentkind(cmt, CMT_DONE);
+      return cmt->next;
+      }
+
     dontbreaklines++;
+
     if (isembedcomment(cmt)) {
-  embeddedcode = 1;
-  eatcomments = 0;
-  if (!strcmp(cmt->s, embedcomment)) {
-      cmt = cmt->next;
-      theindent = 0;
-      cp = cmt/*->next*/->s + 1;
-      while (*cp++ == ' ')
-    theindent++;
-  } else {
-      strcpy(cmt->s, cmt->s + strlen(embedcomment) + 1);
+      embeddedcode = 1;
+      eatcomments = 0;
+      if (!strcmp(cmt->s, embedcomment)) {
+        cmt = cmt->next;
+        theindent = 0;
+        cp = cmt/*->next*/->s + 1;
+        while (*cp++ == ' ')
+          theindent++;
+        } 
+      else {
+        strcpy(cmt->s, cmt->s + strlen(embedcomment) + 1);
+        moreindent(deltaindent);
+        theindent = outindent;
+        deltaindent = 0;
+        }
+      slash = 0;
+      } 
+    else {
       moreindent(deltaindent);
+      if (cmt->s[0] == '\004')
+        outindent = 0;
       theindent = outindent;
       deltaindent = 0;
-  }
-  slash = 0;
-    } else {
-  moreindent(deltaindent);
-  if (cmt->s[0] == '\004')
-      outindent = 0;
-  theindent = outindent;
-  deltaindent = 0;
-  slash = (slashslash &&
-     (slashslash == 2 || outbufpos == 0 || outbuf[0] != '#'));
-  if (!slash)
-      output("/*");
-    }
+      slash = (slashslash && (slashslash == 2 || outbufpos == 0 || outbuf[0] != '#'));
+      if (!slash)
+        output("/*");
+      }
+
     cp = cmt->s;
     for (;;) {
-  if (slash)
-      output("//");
-  if (*cp == '\002')
-      cp++;
-  else if (*cp == '\003' || *cp == '\004') {
-      outindent = 0;
-      cp++;
-  }
-  if (embeddedcode) {
-      for (i = 0; *cp == ' ' && i < theindent; i++)
-    cp++;
-      i = *cp;
-      if (*cp == '#')
-    outindent = 0;
-  }
-  output(cp);
-  if (cmtdebug)
-      output(format_sd(" [%s:%d] ",
-           CMT_NAMES[getcommentkind(cmt)],
-           cmt->value & CMT_MASK));
-  setcommentkind(cmt, CMT_DONE);
-  cmt = cmt->next;
-  if (!cmt || !commentvisible(cmt))
-      break;
-  cp = cmt->s;
-  if (*cp != '\002' && *cp != '\003')
-      break;
-  output("\n");
-  if (!embeddedcode) {
-      outindent = (*cp == '\002') ? theindent : 0;
-      deltaindent = 0;
-  }
-    }
-    if (embeddedcode) {
-  embeddedcode = 0;
-  if (i) {   /* eat final blank line */
+      if (slash)
+        output("//");
+      if (*cp == '\002')
+        cp++;
+      else if (*cp == '\003' || *cp == '\004') {
+        outindent = 0;
+        cp++;
+        }
+
+      if (embeddedcode) {
+       for (i = 0; *cp == ' ' && i < theindent; i++)
+          cp++;
+        i = *cp;
+        if (*cp == '#')
+        outindent = 0;
+        }
+
+      output(cp);
+      if (cmtdebug)
+        output(format_sd(" [%s:%d] ", CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK));
+      setcommentkind(cmt, CMT_DONE);
+      cmt = cmt->next;
+      if (!cmt || !commentvisible(cmt))
+        break;
+      cp = cmt->s;
+      if (*cp != '\002' && *cp != '\003')
+        break;
       output("\n");
-  }
-    } else {
-  if (!slash)
-      output("*/");
-  output("\n");
-    }
+      if (!embeddedcode) {
+        outindent = (*cp == '\002') ? theindent : 0;
+        deltaindent = 0;
+        }
+      }
+
+    if (embeddedcode) {
+      embeddedcode = 0;
+      if (i) {   /* eat final blank line */
+        output("\n");
+        }
+      } 
+    else {
+      if (!slash)
+        output("*/");
+      output("\n");
+      }
+
     outindent = saveindent;
     deltaindent = savesingle;
     dontbreaklines--;
     eatcomments = saveeat;
     return cmt;
-}
+    }
 //}}}
 //{{{
 void outcomment (cmt)

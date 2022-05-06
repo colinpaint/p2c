@@ -4,7 +4,7 @@ SHELL = /bin/sh
 # Compiler options
 CC = gcc
 OPT = # -O
-DEB = # -g
+DEB = -g
 CFLAGS = $(OPT) $(DEB)
 
 # File names
@@ -35,3 +35,4 @@ clean:
 	rm -f -v *.~*
 	rm -f -v *.*~
 	rm -f -v *~
+	rm -f -v .~*

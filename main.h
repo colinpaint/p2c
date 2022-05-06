@@ -32,10 +32,12 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #include <limits.h>
   #include <string.h>
 
-  #define PP(x)  x             /* use true prototypes */
+  // use true prototypes
+  #define PP(x)  x
   #define PV()   (void)
+
   #define Anyptr void
-  #define __CAT__(a,b)a##b
+  typedef void* anyptr;
 
   #ifdef __GNUC__      /* Fast, in-line version of strcmp */
     //  #pragma message("compiling with __GNUC__")
@@ -57,19 +59,14 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #include <malloc.h>
   #include <memory.h>
 
-  #define PP(x)  ()            /* use old-style declarations */
+  #define PP(x)  () 
   #define PV()   ()
-  #define Anyptr char
-  #define __ID__(a)a
-  #define __CAT__(a,b)__ID__(a)b
 
-  //#define memcpy(a,b,n) bcopy(b,a,n)
-  //#define memcmp(a,b,n) bcmp(a,b,n)
-  //char *malloc(), *realloc();
+  #define Anyptr char
+  typedef char* anyptr;
 #endif
 //}}}
-
-//{{{  Constants
+//{{{  defines
 #ifndef CHAR_BIT
   #define CHAR_BIT 8
 #endif
@@ -93,78 +90,77 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #define EXIT_FAILURE  1
 #endif
 
+#define ALLOC(N,TYPE,NAME)   (TYPE*)malloc ((N) * sizeof(TYPE))
+#define ALLOCV(N,TYPE,NAME)  (TYPE*)malloc (N)
+#define REALLOC(P,N,TYPE)    (TYPE*)realloc (P, (N)*sizeof(TYPE))
+#define FREE(P)              //free (P) crashes app
+
+#define MIN(a,b)  ((a) < (b) ? (a) : (b))
+#define MAX(a,b)  ((a) > (b) ? (a) : (b))
+
 #define P2C_VERSION  "2.00.Oct.15"
 //}}}
-//{{{  Types
-#ifdef __STDC__
-typedef void *anyptr;
-#else
-typedef char *anyptr;
-#endif
-
 typedef unsigned char uchar;
-
-
-/* Ought to rearrange token assignments at the next full re-compile */
+//{{{
 typedef enum E_token {
-    TOK_NONE,
+  TOK_NONE,
 
-    /* reserved words */
-    TOK_AND, TOK_ARRAY, TOK_BEGIN, TOK_CASE, TOK_CONST,
-    TOK_DIV, TOK_DO, TOK_DOWNTO, TOK_ELSE, TOK_END,
-    TOK_FILE, TOK_FOR, TOK_FUNCTION, TOK_GOTO, TOK_IF,
-    TOK_IN, TOK_LABEL, TOK_MOD, TOK_NIL, TOK_NOT,
-    TOK_OF, TOK_OR, TOK_PACKED, TOK_PROCEDURE, TOK_PROGRAM,
-    TOK_RECORD, TOK_REPEAT, TOK_SET, TOK_THEN, TOK_TO,
-    TOK_TYPE, TOK_UNTIL, TOK_VAR, TOK_WHILE, TOK_WITH,
+  /* reserved words */
+  TOK_AND, TOK_ARRAY, TOK_BEGIN, TOK_CASE, TOK_CONST,
+  TOK_DIV, TOK_DO, TOK_DOWNTO, TOK_ELSE, TOK_END,
+  TOK_FILE, TOK_FOR, TOK_FUNCTION, TOK_GOTO, TOK_IF,
+  TOK_IN, TOK_LABEL, TOK_MOD, TOK_NIL, TOK_NOT,
+  TOK_OF, TOK_OR, TOK_PACKED, TOK_PROCEDURE, TOK_PROGRAM,
+  TOK_RECORD, TOK_REPEAT, TOK_SET, TOK_THEN, TOK_TO,
+  TOK_TYPE, TOK_UNTIL, TOK_VAR, TOK_WHILE, TOK_WITH,
 
-    /* symbols */
-    TOK_DOLLAR, TOK_STRLIT, TOK_LPAR, TOK_RPAR, TOK_STAR,
-    TOK_PLUS, TOK_COMMA, TOK_MINUS, TOK_DOT, TOK_DOTS,
-    TOK_SLASH, TOK_INTLIT, TOK_REALLIT, TOK_COLON, TOK_ASSIGN,
-    TOK_SEMI, TOK_NE, TOK_LT, TOK_GT, TOK_LE, TOK_GE,
-    TOK_EQ, TOK_LBR, TOK_RBR, TOK_HAT,
-    TOK_INCLUDE, TOK_ENDIF,
-    TOK_IDENT, TOK_MININT, TOK_EOF,
+  /* symbols */
+  TOK_DOLLAR, TOK_STRLIT, TOK_LPAR, TOK_RPAR, TOK_STAR,
+  TOK_PLUS, TOK_COMMA, TOK_MINUS, TOK_DOT, TOK_DOTS,
+  TOK_SLASH, TOK_INTLIT, TOK_REALLIT, TOK_COLON, TOK_ASSIGN,
+  TOK_SEMI, TOK_NE, TOK_LT, TOK_GT, TOK_LE, TOK_GE,
+  TOK_EQ, TOK_LBR, TOK_RBR, TOK_HAT,
+  TOK_INCLUDE, TOK_ENDIF,
+  TOK_IDENT, TOK_MININT, TOK_EOF,
 
-    /* C symbols */
-    TOK_ARROW, TOK_AMP, TOK_VBAR, TOK_BANG,
-    TOK_TWIDDLE, TOK_PERC, TOK_QM,
-    TOK_LTLT, TOK_GTGT, TOK_EQEQ, TOK_BANGEQ,
-    TOK_PLPL, TOK_MIMI, TOK_ANDAND, TOK_OROR,
-    TOK_LBRACE, TOK_RBRACE, TOK_CHARLIT,
+  /* C symbols */
+  TOK_ARROW, TOK_AMP, TOK_VBAR, TOK_BANG,
+  TOK_TWIDDLE, TOK_PERC, TOK_QM,
+  TOK_LTLT, TOK_GTGT, TOK_EQEQ, TOK_BANGEQ,
+  TOK_PLPL, TOK_MIMI, TOK_ANDAND, TOK_OROR,
+  TOK_LBRACE, TOK_RBRACE, TOK_CHARLIT,
 
-    /* HP Pascal tokens */
-    TOK_ANYVAR, TOK_EXPORT, TOK_IMPLEMENT, TOK_IMPORT, TOK_MODULE,
-    TOK_OTHERWISE, TOK_RECOVER, TOK_TRY,
+  /* HP Pascal tokens */
+  TOK_ANYVAR, TOK_EXPORT, TOK_IMPLEMENT, TOK_IMPORT, TOK_MODULE,
+  TOK_OTHERWISE, TOK_RECOVER, TOK_TRY,
 
-    /* Turbo Pascal tokens */
-    TOK_SHL, TOK_SHR, TOK_XOR, TOK_INLINE, TOK_ABSOLUTE,
-    TOK_INTERRUPT, TOK_ADDR, TOK_HEXLIT, TOK_OBJECT,
-    TOK_CONSTRUCTOR, TOK_DESTRUCTOR, TOK_VIRTUAL, TOK_PRIVATE,
+  /* Turbo Pascal tokens */
+  TOK_SHL, TOK_SHR, TOK_XOR, TOK_INLINE, TOK_ABSOLUTE,
+  TOK_INTERRUPT, TOK_ADDR, TOK_HEXLIT, TOK_OBJECT,
+  TOK_CONSTRUCTOR, TOK_DESTRUCTOR, TOK_VIRTUAL, TOK_PRIVATE,
 
-    /* Oregon Software Pascal tokens */
-    TOK_ORIGIN, TOK_INTFONLY,
+  /* Oregon Software Pascal tokens */
+  TOK_ORIGIN, TOK_INTFONLY,
 
-    /* VAX Pascal tokens */
-    TOK_REM, TOK_VALUE, TOK_VARYING, TOK_OCTLIT, TOK_COLONCOLON,
-    TOK_STARSTAR,
+  /* VAX Pascal tokens */
+  TOK_REM, TOK_VALUE, TOK_VARYING, TOK_OCTLIT, TOK_COLONCOLON,
+  TOK_STARSTAR,
 
-    /* Modula-2 tokens */
-    TOK_BY, TOK_DEFINITION, TOK_ELSIF, TOK_FROM, TOK_LOOP,
-    TOK_POINTER, TOK_QUALIFIED, TOK_RETURN,
+  /* Modula-2 tokens */
+  TOK_BY, TOK_DEFINITION, TOK_ELSIF, TOK_FROM, TOK_LOOP,
+  TOK_POINTER, TOK_QUALIFIED, TOK_RETURN,
 
-    /* UCSD Pascal tokens */
-    TOK_SEGMENT,
+  /* UCSD Pascal tokens */
+  TOK_SEGMENT,
 
-    /* TIP tokens */
-    TOK_RANDOM, TOK_COMMON, TOK_ACCESS,
+  /* TIP tokens */
+  TOK_RANDOM, TOK_COMMON, TOK_ACCESS,
 
-    /* Object Pascal tokens */
-    TOK_INHERITED, TOK_OVERRIDE,
+  /* Object Pascal tokens */
+  TOK_INHERITED, TOK_OVERRIDE,
 
-    TOK_LAST
-} Token;
+  TOK_LAST
+  } Token;
 //}}}
 
 #ifdef DEFINE_GLOBALS
@@ -226,17 +222,17 @@ typedef enum E_token {
 
 //{{{
 typedef struct S_strlist {
-    struct S_strlist *next;
-    long value;
-    char s[1];
-} Strlist;
+  struct S_strlist *next;
+  long value;
+  char s[1];
+  } Strlist;
 //}}}
 //{{{
 typedef struct S_value {
-    struct S_type *type;
-    long i;
-    char *s;
-} Value;
+  struct S_type *type;
+  long i;
+  char *s;
+  } Value;
 //}}}
 
 //{{{  Symbol notes
@@ -1793,14 +1789,6 @@ int unlink         PP( (char *) );
 
 #define FCheck(flag)   ((flag) == 1 || (!iocheck_flag && (flag)))
 #define checkeof(fex)  (isvar(fex, mp_input) ? FCheck(checkstdineof) : FCheck(checkfileeof))
-
-#define ALLOC(N,TYPE,NAME)   (TYPE*)test_malloc ((unsigned)((N)*sizeof(TYPE)), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
-#define ALLOCV(N,TYPE,NAME)  (TYPE*)test_malloc ((unsigned)(N), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
-#define REALLOC(P,N,TYPE)    (TYPE*)test_realloc ((char *)(P), (unsigned)((N)*sizeof(TYPE)))
-#define FREE(P)                    test_free ((char*)(P))
-
-#define MIN(a,b)  ((a) < (b) ? (a) : (b))
-#define MAX(a,b)  ((a) > (b) ? (a) : (b))
 
 //{{{
 #ifdef toupper
