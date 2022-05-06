@@ -1,4 +1,8 @@
 p68
+dumpToken
+dumpInter
+dumpPseudo
+
 *.c
 *.log
 *.sa

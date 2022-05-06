@@ -1429,9 +1429,7 @@ begin
     getFileName (sharedPtr^.listname, false, false, sharedPtr^.filename, sharedPtr^.filenameLength);
     rewrite (listFile, 'output.txt');
 
-    { If the last region of the file is nolisted and the list command line option is used,
-      this dummy listing line will force a forceList of any errors in the nolisted region.
-      This fix causes no harm in the normal case }
+    { force listing of errors if last nolisted region }
     sharedPtr^.lastList := sharedPtr^.lastList + 1;
     sharedPtr^.listTable[sharedPtr^.lastList].start := sharedPtr^.lastLine;
     sharedPtr^.listTable[sharedPtr^.lastList].count := 0;
