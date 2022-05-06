@@ -15,9 +15,6 @@ const
   hostmachine = vax;
   hostopsys = vms;
 
-  targetopsys = vdos;
-  targetmachine = mc68000;
-
 {<<<}
 const
   register_return = false;

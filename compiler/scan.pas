@@ -1090,7 +1090,7 @@ var
                 begin
                 getCh;
 
-                if (targetopsys = vdos) and (nextch >= '0') and (nextch <= '9') then
+                if (nextch >= '0') and (nextch <= '9') then
                   sharedPtr^.datasection := snumber mod 16
                 else
                   begin
@@ -2795,7 +2795,7 @@ begin
         '#':
           {<<<}
           begin
-          if (targetopsys <> msdos) or (sharedPtr^.switchcounters[standard] > 0) then
+          if (sharedPtr^.switchcounters[standard] > 0) then
             warnat (badchar, sharedPtr^.lastLine, chpos);
 
           charliteral;
@@ -2985,9 +2985,7 @@ procedure scan1;
       scanswitchtable[i].n := 'xxshortsection';
       scanswitchtable[i].internal := true;
       scanswitchtable[i].is = xshortsectsw;
-
-      if targetopsys = vdos then
-        scanswitchtable[i].n := 'shortsection  ';
+      scanswitchtable[i].n := 'shortsection  ';
 
       i := i + 1;
       scanswitchtable[i].n := 'version       ';

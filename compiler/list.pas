@@ -891,6 +891,274 @@ var
       errorlines: integer;
 
       {<<<}
+      procedure listError (err: warning);
+      { Translate error scalar type to meaningful message on listing file. }
+
+      begin
+        case err of
+          linetoolong: listStr('Line too long');
+          badchar: listStr('Illegal character');
+          missingdigits: listStr('Need at least 1 digit after ''.'' or ''E''');
+          octalconst: listStr('Octal constants are not standard Pascal');
+          nondecimalconst: listStr('Non-decimal integers are not standard Pascal');
+          toomanyerrors: listStr('Too many errors!');
+          badoctal: listStr('Octal constant contains an illegal digit');
+          badradix: listStr('Non-decimal integer base must lie in range 2..16');
+          {<<<}
+          badinteger:
+            begin
+            listStr('Integers must lie in range ');
+            listInt( - sharedPtr^.targetmaxint - 1, 1);
+            listStr('..');
+            listInt(sharedPtr^.targetmaxint, 1);
+            end;
+          {>>>}
+          {<<<}
+          badexpon:
+            begin
+            listStr('Exponent must lie in range ');
+            if sharedPtr^.switcheverplus[doublereals] then
+              begin
+              listInt(mindoubleexpon, 1);
+              listStr('..');
+              listInt(maxdoubleexpon, 1);
+              end
+            else
+              begin
+              listInt(minexpon, 1);
+              listStr('..');
+              listInt(maxexpon, 1);
+              end;
+            end;
+          {>>>}
+          zerostring: listStr('String of length zero');
+          {<<<}
+          levelerr:
+            begin
+            listStr('Only ');
+            listInt(maxlevel, 1);
+            listStr(' levels of nesting allowed');
+            end;
+          {>>>}
+          doteoferr: listStr('Use ''.'' after main program body');
+          extraenderr: listStr('Extra END following block -- Check BEGIN ... END pairing');
+          extraprocerr: listStr('Extra procedures found after main program body');
+          extrastmterr: listStr('Extra statements found after end of program');
+          garbageerr: listStr('Nonsense discovered after program end');
+          blockstarterr: listStr('Block must begin with LABEL,CONST,TYPE,VAR,PROCEDURE,FUNCTION, or BEGIN');
+          scrambledblkerr: listStr('Block declarations are incorrectly ordered');
+          badlabelnest: listStr('Label is target of illegal GOTO');
+          nosemierr: listStr('Use '';'' to separate statements');
+          nobeginerr: listStr('BEGIN expected');
+          blockenderr: listStr('Block ended incorrectly');
+          noenderr: listStr('END expected');
+          stmtenderr: listStr('Statement ended incorrectly');
+          nountilerr: listStr('UNTIL expected');
+          badelseerr: listStr('Unexpected ELSE clause -- Check preceding IF for extra '';''');
+          nothenerr: listStr('THEN expected');
+          nocommaerr: listStr(''','' expected');
+          nocolonerr: listStr(''':'' expected');
+          nooferr: listStr('OF expected');
+          caselabelerr: listStr('Bad CASE label');
+          caseelseerr: listStr('OTHERWISE/ELSE clause in CASE not allowed');
+          nodoerr: listStr('DO expected');
+          nobecomeserr: listStr(''':='' expected');
+          nodowntoerr: listStr('TO or DOWNTO expected');
+          nofilevar: listStr('File variable expected');
+          novarerr: listStr('Identifier expected');
+          badlabelerr: listStr('Label must be unsigned integer constant');
+          norparerr: listStr(''')'' expected');
+          badcolonerr: listStr('Procedures cannot be followed by type definition');
+          badparamerr: listStr('Bad parameter element');
+          notypenameerr: listStr('Type name expected');
+          nosemiprocerr: listStr(''';'' expected after procedure body');
+          nofuncass: listStr('Function identifier is never assigned a value');
+          badexprerr: listStr('Badly formed expression');
+          nooperr: listStr('Binary operator expected');
+          nooprnderr: listStr('Operand expected');
+          badindexerr: listStr(''']'' or '','' must follow index expression');
+          norbrackerr: listStr(''']'' expected');
+          badrparerr: listStr('Unexpected '')'' -- Check for matching parenthesis');
+          noeqlerr: listStr('''='' expected');
+          badconsterr: listStr('Bad constant');
+          nosemiheaderr: listStr('Use '';'' to separate declarations');
+          baddeclerr: listStr('Declaration terminated incorrectly');
+          badtypesyntax: listStr('Bad type syntax');
+          nolabelerr: listStr('Integer label expected');
+          nolbrackerr: listStr('''['' expected');
+          nodotdoterr: listStr('''..'' expected');
+          nolparerr: listStr('''('' expected');
+          {<<<}
+          proctablefull:
+            begin
+            listStr('Too many procedures (only ');
+            listInt(proctablesize, 1);
+            listStr(' allowed)');
+            end;
+          {>>>}
+          {<<<}
+          undeftablefull:
+            begin
+            listStr('Too many forward declarations (only ');
+            listInt(undeftablesize, 1);
+            listStr(' allowed)');
+            end;
+          {>>>}
+          {<<<}
+          tablefull:
+            begin
+            listStr('Too many identifiers (only ');
+            listInt(hashtablesize, 1);
+            listStr(' allowed)');
+            end;
+          {>>>}
+          stringtableoverflow: listStr('Too many strings or identifiers');
+          baddirective: listStr('Unknown directive');
+          {<<<}
+          deepinclude:
+            begin
+            listStr('Too many nested INCLUDE directives (only ');
+            listInt(sourcedepth - 1, 1);
+            listStr(' allowed)');
+            end;
+          {>>>}
+          duplicateident: listStr( 'Identifier cannot be redefined or defined after use at this level');
+          undefidenterr: listStr('Undefined identifier');
+          indexerror: listStr('Array subscript out of range');
+          overflow: listStr('Integer overflow or division by zero');
+          bigarrayerr: listStr('Array exceeds addressable memory');
+          rangeerror: listStr('Assignment value out of range');
+          badsubrange: listStr('Illegal subrange');
+          badindex: listStr('Index must be non-real scalar type');
+          badsetbase: listStr('Sets must be non-real scalar type');
+          badsetexpression: listStr('Set is constructed of incompatible types');
+          badcasetyp: listStr('Case label must be non-real scalar type');
+          badcaselab: listStr('Case label type does not match tag field type');
+          duplicatetag: listStr('Tag identifier already used in this record');
+          duplabeldef: listStr('Label cannot be redefined at this level');
+          labnotpredef: listStr('Label must be declared in LABEL declaration');
+          badlabeldef: listStr('Label defined twice');
+          badtagerr: listStr('Tag does not appear in variant record label list');
+          labelundef: listStr('Declared labels must be defined in procedure body');
+          fwdundef: listStr('Forward procedure/function body is never defined');
+          typeundef: listStr('Forward type reference is never resolved');
+          dupfwdparam: listStr( 'Parameter list cannot be duplicated in forward-declared procedure/function body');
+          dupfwdresult: listStr( 'Function result type cannot be duplicated in forward-declared function body');
+          dupforward: listStr( 'This procedure/function name has been previously declared forward' );
+          fwdprocfuncerr: listStr('This function was declared as a forward procedure');
+          fwdfuncprocerr: listStr('This procedure was declared as a forward function');
+          badxdef: listStr( 'External procedures/functions must be defined at outermost level' );
+          recordexpected: listStr('Variable of type record expected');
+          arrayexpected: listStr('Variable of type array expected');
+          ptrexpected: listStr('File variable or pointer variable expected');
+          badfunctionarg: listStr( 'Function cannot be applied to an operand of this type');
+          illegalformat: listStr( 'This parameter cannot be followed by a format expression');
+          badformat: listStr('Format expression must be of type integer');
+          badreadtype: listStr('Variables of this type are not allowed in READ');
+          noreadarg: listStr('Need at least one variable to READ');
+          badwritearg: listStr('Variables of this type are not allowed in WRITE');
+          nostringerr: listStr('Packed array [1..n] of characters expected');
+          filenameerr: listStr('File names in RESET/REWRITE are non-standard');
+          noptrvar: listStr('Pointer variable expected');
+          nofieldtype: listStr('Field variable expected for NEW');
+          badnewlabel: listStr('Variant label is undefined');
+          nowritearg: listStr('Need at least one value to WRITE');
+          toomanyargs: listStr('Too many actual parameters');
+          toofewargs: listStr('Too few actual parameters');
+          paramtypeerr: listStr( 'Actual parameter type doesn''t match formal parameter type');
+          booleanexpected: listStr('Boolean value expected');
+          badarithtype: listStr('Operator cannot be applied to these operand types');
+          signedseterr: listStr( 'Unary ''+'' or ''-'' cannot be applied to set operands');
+          badreloprnds: listStr( 'Illegal comparison of record, array, file, or pointer values' );
+          badrealtoint: listStr( 'Can''t assign a real value to an integer variable (use TRUNC or ROUND)' );
+          baddbltoreal: listStr( 'Can''t assign a double value to a real variable (use SNGL)' );
+          typesincomp: listStr('Operands are of differing or incompatible type');
+          compilerwritererr: listStr( 'Compiler writer error -- please contact Oregon Software at (503) 245-2202' );
+          nostrictinclusion: listStr('No strict inclusion of sets allowed');
+          badinoprnds: listStr('Bad IN operands');
+          badforvar: listStr( 'FOR-loop control variable must be declared at this level');
+          unsupportedforvardecl: listStr( 'FOR-loop control variable declared as OWN, USE, DEFINE, SHARED, OR ORIGIN');
+          badfortype: listStr( 'FOR-loop control variable can only be a simple non-real scalar variable' );
+          badforlimit: listStr( 'Expression type is incompatible with FOR index type');
+          badcasetype: listStr( 'CASE selection expression must be a non-real scalar type');
+          badcaselabeltype: listStr( 'CASE label does not match selection expression type');
+          indexincomp: listStr( 'Index expression type does not match array declaration');
+          badprocparam: listStr('Procedure name expected');
+          badfuncparam: listStr('Function name expected');
+          varparamerr: listStr( 'VAR parameters cannot be passed an expression, packed field or variant tag');
+          badassignment: listStr( 'Assignment operands are of differing or incompatible types');
+          cantpack: listStr('Can''t pack unstructured or named type');
+          wantvarname: listStr('Variable name expected');
+          nofilefile: listStr('File cannot contain a file component');
+          dupcaselabel: listStr('Case label defined twice');
+          badfunctype: listStr('Function result must be of scalar or pointer type');
+          badfuncassign: listStr('Illegal function assignment');
+          missingforindex: listStr('Index variable missing in this FOR statement');
+          modifiedfor: listStr( 'Reassignment of FOR-loop control variable not allowed');
+          badprocfunc: listStr('Only functions can be called from expressions');
+          badassign: listStr('Assignment to constants not allowed');
+          norecordident: listStr('Record identifier expected');
+          unassigned: listStr('Must assign value before using variable');
+          badorigin: listStr('Bad ORIGIN value');
+          novaluefile: listStr('Files must be passed as VAR parameters');
+          dontassignfile: listStr('Assignment of file variables not allowed');
+          longstring: listStr('String constants may not include line separator');
+          bigsetbase: listStr('Set types must have a base in the range 0..255');
+          nottextfile: listStr('Readln, writeln, eoln, and page must be applied to text file');
+          obsoletecomments: listStr('Non-standard comment form, please use "{" or "(*"');
+          typenotallowed: listStr('A type identifier is not allowed here');
+          progexpected: listStr('PROGRAM heading expected');
+          badmodop: listStr('The divisor of a mod must be greater than zero');
+          badpackconform: listStr( 'Packed conformant array parameters cannot be nested');
+          confinconsistent: listStr( 'All parameters in a single parameter section must have the same type.' );
+          badconfactual: listStr( 'Actual parameter cannot be used with this conformant array parameter.' );
+          bigrecorderr: listStr('Record too large');
+          bigblockerr: listStr('Data declarations for this block are too large');
+          {<<<}
+          biglabelerr:
+            begin
+            listStr('Label must lie in range 0..');
+            listInt(maxstandardlabel, 1);
+            end;
+          {>>>}
+          badnumber: listStr( 'Blank characters must separate identifiers from numeric constants');
+          badfornestref: listStr('Nested procedure modifies index variable');
+          badcasetags: listStr('Variant tags do not exactly match range of tag type');
+          nameundef: listStr('PROGRAM parameter is never defined');
+          filenotdeclared: listStr('External file must be declared in PROGRAM statement');
+          inputnotdeclared: listStr('Standard file "input" must be declared by PROGRAM statement');
+          outputnotdeclared: listStr( 'Standard file "output" must be declared by PROGRAM statement');
+          novarianttag: listStr( 'Variant record case selector may not be passed as a VAR parameter');
+          notlevel0: listStr('Conformant arrays are not Level 0');
+          toomanyelements: listStr('Too many array elements');
+          eofincomment: listStr('End of file encountered in a comment');
+          baddouble: listStr('Embedded DOUBLE switch is illegal after first token');
+          manyscopes: listStr( 'Too many records, or forward, external or nonpascal procedures/functions' );
+          baduniv: listStr('UNIV may only be used with VAR parameters');
+          badstringindex: listStr('STRING limit must be an integer in the range 1..255');
+          stringoverflowerr: listStr('STRING exceeds allocated size');
+          bodyfounderr: listStr( 'Procedure or function bodies not allowed with "define" option.');
+          manyenviron: listStr('Only one environment directive allowed.');
+          badenviron: listStr( 'Environment directive must precede all declarations.');
+          badoptions: listStr( 'Environment file options inconsistent with currently defined options.');
+          baddefine: listStr( 'This type of declaration not allowed with "define" option.');
+          badcase: listStr('Embedded case switch is illegal after first token');
+          toomanyextvars: listStr('Too many external variables');
+          badsharedvar: listStr('Shared variable declaration error');
+          badusedefinevar: listStr('Use and/or define not allowed here');
+          badcvtfunc: listStr('SNGL and DBL are illegal with DOUBLE switch');
+          badinterruptproc: listStr('Illegal interrupt procedure');
+          badmultidef: listStr('Improper redefinition of use/define variable');
+          {<<<}
+          otherwise
+            begin
+            listStr('??? UNKNOWN ERROR REPORTED ???');
+            end;
+          {>>>}
+          end {case err} ;
+      end;
+      {>>>}
+      {<<<}
       procedure listErrors;
 
       var
@@ -924,8 +1192,9 @@ var
               listStr ('*** ');
               listInt (ord(err), 2);
               listStr (': ');
-              listOneError (err);
+              listError (err);
               listLine;
+
               totallines := totallines + 1;
               errorsreported := errorsreported + 1;
               end;
@@ -945,14 +1214,12 @@ var
           with sharedPtr^.errortable[i] do
             if uniqueerrs[err] then
               begin
-
               uniqueerrs[err] := false;
               listStrL(sharedPtr^.filename, sharedPtr^.filenameLength);
               listChr('(');
               listInt(max(1, linecount - save[sharedPtr^.sourcelevel].line), 1);
               listStr(') : ');
-
-              listOneError(err);
+              listError(err);
               listLine;
 
               totallines := totallines + 1;
@@ -1000,274 +1267,6 @@ var
         processLine;
         listErrors;
         end;
-    end;
-    {>>>}
-    {<<<}
-    procedure listOneError (err: warning);
-    { Translate error scalar type to meaningful message on listing file. }
-
-    begin
-      case err of
-        linetoolong: listStr('Line too long');
-        badchar: listStr('Illegal character');
-        missingdigits: listStr('Need at least 1 digit after ''.'' or ''E''');
-        octalconst: listStr('Octal constants are not standard Pascal');
-        nondecimalconst: listStr('Non-decimal integers are not standard Pascal');
-        toomanyerrors: listStr('Too many errors!');
-        badoctal: listStr('Octal constant contains an illegal digit');
-        badradix: listStr('Non-decimal integer base must lie in range 2..16');
-        {<<<}
-        badinteger:
-          begin
-          listStr('Integers must lie in range ');
-          listInt( - sharedPtr^.targetmaxint - 1, 1);
-          listStr('..');
-          listInt(sharedPtr^.targetmaxint, 1);
-          end;
-        {>>>}
-        {<<<}
-        badexpon:
-          begin
-          listStr('Exponent must lie in range ');
-          if sharedPtr^.switcheverplus[doublereals] then
-            begin
-            listInt(mindoubleexpon, 1);
-            listStr('..');
-            listInt(maxdoubleexpon, 1);
-            end
-          else
-            begin
-            listInt(minexpon, 1);
-            listStr('..');
-            listInt(maxexpon, 1);
-            end;
-          end;
-        {>>>}
-        zerostring: listStr('String of length zero');
-        {<<<}
-        levelerr:
-          begin
-          listStr('Only ');
-          listInt(maxlevel, 1);
-          listStr(' levels of nesting allowed');
-          end;
-        {>>>}
-        doteoferr: listStr('Use ''.'' after main program body');
-        extraenderr: listStr('Extra END following block -- Check BEGIN ... END pairing');
-        extraprocerr: listStr('Extra procedures found after main program body');
-        extrastmterr: listStr('Extra statements found after end of program');
-        garbageerr: listStr('Nonsense discovered after program end');
-        blockstarterr: listStr('Block must begin with LABEL,CONST,TYPE,VAR,PROCEDURE,FUNCTION, or BEGIN');
-        scrambledblkerr: listStr('Block declarations are incorrectly ordered');
-        badlabelnest: listStr('Label is target of illegal GOTO');
-        nosemierr: listStr('Use '';'' to separate statements');
-        nobeginerr: listStr('BEGIN expected');
-        blockenderr: listStr('Block ended incorrectly');
-        noenderr: listStr('END expected');
-        stmtenderr: listStr('Statement ended incorrectly');
-        nountilerr: listStr('UNTIL expected');
-        badelseerr: listStr('Unexpected ELSE clause -- Check preceding IF for extra '';''');
-        nothenerr: listStr('THEN expected');
-        nocommaerr: listStr(''','' expected');
-        nocolonerr: listStr(''':'' expected');
-        nooferr: listStr('OF expected');
-        caselabelerr: listStr('Bad CASE label');
-        caseelseerr: listStr('OTHERWISE/ELSE clause in CASE not allowed');
-        nodoerr: listStr('DO expected');
-        nobecomeserr: listStr(''':='' expected');
-        nodowntoerr: listStr('TO or DOWNTO expected');
-        nofilevar: listStr('File variable expected');
-        novarerr: listStr('Identifier expected');
-        badlabelerr: listStr('Label must be unsigned integer constant');
-        norparerr: listStr(''')'' expected');
-        badcolonerr: listStr('Procedures cannot be followed by type definition');
-        badparamerr: listStr('Bad parameter element');
-        notypenameerr: listStr('Type name expected');
-        nosemiprocerr: listStr(''';'' expected after procedure body');
-        nofuncass: listStr('Function identifier is never assigned a value');
-        badexprerr: listStr('Badly formed expression');
-        nooperr: listStr('Binary operator expected');
-        nooprnderr: listStr('Operand expected');
-        badindexerr: listStr(''']'' or '','' must follow index expression');
-        norbrackerr: listStr(''']'' expected');
-        badrparerr: listStr('Unexpected '')'' -- Check for matching parenthesis');
-        noeqlerr: listStr('''='' expected');
-        badconsterr: listStr('Bad constant');
-        nosemiheaderr: listStr('Use '';'' to separate declarations');
-        baddeclerr: listStr('Declaration terminated incorrectly');
-        badtypesyntax: listStr('Bad type syntax');
-        nolabelerr: listStr('Integer label expected');
-        nolbrackerr: listStr('''['' expected');
-        nodotdoterr: listStr('''..'' expected');
-        nolparerr: listStr('''('' expected');
-        {<<<}
-        proctablefull:
-          begin
-          listStr('Too many procedures (only ');
-          listInt(proctablesize, 1);
-          listStr(' allowed)');
-          end;
-        {>>>}
-        {<<<}
-        undeftablefull:
-          begin
-          listStr('Too many forward declarations (only ');
-          listInt(undeftablesize, 1);
-          listStr(' allowed)');
-          end;
-        {>>>}
-        {<<<}
-        tablefull:
-          begin
-          listStr('Too many identifiers (only ');
-          listInt(hashtablesize, 1);
-          listStr(' allowed)');
-          end;
-        {>>>}
-        stringtableoverflow: listStr('Too many strings or identifiers');
-        baddirective: listStr('Unknown directive');
-        {<<<}
-        deepinclude:
-          begin
-          listStr('Too many nested INCLUDE directives (only ');
-          listInt(sourcedepth - 1, 1);
-          listStr(' allowed)');
-          end;
-        {>>>}
-        duplicateident: listStr( 'Identifier cannot be redefined or defined after use at this level');
-        undefidenterr: listStr('Undefined identifier');
-        indexerror: listStr('Array subscript out of range');
-        overflow: listStr('Integer overflow or division by zero');
-        bigarrayerr: listStr('Array exceeds addressable memory');
-        rangeerror: listStr('Assignment value out of range');
-        badsubrange: listStr('Illegal subrange');
-        badindex: listStr('Index must be non-real scalar type');
-        badsetbase: listStr('Sets must be non-real scalar type');
-        badsetexpression: listStr('Set is constructed of incompatible types');
-        badcasetyp: listStr('Case label must be non-real scalar type');
-        badcaselab: listStr('Case label type does not match tag field type');
-        duplicatetag: listStr('Tag identifier already used in this record');
-        duplabeldef: listStr('Label cannot be redefined at this level');
-        labnotpredef: listStr('Label must be declared in LABEL declaration');
-        badlabeldef: listStr('Label defined twice');
-        badtagerr: listStr('Tag does not appear in variant record label list');
-        labelundef: listStr('Declared labels must be defined in procedure body');
-        fwdundef: listStr('Forward procedure/function body is never defined');
-        typeundef: listStr('Forward type reference is never resolved');
-        dupfwdparam: listStr( 'Parameter list cannot be duplicated in forward-declared procedure/function body');
-        dupfwdresult: listStr( 'Function result type cannot be duplicated in forward-declared function body');
-        dupforward: listStr( 'This procedure/function name has been previously declared forward' );
-        fwdprocfuncerr: listStr('This function was declared as a forward procedure');
-        fwdfuncprocerr: listStr('This procedure was declared as a forward function');
-        badxdef: listStr( 'External procedures/functions must be defined at outermost level' );
-        recordexpected: listStr('Variable of type record expected');
-        arrayexpected: listStr('Variable of type array expected');
-        ptrexpected: listStr('File variable or pointer variable expected');
-        badfunctionarg: listStr( 'Function cannot be applied to an operand of this type');
-        illegalformat: listStr( 'This parameter cannot be followed by a format expression');
-        badformat: listStr('Format expression must be of type integer');
-        badreadtype: listStr('Variables of this type are not allowed in READ');
-        noreadarg: listStr('Need at least one variable to READ');
-        badwritearg: listStr('Variables of this type are not allowed in WRITE');
-        nostringerr: listStr('Packed array [1..n] of characters expected');
-        filenameerr: listStr('File names in RESET/REWRITE are non-standard');
-        noptrvar: listStr('Pointer variable expected');
-        nofieldtype: listStr('Field variable expected for NEW');
-        badnewlabel: listStr('Variant label is undefined');
-        nowritearg: listStr('Need at least one value to WRITE');
-        toomanyargs: listStr('Too many actual parameters');
-        toofewargs: listStr('Too few actual parameters');
-        paramtypeerr: listStr( 'Actual parameter type doesn''t match formal parameter type');
-        booleanexpected: listStr('Boolean value expected');
-        badarithtype: listStr('Operator cannot be applied to these operand types');
-        signedseterr: listStr( 'Unary ''+'' or ''-'' cannot be applied to set operands');
-        badreloprnds: listStr( 'Illegal comparison of record, array, file, or pointer values' );
-        badrealtoint: listStr( 'Can''t assign a real value to an integer variable (use TRUNC or ROUND)' );
-        baddbltoreal: listStr( 'Can''t assign a double value to a real variable (use SNGL)' );
-        typesincomp: listStr('Operands are of differing or incompatible type');
-        compilerwritererr: listStr( 'Compiler writer error -- please contact Oregon Software at (503) 245-2202' );
-        nostrictinclusion: listStr('No strict inclusion of sets allowed');
-        badinoprnds: listStr('Bad IN operands');
-        badforvar: listStr( 'FOR-loop control variable must be declared at this level');
-        unsupportedforvardecl: listStr( 'FOR-loop control variable declared as OWN, USE, DEFINE, SHARED, OR ORIGIN');
-        badfortype: listStr( 'FOR-loop control variable can only be a simple non-real scalar variable' );
-        badforlimit: listStr( 'Expression type is incompatible with FOR index type');
-        badcasetype: listStr( 'CASE selection expression must be a non-real scalar type');
-        badcaselabeltype: listStr( 'CASE label does not match selection expression type');
-        indexincomp: listStr( 'Index expression type does not match array declaration');
-        badprocparam: listStr('Procedure name expected');
-        badfuncparam: listStr('Function name expected');
-        varparamerr: listStr( 'VAR parameters cannot be passed an expression, packed field or variant tag');
-        badassignment: listStr( 'Assignment operands are of differing or incompatible types');
-        cantpack: listStr('Can''t pack unstructured or named type');
-        wantvarname: listStr('Variable name expected');
-        nofilefile: listStr('File cannot contain a file component');
-        dupcaselabel: listStr('Case label defined twice');
-        badfunctype: listStr('Function result must be of scalar or pointer type');
-        badfuncassign: listStr('Illegal function assignment');
-        missingforindex: listStr('Index variable missing in this FOR statement');
-        modifiedfor: listStr( 'Reassignment of FOR-loop control variable not allowed');
-        badprocfunc: listStr('Only functions can be called from expressions');
-        badassign: listStr('Assignment to constants not allowed');
-        norecordident: listStr('Record identifier expected');
-        unassigned: listStr('Must assign value before using variable');
-        badorigin: listStr('Bad ORIGIN value');
-        novaluefile: listStr('Files must be passed as VAR parameters');
-        dontassignfile: listStr('Assignment of file variables not allowed');
-        longstring: listStr('String constants may not include line separator');
-        bigsetbase: listStr('Set types must have a base in the range 0..255');
-        nottextfile: listStr('Readln, writeln, eoln, and page must be applied to text file');
-        obsoletecomments: listStr('Non-standard comment form, please use "{" or "(*"');
-        typenotallowed: listStr('A type identifier is not allowed here');
-        progexpected: listStr('PROGRAM heading expected');
-        badmodop: listStr('The divisor of a mod must be greater than zero');
-        badpackconform: listStr( 'Packed conformant array parameters cannot be nested');
-        confinconsistent: listStr( 'All parameters in a single parameter section must have the same type.' );
-        badconfactual: listStr( 'Actual parameter cannot be used with this conformant array parameter.' );
-        bigrecorderr: listStr('Record too large');
-        bigblockerr: listStr('Data declarations for this block are too large');
-        {<<<}
-        biglabelerr:
-          begin
-          listStr('Label must lie in range 0..');
-          listInt(maxstandardlabel, 1);
-          end;
-        {>>>}
-        badnumber: listStr( 'Blank characters must separate identifiers from numeric constants');
-        badfornestref: listStr('Nested procedure modifies index variable');
-        badcasetags: listStr('Variant tags do not exactly match range of tag type');
-        nameundef: listStr('PROGRAM parameter is never defined');
-        filenotdeclared: listStr('External file must be declared in PROGRAM statement');
-        inputnotdeclared: listStr('Standard file "input" must be declared by PROGRAM statement');
-        outputnotdeclared: listStr( 'Standard file "output" must be declared by PROGRAM statement');
-        novarianttag: listStr( 'Variant record case selector may not be passed as a VAR parameter');
-        notlevel0: listStr('Conformant arrays are not Level 0');
-        toomanyelements: listStr('Too many array elements');
-        eofincomment: listStr('End of file encountered in a comment');
-        baddouble: listStr('Embedded DOUBLE switch is illegal after first token');
-        manyscopes: listStr( 'Too many records, or forward, external or nonpascal procedures/functions' );
-        baduniv: listStr('UNIV may only be used with VAR parameters');
-        badstringindex: listStr('STRING limit must be an integer in the range 1..255');
-        stringoverflowerr: listStr('STRING exceeds allocated size');
-        bodyfounderr: listStr( 'Procedure or function bodies not allowed with "define" option.');
-        manyenviron: listStr('Only one environment directive allowed.');
-        badenviron: listStr( 'Environment directive must precede all declarations.');
-        badoptions: listStr( 'Environment file options inconsistent with currently defined options.');
-        baddefine: listStr( 'This type of declaration not allowed with "define" option.');
-        badcase: listStr('Embedded case switch is illegal after first token');
-        toomanyextvars: listStr('Too many external variables');
-        badsharedvar: listStr('Shared variable declaration error');
-        badusedefinevar: listStr('Use and/or define not allowed here');
-        badcvtfunc: listStr('SNGL and DBL are illegal with DOUBLE switch');
-        badinterruptproc: listStr('Illegal interrupt procedure');
-        badmultidef: listStr('Improper redefinition of use/define variable');
-        {<<<}
-        otherwise
-          begin
-          listStr('??? UNKNOWN ERROR REPORTED ???');
-          end;
-        {>>>}
-        end {case err} ;
     end;
     {>>>}
     {<<<}

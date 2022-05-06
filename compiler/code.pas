@@ -55,6 +55,8 @@
 }
 {>>>}
 {$nomain}
+const
+  targetopsys = vdos;
 {<<<  includes}
 %include 'common.def';
 %include 'pseudo.def';
@@ -835,7 +837,6 @@ var
   relFile: relfiletype;     { array [0..255] of unsigned }
   diagFile: wordstream;     { temporary diagnostics file}
 
-  nextpseudofile: integer; { next byte in the current block of pseudofile}
   nokeydata: pseudoset;  { pseudoops without key, length, refcount or copycount}
   oneoperand: pseudoset; { pseudoops with only one operand}
 
@@ -20529,7 +20530,7 @@ begin {genone}
     if keytable[key].refcount = 0 then keytable[key].access := noaccess;
     key := key - 1;
     end;}
-end; {genone}
+end;
 {>>>}
 {<<<}
 procedure genblk;
@@ -20544,14 +20545,13 @@ procedure genblk;
   are now unused.
 }
 
-begin {genblk}
+begin
   while pseudoSharedPtr^.pseudobuff.op <> blockexit do
     begin
-    unpackpseudofile;
     setcommonkey;
     genone;
     end;
-end {genblk} ;
+end;
 {>>>}
 
 {<<<}
@@ -23630,8 +23630,6 @@ begin
   dummyarg_ptr := 0;
   sharedPtr^.curstringblock := 0;
   sharedPtr^.nextstringfile := 0;
-
-  nextpseudofile := 0;
 
   level := 0;
   fileoffset := 0;
