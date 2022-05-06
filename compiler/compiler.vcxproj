@@ -30,16 +30,32 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="analysis.def" />
+    <None Include="analysis.pas" />
     <None Include="code.def" />
+    <None Include="code.pas" />
     <None Include="common.def" />
+    <None Include="common.pas" />
     <None Include="debug.def" />
     <None Include="inter.def" />
     <None Include="list.def" />
+    <None Include="list.pas" />
     <None Include="main.def" />
+    <CustomBuild Include="main.pas">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">../p2c</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">../p2c</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </Outputs>
+    </CustomBuild>
     <None Include="pseudo.def" />
     <None Include="scan.def" />
+    <None Include="scan.pas" />
+    <None Include="test.pas" />
     <None Include="token.def" />
     <None Include="traverse.def" />
+    <None Include="traverse.pas" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\p2c.h" />
