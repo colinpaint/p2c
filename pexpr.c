@@ -2159,7 +2159,7 @@ Expr *pc_factor()
         gettok();
         if (istypespec(0)) {
           ex = makeexpr_sizeof(pc_parentype(cp), 1);
-          } 
+          }
         else {
           ex = makeexpr_sizeof(pc_expr(), 1);
           skipcloseparen();
@@ -2174,7 +2174,7 @@ Expr *pc_factor()
           gettok();
           ex = makeexpr_bin(EK_NEW, makepointertype(ex->val.type), ex, pc_expr());
           wneedtok(TOK_RBR);
-          } 
+          }
         else
           ex = makeexpr_un(EK_NEW, makepointertype(ex->val.type), ex);
         return ex;

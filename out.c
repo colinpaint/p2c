@@ -17,7 +17,6 @@ along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
 #define _CRT_SECURE_NO_WARNINGS
-
 //{{{
 /* This needs to go before main.h (and thus p2c.proto) is read */
 typedef struct S_paren {
@@ -1090,7 +1089,7 @@ register char *msg;
       while ((ch = *msg++) != 0) {
         if (ch >= ' ') {
           putc_outf (ch);
-          } 
+          }
         else if (ch == '\n' || ch == '\r') {
           putc_outf (ch);
           flush_outfilebuf();
@@ -1103,8 +1102,8 @@ register char *msg;
     while ((ch = *msg++) != 0) {
       if (ch == '\n' || ch == '\r') {
         //{{{  lf or cr
-        if (outbufpos == 0) {      
-          //  blank line 
+        if (outbufpos == 0) {
+          //  blank line
           thisfutureindent = -1;
           blanklines++;
           continue;
@@ -1166,7 +1165,7 @@ register char *msg;
               if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
                 maxlinewidth = 9999;   /* no choice but to relax */
                 numalts = 0;
-                } 
+                }
               else
                 break;
               }
@@ -1223,7 +1222,7 @@ register char *msg;
       else {
         if (outbufpos == 0) {
           // eat leading spaces
-          if (ch == ' ' && !dontbreaklines)    
+          if (ch == ' ' && !dontbreaklines)
             continue;
           thisindent = applydelta (outindent, deltaindent);
           deltaindent = 0;
@@ -1410,7 +1409,7 @@ Strlist* cmt;
         cp = cmt/*->next*/->s + 1;
         while (*cp++ == ' ')
           theindent++;
-        } 
+        }
       else {
         strcpy(cmt->s, cmt->s + strlen(embedcomment) + 1);
         moreindent(deltaindent);
@@ -1418,7 +1417,7 @@ Strlist* cmt;
         deltaindent = 0;
         }
       slash = 0;
-      } 
+      }
     else {
       moreindent(deltaindent);
       if (cmt->s[0] == '\004')
@@ -1471,7 +1470,7 @@ Strlist* cmt;
       if (i) {   /* eat final blank line */
         output("\n");
         }
-      } 
+      }
     else {
       if (!slash)
         output("*/");

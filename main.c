@@ -1214,6 +1214,11 @@ void wrapup() {
 //{{{
 int main (int argc, char** argv) {
 
+  printf ("commandLine parsed as");
+  for (int i = 0; i < argc; i++)
+    printf (" %d:%s", i, argv[i]);
+  printf ("\n");
+
   int numsearch;
   char* searchlist[50];
   char codefnbuf[200];
@@ -1225,8 +1230,10 @@ int main (int argc, char** argv) {
 
   init_stuff();
 
-  int i = 0;
-  while (i < argc && strcmp(argv[i], "-i")) i++;
+  int i = 1;
+  while (i < argc && strcmp (argv[i], "-i"))
+    i++;
+
   if (i < argc) {
     //{{{  simply show p2crc file
     showinitfile();
@@ -1241,24 +1248,16 @@ int main (int argc, char** argv) {
   char infnbuf[200];
   infname = infnbuf;
   *infname = 0;
-  i = 0;
-  while (i < argc && argv[i][0] == '-') i++;
-  if (i >= argc)
+  i = 1;
+  while ((i < argc) && (argv[i][0] == '-'))
+    i++;
+  if (i < argc) {
     // use first non '-' argv as infname, pascal file to be translated
     strcpy (infname, argv[i]);
-
-  // read p2crc
-  i = 0;
-  while (i < argc && strcmp (argv[i], "-c")) i++;
-  if (i < argc-1) {
-    //{{{  overide p2crc with -c option
-    if (strcmp (argv[i+1], "-"))
-      readrc (argv[i+1], 1);
+    printf ("pascal file - %s\n", infname);
     }
-    //}}}
-  else
-    // use base .p2crc file
-    readrc ("p2crc", 1);
+
+  readrc ("p2crc", 1);
 
   codefname = codefnbuf;
   *codefname = 0;
@@ -1280,28 +1279,13 @@ int main (int argc, char** argv) {
   verbose = 0;
   partialdump = 1;
   numsearch = 0;
-  argc--, argv++;
+
+  argc--;
+  argv++;
   while (argc > 0) {
     if (**argv == '-' && (*argv)[1]) {
       // options
-      if (!strcmp(*argv, "-a")) {
-        //{{{  -a ansiC
-        ansiC = 1;
-        }
-        //}}}
-      else if (argv[0][1] == 'L') {
-        //{{{  -L language
-        if (strlen(*argv) == 2 && argc > 1) {
-          strcpy(language, ++*argv);
-          --argc;
-          }
-        else
-          strcpy(language, *argv + 2);
-
-        upc (language);
-        }
-        //}}}
-      else if (!strcmp(*argv, "-q")) {
+      if (!strcmp(*argv, "-q")) {
         //{{{  -q quiet
         quietmode = 1;
         }
@@ -1340,76 +1324,6 @@ int main (int argc, char** argv) {
         checkfileseek = 1;
         }
         //}}}
-      else if (!strcmp(*argv, "-o")) {
-        //{{{  -o c filename
-        if (*codefname || --argc <= 0)
-          usage();
-
-        strcpy (codefname, *++argv);
-        }
-        //}}}
-      else if (!strcmp(*argv, "-h")) {
-         //{{{  -h header
-         if (*hdrfname || --argc <= 0)
-           usage();
-         strcpy(hdrfname, *++argv);
-          }
-         //}}}
-      else if (!strcmp(*argv, "-s")) {
-        //{{{  s
-        if (--argc <= 0)
-          usage();
-        char* cp = *++argv;
-
-        if (!strcmp (cp, "-"))
-          librfiles = NULL;
-        else
-          searchlist[numsearch++] = cp;
-        }
-        //}}}
-      else if (!strcmp(*argv, "-c")) {
-        //{{{  -c
-        if (--argc <= 0)
-           usage();
-         argv++;
-         /* already done above */
-         }
-        //}}}
-      else if (!strcmp(*argv, "-v")) {
-         //{{{  -v
-         /* already done above */
-         }
-         //}}}
-      else if (!strcmp(*argv, "-H")) {
-        //{{{  -H help
-         argc--, argv++;
-        /* already done above */
-        }
-        //}}}
-      else if (argv[0][1] == 'I') {
-        //{{{  -I importdirs
-        if (strlen(*argv) == 2 && argc > 1) {
-          strlist_append (&importdirs, ++*argv);
-          --argc;
-         }
-        else
-          strlist_append (&importdirs, *argv + 2);
-        }
-        //}}}
-      else if (argv[0][1] == 'p') {
-        //{{{  -p show progress
-        if (strlen(*argv) == 2)
-          showprogress = 25;
-        else
-          showprogress = atoi (*argv + 2);
-        nobuffer = 1;
-        }
-        //}}}
-      else if (!strcmp (*argv, "-e")) {
-        //{{{  -e copysource
-        copysource++;
-        }
-        //}}}
       else if (!strcmp (*argv, "-t")) {
        //{{{  -t tokentrace
        tokentrace++;
@@ -1428,11 +1342,6 @@ int main (int argc, char** argv) {
           maxerrors = atoi (*argv + 2);
         }
         //}}}
-      else if (!strcmp (*argv, "-F")) {
-        //{{{  F partial dump
-        partialdump = 0;
-        }
-        //}}}
       else if (argv[0][1] == 'd') {
        //{{{  -d debug n
         nobuffer = 1;
@@ -1442,43 +1351,6 @@ int main (int argc, char** argv) {
           debug = atoi (*argv + 2);
        }
        //}}}
-      else if (argv[0][1] == 'B') {
-        //{{{  -B
-        if (strlen (*argv) == 2)
-          i = 1;
-        else
-          i = atoi(*argv + 2);
-          if (argc == 2 &&
-            strlen (argv[1]) > 2 &&
-            !strcmp (argv[1] + strlen(argv[1]) - 2, ".c")) {
-            testlinebreaker (i, argv[1]);
-            return EXIT_SUCCESS;
-            }
-          else
-            testlinebreaker (i, NULL);
-        }
-        //}}}
-      else if (argv[0][1] == 'C') {
-        //{{{  -C
-        if (strlen (*argv) == 2)
-          cmtdebug = 1;
-        else
-          cmtdebug = atoi (*argv + 2);
-        }
-        //}}}
-      else if (argv[0][1] == 'F') {
-        //{{{  -F
-        if (strlen (*argv) == 2)
-          flowdebug = 1;
-        else
-          flowdebug = atoi (*argv + 2);
-        }
-        //}}}
-      else if (!strcmp (*argv, "-R")) {
-        //{{{  -R
-        regression = 1;
-        }
-        //}}}
       else if (argv[0][1] == 'V') {
         //{{{  -V
         if (strlen (*argv) == 2)
@@ -1487,25 +1359,11 @@ int main (int argc, char** argv) {
           verbose = atoi (*argv + 2);
         }
         //}}}
-      else if (argv[0][1] == 'M') {
-        //{{{  -M
-        if (strlen (*argv) == 2)
-          conserve_mem = 1;
-        else
-          conserve_mem = atoi (*argv + 2);
-        }
-        //}}}
       else
         usage();
       }
-    else if (!*infname)
-      strcpy (infname, *argv);
-    else if (!requested_module)
-      requested_module = stralloc (*argv);
-    else
-      usage();
-
-    argc--, argv++;
+    argc--;
+    argv++;
     }
 
   if (requested_module && !*codefname)
@@ -1630,8 +1488,6 @@ int main (int argc, char** argv) {
     fprintf (stderr, "\n");
 
   output ("\n");
-  if (requested_module && !found_module)
-    error (format_s ("Module \"%s\" not found in file", requested_module));
   if (codef != stdout) {
     if (slashslash)
       output ("\n\n// End.\n");
@@ -1647,7 +1503,7 @@ int main (int argc, char** argv) {
 
   closelogfile();
 
-  if (!quietmode) 
+  if (!quietmode)
     fprintf (stderr, "Translation completed.\n");
 
   return EXIT_SUCCESS;
