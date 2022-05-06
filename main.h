@@ -18,78 +18,55 @@ along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
 // linux is __STDC__ __GNUC__
-#define reportPredefined
+// _WIN32 is not __STDC__ not __GNUC__
 #define Static
 #include <stdio.h>
 #include <ctype.h>
 
-//{{{
-#if defined(__STDC__)
-  #ifdef REPORT_PREDEFINED
-    #pragma message("__STDC__")
-  #endif
+ //{{{  os options
+ #ifdef __linux__
+   //#pragma message("compiling with __STDC__")
 
-  #define PP(x)  x             /* use true prototypes */
-  #define PV()   (void)
-  #define Anyptr void
-  #define __CAT__(a,b)a##b
+   #include <stdlib.h>
+   #include <stddef.h>
+   #include <limits.h>
+   #include <string.h>
 
-  #include <stdlib.h>
-  #include <stddef.h>
-  #include <limits.h>
-  #include <string.h>
+   #define PP(x)  x             /* use true prototypes */
+   #define PV()   (void)
+   #define Anyptr void
+   #define __CAT__(a,b)a##b
 
-#else
-  #ifdef REPORT_PREDEFINED
-    #pragma message("not __STDC__")
-  #endif
+   #ifdef __GNUC__      /* Fast, in-line version of strcmp */
+     //  #pragma message("compiling with __GNUC__")
+     #define strcmp(a,b) ( \
+       { char *_aa = (a), *_bb = (b); int _diff;  \
+         for (;;) {              \
+           if (!*_aa && !*_bb) { _diff = 0; break; }  \
+           if (*_aa++ != *_bb++) { _diff = _aa[-1] - _bb[-1]; break; } } _diff; })
+   #endif
+ #endif
 
-  #define PP(x)  ()            /* use old-style declarations */
-  #define PV()   ()
-  #define Anyptr char
-  #define __ID__(a)a
-  #define __CAT__(a,b)__ID__(a)b
+ #ifdef _WIN32
+   #pragma message("compiling with _WIN32")
 
-  #ifndef BSD
-    #include <malloc.h>
-    #include <memory.h>
+   #include <stdlib.h>
+   #include <stddef.h>
+   #include <limits.h>
+   #include <malloc.h>
+   #include <memory.h>
 
-    #ifdef _WIN32
-      #include <stdlib.h>
-      #include <stddef.h>
-      #include <limits.h>
-    #else
-      #include <values.h>
-    #endif
-  #else
-    #include <strings.h>
-    #define memcpy(a,b,n) bcopy(b,a,n)
-    #define memcmp(a,b,n) bcmp(a,b,n)
-    char *malloc(), *realloc();
-  #endif
-#endif
-//}}}
-//{{{
-#ifdef __GNUC__      /* Fast, in-line version of strcmp */
-  #ifdef REPORT_PREDEFINED
-    #pragma message("__GNUC__")
-  #endif
+   #define PP(x)  ()            /* use old-style declarations */
+   #define PV()   ()
+   #define Anyptr char
+   #define __ID__(a)a
+   #define __CAT__(a,b)__ID__(a)b
 
-  #define strcmp(a,b) ({ char *_aa = (a), *_bb = (b); int _diff;  \
-     for (;;) {              \
-       if (!*_aa && !*_bb) { \
-         _diff = 0;          \
-         break;              \
-         }                   \
-                             \
-       if (*_aa++ != *_bb++) {      \
-         _diff = _aa[-1] - _bb[-1]; \
-         break; }                   \
-        } _diff;                    \
-        })
-
-#endif
-//}}}
+   //#define memcpy(a,b,n) bcopy(b,a,n)
+   //#define memcmp(a,b,n) bcmp(a,b,n)
+   //char *malloc(), *realloc();
+ #endif
+ //}}}
 
 //{{{  Constants
 #ifndef CHAR_BIT
