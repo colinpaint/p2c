@@ -975,7 +975,6 @@ type
     { commandLine }
     cmdlength: cmdindex; {length of command line}
     cmdline: cmdbuffer;  {actual command line}
-    savecmdline: cmdptr; {pointer to save buffer for listing when hostopsys = vdos }
 
     { switches }
     switches: array [switchindex] of switchentry; { Logs switches found in the source file }
@@ -1017,10 +1016,8 @@ type
     stringfile: bytestream;
     nextstringfile: 0..diskbufsize; { stringfile buffer pointer }
     curstringblock: integer;        { currently referenced string block }
-    stringfiledirty: boolean;       { true if current string block changed }
 
     stringtable: stringptr; {pointer to old-style string table}
-    new_stringtable: stringbasearray; {block of new-style string table pointers}
     stringtabletop: stringindex; {next avail char in string table}
     curstringbuf: boolean;
     stringtablelimit: integer; { top of string + identifiers in string file }

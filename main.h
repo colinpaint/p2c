@@ -18,7 +18,7 @@ along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
 // linux is __STDC__ __GNUC__
-//#define reportPredefined
+#define reportPredefined
 #define Static
 #include <stdio.h>
 #include <ctype.h>
@@ -40,6 +40,10 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #include <string.h>
 
 #else
+  #ifdef REPORT_PREDEFINED
+    #pragma message("not __STDC__")
+  #endif
+
   #define PP(x)  ()            /* use old-style declarations */
   #define PV()   ()
   #define Anyptr char
