@@ -1202,6 +1202,115 @@ begin {newnode}
     lastptr := ref(bignodetable[lastnode]);
 end;
 {>>>}
+{<<<}
+procedure deleteInstructions (m: nodeindex; n: nodeindex);
+{ Delete "n" instructions starting at node "m".  This is done by
+  converting them to "nop's" which have no length and are not emitted.
+}
+var
+  i, j: nodeindex; {induction vars for deletion}
+  count: operandrange; {number of operands accessed by deleted inst}
+  p: nodeptr; {used to access nodes to be deleted}
+
+  {<<<}
+  procedure unlinklabelnode (m: nodeindex {label node to unlink});
+  { Search the brlink chain for a reference to this node, and if found, delete the reference }
+
+  var
+    cp1, cp2: brlinkptr; { used to follow brlink chain }
+    p1, p2: nodeptr;     { used to access label nodes }
+    finished: boolean;   { the only possible reference has been removed }
+
+  begin
+    finished := false;
+    cp1 := firstbr;
+    while (cp1 <> nil) and not finished do
+      begin { search the brlinks }
+      p1 := ref(bignodetable[cp1^.n + 1]);
+
+      if cp1^.n + 1 = m then
+        begin
+        cp1^.n := p1^.brnodelink;
+        if cp1^.n = 0 then
+          begin { delete the brlink }
+          if cp1 = firstbr then
+            firstbr := cp1^.nextbr
+          else
+            cp2^.nextbr := cp1^.nextbr;
+          dispose (cp1);
+          end;
+
+        finished := true;
+        end
+
+      else
+        begin
+        while (p1^.brnodelink <> 0) and not finished do
+          begin { search the nodes }
+          p2 := p1;
+          if p2^.brnodelink + 1 = m then
+            begin
+            blocksin[1].written := true;
+            p1 := ref(bignodetable[p2^.brnodelink + 1]);
+            p2^.brnodelink := p1^.brnodelink;
+            finished := true;
+            end
+          else
+            p1 := ref(bignodetable[p2^.brnodelink + 1]);
+          end {while} ;
+
+        cp2 := cp1;
+        cp1 := cp2^.nextbr;
+        end;
+      end;
+  end;
+  {>>>}
+
+begin
+  for i := 1 to n do
+    begin
+    p := ref(bignodetable[m]);
+
+    if p^.kind in [instnode, errornode] then
+      count := p^.oprndcount
+    else
+      begin
+      if p^.kind <> stmtref then
+        begin
+        write ('attempt to delete non-inst node:', m: 1);
+        abort (inconsistent);
+        end;
+
+      p^.kind := instnode;
+      p^.labelled := false;
+      count := 0;
+      end;
+
+    p^.tempcount := 0;
+    p^.inst := nop;
+    p^.oprndcount := 0;
+    m := m + 1;
+    for j := 1 to count do
+      begin
+      p := ref(bignodetable[m]);
+      if p^.kind = labelnode then
+        begin
+        unlinklabelnode (m);
+        p := ref(bignodetable[m]);
+        end
+      else
+        blocksin[1].written := true;
+
+      p^.tempcount := 0;
+      p^.kind := instnode;
+      p^.labelled := false;
+      p^.inst := nop;
+      p^.oprndcount := 0;
+      m := m + 1;
+      end;
+    end;
+end;
+{>>>}
 
 {<<<}
 procedure geninst (i: insttype; l: operandrange; olen: datarange);
@@ -1574,112 +1683,6 @@ end {settempsymbol} ;
 {>>>}
 
 {<<<}
-procedure delete (m: nodeindex; n: nodeindex);
-{ Delete "n" instructions starting at node "m".  This is done by
-  converting them to "nop's" which have no length and are not emitted.
-}
-var
-  i, j: nodeindex; {induction vars for deletion}
-  count: operandrange; {number of operands accessed by deleted inst}
-  p: nodeptr; {used to access nodes to be deleted}
-
-  {<<<}
-  procedure unlinklabelnode(m: nodeindex {label node to unlink});
-  { Search the brlink chain for a reference to this node, and if found, delete
-   the reference.
-  }
-
-    var
-      cp1, cp2: brlinkptr; {used to follow brlink chain}
-      p1, p2: nodeptr; {used to access label nodes}
-      finished: boolean; {the only possible reference has been removed}
-
-
-    begin {unlinklabelnode}
-      finished := false;
-      cp1 := firstbr;
-      while (cp1 <> nil) and not finished do
-        begin {search the brlinks}
-        p1 := ref(bignodetable[cp1^.n + 1]);
-
-        if cp1^.n + 1 = m then
-          begin
-          cp1^.n := p1^.brnodelink;
-          if cp1^.n = 0 then
-            begin {delete the brlink}
-            if cp1 = firstbr then firstbr := cp1^.nextbr
-            else cp2^.nextbr := cp1^.nextbr;
-            dispose(cp1);
-            end;
-          finished := true;
-          end
-        else
-          begin
-          while (p1^.brnodelink <> 0) and not finished do
-            begin {search the nodes}
-            p2 := p1;
-            if p2^.brnodelink + 1 = m then
-              begin
-              blocksin[1].written := true;
-
-              p1 := ref(bignodetable[p2^.brnodelink + 1]);
-              p2^.brnodelink := p1^.brnodelink;
-              finished := true;
-              end
-            else
-              p1 := ref(bignodetable[p2^.brnodelink + 1]);
-            end {while} ;
-          cp2 := cp1;
-          cp1 := cp2^.nextbr;
-          end;
-        end {while} ;
-    end {unlinklabelnode} ;
-  {>>>}
-
-begin
-  for i := 1 to n do
-    begin
-    p := ref(bignodetable[m]);
-
-    if p^.kind in [instnode, errornode] then
-      count := p^.oprndcount
-    else begin
-      if p^.kind <> stmtref then
-        begin
-        write('attempt to delete non-inst node:', m: 1);
-        abort(inconsistent);
-        end;
-      p^.kind := instnode;
-      p^.labelled := false;
-      count := 0;
-      end;
-    p^.tempcount := 0;
-    p^.inst := nop;
-    p^.oprndcount := 0;
-    m := m + 1;
-    for j := 1 to count do
-      begin
-      p := ref(bignodetable[m]);
-
-      if p^.kind = labelnode then
-        begin
-        unlinklabelnode(m);
-
-        p := ref(bignodetable[m]);
-        end
-      else blocksin[1].written := true;
-      p^.tempcount := 0;
-      p^.kind := instnode;
-      p^.labelled := false;
-      p^.inst := nop;
-      p^.oprndcount := 0;
-      m := m + 1;
-      end;
-    end;
-end;
-{>>>}
-
-{<<<}
 procedure aligntemps;
 { Make sure run-time stack aligns with the keytable model }
 
@@ -1855,8 +1858,9 @@ begin
   for t := cnt downto 1 do
     with keytable[stackcounter] do
       begin
-      if change then delete(instmark, 1);
-      adjustoffsets(instmark, change);
+      if change then
+        deleteInstructions (instmark, 1);
+      adjustoffsets (instmark, change);
       end;
 end;
 {>>>}
@@ -2217,39 +2221,47 @@ begin {instlength}
   p := ref(bignodetable[n]);
   if p^.kind <> instnode then { filter the pretenders }
     if (p^.kind = stmtref) or (p^.kind = errornode) or
-       (p^.kind = sectionnode) then len := 0
-    else if p^.kind = labeldeltanode then len := word
-    else if p^.kind = datanode then len := word
-    else if p^.kind = adconnode then len := long
+       (p^.kind = sectionnode) then 
+      len := 0
+    else if p^.kind = labeldeltanode then 
+      len := word
+    else if p^.kind = datanode then 
+      len := word
+    else if p^.kind = adconnode then 
+      len := long
     else
       begin
-      writeln('node ', n: 1, ' is not an instruction');
-      abort(inconsistent);
+      writeln ('node ', n: 1, ' is not an instruction');
+      abort (inconsistent);
       end
 
   else
     begin { "conventional" instruction }
     inst := p^.inst;
     format := p^.fp_format;
-    oplen := max(word, p^.oprndlength);
+    oplen := max (word, p^.oprndlength);
 
     if inst = nop then len := 0
     else if inst = movem then
       begin
       p := ref(bignodetable[n + 2]);
-      if p^.oprnd.m = relative then len := long + word else len := long;
+      if p^.oprnd.m = relative then 
+        len := long + word 
+      else 
+        len := long;
       end
-    else if inst = fmovem then len := long
-    else if inst = link then len := word + oplen { 68020 allows long }
+    else if inst = fmovem then 
+      len := long
+    else if inst = link then 
+      len := word + oplen { 68020 allows long }
     else
       begin
-      { Handle the strange ones here.
-      }
+      { Handle the strange ones here. }
       len := word;
       if mc68020 and (((inst = muls) or (inst = mulu)) and (oplen = long)) or
-        (inst in [divsl, divul, chk2, bfclr, bfexts, bfextu, bfins,
-        bfset, bftst]) or (inst in [fp_first..fp_last] - fpbranches) then
-          len := long;
+         (inst in [divsl, divul, chk2, bfclr, bfexts, bfextu, bfins, bfset, bftst]) or 
+         (inst in [fp_first..fp_last] - fpbranches) then
+        len := long;
 
       for i := 1 to p^.oprndcount do
         begin
@@ -2257,13 +2269,16 @@ begin {instlength}
         case p^.kind of
           relnode:
             if (inst = lea) or (inst in fpbranches) then len := len + word;
+
           labelnode: len := len + p^.labelcost;
           oprndnode:
             case p^.oprnd.m of
-              nomode, areg, dreg, indr, autoi, autod, bit_field_const,
+              nomode, areg, dreg, indr, 
+              autoi, autod, bit_field_const,
               twodregs, twofpregs, special_immediate:
-              { no additional length } ;
+                { no additional length } ;
               immediate, immediatequad, immediate_extended:
+                {<<<}
                 { Immediatequad is used for the 68881 only and oplen
                   reflects the length of the immediate operand, not the
                   length of the operation.
@@ -2275,15 +2290,20 @@ begin {instlength}
                     double_real: len := len + quad;
                     extended_real: len := len + 12;
                     end
-                else if not (inst in shortinsts) then len := len + oplen;
+                else if not (inst in shortinsts) then 
+                  len := len + oplen;
+                {>>>}
               relative:
+                {<<<}
                 begin
                 len := len + word;
                 if mc68020 and ((p^.oprnd.offset > 32767) or
                    (p^.oprnd.offset < - 32768)) then
                   len := len + long;
                 end;
+                {>>>}
               pcindexed, indexed:
+                {<<<}
                 begin
                 len := len + word;
                 if mc68020 and ((p^.oprnd.offset > 127) or
@@ -2294,9 +2314,11 @@ begin {instlength}
                   else
                     len := len + long;
                 end;
+                {>>>}
               absshort:
                 len := len + word;
               supportcall:
+                {<<<}
                 if targetopsys = vdos then
                   if sharedPtr^.switcheverplus[longlib] then
                     if mc68020 and $pic then
@@ -2312,29 +2334,32 @@ begin {instlength}
                     len := len + long + word
                   else
                     len := len + long;
+                {>>>}
               pcrelative, usercall:
                 len := len + p^.operandcost;
               abslong, commonlong, immediatelong, symbol,
-              pic_own_immed, pic_usercall, pic_supportcall, pic_branch,
-              pic_pcrelative:
+              pic_own_immed, pic_usercall, pic_supportcall, pic_branch, pic_pcrelative:
                 len := len + long;
               pic_splat_pcrel:
                 len := len + word;
               bitindexed:
+                {<<<}
                 begin
-                write('bitindexed operand at node ', n + i: 1);
-                abort(inconsistent);
+                write ('bitindexed operand at node ', n + i: 1);
+                abort (inconsistent);
                 end; { bitindexed }
+                {>>>}
               end; { case p^.oprnd.m }
           end; { case p^.kind }
         end { for i } ;
       end;
+
     p := ref(bignodetable[n]);
     p^.computed_length := len;
     end; { instruction }
 
   instlength := len;
-end {instlength} ;
+end;
 {>>>}
 {>>>}
 {<<<  commc2 utils}
@@ -3181,7 +3206,7 @@ begin
   nextobjblk := 0;
   tempfilesize := 0; { number of bytes written to temp file }
 
-  count := sharedPtr^.stringfilecount + ord(odd(sharedPtr^.stringfilecount))
+  count := sharedPtr^.stringfilecount + ord(odd(sharedPtr^.stringfilecount));
 
   sharedPtr^.curstringblock := 1;
   sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
@@ -3196,9 +3221,9 @@ begin
 
   currentpc := count;
   if odd(currentpc) then
-    currentpc := currentpc + 1; {should not be necessary!}
+    currentpc := currentpc + 1; { should not be necessary! }
 
-  {now move on to the constant table and write it}
+  { now move on to the constant table and write it }
   sharedPtr^.curstringblock := sharedPtr^.stringtablelimit div (diskbufsize + 1) + 1;
   sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
   sharedPtr^.nextstringfile := sharedPtr^.stringtablelimit mod (diskbufsize + 1);
@@ -10661,7 +10686,7 @@ procedure reserve_dreg{k: keyindex; ( key to check )
   end; { reserve_dreg }
 {>>>}
 {>>>}
-{<<<  Register allocation procedures}
+{<<<  register allocation procedures}
 {<<<}
 function countdreg: integer;
 
@@ -17157,9 +17182,9 @@ procedure restoreloopx;
                   gensimplemove(stackcopy, tempreg);
                   end;
                 end
-              else if reload <> 0 then delete(reload, 1);
-              keytable[stackcopy].refcount := keytable[stackcopy].refcount -
-                                              1;
+              else if reload <> 0 then
+                deleteInstructions (reload, 1);
+              keytable[stackcopy].refcount := keytable[stackcopy].refcount - 1;
               end;
 
         keytable[tempreg].oprnd.m := dreg;
@@ -17179,9 +17204,9 @@ procedure restoreloopx;
                   gensimplemove(stackcopy, tempreg);
                   end;
                 end
-              else if reload <> 0 then delete(reload, 1);
-              keytable[stackcopy].refcount := keytable[stackcopy].refcount -
-                                              1;
+              else if reload <> 0 then
+                deleteInstructions (reload, 1);
+              keytable[stackcopy].refcount := keytable[stackcopy].refcount - 1;
               end;
 
         if mc68881 then
@@ -17203,9 +17228,9 @@ procedure restoreloopx;
                     genfpmove(stackcopy, tempreg);
                     end;
                   end
-                else if reload <> 0 then delete(reload, 1);
-                keytable[stackcopy].refcount := keytable[stackcopy].refcount -
-                                                1;
+                else if reload <> 0 then
+                  deleteInstructions (reload, 1);
+                keytable[stackcopy].refcount := keytable[stackcopy].refcount - 1;
                 end; {active}
           end; {mc68881}
         end; {with loopstack}
@@ -20958,7 +20983,7 @@ begin
             peep[2] := peep[2] + 1;
             peep[0] := peep[0] + instlength(xi);
             end;} {peeping}
-          delete(xi, 1);
+          deleteInstructions (xi, 1);
           end;
 
         check_last_test := false;
@@ -20996,7 +21021,7 @@ begin
                 peep[2] := peep[2] + 1;
                 peep[0] := peep[0] + instlength(i);
                 end;} {peeping}
-              delete(i, 1);
+              deleteInstructions (i, 1);
               end;
             end
           else
@@ -21038,7 +21063,7 @@ begin
                 peep[3] := peep[3] + 1;
                 peep[0] := peep[0] + instlength(xi);
                 end;} {peeping}
-              delete(xi, 1); {delete previous instruction}
+              deleteInstructions (xi, 1); {delete previous instruction}
               end
 
         { 4. Check for "sub  #xxx,sp" preceeded by "mov  (sp)+,<ea>"
@@ -21105,7 +21130,7 @@ begin
                     m := relative;
                   end;
               if tempoffset = 0 then
-                delete(xi, 1)
+                deleteInstructions (xi, 1)
               else
                 begin {update}
                 xsp^.oprnd.offset := tempoffset;
@@ -21161,7 +21186,7 @@ begin
                     end;
                 if tempoffset = 0 then
                   begin
-                  delete(xi, 1);
+                  deleteInstructions (xi, 1);
 {                    if peeping then
                     peep[0] := peep[0] + 2; }
                   end
@@ -21195,7 +21220,7 @@ begin
                 peep[7] := peep[7] + 1;
                 peep[0] := peep[0] + instlength(i);
                 end;} {peeping}
-              delete(i, 1);
+              deleteInstructions (i, 1);
               end
 
         { 9. Check for adds and subtracts of literal data from -8 to +8 }
@@ -21332,7 +21357,7 @@ begin
             peep[14] := peep[14] + 1; }
           if (sp^.oprnd.reg = dp^.oprnd.reg) then
             begin
-            delete(i, 1);
+            deleteInstructions (i, 1);
 {              peep[0] := peep[0] + 2; }
             end
           else
@@ -21358,7 +21383,7 @@ begin
            (xdp^.oprnd.m <> fpreg) and (sp^.oprnd.m <> fpreg) and
            equaloperands(xdp, sp) and (sp^.oprnd.m <> abslong) then
           begin
-          delete(i, 1);  { remove the FMOVE }
+          deleteInstructions (i, 1);  { remove the FMOVE }
 {            if peeping then
             begin
             peep[16] := peep[16] + 1;
@@ -21382,7 +21407,7 @@ begin
            (xdp^.oprnd.m <> dreg) and (sp^.oprnd.m <> dreg) and
            equaloperands(xdp, sp) and (sp^.oprnd.m <> abslong) then
           begin
-          delete(i, 1);  { remove the MOVE }
+          deleteInstructions (i, 1);  { remove the MOVE }
 {            if peeping then
             begin
             peep[17] := peep[17] + 1;
@@ -21441,9 +21466,9 @@ begin
             j := j + 1;
             m := ref(bignodetable[j]);
           until (m^.kind = instnode) or (j >= lastnode);
-          if not m^.labelled and eqinst(i, j) then delete(j, 1);
-        until m^.labelled or not (m^.inst in [nop, beq..bvs]) or
-              (j >= lastnode);
+          if not m^.labelled and eqinst(i, j) then
+            deleteInstructions (j, 1);
+        until m^.labelled or not (m^.inst in [nop, beq..bvs]) or (j >= lastnode);
         end;
     end;
 end;
@@ -22242,7 +22267,7 @@ begin
             if (l1 <> 0) and (brlen = 0) then
               begin
               bias := - word;
-              delete(t - 1, 1);
+              deleteInstructions (t - 1, 1);
               end
             else
               begin {change to longer form}
@@ -22523,7 +22548,7 @@ begin
           p := ref(bignodetable[t]);
         until (p^.kind = instnode) or (p^.kind = stmtref) or
               (p^.kind = errornode);
-        delete(t, longestkillcount);
+        deleteInstructions (t, longestkillcount);
         end;
       p := ref(bignodetable[firstbr^.n + 1]);
       firstbr^.n := p^.brnodelink
@@ -22729,7 +22754,7 @@ begin {proctrailer}
   }
 
   if restoremask = 0 then
-    delete(savereginst, 1)
+    deleteInstructions (savereginst, 1)
   else
     begin
     saveregptr := ref(bignodetable[savereginst + 1]);
@@ -22738,7 +22763,7 @@ begin {proctrailer}
 
   if mc68881 then
     if fprestoremask = 0 then
-      delete(fpsavereginst, 1)
+      deleteInstructions (fpsavereginst, 1)
     else
       begin
       saveregptr := ref(bignodetable[fpsavereginst + 1]);
