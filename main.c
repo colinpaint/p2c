@@ -684,8 +684,7 @@ void showinitfile() {
 //}}}
 //{{{
 void usage() {
-
-  fprintf(stderr, "usage: p2c [options] file [modulename] [-h file.h] [-o file.c]\n");
+  fprintf(stderr, "usage: p2c [-q -t -x -e -d -v -check] file\n");
   exit_failure();
   }
 //}}}
@@ -1290,26 +1289,6 @@ int main (int argc, char** argv) {
         quietmode = 1;
         }
         //}}}
-      else if (!strcmp(*argv, "-comp")) {
-        //{{{  -comp compiler like usage
-        /* Set defaults for compiler-like usage */
-        maxalts = 100;
-        elimdeadcode = 0;
-        analyzeflow = 0;
-        foldconsts = 1;
-        foldstrconsts = 1;
-        offsetforloops = 0;
-        keepnulls = 1;
-        hasstaticlinks = 1;
-        mod_po2 = 0;
-        div_po2 = 0;
-        assumebits = 0;
-        assumesigns = 0;
-        formatstrings = 1;
-        structfilesflag = 1;
-        fullstrwrite = 1;
-        }
-        //}}}
       else if (!strcmp(*argv, "-check")) {
         //{{{  -check enable all errors
         /* Enable all error checking */
@@ -1334,7 +1313,7 @@ int main (int argc, char** argv) {
         error_crash++;
         }
         //}}}
-      else if (argv[0][1] == 'E') {
+      else if (argv[0][1] == 'e') {
         //{{{  -E maxerrors
         if (strlen (*argv) == 2)
           maxerrors = 0;
@@ -1456,9 +1435,8 @@ int main (int argc, char** argv) {
     }
 
   strlist_empty (&synonyms);
-  for (sl = addmacros; sl; sl = sl->next) {
+  for (sl = addmacros; sl; sl = sl->next) 
     defmacro (sl->s, sl->value, "<macro>", 0);
-    }
 
   strlist_empty (&addmacros);
   handle_nameof();
@@ -1466,10 +1444,9 @@ int main (int argc, char** argv) {
   savequiet = quietmode;
   quietmode = 1;
 
-  for (sl = librfiles; sl; sl = sl->next) {
+  for (sl = librfiles; sl; sl = sl->next) 
     if (strlist_find (librfiles, sl->s) == sl)
       (void)p_search (format_none(sl->s), "pas", 0);
-    }
 
   for (i = 0; i < numsearch; i++)
    (void)p_search (format_none (searchlist[i]), "pas", 1);
