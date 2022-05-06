@@ -37,10 +37,11 @@
   //#pragma message("CAT is a##b")
   #define __CAT__(a,b)a##b
 #endif
-//}}}
 
 #define LACK_LABS       /* Undefine these if your library has these */
 #define LACK_MEMMOVE
+//}}}
+
 //{{{
 typedef struct __p2c_jmp_buf {
   struct __p2c_jmp_buf *next;
@@ -49,8 +50,8 @@ typedef struct __p2c_jmp_buf {
 //}}}
 
 // Warning: The following will not work if setjmp is used simultaneously.
-//   This also violates the ANSI restriction about using vars after longjmp,
-//   but a typical implementation of longjmp will get it right anyway.
+// this also violates the ANSI restriction about using vars after longjmp,
+// but a typical implementation of longjmp will get it right anyway.
 //{{{
 #ifndef FAKE_TRY
   #define TRY(x)  do { __p2c_jmp_buf __try_jb;  \
@@ -146,6 +147,67 @@ typedef struct __p2c_jmp_buf {
 #endif
 //}}}
 
+// Fix ANSI-isms
+//{{{
+#ifdef LACK_LABS
+  #ifndef labs
+    #define labs  my_labs
+    extern long my_labs PP( (long) );
+  #endif
+#endif
+//}}}
+//{{{
+#ifdef LACK_MEMMOVE
+  #ifndef memmove
+    #define memmove  my_memmove
+    extern Anyptr my_memmove PP( (Anyptr, Const Anyptr, size_t) );
+  #endif
+#endif
+//}}}
+//{{{
+#ifdef LACK_MEMCPY
+  #ifndef memcpy
+    #define memcpy  my_memcpy
+    extern Anyptr my_memcpy PP( (Anyptr, Const Anyptr, size_t) );
+  #endif
+
+  #ifndef memcmp
+    #define memcmp  my_memcmp
+   extern int my_memcmp PP( (Const Anyptr, Const Anyptr, size_t) );
+  #endif
+
+  #ifndef memset
+    #define memset  my_memset
+   extern Anyptr my_memset PP( (Anyptr, int, size_t) );
+  #endif
+#endif
+//}}}
+//{{{
+/* Fix toupper/tolower on Suns and other stupid BSD systems */
+#ifdef toupper
+  #undef toupper
+  #undef tolower
+  #define toupper(c)   my_toupper(c)
+  #define tolower(c)   my_tolower(c)
+#endif
+//}}}
+//{{{
+#ifndef _toupper
+  #if 'A' == 65 && 'a' == 97
+    #define _toupper(c)  ((c)-'a'+'A')
+    #define _tolower(c)  ((c)-'A'+'a')
+  #else
+    #ifdef toupper
+      #undef toupper   /* hope these are shadowing real functions, */
+      #undef tolower   /* because my_toupper calls _toupper! */
+    #endif
+
+    #define _toupper(c)  toupper(c)
+    #define _tolower(c)  tolower(c)
+  #endif
+#endif
+//}}}
+
 #define Register    register  /* Register variables */
 #define Char        char      /* Characters (not bytes) */
 //{{{
@@ -164,19 +226,19 @@ typedef unsigned char boolean;
 
 //{{{
 #ifndef NO_DECLARE_ALFA
-typedef Char alfa[10];
+  typedef Char alfa[10];
 #endif
 //}}}
 //{{{
 #ifndef true
-# define true    1
-# define false   0
+  #define true    1
+  #define false   0
 #endif
 //}}}
 //{{{
 #ifndef TRUE
-# define TRUE    1
-# define FALSE   0
+  #define TRUE    1
+  #define FALSE   0
 #endif
 //}}}
 //{{{
@@ -184,51 +246,53 @@ typedef struct {
   Anyptr proc, link;
   } _PROCEDURE;
 //}}}
-
 //{{{
 #ifndef _FNSIZE
-# define _FNSIZE  120
+  #define _FNSIZE  120
 #endif
 //}}}
-extern Void    PASCAL_MAIN  PP( (int, Char **) );
-extern Char    **P_argv;
-extern int     P_argc;
-extern short   P_escapecode;
-extern int     P_ioresult;
+
+extern Void PASCAL_MAIN  PP( (int, Char **) );
+extern Char** P_argv;
+extern int P_argc;
+extern short P_escapecode;
+extern int P_ioresult;
 extern __p2c_jmp_buf *__top_jb;
+
 //{{{
-#ifdef P2C_H_PROTO   /* if you have Ansi C but non-prototyped header files */
-extern Char    *strcat      PP( (Char *, Const Char *) );
-extern Char    *strchr      PP( (Const Char *, int) );
-extern int      strcmp      PP( (Const Char *, Const Char *) );
-extern Char    *strcpy      PP( (Char *, Const Char *) );
-extern size_t   strlen      PP( (Const Char *) );
-extern Char    *strncat     PP( (Char *, Const Char *, size_t) );
-extern int      strncmp     PP( (Const Char *, Const Char *, size_t) );
-extern Char    *strncpy     PP( (Char *, Const Char *, size_t) );
-extern Char    *strrchr     PP( (Const Char *, int) );
+#ifdef P2C_H_PROTO
+  extern Char    *strcat      PP( (Char *, Const Char *) );
+  extern Char    *strchr      PP( (Const Char *, int) );
+  extern int      strcmp      PP( (Const Char *, Const Char *) );
+  extern Char    *strcpy      PP( (Char *, Const Char *) );
+  extern size_t   strlen      PP( (Const Char *) );
+  extern Char    *strncat     PP( (Char *, Const Char *, size_t) );
+  extern int      strncmp     PP( (Const Char *, Const Char *, size_t) );
+  extern Char    *strncpy     PP( (Char *, Const Char *, size_t) );
+  extern Char    *strrchr     PP( (Const Char *, int) );
 
-extern Anyptr   memchr      PP( (Const Anyptr, int, size_t) );
-extern Anyptr   memmove     PP( (Anyptr, Const Anyptr, size_t) );
-extern Anyptr   memset      PP( (Anyptr, int, size_t) );
-#ifndef memcpy
-extern Anyptr   memcpy      PP( (Anyptr, Const Anyptr, size_t) );
-extern int      memcmp      PP( (Const Anyptr, Const Anyptr, size_t) );
+  extern Anyptr   memchr      PP( (Const Anyptr, int, size_t) );
+  extern Anyptr   memmove     PP( (Anyptr, Const Anyptr, size_t) );
+  extern Anyptr   memset      PP( (Anyptr, int, size_t) );
+
+  #ifndef memcpy
+    extern Anyptr   memcpy      PP( (Anyptr, Const Anyptr, size_t) );
+    extern int      memcmp      PP( (Const Anyptr, Const Anyptr, size_t) );
+  #endif
+
+  extern int      atoi        PP( (Const Char *) );
+  extern double   atof        PP( (Const Char *) );
+  extern long     atol        PP( (Const Char *) );
+  extern double   strtod      PP( (Const Char *, Char **) );
+  extern long     strtol      PP( (Const Char *, Char **, int) );
 #endif
-
-extern int      atoi        PP( (Const Char *) );
-extern double   atof        PP( (Const Char *) );
-extern long     atol        PP( (Const Char *) );
-extern double   strtod      PP( (Const Char *, Char **) );
-extern long     strtol      PP( (Const Char *, Char **, int) );
-#endif /*P2C_H_PROTO*/
 //}}}
 //{{{
 #ifndef HAS_STDLIB
-#ifndef NO_DECLARE_MALLOC
-extern Anyptr   malloc      PP( (size_t) );
-extern Void     free        PP( (Anyptr) );
-#endif
+  #ifndef NO_DECLARE_MALLOC
+    extern Anyptr malloc PP( (size_t) );
+    extern Void   free   PP( (Anyptr) );
+  #endif
 #endif
 //}}}
 
@@ -277,11 +341,11 @@ extern Void     P_sun_argv  PP( (char*, int, int) );
 extern FILE    *_skipspaces PP( (FILE*) );
 extern FILE    *_skipnlspaces PP( (FILE*) );
 
-/* I/O error handling */
+// I/O error handling
 #define _CHKIO(cond,ior,val,def) ((cond) ? P_ioresult=0,(val) : P_ioresult=(ior),(def))
 #define _SETIO(cond,ior)         (P_ioresult = (cond) ? 0 : (ior))
 
-/* Following defines are suitable for the HP Pascal operating system */
+// Following defines are suitable for the HP Pascal operating system
 #define FileNotFound     10
 #define FileNotOpen      13
 #define FileWriteError   38
@@ -300,27 +364,27 @@ extern FILE    *_skipnlspaces PP( (FILE*) );
 #endif
 
 // File buffers
-#define FILEBUF(f,sc,type1) sc int __CAT__(f,_BFLAGS); sc type1 __CAT__(f,_BUFFER)
-#define FILEBUFNC(f,type1)  int __CAT__(f,_BFLAGS); type1 __CAT__(f,_BUFFER)
+#define FILEBUF(f,sc,type1)  sc int __CAT__(f,_BFLAGS); sc type1 __CAT__(f,_BUFFER)
+#define FILEBUFNC(f,type1)   int __CAT__(f,_BFLAGS); type1 __CAT__(f,_BUFFER)
 
 #define RESETBUF(f,type1)  (__CAT__(f,_BFLAGS) = 1)
 #define SETUPBUF(f,type1)  (__CAT__(f,_BFLAGS) = 0)
 
 #define GETFBUF(f,type1)   (*((__CAT__(f,_BFLAGS) == 1 && ((__CAT__(f,_BFLAGS) = 2),   \
-                          fread(&__CAT__(f,_BUFFER), sizeof(type1),1,(f)))), &__CAT__(f,_BUFFER)))
+                             fread(&__CAT__(f,_BUFFER), sizeof(type1),1,(f)))), &__CAT__(f,_BUFFER)))
 #define AGETFBUF(f,type1)  ((__CAT__(f,_BFLAGS) == 1 && ((__CAT__(f,_BFLAGS) = 2),   \
-                          fread(__CAT__(f,_BUFFER), sizeof(type1),1,(f)))), __CAT__(f,_BUFFER))
+                             fread(__CAT__(f,_BUFFER), sizeof(type1),1,(f)))), __CAT__(f,_BUFFER))
 
-#define PUTFBUF(f,type1,v)  (GETFBUF(f,type1) = (v))
-#define CPUTFBUF(f,v)      (PUTFBUF(f,char,v))
-#define APUTFBUF(f,type1,v) (memcpy(AGETFBUF(f,type1), (v), sizeof(__CAT__(f,_BUFFER))))
+#define PUTFBUF(f,type1,v)   (GETFBUF(f,type1) = (v))
+#define CPUTFBUF(f,v)        (PUTFBUF(f,char,v))
+#define APUTFBUF(f,type1,v)  (memcpy(AGETFBUF(f,type1), (v), sizeof(__CAT__(f,_BUFFER))))
 
-#define GET(f,type1) (__CAT__(f,_BFLAGS) == 1 ? fread(&__CAT__(f,_BUFFER),sizeof(type1),1,(f)) : (__CAT__(f,_BFLAGS) = 1))
-#define PUT(f,type1) (fwrite(&__CAT__(f,_BUFFER),sizeof(type1),1,(f)), (__CAT__(f,_BFLAGS) = 0))
-#define CPUT(f)     (PUT(f,char))
+#define GET(f,type1)  (__CAT__(f,_BFLAGS) == 1 ? fread(&__CAT__(f,_BUFFER),sizeof(type1),1,(f)) : (__CAT__(f,_BFLAGS) = 1))
+#define PUT(f,type1)  (fwrite(&__CAT__(f,_BUFFER),sizeof(type1),1,(f)), (__CAT__(f,_BFLAGS) = 0))
+#define CPUT(f)       (PUT(f,char))
 
-#define BUFEOF(f)  (__CAT__(f,_BFLAGS) != 2 && P_eof(f))
-#define BUFFPOS(f) (ftell(f) - (__CAT__(f,_BFLAGS) == 2))
+#define BUFEOF(f)     (__CAT__(f,_BFLAGS) != 2 && P_eof(f))
+#define BUFFPOS(f)    (ftell(f) - (__CAT__(f,_BFLAGS) == 2))
 
 typedef struct {
   FILE *f;
@@ -343,11 +407,11 @@ typedef struct {
 //#define P_putbits_UB(a,i,x,n,L) ((a)[(i)>>(L)-(n)] |= (x) << (((~(i))&((1<<(L)-(n))-1)) << (n)))
 //#define P_putbits_SB(a,i,x,n,L) ((a)[(i)>>(L)-(n)] |= ((x) & (1<<(1<<(n)))-1) << (((~(i))&((1<<(L)-(n))-1)) << (n)))
 //#define P_clrbits_B(a,i,n,L)    ((a)[(i)>>(L)-(n)] &= ~( ((1<<(1<<(n)))-1) << (((~(i))&((1<<(L)-(n))-1)) << (n))) )
-#define P_getbits_UB(a,i,n,L)   ((int)((a)[((i)>>(L))-(n)] >> (((~(i))&(((1<<(L))-(n))-1)) << (n)) & (1<<(1<<(n)))-1))
+#define P_getbits_UB(a,i,n,L)   ((int)((a)[((i)>>(L))-(n)] >> (((~(i)) & (((1<<(L))-(n))-1)) << (n)) & (1<<(1<<(n)))-1))
 #define P_getbits_SB(a,i,n,L)   ((int)((a)[((i)>>(L))-(n)] << (16 - ((((~(i))&(((1<<(L))-(n))-1))+1) << (n)) >> (16-(1<<(n))))))
-#define P_putbits_UB(a,i,x,n,L) ((a)[((i)>>(L))-(n)] |= (x) << (((~(i))&(((1<<(L))-(n))-1)) << (n)))
+#define P_putbits_UB(a,i,x,n,L) ((a)[((i)>>(L))-(n)] |= (x) << (((~(i)) & (((1<<(L))-(n))-1)) << (n)))
 #define P_putbits_SB(a,i,x,n,L) ((a)[((i)>>(L))-(n)] |= ((x) & (1<<(1<<(n)))-1) << (((~(i))&(((1<<(L))-(n))-1)) << (n)))
-#define P_clrbits_B(a,i,n,L)    ((a)[((i)>>(L))-(n)] &= ~( ((1<<(1<<(n)))-1) << (((~(i))&(((1<<(L))-(n))-1)) << (n))) )
+#define P_clrbits_B(a,i,n,L)    ((a)[((i)>>(L))-(n)] &= ~(((1<<(1<<(n)))-1) << (((~(i))&(((1<<(L))-(n))-1)) << (n))))
 
 // small packed arrays
 #define P_getbits_US(v,i,n)     ((int)((v) >> ((i)<<(n)) & (1<<(1<<(n)))-1))
@@ -358,63 +422,3 @@ typedef struct {
 
 #define P_max(a,b)   ((a) > (b) ? (a) : (b))
 #define P_min(a,b)   ((a) < (b) ? (a) : (b))
-
-
-// Fix ANSI-isms
-//{{{
-#ifdef LACK_LABS
-# ifndef labs
-#  define labs  my_labs
-   extern long my_labs PP( (long) );
-# endif
-#endif
-//}}}
-//{{{
-#ifdef LACK_MEMMOVE
-# ifndef memmove
-#  define memmove  my_memmove
-   extern Anyptr my_memmove PP( (Anyptr, Const Anyptr, size_t) );
-# endif
-#endif
-//}}}
-//{{{
-#ifdef LACK_MEMCPY
-# ifndef memcpy
-#  define memcpy  my_memcpy
-   extern Anyptr my_memcpy PP( (Anyptr, Const Anyptr, size_t) );
-# endif
-# ifndef memcmp
-#  define memcmp  my_memcmp
-   extern int my_memcmp PP( (Const Anyptr, Const Anyptr, size_t) );
-# endif
-# ifndef memset
-#  define memset  my_memset
-   extern Anyptr my_memset PP( (Anyptr, int, size_t) );
-# endif
-#endif
-//}}}
-//{{{
-/* Fix toupper/tolower on Suns and other stupid BSD systems */
-#ifdef toupper
-# undef toupper
-# undef tolower
-# define toupper(c)   my_toupper(c)
-# define tolower(c)   my_tolower(c)
-//}}}
-#endif
-
-//{{{
-#ifndef _toupper
-# if 'A' == 65 && 'a' == 97
-#  define _toupper(c)  ((c)-'a'+'A')
-#  define _tolower(c)  ((c)-'A'+'a')
-# else
-#  ifdef toupper
-#   undef toupper   /* hope these are shadowing real functions, */
-#   undef tolower   /* because my_toupper calls _toupper! */
-#  endif
-#  define _toupper(c)  toupper(c)
-#  define _tolower(c)  tolower(c)
-# endif
-#endif
-//}}}

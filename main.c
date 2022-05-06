@@ -23,14 +23,14 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #include <time.h>
 //{{{
 /* Roadmap:
-    main.h          Declarations for all public global variables, types, and macros.  
+    main.h          Declarations for all public global variables, types, and macros.
                     Functions are declared in separate files p2c.{proto,hdrs} which are created
                     mechanically by the makeproto program.
     main.c          Main program.  Parses the p2crc file.  Also reserves storage for public globals in trans.h.
 
     stuff.c         Miscellaneous support routines.
 
-    out.c           Routines to handle the writing of C code to the output file.  
+    out.c           Routines to handle the writing of C code to the output file.
                     This includes line breaking and indentation support.
 
     comment.c       Routines for managing comments and comment lists.
@@ -1211,54 +1211,35 @@ void wrapup() {
   }
 //}}}
 
+anyptr memlist;
 //{{{
 void mem_summary() {
 
-  printf("Summary of memory allocated but not freed:\n");
-  printf("Total bytes = %d of %d\n", final_bytes, total_bytes);
-  printf("Expressions = %d of %d\n", final_exprs, total_exprs);
-  printf("Meanings =    %d of %d (%ld of %ld)\n",
+  printf ("Summary of memory allocated but not freed:\n");
+  printf ("Total bytes = %d of %d\n", final_bytes, total_bytes);
+
+  printf ("Expressions = %d of %d\n", final_exprs, total_exprs);
+  printf ("Meanings =    %d of %d (%ld of %ld)\n",
          final_meanings, total_meanings, final_meanings / sizeof(Meaning), total_meanings / sizeof(Meaning));
-  printf("Strings =     %d of %d\n", final_strings, total_strings);
-  printf("Symbols =     %d of %d\n", final_symbols, total_symbols);
-  printf("Types =       %d of %d (%ld of %ld)\n", final_types, total_types,
+  printf ("Strings =     %d of %d\n", final_strings, total_strings);
+  printf ("Symbols =     %d of %d\n", final_symbols, total_symbols);
+  printf ("Types =       %d of %d (%ld of %ld)\n", final_types, total_types,
          final_types / sizeof(Type), total_types / sizeof(Type));
-  printf("Statements =  %d of %d (%ld of %ld)\n", final_stmts, total_stmts,
+  printf ("Statements =  %d of %d (%ld of %ld)\n", final_stmts, total_stmts,
          final_stmts / sizeof(Stmt), total_stmts / sizeof(Stmt));
-  printf("Strlists =    %d of %d\n", final_strlists, total_strlists);
-  printf("Literals =    %d of %d\n", final_literals, total_literals);
-  printf("Ctxstacks =   %d of %d\n", final_ctxstacks, total_ctxstacks);
-  printf("Temp vars =   %d of %d\n", final_tempvars, total_tempvars);
-  printf("Input recs =  %d of %d\n", final_inprecs, total_inprecs);
-  printf("Parens =      %d of %d\n", final_parens, total_parens);
-  printf("Ptr Descs =   %d of %d\n", final_ptrdescs, total_ptrdescs);
-  printf("Other =       %d of %d\n", final_misc, total_misc);
-  printf("\n");
-  }
-//}}}
-anyptr memlist;
-//{{{
-anyptr test_malloc(size, total, final)
-int size, *total, *final;
-  {
-  anyptr p;
-
-  p = malloc(size + 3*sizeof(long));
-
-  ((anyptr *)p)[0] = memlist;
-  memlist = p;
-  ((long *)p)[1] = size;
-  ((int **)p)[2] = final;
-  total_bytes += size;
-  final_bytes += size;
-  *total += size;
-  *final += size;
-
-  return (anyptr)((long *)p + 3);
+  printf ("Strlists =    %d of %d\n", final_strlists, total_strlists);
+  printf ("Literals =    %d of %d\n", final_literals, total_literals);
+  printf ("Ctxstacks =   %d of %d\n", final_ctxstacks, total_ctxstacks);
+  printf ("Temp vars =   %d of %d\n", final_tempvars, total_tempvars);
+  printf ("Input recs =  %d of %d\n", final_inprecs, total_inprecs);
+  printf ("Parens =      %d of %d\n", final_parens, total_parens);
+  printf ("Ptr Descs =   %d of %d\n", final_ptrdescs, total_ptrdescs);
+  printf ("Other =       %d of %d\n", final_misc, total_misc);
+  printf ("\n");
   }
 //}}}
 //{{{
-void test_free(p)
+void test_free (p)
 anyptr p;
   {
   final_bytes -= ((long *)p)[1-3];
@@ -1267,14 +1248,40 @@ anyptr p;
   }
 //}}}
 //{{{
-anyptr test_realloc(p, size)
+anyptr test_malloc (size, total, final)
+int size, *total, *final;
+  {
+  anyptr p;
+
+  p = malloc (size + 3*sizeof(long));
+
+  ((anyptr*)p)[0] = memlist;
+  memlist = p;
+
+  ((long *)p)[1] = size;
+  ((int **)p)[2] = final;
+
+  total_bytes += size;
+  final_bytes += size;
+
+  *total += size;
+  *final += size;
+
+  return (anyptr)((long *)p + 3);
+  }
+//}}}
+//{{{
+anyptr test_realloc (p, size)
 anyptr p;
 int size;
   {
+
   anyptr p2;
   p2 = test_malloc (size, &total_misc, &final_misc);
+
   memcpy (p2, p, size);
   test_free (p);
+
   return p2;
   }
 //}}}

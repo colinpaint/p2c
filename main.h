@@ -23,50 +23,51 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #include <stdio.h>
 #include <ctype.h>
 
- //{{{  os options
- #ifdef __linux__
-   //#pragma message("compiling with __STDC__")
+//{{{  os options
+#ifdef __linux__
+  //#pragma message("compiling with __STDC__")
 
-   #include <stdlib.h>
-   #include <stddef.h>
-   #include <limits.h>
-   #include <string.h>
+  #include <stdlib.h>
+  #include <stddef.h>
+  #include <limits.h>
+  #include <string.h>
 
-   #define PP(x)  x             /* use true prototypes */
-   #define PV()   (void)
-   #define Anyptr void
-   #define __CAT__(a,b)a##b
+  #define PP(x)  x             /* use true prototypes */
+  #define PV()   (void)
+  #define Anyptr void
+  #define __CAT__(a,b)a##b
 
-   #ifdef __GNUC__      /* Fast, in-line version of strcmp */
-     //  #pragma message("compiling with __GNUC__")
-     #define strcmp(a,b) ( \
-       { char *_aa = (a), *_bb = (b); int _diff;  \
-         for (;;) {              \
-           if (!*_aa && !*_bb) { _diff = 0; break; }  \
-           if (*_aa++ != *_bb++) { _diff = _aa[-1] - _bb[-1]; break; } } _diff; })
-   #endif
- #endif
+  #ifdef __GNUC__      /* Fast, in-line version of strcmp */
+    //  #pragma message("compiling with __GNUC__")
+    #define strcmp(a,b) ( \
+      { char *_aa = (a), *_bb = (b); int _diff;  \
+        for (;;) {              \
+          if (!*_aa && !*_bb) { _diff = 0; break; }  \
+          if (*_aa++ != *_bb++) { _diff = _aa[-1] - _bb[-1]; break; } } _diff; })
+  #endif
+#endif
 
- #ifdef _WIN32
-   #pragma message("compiling with _WIN32")
+#ifdef _WIN32
+  #pragma message("compiling with _WIN32")
 
-   #include <stdlib.h>
-   #include <stddef.h>
-   #include <limits.h>
-   #include <malloc.h>
-   #include <memory.h>
+  #include <stdlib.h>
+  #include <stddef.h>
+  #include <string.h>
+  #include <limits.h>
+  #include <malloc.h>
+  #include <memory.h>
 
-   #define PP(x)  ()            /* use old-style declarations */
-   #define PV()   ()
-   #define Anyptr char
-   #define __ID__(a)a
-   #define __CAT__(a,b)__ID__(a)b
+  #define PP(x)  ()            /* use old-style declarations */
+  #define PV()   ()
+  #define Anyptr char
+  #define __ID__(a)a
+  #define __CAT__(a,b)__ID__(a)b
 
-   //#define memcpy(a,b,n) bcopy(b,a,n)
-   //#define memcmp(a,b,n) bcmp(a,b,n)
-   //char *malloc(), *realloc();
- #endif
- //}}}
+  //#define memcpy(a,b,n) bcopy(b,a,n)
+  //#define memcmp(a,b,n) bcmp(a,b,n)
+  //char *malloc(), *realloc();
+#endif
+//}}}
 
 //{{{  Constants
 #ifndef CHAR_BIT
@@ -243,10 +244,8 @@ typedef struct S_value {
  * The symbol table is used for several things.  Mainly it records all
  * identifiers in the Pascal program (normally converted to upper case).
  * Also used for recording certain properties about C and Pascal names.
- *
  * The symbol table is a hash table of binary trees.
  */
-
 #define AVOIDNAME  0x1         /* Avoid this name in C code */
 #define WARNNAME   0x2         /* Warn if using this name in C code */
 #define AVOIDGLOB  0x4         /* Avoid C name except private to module */
@@ -269,17 +268,18 @@ typedef struct S_value {
 #define SSYNONYM   0x20000     /* Symbol is a synonym for another */
 
 typedef struct S_symbol {
-    struct S_symbol *left;     /* Left pointer in binary tree */
-    struct S_symbol *right;    /* Right pointer in binary tree */
-    struct S_meaning *mbase;   /* First normal meaning for this symbol */
-    struct S_meaning *fbase;   /* First record-field meaning for this symbol */
-    Strlist *symbolnames;      /* List of NameOf's for this name */
-    long flags;          /* (above) */
-    Token kwtok;         /* Token, if symbol is a keyword */
-    char name[1];              /* Pascal name (actually variable-sized) */
-} Symbol;
+  struct S_symbol *left;     /* Left pointer in binary tree */
+  struct S_symbol *right;    /* Right pointer in binary tree */
+  struct S_meaning *mbase;   /* First normal meaning for this symbol */
+  struct S_meaning *fbase;   /* First record-field meaning for this symbol */
+  Strlist *symbolnames;      /* List of NameOf's for this name */
+  long flags;          /* (above) */
+  Token kwtok;         /* Token, if symbol is a keyword */
+  char name[1];              /* Pascal name (actually variable-sized) */
+  } Symbol;
 //}}}
 //{{{  Meaning notes
+ //{{{  description
  /*
  * This represents one meaning of a symbol (see below).  Meanings are
  * organized in a tree of contexts (i.e., scopes), and also in linked
@@ -408,15 +408,16 @@ typedef struct S_symbol {
  *    mp->xnext => Actual meaning to be used.
  *
  */
+ //}}}
 
 enum meaningkind {
-    MK_NONE, MK_SPECIAL,
-    MK_MODULE, MK_FUNCTION, MK_CONST, MK_VAR, MK_TYPE,
-    MK_FIELD, MK_LABEL, MK_VARIANT,
-    MK_PARAM, MK_VARPARAM, MK_VARREF, MK_VARMAC,
-    MK_SPVAR, MK_SYNONYM,
-    MK_LAST
-    };
+  MK_NONE, MK_SPECIAL,
+  MK_MODULE, MK_FUNCTION, MK_CONST, MK_VAR, MK_TYPE,
+  MK_FIELD, MK_LABEL, MK_VARIANT,
+  MK_PARAM, MK_VARPARAM, MK_VARREF, MK_VARMAC,
+  MK_SPVAR, MK_SYNONYM,
+  MK_LAST
+  };
 
 #if defined (DEFINE_GLOBALS)
   char *meaningkindnames[(int)MK_LAST] = {
@@ -429,47 +430,48 @@ enum meaningkind {
 #endif
 
 typedef struct S_meaning {
-    struct S_meaning *snext;   /* Next meaning for this symbol */
-    struct S_meaning *cnext;   /* Next meaning in this meaning's context */
-    struct S_meaning *cbase;   /* First meaning in this context */
-    struct S_meaning *ctx;     /* Context of this meaning */
-    struct S_meaning *xnext;   /* (above) */
-    struct S_meaning *dtype;   /* Declared type name, if any */
-    struct S_symbol *sym;      /* Symbol of which this is a meaning */
-    struct S_type *type;       /* (above) */
-    struct S_type *rectype;    /* (above) */
-    struct S_expr *constdefn;  /* (above) */
-    enum meaningkind kind;     /* Kind of meaning */
-    unsigned needvarstruct:1,  /* (above) */
-             varstructflag:1,  /* (above) */
-             wasdeclared:1,    /* Declaration has been written for meaning */
-             istemporary:1,    /* Is a temporary variable */
-             isforward:1,      /* (above) */
-             isfunction:1,     /* (above) */
-             anyvarflag:1,     /* (above) */
-             isactive:1,       /* Meaning is currently in scope */
-             exported:1,       /* Meaning is visible outside this module */
-             warnifused:1,     /* WarnNames was 1 when meaning was declared */
-             dumped:1,         /* Has been dumped (for debugging) */
-             isreturn:1,       /* (above) */
-             fakeparam:1,      /* (above) */
-             namedfile:1,      /* (above) */
-             bufferedfile:1,   /* (above) */
-             volatilequal:1,   /* Object has C "volatile" qualifier */
-             constqual:1,      /* Object has C "const" qualifier */
-             isref:1,          /* Is a C++ reference variable */
-             dummy18:1, dummy19:1,
-       dummy20:1, dummy21:1, dummy22:1, dummy23:1, dummy24:1, dummy25:1,
-       dummy26:1, dummy27:1, dummy28:1, dummy29:1, dummy30:1, dummy31:1;
-    Value val;           /* (above) */
-    int refcount;        /* Number of references to meaning in program */
-    char *name;          /* Print name (i.e., C name) of the meaning */
-    char *othername;         /* (above) */
-    struct S_expr *(*handler)();   /* Custom translator for procedure */
-    Strlist *comments;         /* Comments associated with meaning */
-} Meaning;
+  struct S_meaning *snext;   /* Next meaning for this symbol */
+  struct S_meaning *cnext;   /* Next meaning in this meaning's context */
+  struct S_meaning *cbase;   /* First meaning in this context */
+  struct S_meaning *ctx;     /* Context of this meaning */
+  struct S_meaning *xnext;   /* (above) */
+  struct S_meaning *dtype;   /* Declared type name, if any */
+  struct S_symbol *sym;      /* Symbol of which this is a meaning */
+  struct S_type *type;       /* (above) */
+  struct S_type *rectype;    /* (above) */
+  struct S_expr *constdefn;  /* (above) */
+  enum meaningkind kind;     /* Kind of meaning */
+  unsigned needvarstruct:1,  /* (above) */
+           varstructflag:1,  /* (above) */
+           wasdeclared:1,    /* Declaration has been written for meaning */
+           istemporary:1,    /* Is a temporary variable */
+           isforward:1,      /* (above) */
+           isfunction:1,     /* (above) */
+           anyvarflag:1,     /* (above) */
+           isactive:1,       /* Meaning is currently in scope */
+           exported:1,       /* Meaning is visible outside this module */
+           warnifused:1,     /* WarnNames was 1 when meaning was declared */
+           dumped:1,         /* Has been dumped (for debugging) */
+           isreturn:1,       /* (above) */
+           fakeparam:1,      /* (above) */
+           namedfile:1,      /* (above) */
+           bufferedfile:1,   /* (above) */
+           volatilequal:1,   /* Object has C "volatile" qualifier */
+           constqual:1,      /* Object has C "const" qualifier */
+           isref:1,          /* Is a C++ reference variable */
+           dummy18:1, dummy19:1,
+     dummy20:1, dummy21:1, dummy22:1, dummy23:1, dummy24:1, dummy25:1,
+     dummy26:1, dummy27:1, dummy28:1, dummy29:1, dummy30:1, dummy31:1;
+  Value val;           /* (above) */
+  int refcount;        /* Number of references to meaning in program */
+  char *name;          /* Print name (i.e., C name) of the meaning */
+  char *othername;         /* (above) */
+  struct S_expr *(*handler)();   /* Custom translator for procedure */
+  Strlist *comments;         /* Comments associated with meaning */
+  } Meaning;
 //}}}
 //{{{  Type notes
+ //{{{  description
  /*
  * This struct represents a data type.  Types are stored in a strange
  * cross between Pascal and C semantics.  (This usually works out okay.)
@@ -585,6 +587,7 @@ typedef struct S_meaning {
  *    Only TK_SPECIAL type at present is tp_jmp_buf.
  *
  */
+ //}}}
 
 enum typekind {
   TK_NONE,
@@ -608,22 +611,23 @@ enum typekind {
 #endif
 
 typedef struct S_type {
-    enum typekind kind;        /* Kind of type */
-    struct S_type *basetype;   /* (above) */
-    struct S_type *indextype;  /* (above) */
-    struct S_type *pointertype; /* Pointer to this type */
-    struct S_meaning *meaning; /* Name of this type, if any */
-    struct S_meaning *fbase;   /* (above) */
-    struct S_expr *smin;       /* (above) */
-    struct S_expr *smax;       /* (above) */
-    unsigned issigned:1,       /* (above) */
-             dumped:1,         /* Has been dumped (for debugging) */
-             structdefd:1,     /* (above) */
-             preserved:1;      /* Declared with preservetypes = 1 */
-    short escale;              /* (above) */
-} Type;
+  enum typekind kind;        /* Kind of type */
+  struct S_type *basetype;   /* (above) */
+  struct S_type *indextype;  /* (above) */
+  struct S_type *pointertype; /* Pointer to this type */
+  struct S_meaning *meaning; /* Name of this type, if any */
+  struct S_meaning *fbase;   /* (above) */
+  struct S_expr *smin;       /* (above) */
+  struct S_expr *smax;       /* (above) */
+  unsigned issigned:1,       /* (above) */
+           dumped:1,         /* Has been dumped (for debugging) */
+           structdefd:1,     /* (above) */
+           preserved:1;      /* Declared with preservetypes = 1 */
+  short escale;              /* (above) */
+  } Type;
 //}}}
 //{{{  Expr notes
+ //{{{  description
  /*
  * Expression trees generally reflect C notation and semantics.  For example,
  * EK_ASSIGN is not generated for string arguments; these would get an
@@ -778,22 +782,22 @@ typedef struct S_type {
  *    ep->args[0] => Variable to be freed.
  *
  */
-
+ //}}}
 enum exprkind {
-    EK_EQ, EK_NE, EK_LT, EK_GT, EK_LE, EK_GE,
-    EK_PLUS, EK_NEG, EK_TIMES, EK_DIVIDE,
-    EK_DIV, EK_MOD,
-    EK_OR, EK_AND, EK_NOT,
-    EK_BAND, EK_BOR, EK_BXOR, EK_BNOT, EK_LSH, EK_RSH,
-    EK_HAT, EK_INDEX, EK_CAST, EK_DOT, EK_COND,
-    EK_ADDR, EK_SIZEOF, EK_ACTCAST,
-    EK_CONST, EK_VAR, EK_FUNCTION,
-    EK_ASSIGN, EK_POSTINC, EK_POSTDEC, EK_CHECKNIL,
-    EK_MACARG, EK_BICALL, EK_STRUCTCONST, EK_STRUCTOF,
-    EK_COMMA, EK_LONGCONST, EK_NAME, EK_CTX, EK_SPCALL,
-    EK_LITCAST, EK_TYPENAME, EK_NEW, EK_DELETE,
-    EK_LAST
-    };
+  EK_EQ, EK_NE, EK_LT, EK_GT, EK_LE, EK_GE,
+  EK_PLUS, EK_NEG, EK_TIMES, EK_DIVIDE,
+  EK_DIV, EK_MOD,
+  EK_OR, EK_AND, EK_NOT,
+  EK_BAND, EK_BOR, EK_BXOR, EK_BNOT, EK_LSH, EK_RSH,
+  EK_HAT, EK_INDEX, EK_CAST, EK_DOT, EK_COND,
+  EK_ADDR, EK_SIZEOF, EK_ACTCAST,
+  EK_CONST, EK_VAR, EK_FUNCTION,
+  EK_ASSIGN, EK_POSTINC, EK_POSTDEC, EK_CHECKNIL,
+  EK_MACARG, EK_BICALL, EK_STRUCTCONST, EK_STRUCTOF,
+  EK_COMMA, EK_LONGCONST, EK_NAME, EK_CTX, EK_SPCALL,
+  EK_LITCAST, EK_TYPENAME, EK_NEW, EK_DELETE,
+  EK_LAST
+  };
 
 #if defined(DEFINE_GLOBALS)
   char *exprkindnames[(int)EK_LAST] = {
@@ -813,13 +817,14 @@ enum exprkind {
 #endif
 
 typedef struct S_expr {
-    enum exprkind kind;
-    short nargs;
-    Value val;
-    struct S_expr *args[1];    /* (Actually, variable-sized) */
-} Expr;
+  enum exprkind kind;
+  short nargs;
+  Value val;
+  struct S_expr *args[1];    /* (Actually, variable-sized) */
+  } Expr;
 //}}}
 //{{{  Stmt notes
+ //{{{  description
  /*
  * Statements form linked lists along the "next" pointers.
  * All other pointers are NULL and unused unless shown below.
@@ -890,6 +895,7 @@ typedef struct S_expr {
  *    (This exists only during fixblock.)
  *
  */
+ //}}}
 
 enum stmtkind {
   SK_ASSIGN, SK_RETURN,
@@ -918,8 +924,8 @@ typedef struct S_stmt {
   unsigned quietelim:1, doinit:1;
   } Stmt;
 //}}}
-
-//{{{  Flags for out_declarator()
+//{{{  defines
+// Flags for out_declarator()
 #define ODECL_CHARSTAR    0x1
 #define ODECL_FREEARRAY   0x2
 #define ODECL_FUNCTION    0x4
@@ -931,33 +937,31 @@ typedef struct S_stmt {
 #define ODECL_SPACE     0x100
 #define ODECL_SPMRG     0x200
 #define ODECL_ARRAYPTRS 0x400
-//}}}
-//{{{  Flags for declarevar()
+
+// Flags for declarevar()
 #define VDECL_HEADER        0x1
 #define VDECL_BODY          0x2
 #define VDECL_TRAILER       0x4
 #define VDECL_ALL           (VDECL_HEADER | VDECL_BODY | VDECL_TRAILER)
 #define VDECL_VARSTRUCT     0x8
-//}}}
-//{{{  Flags for fixexpr()
+
+// Flags for fixexpr()
 #define ENV_EXPR    0       /* return value needed */
 #define ENV_STMT    1       /* return value ignored */
 #define ENV_BOOL    2       /* boolean return value needed */
 #define ENV_LVALUE  3       /* used as an lvalue */
-//}}}
-//{{{  Flags for dataflow()
+
+// Flags for dataflow()
 #define PROP_INVALID (-1)
 #define PROP_ZERO   0       /* variable is known to be zero */
-//}}}
-//{{{  Flags for defmacro()
+
+// Flags for defmacro()
 #define MAC_VAR     0       /* VarMacro */
 #define MAC_CONST   1       /* ConstMacro */
 #define MAC_FIELD   2       /* FieldMacro */
 #define MAC_FUNC    3       /* FuncMacro */
-//}}}
-#define FMACRECname  "<rec>"
 
-//{{{  Kinds of comment lines
+// Kinds of comment lines
 #define CMT_SHIFT   24
 #define CMT_MASK    ((1L<<CMT_SHIFT)-1)
 #define CMT_KMASK   ((1<<(32-CMT_SHIFT))-1)
@@ -970,10 +974,8 @@ typedef struct S_stmt {
 #define CMT_ONELSE  8       /* comment on "else" keyword */
 #define CMT_PREELSE 9       /* comment preceding "else" keyword */
 #define CMT_NOT     256     /* negation of above, for searches */
-//}}}
-#define getcommentkind(cmt)  (((cmt)->value >> CMT_SHIFT) & CMT_KMASK)
 
-//{{{  Kinds of operator line-breaking
+// Kinds of operator line-breaking
 #define BRK_LEFT     0x1
 #define BRK_RIGHT    0x2
 #define BRK_LPREF    0x4
@@ -981,6 +983,8 @@ typedef struct S_stmt {
 #define BRK_ALLNONE  0x10
 #define BRK_HANG     0x20
 //}}}
+#define FMACRECname  "<rec>"
+#define getcommentkind(cmt)  (((cmt)->value >> CMT_SHIFT) & CMT_KMASK)
 
 //{{{  extern vars
 #ifdef define_parameters
@@ -1670,7 +1674,6 @@ struct rcstruct {
   extern int numparams;
   extern Strlist *rcprevvalues[];
 #endif
-
 //{{{  global vars
 #ifdef DEFINE_GLOBALS
   #define extern
@@ -1770,34 +1773,34 @@ extern Expr *new_array_size;
 #endif
 //}}}
 
-/* Function declarations are created automatically by "makeproto" */
+// Function declarations are created automatically by "makeproto"
 #include "p2c.hdrs"
 #include "p2c.proto"
 
-/* Our library omits declarations for these functions! */
+// Our library omits declarations for these functions!
 int link           PP( (char *, char *) );
 int unlink         PP( (char *) );
 
-#define minspcthresh ((minspacingthresh >= 0) ? minspacingthresh : minspacing)
+#define minspcthresh  ((minspacingthresh >= 0) ? minspacingthresh : minspacing)
 
-#define delfreearg(ex, n) freeexpr((*(ex))->args[n]), deletearg(ex, n)
-#define delsimpfreearg(ex, n) freeexpr((*(ex))->args[n]), delsimparg(ex, n)
+#define delfreearg(ex, n)  freeexpr((*(ex))->args[n]), deletearg(ex, n)
+#define delsimpfreearg(ex, n)  freeexpr((*(ex))->args[n]), delsimparg(ex, n)
 
-#define swapexprs(a,b) do {register Expr *t=(a);(a)=(b);(b)=(t);} while (0)
-#define swapstmts(a,b) do {register Stmt *t=(a);(a)=(b);(b)=(t);} while (0)
+#define swapexprs(a,b)  do {register Expr *t=(a);(a)=(b);(b)=(t);} while (0)
+#define swapstmts(a,b)  do {register Stmt *t=(a);(a)=(b);(b)=(t);} while (0)
 
-#define CHECKORDEXPR(ex,v) ((ex)->kind==EK_CONST ? (ex)->val.i - (v) : -2)
+#define CHECKORDEXPR(ex,v)  ((ex)->kind==EK_CONST ? (ex)->val.i - (v) : -2)
 
-#define FCheck(flag)  ((flag) == 1 || (!iocheck_flag && (flag)))
+#define FCheck(flag)   ((flag) == 1 || (!iocheck_flag && (flag)))
 #define checkeof(fex)  (isvar(fex, mp_input) ? FCheck(checkstdineof) : FCheck(checkfileeof))
 
-#define ALLOC(N,TYPE,NAME)  (TYPE*) test_malloc ((unsigned)((N)*sizeof(TYPE)), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
-#define ALLOCV(N,TYPE,NAME) (TYPE*) test_malloc ((unsigned)(N), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
-#define REALLOC(P,N,TYPE)   (TYPE*) test_realloc ((char *)(P), (unsigned)((N)*sizeof(TYPE)))
-#define FREE(P)                     test_free ((char*)(P))
+#define ALLOC(N,TYPE,NAME)   (TYPE*)test_malloc ((unsigned)((N)*sizeof(TYPE)), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
+#define ALLOCV(N,TYPE,NAME)  (TYPE*)test_malloc ((unsigned)(N), &__CAT__(total_,NAME), &__CAT__(final_,NAME))
+#define REALLOC(P,N,TYPE)    (TYPE*)test_realloc ((char *)(P), (unsigned)((N)*sizeof(TYPE)))
+#define FREE(P)                    test_free ((char*)(P))
 
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
+#define MIN(a,b)  ((a) < (b) ? (a) : (b))
+#define MAX(a,b)  ((a) > (b) ? (a) : (b))
 
 //{{{
 #ifdef toupper
