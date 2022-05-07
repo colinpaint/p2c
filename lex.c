@@ -1083,24 +1083,24 @@ void getaline()
 //{{{
 Static void push_input()
 {
-    struct inprec *inp;
+  struct inprec *inp;
 
-    inp = ALLOC(1, struct inprec, inprecs);
-    inp->kind = inputkind;
-    inp->fname = infname;
-    inp->lnum = inf_lnum;
-    inp->filep = inf;
-    inp->strlistp = instrlist;
-    inp->inbufptr = stralloc(inbufptr);
-    inp->curtok = curtok;
-    inp->curtoksym = curtoksym;
-    inp->curtokmeaning = curtokmeaning;
-    inp->curtokbuf = stralloc(curtokbuf);
-    inp->curtokcase = stralloc(curtokcase);
-    inp->saveblockkind = TOK_NIL;
-    inp->next = topinput;
-    topinput = inp;
-    inbufptr = inbuf + strlen(inbuf);
+  inp = ALLOC(1, struct inprec, inprecs);
+  inp->kind = inputkind;
+  inp->fname = infname;
+  inp->lnum = inf_lnum;
+  inp->filep = inf;
+  inp->strlistp = instrlist;
+  inp->inbufptr = stralloc(inbufptr);
+  inp->curtok = curtok;
+  inp->curtoksym = curtoksym;
+  inp->curtokmeaning = curtokmeaning;
+  inp->curtokbuf = stralloc(curtokbuf);
+  inp->curtokcase = stralloc(curtokcase);
+  inp->saveblockkind = TOK_NIL;
+  inp->next = topinput;
+  topinput = inp;
+  inbufptr = inbuf + strlen(inbuf);
 }
 //}}}
 //{{{
@@ -1109,20 +1109,20 @@ FILE *fp;
 char *fname;
 int isinclude;
 {
-    push_input();
-    inputkind = (isinclude == 1) ? INP_INCFILE : INP_FILE;
+  push_input();
+  inputkind = (isinclude == 1) ? INP_INCFILE : INP_FILE;
 
-    inf = fp;
-    inf_lnum = 0;
-    infname = fname;
-    *inbuf = 0;
+  inf = fp;
+  inf_lnum = 0;
+  infname = fname;
+  *inbuf = 0;
 
-    inbufptr = inbuf;
-    topinput->tempopts = tempoptionlist;
-    tempoptionlist = NULL;
+  inbufptr = inbuf;
+  topinput->tempopts = tempoptionlist;
+  tempoptionlist = NULL;
 
-    if (isinclude != 2)
-        gettok();
+  if (isinclude != 2)
+    gettok();
 }
 //}}}
 //{{{
@@ -1134,7 +1134,7 @@ void include_as_import()
     blockkind = TOK_IMPORT;
     }
   else
-    warning(format_s("%s ignored except in include files [228]", interfacecomment));
+    warning (format_s("%s ignored except in include files [228]", interfacecomment));
 }
 //}}}
 //{{{
@@ -1155,6 +1155,7 @@ char *fname;
 
   *inbuf = 0;
   inbufptr = inbuf;
+
   gettok();
   }
 //}}}
@@ -1165,13 +1166,13 @@ void pop_input()
 
   if (inputkind == INP_FILE || inputkind == INP_INCFILE) {
     while (tempoptionlist) {
-      undooption(tempoptionlist->value, tempoptionlist->s);
-      strlist_eat(&tempoptionlist);
+      undooption (tempoptionlist->value, tempoptionlist->s);
+      strlist_eat (&tempoptionlist);
       }
 
     tempoptionlist = topinput->tempopts;
     if (inf)
-      fclose(inf);
+      fclose (inf);
     }
 
   inp = topinput;
@@ -1189,13 +1190,13 @@ void pop_input()
   curtok = inp->curtok;
   curtoksym = inp->curtoksym;
   curtokmeaning = inp->curtokmeaning;
-  strcpy(curtokbuf, inp->curtokbuf);
+  strcpy (curtokbuf, inp->curtokbuf);
   FREE(inp->curtokbuf);
 
-  strcpy(curtokcase, inp->curtokcase);
+  strcpy (curtokcase, inp->curtokcase);
   FREE(inp->curtokcase);
 
-  strcpy(inbuf, inp->inbufptr);
+  strcpy (inbuf, inp->inbufptr);
   FREE(inp->inbufptr);
 
   inbufptr = inbuf;
@@ -1294,9 +1295,9 @@ void badinclude() {
 int handle_include (fn)
 char *fn;
   {
-  FILE *fp = NULL;
-  Strlist *sl;
+  FILE* fp = NULL;
 
+  Strlist* sl;
   for (sl = includedirs; sl; sl = sl->next) {
     fp = fopen (format_s(sl->s, fn), "r");
     if (fp) {
@@ -1325,9 +1326,9 @@ char *fn;
       curtok = TOK_INCLUDE;
       strcpy (curtokbuf, fn);
       }
-    else {
+    else 
       push_input_file (fp, fn, 1);
-      }
+
     return 1;
     }
   }
@@ -1564,150 +1565,180 @@ char *closing, *after;
   }
 //}}}
 
-extern Strlist *addmacros;
+extern Strlist* addmacros;
 //{{{
 void defmacro (name, kind, fname, lnum)
 char *name, *fname;
 long kind;
 int lnum;
 {
-    Strlist *defsl, *sl, *sl2;
-    Symbol *sym, *sym2;
-    Meaning *mp;
-    Expr *ex;
+  Strlist *defsl, *sl, *sl2;
+  Symbol *sym, *sym2;
+  Meaning* mp;
+  Expr* ex;
 
-    defsl = NULL;
-    sl = strlist_append(&defsl, name);
-    C_lex++;
-    if (fname && !strcmp(fname, "<macro>") && curtok == TOK_IDENT)
-        fname = curtoksym->name;
-    push_input_strlist(defsl, fname);
-    if (fname)
-      inf_lnum = lnum;
-    switch (kind) {
-      //{{{
-      case MAC_VAR:
-        if (!wexpecttok(TOK_IDENT))
-          break;
-         for (mp = curtoksym->mbase; mp; mp = mp->snext) {
-           if (mp->kind == MK_VAR)
-             warning(format_s("VarMacro must be defined before declaration of variable %s [231]", curtokcase));
-           }
-          sl = strlist_append(&varmacros, curtoksym->name);
-          gettok();
-          if (!wneedtok(TOK_EQ))
-            break;
-          sl->value = (long)pc_expr();
-          break;
-      //}}}
-      //{{{
-      case MAC_CONST:
-        if (!wexpecttok(TOK_IDENT))
-          break;
-        for (mp = curtoksym->mbase; mp; mp = mp->snext) {
-          if (mp->kind == MK_CONST)
-            warning(format_s("ConstMacro must be defined before declaration of variable %s [232]", curtokcase));
-          }
-        sl = strlist_append(&constmacros, curtoksym->name);
-        gettok();
-        if (!wneedtok(TOK_EQ))
-          break;
-        sl->value = (long)pc_expr();
+  defsl = NULL;
+  sl = strlist_append (&defsl, name);
+  C_lex++;
+
+  if (fname && !strcmp(fname, "<macro>") && curtok == TOK_IDENT)
+    fname = curtoksym->name;
+  push_input_strlist (defsl, fname);
+
+  if (fname)
+    inf_lnum = lnum;
+
+  switch (kind) {
+    //{{{
+    case MAC_VAR:
+      if (!wexpecttok(TOK_IDENT))
         break;
-      //}}}
-      //{{{
-      case MAC_FIELD:
-        if (!wexpecttok(TOK_IDENT))
+
+      for (mp = curtoksym->mbase; mp; mp = mp->snext) {
+        if (mp->kind == MK_VAR)
+          warning (format_s ("VarMacro must be defined before declaration of variable %s [231]", curtokcase));
+        }
+
+      sl = strlist_append (&varmacros, curtoksym->name);
+
+      gettok();
+      if (!wneedtok(TOK_EQ))
+        break;
+
+      sl->value = (long)pc_expr();
+      break;
+    //}}}
+    //{{{
+    case MAC_CONST:
+      if (!wexpecttok(TOK_IDENT))
+        break;
+
+      for (mp = curtoksym->mbase; mp; mp = mp->snext) {
+        if (mp->kind == MK_CONST)
+          warning (format_s ("ConstMacro must be defined before declaration of variable %s [232]", curtokcase));
+        }
+
+      sl = strlist_append (&constmacros, curtoksym->name);
+      gettok();
+
+      if (!wneedtok(TOK_EQ))
+        break;
+
+      sl->value = (long)pc_expr();
+      break;
+    //}}}
+    //{{{
+    case MAC_FIELD:
+      if (!wexpecttok (TOK_IDENT))
+        break;
+
+      sym = curtoksym;
+      gettok();
+
+      if (!wneedtok (TOK_DOT))
+        break;
+
+      if (!wexpecttok (TOK_IDENT))
+        break;
+
+      sym2 = curtoksym;
+      gettok();
+      if (!wneedtok (TOK_EQ))
+        break;
+
+      funcmacroargs = NULL;
+      sym->flags |= FMACREC;
+      ex = pc_expr();
+      sym->flags &= ~FMACREC;
+
+      for (mp = sym2->fbase; mp; mp = mp->snext) {
+        if (mp->rectype && mp->rectype->meaning && mp->rectype->meaning->sym == sym)
           break;
-        sym = curtoksym;
-        gettok();
-        if (!wneedtok(TOK_DOT))
-          break;
-        if (!wexpecttok(TOK_IDENT))
-          break;
-        sym2 = curtoksym;
-        gettok();
-        if (!wneedtok(TOK_EQ))
-          break;
-        funcmacroargs = NULL;
-        sym->flags |= FMACREC;
-        ex = pc_expr();
-        sym->flags &= ~FMACREC;
-        for (mp = sym2->fbase; mp; mp = mp->snext) {
-          if (mp->rectype && mp->rectype->meaning && mp->rectype->meaning->sym == sym)
-          break;
-          }
-        if (mp) {
-          mp->constdefn = ex;
+        }
+
+      if (mp) {
+        mp->constdefn = ex;
+        }
+      else {
+        sl = strlist_append(&fieldmacros, format_ss("%s.%s", sym->name, sym2->name));
+        sl->value = (long)ex;
+        }
+
+      break;
+    //}}}
+    //{{{
+    case MAC_FUNC:
+      if (!wexpecttok (TOK_IDENT))
+        break;
+
+      sym = curtoksym;
+      gettok();
+      funcmacroargs = NULL;
+
+      if (curtok == TOK_LPAR) {
+        do {
+          gettok();
+          if (curtok == TOK_RPAR && !funcmacroargs)
+            break;
+
+          if (!wexpecttok (TOK_IDENT)) {
+            skiptotoken2 (TOK_COMMA, TOK_RPAR);
+            continue;
+            }
+
+          sl2 = strlist_append (&funcmacroargs, curtoksym->name);
+          sl2->value = (long)curtoksym;
+          curtoksym->flags |= FMACREC;
+
+          gettok();
+          } while (curtok == TOK_COMMA);
+
+        if (!wneedtok (TOK_RPAR))
+          skippasttotoken (TOK_RPAR, TOK_EQ);
+        }
+
+      if (!wneedtok (TOK_EQ))
+        break;
+
+      ex = pc_expr();
+      for (;;) {
+        if (sym->mbase &&
+            (sym->mbase->kind == MK_FUNCTION || sym->mbase->kind == MK_SPECIAL)) {
+          sym->mbase->constdefn = ex;
           }
         else {
-          sl = strlist_append(&fieldmacros, format_ss("%s.%s", sym->name, sym2->name));
+          sl = strlist_append (&funcmacros, sym->name);
           sl->value = (long)ex;
           }
-        break;
-      //}}}
-      //{{{
-      case MAC_FUNC:
-        if (!wexpecttok(TOK_IDENT))
+
+        if (!strcmp (sym->name, "NEW") ||
+            !strcmp (sym->name, "DEC") ||
+            !strcmp (sym->name, "STR") ||
+            !strcmp (sym->name, "VAL") ||
+            !strcmp (sym->name, "BLOCKREAD") ||
+            !strcmp (sym->name, "BLOCKWRITE"))
+            sym = findsymbol(format_s("%s_TURBO", sym->name));
+        else
           break;
-        sym = curtoksym;
-        gettok();
-        funcmacroargs = NULL;
-        if (curtok == TOK_LPAR) {
-          do {
-            gettok();
-            if (curtok == TOK_RPAR && !funcmacroargs)
-              break;
-            if (!wexpecttok(TOK_IDENT)) {
-              skiptotoken2(TOK_COMMA, TOK_RPAR);
-              continue;
-              }
-            sl2 = strlist_append(&funcmacroargs, curtoksym->name);
-            sl2->value = (long)curtoksym;
-            curtoksym->flags |= FMACREC;
-            gettok();
-            } while (curtok == TOK_COMMA);
+        }
 
-          if (!wneedtok(TOK_RPAR))
-            skippasttotoken(TOK_RPAR, TOK_EQ);
-          }
+      for (sl2 = funcmacroargs; sl2; sl2 = sl2->next) {
+        sym2 = (Symbol*)sl2->value;
+        sym2->flags &= ~FMACREC;
+        }
 
-        if (!wneedtok(TOK_EQ))
-          break;
-        ex = pc_expr();
-        for (;;) {
-          if (sym->mbase && (sym->mbase->kind == MK_FUNCTION || sym->mbase->kind == MK_SPECIAL)) {
-            sym->mbase->constdefn = ex;
-            }
-          else {
-            sl = strlist_append(&funcmacros, sym->name);
-            sl->value = (long)ex;
-            }
+      strlist_empty (&funcmacroargs);
+      break;
+    //}}}
+    }
 
-          if (!strcmp(sym->name, "NEW") || !strcmp(sym->name, "DEC") ||
-              !strcmp(sym->name, "STR") || !strcmp(sym->name, "VAL") ||
-              !strcmp(sym->name, "BLOCKREAD") ||
-              !strcmp(sym->name, "BLOCKWRITE"))
-              sym = findsymbol(format_s("%s_TURBO", sym->name));
-          else
-            break;
-          }
-        for (sl2 = funcmacroargs; sl2; sl2 = sl2->next) {
-          sym2 = (Symbol *)sl2->value;
-          sym2->flags &= ~FMACREC;
-          }
+  if (curtok != TOK_EOF)
+    warning (format_s("Junk (%s) at end of macro definition [233]", tok_name(curtok)));
 
-        strlist_empty(&funcmacroargs);
-        break;
-      //}}}
-      }
+  pop_input();
 
-    if (curtok != TOK_EOF)
-      warning(format_s("Junk (%s) at end of macro definition [233]", tok_name(curtok)));
-    pop_input();
-
-    C_lex--;
-    strlist_empty(&defsl);
+  C_lex--;
+  strlist_empty (&defsl);
 }
 //}}}
 //{{{

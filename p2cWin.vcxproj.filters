@@ -50,4 +50,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="p2c.hdrs">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="p2c.proto">
+      <Filter>Header Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

@@ -18,31 +18,11 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="comment.c" />
-    <ClCompile Include="decl.c" />
-    <ClCompile Include="dir.c" />
-    <ClCompile Include="expr.c" />
-    <ClCompile Include="funcs.c" />
-    <ClCompile Include="lex.c" />
-    <ClCompile Include="main.c" />
-    <ClCompile Include="out.c" />
-    <ClCompile Include="parse.c" />
-    <ClCompile Include="pexpr.c" />
-    <ClCompile Include="stuff.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="main.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="p2c.hdrs" />
-    <None Include="p2c.proto" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{f3a315ec-a1e8-47df-ae21-55e9247ef696}</ProjectGuid>
-    <RootNamespace>p2cWin</RootNamespace>
+    <ProjectGuid>{33a1a788-6c1c-4646-a26b-a08c0c35714e}</ProjectGuid>
+    <RootNamespace>dumpToken</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -160,6 +140,13 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\p2clib.c" />
+    <ClCompile Include="dumpToken.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\p2c.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

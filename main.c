@@ -1,3 +1,4 @@
+// main.c
 //{{{
 /* "p2c", a Pascal to C translator.
    Copyright (C) 1989, 1990, 1991, 1992, 1993 Free Software Foundation.
@@ -21,47 +22,46 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define PROTO_TRANS_C
 #include "main.h"
 #include <time.h>
-//{{{
-/* Roadmap:
-    main.h          Declarations for all public global variables, types, and macros.
-                    Functions are declared in separate files p2c.{proto,hdrs} which are created
-                    mechanically by the makeproto program.
-    main.c          Main program.  Parses the p2crc file.  Also reserves storage for public globals in trans.h.
+ //{{{  description
+ /*
+   main.h          Declarations for all public global variables, types, and macros.
+                   Functions are declared in separate files p2c.{proto,hdrs} which are created
+                   mechanically by the makeproto program.
+   main.c          Main program.  Parses the p2crc file.  Also reserves storage for public globals in trans.h.
 
-    stuff.c         Miscellaneous support routines.
+   stuff.c         Miscellaneous support routines.
 
-    out.c           Routines to handle the writing of C code to the output file.
-                    This includes line breaking and indentation support.
+   out.c           Routines to handle the writing of C code to the output file.
+                   This includes line breaking and indentation support.
 
-    comment.c       Routines for managing comments and comment lists.
+   comment.c       Routines for managing comments and comment lists.
 
-    lex.c           Lexical analyzer.  Manages input files and streams, splits input stream into Pascal tokens.
-                    Parses compiler directives and special comments. Also keeps the symbol table.
-    parse.c         Parsing and writing statements and blocks.
+   lex.c           Lexical analyzer.  Manages input files and streams, splits input stream into Pascal tokens.
+                   Parses compiler directives and special comments. Also keeps the symbol table.
+   parse.c         Parsing and writing statements and blocks.
 
-    decl.c          Parsing and writing declarations.
+   decl.c          Parsing and writing declarations.
 
-    expr.c          Manipulating expressions.
+   expr.c          Manipulating expressions.
 
-    pexpr.c         Parsing and writing expressions.
+   pexpr.c         Parsing and writing expressions.
 
-    funcs.c         Built-in special functions and procedures.
+   funcs.c         Built-in special functions and procedures.
 
-    dir.c           Interface file to "external" functions and procedures such as hpmods and citmods.
+   dir.c           Interface file to "external" functions and procedures such as hpmods and citmods.
 
-    hpmods.c        Definitions for HP-supplied Pascal modules.
+   hpmods.c        Definitions for HP-supplied Pascal modules.
 
-    citmods.c       Definitions for some Caltech-local Pascal modules.
-                    (Outside of Caltech this file is mostly useful as a large body of examples of how to write your
-                    own translator extensions.)
+   citmods.c       Definitions for some Caltech-local Pascal modules.
+                   (Outside of Caltech this file is mostly useful as a large body of examples of how to write your
+                   own translator extensions.)
 
-    p2crc           Control file (read when p2c starts up).
+   p2crc           Control file (read when p2c starts up).
 
-    p2c.h           Header file used by translated programs.
-    p2clib.c        Run-time library used by translated programs.
-
-*/
-//}}}
+   p2c.h           Header file used by translated programs.
+   p2clib.c        Run-time library used by translated programs.
+ */
+ //}}}
 
 //{{{
 #if !defined(NO_ISBOGUS) && (defined(mc68000) || defined(m68k) || defined(vax))
@@ -845,165 +845,168 @@ int waddr;
     return;
     }
 
-  if (tp == tp_int)             fprintf(outf, "I");
-  else if (tp == tp_sint)       fprintf(outf, "SI");
-  else if (tp == tp_uint)       fprintf(outf, "UI");
-  else if (tp == tp_integer)    fprintf(outf, "L");
-  else if (tp == tp_unsigned)   fprintf(outf, "UL");
-  else if (tp == tp_char)       fprintf(outf, "C");
-  else if (tp == tp_schar)      fprintf(outf, "UC");
-  else if (tp == tp_uchar)      fprintf(outf, "SC");
-  else if (tp == tp_boolean)    fprintf(outf, "B");
-  else if (tp == tp_longreal)   fprintf(outf, "R");
-  else if (tp == tp_real)       fprintf(outf, "F");
-  else if (tp == tp_anyptr)     fprintf(outf, "A");
-  else if (tp == tp_void)       fprintf(outf, "V");
-  else if (tp == tp_text)       fprintf(outf, "T");
-  else if (tp == tp_bigtext)    fprintf(outf, "BT");
-  else if (tp == tp_sshort)     fprintf(outf, "SS");
-  else if (tp == tp_ushort)     fprintf(outf, "US");
-  else if (tp == tp_abyte)      fprintf(outf, "AB");
-  else if (tp == tp_sbyte)      fprintf(outf, "SB");
-  else if (tp == tp_ubyte)      fprintf(outf, "UB");
-  else if (tp == tp_str255)     fprintf(outf, "S");
-  else if (tp == tp_strptr)     fprintf(outf, "SP");
-  else if (tp == tp_charptr)    fprintf(outf, "CP");
-  else if (tp == tp_smallset)   fprintf(outf, "SMS");
-  else if (tp == tp_proc)       fprintf(outf, "PR");
-  else if (tp == tp_jmp_buf)    fprintf(outf, "JB");
+  if (tp == tp_int)             fprintf (outf, "I");
+  else if (tp == tp_sint)       fprintf (outf, "SI");
+  else if (tp == tp_uint)       fprintf (outf, "UI");
+  else if (tp == tp_integer)    fprintf (outf, "L");
+  else if (tp == tp_unsigned)   fprintf (outf, "UL");
+  else if (tp == tp_char)       fprintf (outf, "C");
+  else if (tp == tp_schar)      fprintf (outf, "UC");
+  else if (tp == tp_uchar)      fprintf (outf, "SC");
+  else if (tp == tp_boolean)    fprintf (outf, "B");
+  else if (tp == tp_longreal)   fprintf (outf, "R");
+  else if (tp == tp_real)       fprintf (outf, "F");
+  else if (tp == tp_anyptr)     fprintf (outf, "A");
+  else if (tp == tp_void)       fprintf (outf, "V");
+  else if (tp == tp_text)       fprintf (outf, "T");
+  else if (tp == tp_bigtext)    fprintf (outf, "BT");
+  else if (tp == tp_sshort)     fprintf (outf, "SS");
+  else if (tp == tp_ushort)     fprintf (outf, "US");
+  else if (tp == tp_abyte)      fprintf (outf, "AB");
+  else if (tp == tp_sbyte)      fprintf (outf, "SB");
+  else if (tp == tp_ubyte)      fprintf (outf, "UB");
+  else if (tp == tp_str255)     fprintf (outf, "S");
+  else if (tp == tp_strptr)     fprintf (outf, "SP");
+  else if (tp == tp_charptr)    fprintf (outf, "CP");
+  else if (tp == tp_smallset)   fprintf (outf, "SMS");
+  else if (tp == tp_proc)       fprintf (outf, "PR");
+  else if (tp == tp_jmp_buf)    fprintf (outf, "JB");
   else {
     if (tp->meaning && !ISBOGUS(tp->meaning) &&
-        tp->meaning->name && !ISBOGUS(tp->meaning->name) &&
-        tp->meaning->name[0]) {
-      fprintf(outf, "%s", tp->meaning->name);
+        tp->meaning->name && !ISBOGUS(tp->meaning->name) && tp->meaning->name[0]) {
+      fprintf (outf, "%s", tp->meaning->name);
       if (tp->dumped)
         return;
-      fprintf(outf, "=");
+      fprintf (outf, "=");
       waddr = 1;
       }
 
     if (waddr) {
-      fprintf(outf, "%lX", (long)tp);
+      fprintf (outf, "%lX", (long)tp);
       if (tp->dumped)
         return;
-      fprintf(outf, ":");
+      fprintf (outf, ":");
       tp->dumped = 1;
       }
 
     switch (tp->kind) {
       //{{{
       case TK_STRING:
-        fprintf(outf, "Str");
+        fprintf (outf, "Str");
         if (tp->structdefd)
-          fprintf(outf, "Conf");
+          fprintf (outf, "Conf");
         break;
       //}}}
       //{{{
       case TK_SUBR:
-        dumptypename(tp->basetype, 0);
+        dumptypename (tp->basetype, 0);
         break;
       //}}}
       //{{{
       case TK_POINTER:
-        fprintf(outf, "^");
-        dumptypename(tp->basetype, 0);
+        fprintf (outf, "^");
+        dumptypename (tp->basetype, 0);
         break;
       //}}}
 
       //{{{
       case TK_SMALLARRAY:
-        fprintf(outf, "Sm");
+        fprintf (outf, "Sm");
       //}}}
         /* fall through */
       //{{{
       case TK_ARRAY:
-        fprintf(outf, "Ar");
+        fprintf (outf, "Ar");
         if (tp->structdefd)
-          fprintf(outf, "Conf");
-        fprintf(outf, "{");
-        dumptypename(tp->indextype, 0);
-        fprintf(outf, "}");
+          fprintf (outf, "Conf");
+        fprintf (outf, "{");
+
+        dumptypename (tp->indextype, 0);
+        fprintf (outf, "}");
         if (tp->smin) {
-          fprintf(outf, "Skip(");
-          dumpexpr(tp->smin);
-          fprintf(outf, ")");
+          fprintf (outf, "Skip(");
+          dumpexpr (tp->smin);
+          fprintf (outf, ")");
           }
+
         if (tp->smax) {
-          fprintf(outf, "/");
+          fprintf (outf, "/");
           if (!ISBOGUS(tp->smax))
-            dumptypename(tp->smax->val.type, 0);
-          fprintf(outf, "{%d%s}", tp->escale,
+            dumptypename (tp->smax->val.type, 0);
+          fprintf (outf, "{%d%s}", tp->escale,
           tp->issigned ? "S" : "U");
           }
-        fprintf(outf, ":");
-        dumptypename(tp->basetype, 0);
+
+        fprintf (outf, ":");
+        dumptypename (tp->basetype, 0);
         break;
       //}}}
 
       //{{{
       case TK_SMALLSET:
-        fprintf(outf, "Sm");
+        fprintf (outf, "Sm");
       //}}}
         /* fall through */
       //{{{
       case TK_SET:
-        fprintf(outf, "Set{");
-        dumptypename(tp->indextype, 0);
-        fprintf(outf, "}");
+        fprintf (outf, "Set{");
+        dumptypename (tp->indextype, 0);
+        fprintf (outf, "}");
         break;
       //}}}
 
       //{{{
       case TK_FILE:
-        fprintf(outf, "File{");
-        dumptypename(tp->basetype, 0);
-        fprintf(outf, "}");
+        fprintf (outf, "File{");
+        dumptypename (tp->basetype, 0);
+        fprintf (outf, "}");
         break;
       //}}}
       //{{{
       case TK_BIGFILE:
-        fprintf(outf, "BigFile{");
-        dumptypename(tp->basetype, 0);
-        fprintf(outf, "}");
+        fprintf (outf, "BigFile{");
+        dumptypename (tp->basetype, 0);
+        fprintf (outf, "}");
         break;
       //}}}
       //{{{
       case TK_FUNCTION:
-        fprintf(outf, "Func");
+        fprintf (outf, "Func");
         if (tp->issigned)
-          fprintf(outf, "Link");
-        fprintf(outf, "{");
-        dumptypename(tp->basetype, 0);
-        fprintf(outf, "}");
+          fprintf (outf, "Link");
+        fprintf (outf, "{");
+
+        dumptypename (tp->basetype, 0);
+        fprintf (outf, "}");
         break;
       //}}}
 
       //{{{
       case TK_CPROCPTR:
-        fprintf(outf, "C");
+        fprintf (outf, "C");
       //}}}
       /* fall through */
       //{{{
       case TK_PROCPTR:
-        fprintf(outf, "Proc%d{", tp->escale);
-        dumptypename(tp->basetype, 0);
-        fprintf(outf, "}");
+        fprintf (outf, "Proc%d{", tp->escale);
+        dumptypename (tp->basetype, 0);
+        fprintf (outf, "}");
         break;
       //}}}
 
       //{{{
       default:
-        fprintf(outf, "%s", typekindname(tp->kind));
+        fprintf (outf, "%s", typekindname(tp->kind));
         break;
       //}}}
       }
 
     if (tp->kind != TK_ARRAY && tp->kind != TK_SMALLARRAY && (tp->smin || tp->smax)) {
-      fprintf(outf, "{");
-      dumpexpr(tp->smin);
-      fprintf(outf, "..");
-      dumpexpr(tp->smax);
-      fprintf(outf, "}");
+      fprintf (outf, "{");
+      dumpexpr (tp->smin);
+      fprintf (outf, "..");
+      dumpexpr (tp->smax);
+      fprintf (outf, "}");
       }
     }
 }
@@ -1015,7 +1018,7 @@ Type *tp;
 {
   FILE *save = outf;
   outf = f;
-  dumptypename(tp, 1);
+  dumptypename (tp, 1);
   outf = save;
 }
 //}}}
@@ -1028,70 +1031,77 @@ Expr *ex;
   char *name;
 
   if (!ex) {
-    fprintf(outf, "<NULL>");
+    fprintf (outf, "<NULL>");
     return;
     }
   if (ISBOGUS(ex)) {
-    fprintf(outf, "0x%lX", (long)ex);
+    fprintf (outf, "0x%lX", (long)ex);
     return;
     }
 
   if (ex->kind == EK_CONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-    fprintf(outf, "%ld", ex->val.i);
+    fprintf (outf, "%ld", ex->val.i);
     return;
     }
   if (ex->kind == EK_LONGCONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-    fprintf(outf, "%ldL", ex->val.i);
+    fprintf (outf, "%ldL", ex->val.i);
     return;
     }
 
   name = exprkindname(ex->kind);
-  if (!strncmp(name, "EK_", 3))
+  if (!strncmp (name, "EK_", 3))
     name += 3;
-  fprintf(outf, "%s", name);
+  fprintf (outf, "%s", name);
 
 #ifdef HASDUMPS
   type = ex->val.type;
-  fprintf(outf, "/");
-  dumptypename(type, 1);
+  fprintf (outf, "/");
+  dumptypename (type, 1);
   if (ex->val.i) {
     switch (ex->kind) {
           case EK_VAR:
           case EK_FUNCTION:
           case EK_CTX:
             if (ISBOGUS(ex->val.i))
-              fprintf(outf, "[0x%lX]", ex->val.i);
+              fprintf (outf, "[0x%lX]", ex->val.i);
             else
-              fprintf(outf, "[\"%s\"]", ((Meaning *)ex->val.i)->name);
+              fprintf (outf, "[\"%s\"]", ((Meaning *)ex->val.i)->name);
             break;
 
           default:
-            fprintf(outf, "[i=%ld]", ex->val.i);
+            fprintf (outf, "[i=%ld]", ex->val.i);
             break;
       }
     }
 
   if (ISBOGUS(ex->val.s))
-    fprintf(outf, "[0x%lX]", (long)ex->val.s);
+    fprintf (outf, "[0x%lX]", (long)ex->val.s);
   else if (ex->val.s) {
     switch (ex->kind) {
       case EK_BICALL:
       case EK_NAME:
+      //{{{
       case EK_DOT:
-        fprintf(outf, "[s=\"%s\"]", ex->val.s);
+        fprintf (outf, "[s=\"%s\"]", ex->val.s);
         break;
-
+      //}}}
       default:
         switch (ex->val.type ? ex->val.type->kind : TK_VOID) {
+          //{{{
           case TK_STRING:
-            fprintf(outf, "[s=%s]", makeCstring(ex->val.s, ex->val.i));
+            fprintf (outf, "[s=%s]", makeCstring(ex->val.s, ex->val.i));
             break;
+          //}}}
+          //{{{
           case TK_REAL:
-            fprintf(outf, "[s=%s]", ex->val.s);
+            fprintf (outf, "[s=%s]", ex->val.s);
             break;
+          //}}}
+          //{{{
           default:
-            fprintf(outf, "[s=%lx]", (long)ex->val.s);
+            fprintf (outf, "[s=%lx]", (long)ex->val.s);
           }
+          //}}}
         break;
       }
     }
@@ -1101,13 +1111,13 @@ Expr *ex;
     if (ex->nargs < 10) {
       for (i = 0; i < ex->nargs; i++) {
         if (i)
-          fprintf(outf, ", ");
-        dumpexpr(ex->args[i]);
+          fprintf (outf, ", ");
+        dumpexpr (ex->args[i]);
         }
       }
     else
-      fprintf(outf, "...");
-    fprintf(outf, ")");
+      fprintf (outf, "...");
+    fprintf (outf, ")");
     }
 #endif
 }
@@ -1119,7 +1129,7 @@ Expr *ex;
 {
   FILE *save = outf;
   outf = f;
-  dumpexpr(ex);
+  dumpexpr (ex);
   outf = save;
 }
 //}}}
@@ -1130,45 +1140,45 @@ int indent;
 {
 #ifdef HASDUMPS
   if (!sp) {
-    fprintf(outf, "<NULL>\n");
+    fprintf (outf, "<NULL>\n");
     return;
     }
 
   while (sp) {
     if (ISBOGUS(sp)) {
-      fprintf(outf, "0x%lX\n", (long)sp);
+      fprintf (outf, "0x%lX\n", (long)sp);
       return;
       }
-    fprintf(outf, "%s", stmtkindname(sp->kind));
+    fprintf (outf, "%s", stmtkindname(sp->kind));
     if (sp->exp1) {
-      fprintf(outf, ", exp1=");
-      dumpexpr(sp->exp1);
+      fprintf (outf, ", exp1=");
+      dumpexpr (sp->exp1);
       }
     if (sp->exp2) {
-      fprintf(outf, ", exp2=");
-      dumpexpr(sp->exp2);
+      fprintf (outf, ", exp2=");
+      dumpexpr (sp->exp2);
       }
     if (sp->exp3) {
-      fprintf(outf, ", exp3=");
-      dumpexpr(sp->exp3);
+      fprintf (outf, ", exp3=");
+      dumpexpr (sp->exp3);
       }
 
     if (indent < 0)
       break;
     fprintf(outf, "\n");
     if (sp->stm1) {
-      fprintf(outf, "%*sstm1=", indent, "");
-      innerdumpstmt(sp->stm1, indent+5);
+      fprintf (outf, "%*sstm1=", indent, "");
+      innerdumpstmt (sp->stm1, indent+5);
       }
     if (sp->stm2) {
-      fprintf(outf, "%*sstm2=", indent, "");
-      innerdumpstmt(sp->stm2, indent+5);
+      fprintf (outf, "%*sstm2=", indent, "");
+      innerdumpstmt (sp->stm2, indent+5);
       }
     sp = sp->next;
     if (sp) {
       if (indent > 5)
-        fprintf(outf, "%*s", indent-5, "");
-      fprintf(outf, "next=");
+        fprintf (outf, "%*s", indent-5, "");
+      fprintf (outf, "next=");
       }
     }
 #endif
@@ -1179,8 +1189,8 @@ void dumpstmt (sp, indent)
 Stmt *sp;
 int indent;
 {
-  fprintf(outf, "%*s", indent, "");
-  innerdumpstmt(sp, indent);
+  fprintf (outf, "%*s", indent, "");
+  innerdumpstmt (sp, indent);
 }
 //}}}
 //{{{
@@ -1195,7 +1205,8 @@ Stmt *sp;
     savenext = sp->next;
     sp->next = NULL;
     }
-  dumpstmt(sp, 5);
+
+  dumpstmt (sp, 5);
   if (sp)
     sp->next = savenext;
   outf = save;
@@ -1206,14 +1217,14 @@ void wrapup() {
 
   int i;
   for (i = 0; i < SYMHASHSIZE; i++)
-    dumpsymtable(symtab[i]);
+    dumpsymtable (symtab[i]);
   }
 //}}}
 
 //{{{
 int main (int argc, char** argv) {
 
-  printf ("commandLine parsed as");
+  printf ("p2c commandLine parsed as");
   for (int i = 0; i < argc; i++)
     printf (" %d:%s", i, argv[i]);
   printf ("\n");
@@ -1228,17 +1239,7 @@ int main (int argc, char** argv) {
   int savequiet;
 
   init_stuff();
-
-  int i = 1;
-  while (i < argc && strcmp (argv[i], "-i"))
-    i++;
-
-  if (i < argc) {
-    //{{{  simply show p2crc file
-    showinitfile();
-    return EXIT_SUCCESS;
-    }
-    //}}}
+  //showinitfile();
 
   initrc();
   setup_dir();
@@ -1247,7 +1248,7 @@ int main (int argc, char** argv) {
   char infnbuf[200];
   infname = infnbuf;
   *infname = 0;
-  i = 1;
+  int i = 1;
   while ((i < argc) && (argv[i][0] == '-'))
     i++;
   if (i < argc) {
@@ -1267,18 +1268,13 @@ int main (int argc, char** argv) {
   requested_module = NULL;
   found_module = 0;
   error_crash = 0;
-
-  #ifdef CONSERVE_MEMORY
-    conserve_mem = CONSERVE_MEMORY;
-  #else
-    conserve_mem = 1;
-  #endif
-
+  conserve_mem = 1;
   regression = 0;
   verbose = 0;
   partialdump = 1;
   numsearch = 0;
 
+  // over complicated argv parser
   argc--;
   argv++;
   while (argc > 0) {
@@ -1314,7 +1310,7 @@ int main (int argc, char** argv) {
         }
         //}}}
       else if (argv[0][1] == 'e') {
-        //{{{  -E maxerrors
+        //{{{  -eE maxerrors
         if (strlen (*argv) == 2)
           maxerrors = 0;
         else
@@ -1331,7 +1327,7 @@ int main (int argc, char** argv) {
        }
        //}}}
       else if (argv[0][1] == 'V') {
-        //{{{  -V
+        //{{{  -v
         if (strlen (*argv) == 2)
           verbose = 1;
         else
@@ -1367,7 +1363,7 @@ int main (int argc, char** argv) {
     }
     //}}}
   else
-   exit_failure();
+    exit_failure();
 
   if (strcmp (codefname, "-")) {
     //{{{  open codefname file for write
@@ -1385,7 +1381,8 @@ int main (int argc, char** argv) {
     //}}}
 
   if (nobuffer)
-    setbuf (codef, NULL);      /* for debugging */
+    setbuf (codef, NULL); // for debugging
+
   outf = codef;
   outf_lnum = 1;
 
@@ -1398,10 +1395,10 @@ int main (int argc, char** argv) {
   leadingcomments();
 
   postrc();
-  setup_comment();  /* must call this first */
-  setup_lex();      /* must call this second */
+  setup_comment();  // must call this first
+  setup_lex();      // must call this second
   setup_out();
-  setup_decl();     /* must call *after* setup_lex() */
+  setup_decl();     // must call *after* setup_lex()
   setup_parse();
   setup_funcs();
 
@@ -1435,23 +1432,23 @@ int main (int argc, char** argv) {
     }
 
   strlist_empty (&synonyms);
-  for (sl = addmacros; sl; sl = sl->next) 
+  for (sl = addmacros; sl; sl = sl->next)
     defmacro (sl->s, sl->value, "<macro>", 0);
 
   strlist_empty (&addmacros);
   handle_nameof();
   setup_complete = 1;
+
+  // not sure what this does
   savequiet = quietmode;
   quietmode = 1;
-
-  for (sl = librfiles; sl; sl = sl->next) 
+  for (sl = librfiles; sl; sl = sl->next)
     if (strlist_find (librfiles, sl->s) == sl)
       (void)p_search (format_none(sl->s), "pas", 0);
-
   for (i = 0; i < numsearch; i++)
    (void)p_search (format_none (searchlist[i]), "pas", 1);
-
   quietmode = savequiet;
+
   p_program();
   end_source();
   flushcomments (NULL, -1, -1);
@@ -1481,7 +1478,7 @@ int main (int argc, char** argv) {
   closelogfile();
 
   if (!quietmode)
-    fprintf (stderr, "Translation completed.\n");
+    fprintf (stderr, "p2c finished\n");
 
   return EXIT_SUCCESS;
   }

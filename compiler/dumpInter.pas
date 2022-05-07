@@ -794,7 +794,5 @@ begin
     statement;
 
   close (interSharedPtr^.interFile);
-
   writeln ('------- end of dumpInter -------');
-  close (output);
 end;

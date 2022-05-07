@@ -363,8 +363,7 @@ begin
 
   with tokenSharedPtr^.nexttoken do
     writeln (baseline:5, line:5, ' ', left:4, ' ', right:4, filePos:5, fileIndex:5, ord(token):3, ' EOF');
-  close (tokenSharedPtr^.tokenFile);
 
+  close (tokenSharedPtr^.tokenFile);
   writeln ('------- end of dumpToken count:', tokenCount: 1, '-------');
-  close (output);
 end.

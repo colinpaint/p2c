@@ -9,9 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="pascal">
-      <UniqueIdentifier>{c5b8c5fc-26b1-43e4-94aa-fd0dd9c40571}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="analysis.c">
@@ -40,69 +37,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="analysis.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="code.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="common.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="debug.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="inter.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="list.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="main.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="pseudo.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="scan.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="token.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="traverse.def">
-      <Filter>Header Files</Filter>
-    </None>
-    <None Include="analysis.pas">
-      <Filter>pascal</Filter>
-    </None>
-    <None Include="code.pas">
-      <Filter>pascal</Filter>
-    </None>
-    <None Include="common.pas">
-      <Filter>pascal</Filter>
-    </None>
-    <None Include="list.pas">
-      <Filter>pascal</Filter>
-    </None>
-    <None Include="scan.pas">
-      <Filter>pascal</Filter>
-    </None>
-    <None Include="test.pas">
-      <Filter>pascal</Filter>
-    </None>
-    <None Include="traverse.pas">
-      <Filter>pascal</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\p2c.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="main.pas">
-      <Filter>pascal</Filter>
-    </CustomBuild>
   </ItemGroup>
 </Project>

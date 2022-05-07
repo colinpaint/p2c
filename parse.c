@@ -46,7 +46,7 @@ void echobreak()
 }
 //}}}
 //{{{
-void echoword(name, comma)
+void echoword (name, comma)
 char *name;
 int comma;
 {
@@ -60,7 +60,7 @@ int comma;
       fprintf(f, ",");
       echo_pos++;
   }
-        if (echo_pos + strlen(name) > 77) {
+        if (echo_pos + strlen (name) > 77) {
             fprintf(f, "\n");
             echo_pos = 0;
         } else {
@@ -70,335 +70,322 @@ int comma;
     }
     echo_first = 0;
     fprintf(f, "%s", name);
-    echo_pos += strlen(name);
+    echo_pos += strlen (name);
     fflush(f);
 #endif
 }
 //}}}
 //{{{
-void echoprocname(mp)
+void echoprocname (mp)
 Meaning *mp;
 {
-    echoword(mp->name, 1);
+    echoword (mp->name, 1);
 }
 //}}}
 
-Static void forward_decl(func, isextern)
 //{{{
-Meaning *func;
-int isextern;
-{
-    int flags = 0;
-    if (func->wasdeclared)
-        return;
-    if (isextern && func->constdefn && !checkvarmac(func))
-  return;
-    if (isextern) {
-        output("extern ");
-    } else if (func->ctx->kind == MK_FUNCTION) {
-  if (useAnyptrMacros)
-      output("Local ");
-  else
-      output("static ");
-    } else if ((use_static != 0 && !useAnyptrMacros) ||
-         (findsymbol(func->name)->flags & NEEDSTATIC)) {
-  output("static ");
-    } else if (use_static && useAnyptrMacros) {
-  output("Static ");
-    }
-    if (func->type->basetype != tp_void || ansiC != 0) {
-  if (func->type->smin)
-      output(func->type->smin->val.s);
-  else
-      outbasetype(func->type, ODECL_FORWARD);
-  flags = ODECL_SPACE;
-    }
-    outdeclarator(func->type, func->name, ODECL_FORWARD | flags);
-    output(";\n");
-    func->wasdeclared = 1;
-}
+Static void forward_decl (Meaning* func, int isextern) {
 
+  int flags = 0;
+
+  if (func->wasdeclared)
+    return;
+
+  if (isextern && func->constdefn && !checkvarmac (func))
+    return;
+
+  if (isextern) {
+    output ("extern ");
+    }
+  else if (func->ctx->kind == MK_FUNCTION) {
+    if (useAnyptrMacros)
+      output ("Local ");
+    else
+      output ("static ");
+    }
+  else if ((use_static != 0 && !useAnyptrMacros) || (findsymbol (func->name)->flags & NEEDSTATIC)) {
+    output ("static ");
+    }
+  else if (use_static && useAnyptrMacros) {
+    output ("Static ");
+    }
+
+  if (func->type->basetype != tp_void || ansiC != 0) {
+    if (func->type->smin)
+      output (func->type->smin->val.s);
+    else
+      outbasetype (func->type, ODECL_FORWARD);
+    flags = ODECL_SPACE;
+    }
+
+  outdeclarator (func->type, func->name, ODECL_FORWARD | flags);
+  output (";\n");
+  func->wasdeclared = 1;
+  }
 //}}}
 //{{{
-/* Check if calling a parent procedure, whose body must */
-/*   be declared forward */
+void need_forward_decl (Meaning *func) {
+// Check if calling a parent procedure, whose body must  be declared forward
 
-void need_forward_decl(func)
-Meaning *func;
-{
-    Meaning *mp;
+  Meaning* mp;
 
-    if (func->wasdeclared)
-        return;
-    for (mp = curctx->ctx; mp; mp = mp->ctx) {
-        if (mp == func) {
+  if (func->wasdeclared)
+    return;
+
+  for (mp = curctx->ctx; mp; mp = mp->ctx) {
+    if (mp == func) {
       if (func->ctx->kind == MK_FUNCTION)
-    func->isforward = 1;
+        func->isforward = 1;
       else
-    forward_decl(func, 0);
-            return;
-        }
+        forward_decl(func, 0);
+      return;
+      }
     }
-}
+  }
 //}}}
 
 //{{{
-void free_stmt(sp)
-register Stmt *sp;
-{
-    if (sp) {
-        free_stmt(sp->stm1);
-        free_stmt(sp->stm2);
-        free_stmt(sp->next);
-        freeexpr(sp->exp1);
-        freeexpr(sp->exp2);
-        freeexpr(sp->exp3);
-        FREE(sp);
+void free_stmt (Stmt *sp) {
+
+  if (sp) {
+    free_stmt (sp->stm1);
+    free_stmt (sp->stm2);
+    free_stmt (sp->next);
+    freeexpr (sp->exp1);
+    freeexpr (sp->exp2);
+    freeexpr (sp->exp3);
+    FREE(sp);
     }
-}
+  }
 //}}}
 //{{{
-Stmt *makestmt(kind)
-enum stmtkind kind;
-{
-    Stmt *sp;
+Stmt* makestmt (enum stmtkind kind) {
 
-    sp = ALLOC(1, Stmt, stmts);
-    sp->kind = kind;
-    sp->next = NULL;
-    sp->stm1 = NULL;
-    sp->stm2 = NULL;
-    sp->exp1 = NULL;
-    sp->exp2 = NULL;
-    sp->exp3 = NULL;
-    sp->serial = curserial = ++serialcount;
-    sp->trueprops = sp->falseprops = 0;
-    sp->quietelim = 0;
-    sp->doinit = 0;
-    return sp;
-}
-//}}}
-//{{{
-Stmt *makestmt_call(call)
-Expr *call;
-{
-    Stmt *sp = makestmt(SK_ASSIGN);
-    sp->exp1 = call;
-    return sp;
-}
-//}}}
-//{{{
-Stmt *makestmt_assign(lhs, rhs)
-Expr *lhs, *rhs;
-{
-    Stmt *sp = makestmt(SK_ASSIGN);
-    sp->exp1 = makeexpr_assign(lhs, rhs);
-    return sp;
-}
-//}}}
-//{{{
-Stmt *makestmt_if(cond, thn, els)
-Expr *cond;
-Stmt *thn, *els;
-{
-    Stmt *sp = makestmt(SK_IF);
-    sp->exp1 = cond;
-    sp->stm1 = thn;
-    sp->stm2 = els;
-    sp->quietelim = 1;
-    return sp;
-}
-//}}}
-//{{{
-Stmt *makestmt_seq(s1, s2)
-Stmt *s1, *s2;
-{
-    Stmt *s1a;
+  Stmt *sp;
 
-    if (!s1)
-        return s2;
-    if (!s2)
-        return s1;
-    for (s1a = s1; s1a->next; s1a = s1a->next) ;
-    s1a->next = s2;
+  sp = ALLOC(1, Stmt, stmts);
+  sp->kind = kind;
+  sp->next = NULL;
+  sp->stm1 = NULL;
+  sp->stm2 = NULL;
+  sp->exp1 = NULL;
+  sp->exp2 = NULL;
+  sp->exp3 = NULL;
+  sp->serial = curserial = ++serialcount;
+  sp->trueprops = sp->falseprops = 0;
+  sp->quietelim = 0;
+  sp->doinit = 0;
+
+  return sp;
+  }
+//}}}
+//{{{
+Stmt* makestmt_call (Expr* call) {
+
+  Stmt *sp = makestmt(SK_ASSIGN);
+  sp->exp1 = call;
+  return sp;
+  }
+//}}}
+//{{{
+Stmt* makestmt_assign (Expr* lhs, Expr* rhs) {
+
+  Stmt *sp = makestmt(SK_ASSIGN);
+  sp->exp1 = makeexpr_assign(lhs, rhs);
+  return sp;
+  }
+//}}}
+//{{{
+Stmt* makestmt_if (Expr* cond, Stmt* thn, Stmt* els) {
+
+  Stmt *sp = makestmt(SK_IF);
+  sp->exp1 = cond;
+  sp->stm1 = thn;
+  sp->stm2 = els;
+  sp->quietelim = 1;
+  return sp;
+  }
+//}}}
+//{{{
+Stmt* makestmt_seq (Stmt* s1, Stmt* s2) {
+
+  Stmt *s1a;
+
+  if (!s1)
+    return s2;
+  if (!s2)
     return s1;
-}
-//}}}
-//{{{
-Stmt *copystmt(sp)
-Stmt *sp;
-{
-    Stmt *sp2;
 
-    if (sp) {
-        sp2 = makestmt(sp->kind);
-        sp2->stm1 = copystmt(sp->stm1);
-        sp2->stm2 = copystmt(sp->stm2);
-        sp2->exp1 = copyexpr(sp->exp1);
-        sp2->exp2 = copyexpr(sp->exp2);
-        sp2->exp3 = copyexpr(sp->exp3);
-        return sp2;
-    } else
-        return NULL;
-}
+  for (s1a = s1; s1a->next; s1a = s1a->next) ;
+  s1a->next = s2;
+  return s1;
+  }
 //}}}
 //{{{
-void nukestmt(sp)
-Stmt *sp;
-{
-    if (sp) {
-        sp->kind = SK_ASSIGN;
-        sp->exp1 = makeexpr_long(0);
+Stmt* copystmt (Stmt *sp) {
+
+  Stmt *sp2;
+
+  if (sp) {
+    sp2 = makestmt(sp->kind);
+    sp2->stm1 = copystmt(sp->stm1);
+    sp2->stm2 = copystmt(sp->stm2);
+    sp2->exp1 = copyexpr(sp->exp1);
+    sp2->exp2 = copyexpr(sp->exp2);
+    sp2->exp3 = copyexpr(sp->exp3);
+    return sp2;
     }
-}
+  else
+    return NULL;
+  }
 //}}}
 //{{{
-void splicestmt(sp, spnew)
-Stmt *sp, *spnew;
-{
-    Stmt *snext;
+void nukestmt (Stmt* sp) {
 
-    if (spnew) {
-  snext = sp->next;
-  *sp = *spnew;
-  while (sp->next)
+  if (sp) {
+    sp->kind = SK_ASSIGN;
+    sp->exp1 = makeexpr_long(0);
+    }
+  }
+//}}}
+//{{{
+void splicestmt (Stmt* sp, Stmt* spnew) {
+
+  Stmt* snext;
+
+  if (spnew) {
+    snext = sp->next;
+    *sp = *spnew;
+    while (sp->next)
       sp = sp->next;
-  sp->next = snext;
-    } else
-  nukestmt(sp);
-}
-//}}}
-//{{{
-int stmtcount(sp)
-Stmt *sp;
-{
-    int i = 0;
-
-    while (sp) {
-        i += 1 + stmtcount(sp->stm1) + stmtcount(sp->stm2);
-        sp = sp->next;
+    sp->next = snext;
     }
-    return i;
-}
+  else
+    nukestmt(sp);
+  }
 //}}}
 //{{{
-Stmt *close_files_to_ctx(ctx)
+int stmtcount (Stmt *sp) {
+
+  int i = 0;
+
+  while (sp) {
+    i += 1 + stmtcount(sp->stm1) + stmtcount(sp->stm2);
+    sp = sp->next;
+    }
+  return i;
+  }
+//}}}
+
+//{{{
+Stmt* close_files_to_ctx (ctx)
 Meaning *ctx;
 {
-    Meaning *ctx2, *mp;
-    Stmt *splist = NULL, *sp;
+  Meaning *ctx2, *mp;
+  Stmt *splist = NULL, *sp;
 
-    ctx2 = curctx;
-    while (ctx2 && ctx2 != ctx && ctx2->kind == MK_FUNCTION) {
-  for (mp = ctx2->cbase; mp; mp = mp->cnext) {
-      if (mp->kind == MK_VAR &&
-    isfiletype(mp->type, -1) && !mp->istemporary) {
-    var_reference(mp);
-    sp = makestmt_if(makeexpr_rel(EK_NE,
-                filebasename(makeexpr_var(mp)),
-                makeexpr_nil()),
-         makestmt_call(
-             makeexpr_bicall_1("fclose", tp_void,
-                   filebasename(makeexpr_var(mp)))),
-         NULL);
-    splist = makestmt_seq(splist, sp);
+  ctx2 = curctx;
+  while (ctx2 && ctx2 != ctx && ctx2->kind == MK_FUNCTION) {
+    for (mp = ctx2->cbase; mp; mp = mp->cnext) {
+      if (mp->kind == MK_VAR && isfiletype(mp->type, -1) && !mp->istemporary) {
+        var_reference(mp);
+        sp = makestmt_if (makeexpr_rel(EK_NE, filebasename(makeexpr_var(mp)), makeexpr_nil()),
+                          makestmt_call( makeexpr_bicall_1("fclose", tp_void, filebasename(makeexpr_var(mp)))), NULL);
+        splist = makestmt_seq(splist, sp);
+        }
       }
-  }
-  ctx2 = ctx2->ctx;
+    ctx2 = ctx2->ctx;
     }
-    return splist;
+
+  return splist;
 }
 //}}}
 //{{{
-void withrecordtype(tp, ex)
+void withrecordtype (tp, ex)
 Type *tp;
 Expr *ex;
 {
-    int i;
-    Type *tp2;
-
-    tp2 = tp;
-    do {
-  if (withlevel >= MAXWITHS-1)
+  Type* tp2 = tp;
+  do {
+    if (withlevel >= MAXWITHS-1)
       error("Too many nested WITHs");
-  withlevel++;
-  tp2 = tp2->basetype;
+    withlevel++;
+    tp2 = tp2->basetype;
     } while (tp2);
-    tp2 = tp;
-    i = withlevel;
-    do {
-  i--;
-  withlist[i] = tp2;
-  withexprs[i] = ex;
-  tp2 = tp2->basetype;
+
+  tp2 = tp;
+  int i = withlevel;
+  do {
+    i--;
+    withlist[i] = tp2;
+    withexprs[i] = ex;
+    tp2 = tp2->basetype;
     } while (tp2);
 }
-
 //}}}
 //{{{
-int simplewith(ex)
+int simplewith (ex)
 Expr *ex;
 {
-    switch (ex->kind) {
-        case EK_VAR:
-        case EK_CONST:
-            return 1;
-        case EK_DOT:
-            return simplewith(ex->args[0]);
-        default:
-            return 0;
+  switch (ex->kind) {
+    case EK_VAR:
+    case EK_CONST:
+      return 1;
+    case EK_DOT:
+      return simplewith(ex->args[0]);
+     default:
+      return 0;
     }
 }
 //}}}
 //{{{
-int simplefor(sp, ex)
+int simplefor (sp, ex)
 Stmt *sp;
 Expr *ex;
 {
-    return (exprspeed(sp->exp2) <= 3 &&
-            !checkexprchanged(sp->stm1, sp->exp2) &&
-      !exproccurs(sp->exp2, ex));
+  return (exprspeed(sp->exp2) <= 3 && !checkexprchanged(sp->stm1, sp->exp2) && !exproccurs(sp->exp2, ex));
 }
 //}}}
 //{{{
-int tryfuncmacro(exp, mp)
+int tryfuncmacro (exp, mp)
 Expr **exp;
 Meaning *mp;
 {
-    char *name;
-    Strlist *lp;
-    Expr *ex = *exp, *ex2;
+  char* name;
+  Strlist* lp;
+  Expr* ex = *exp, *ex2;
 
-    ex2 = (mp) ? mp->constdefn : NULL;
-    if (!ex2) {
-  if (ex->kind == EK_BICALL || ex->kind == EK_NAME)
+  ex2 = (mp) ? mp->constdefn : NULL;
+  if (!ex2) {
+    if (ex->kind == EK_BICALL || ex->kind == EK_NAME)
       name = ex->val.s;
-  else if (ex->kind == EK_FUNCTION)
+    else if (ex->kind == EK_FUNCTION)
       name = ((Meaning *)ex->val.i)->name;
-  else
+    else
       return 0;
-  lp = strlist_cifind(funcmacros, name);
-  ex2 = (lp) ? (Expr *)lp->value : NULL;
+    lp = strlist_cifind(funcmacros, name);
+    ex2 = (lp) ? (Expr *)lp->value : NULL;
     }
-    if (ex2) {
-        *exp = replacemacargs(copyexpr(ex2), ex);
-  freeexpr(ex);
-        return 1;
+
+  if (ex2) {
+    *exp = replacemacargs(copyexpr(ex2), ex);
+    freeexpr(ex);
+    return 1;
     }
-    return 0;
+  return 0;
 }
 //}}}
 
 //{{{
 #define addstmt(kind)   \
-    *spp = sp = makestmt(kind),   \
-    spp = &(sp->next)
+  *spp = sp = makestmt(kind),   \
+  spp = &(sp->next)
 //}}}
 //{{{
 #define newstmt(kind)   \
-    addstmt(kind),   \
-    steal_comments(firstserial, sp->serial, sflags & SF_FIRST),   \
-    sflags &= ~SF_FIRST
+  addstmt(kind),   \
+  steal_comments(firstserial, sp->serial, sflags & SF_FIRST),   \
+  sflags &= ~SF_FIRST
 //}}}
 
 Static int memberfuncwithlevel;
@@ -1231,47 +1218,41 @@ again:
 #define BR_ELSEPART     0x40    /* after an "else" */
 #define BR_CASE         0x80    /* case of a switch stmt */
 //{{{
-Static int usebraces(sp, opts)
+Static int usebraces (sp, opts)
 Stmt *sp;
 int opts;
 {
-    if (opts & (BR_FUNCTION|BR_ALWAYS))
-        return 1;
-    if (opts & BR_NEVER)
-        return 0;
-    if (sp && sp->doinit)
-  return 1;
-    switch (bracesalways) {
-        case 0:
-            if (sp) {
-                if (sp->next ||
-                    sp->kind == SK_TRY ||
-                    (sp->kind == SK_IF && !sp->stm2) ||
-                    (opts & BR_REPEAT))
-                    return 1;
-            }
-            break;
+  if (opts & (BR_FUNCTION|BR_ALWAYS))
+    return 1;
+  if (opts & BR_NEVER)
+     return 0;
+  if (sp && sp->doinit)
+    return 1;
 
-        case 1:
-            return 1;
+  switch (bracesalways) {
+    case 0:
+      if (sp) {
+        if (sp->next || sp->kind == SK_TRY ||
+           (sp->kind == SK_IF && !sp->stm2) || (opts & BR_REPEAT))
+          return 1;
+        }
+      break;
 
-        default:
-            if (sp) {
-                if (sp->next ||
-                    sp->kind == SK_IF ||
-                    sp->kind == SK_WHILE ||
-                    sp->kind == SK_REPEAT ||
-                    sp->kind == SK_TRY ||
-        sp->kind == SK_CASE ||
-                    sp->kind == SK_FOR)
-                    return 1;
-            }
-            break;
+    case 1:
+      return 1;
+
+    default:
+      if (sp) {
+        if (sp->next || sp->kind == SK_IF || sp->kind == SK_WHILE ||
+            sp->kind == SK_REPEAT || sp->kind == SK_TRY || sp->kind == SK_CASE || sp->kind == SK_FOR)
+          return 1;
+        }
+      break;
     }
-    if (sp != NULL &&
-  findcomment(curcomments, CMT_NOT | CMT_TRAIL, sp->serial) != NULL)
-  return 1;
-    return 0;
+
+  if (sp != NULL && findcomment(curcomments, CMT_NOT | CMT_TRAIL, sp->serial) != NULL)
+    return 1;
+  return 0;
 }
 //}}}
 
@@ -2338,8 +2319,8 @@ Expr *ex, *ex2;
 /* Data flow analysis */
 #define MAX_PROP_CHECKS  32
 
-Static Expr *flowexprs[MAX_PROP_CHECKS];
-Static Stmt *flowassigns[MAX_PROP_CHECKS];
+Static Expr* flowexprs[MAX_PROP_CHECKS];
+Static Stmt* flowassigns[MAX_PROP_CHECKS];
 Static int flowprops[MAX_PROP_CHECKS];    /* One of PROP_... */
 Static int numpropchecks;
 Static long globalprops, checkelimprops;
@@ -3954,7 +3935,7 @@ Expr *ex;
 }
 //}}}
 
-/* Check if a variable always occurs with a certain offset added, e.g. "i+1" */
+// Check if a variable always occurs with a certain offset added, e.g. "i+1"
 Static int theoffset, numoffsets, numzerooffsets;
 #define BadOffset  (-999)
 //{{{
@@ -4120,7 +4101,7 @@ Expr *exbase;
 //}}}
 
 #define FINDINITMAX 100
-Static Stmt *findinittab[FINDINITMAX];
+Static Stmt* findinittab[FINDINITMAX];
 Static int findinitstep[FINDINITMAX];
 Static int findinitokay;
 //{{{
@@ -4299,7 +4280,7 @@ int depth, okay;
 
 //}}}
 //{{{
-Static Stmt *p_body()
+Static Stmt* p_body()
 {
     Stmt *sp, **spp, *spbody, **sppbody, *spbase, *thereturn;
     Meaning *mp;
@@ -4452,116 +4433,127 @@ Static Stmt *p_body()
 Static void out_function (func)
 Meaning *func;
 {
-    Meaning *mp;
-    Symbol *sym;
-    int opts, anywords, spacing, saveindent;
+  Meaning *mp;
+  Symbol *sym;
+  int opts, anywords, spacing, saveindent;
 
-    if (func->varstructflag) {
-        makevarstruct(func);
-    }
-    if (collectnest) {
-  for (mp = func->cbase; mp; mp = mp->cnext) {
-      if (mp->kind == MK_FUNCTION && mp->isforward) {
-    forward_decl(mp, 0);
-      }
-  }
-  for (mp = func->cbase; mp; mp = mp->cnext) {
+  if (func->varstructflag)
+    makevarstruct (func);
+
+  if (collectnest) {
+    for (mp = func->cbase; mp; mp = mp->cnext)
+      if (mp->kind == MK_FUNCTION && mp->isforward)
+        forward_decl(mp, 0);
+
+    for (mp = func->cbase; mp; mp = mp->cnext)
       if (mp->kind == MK_FUNCTION && mp->type && !mp->exported) {
-    pushctx(mp);
-    out_function(mp);    /* generate the sub-procedures first */
-    popctx();
-      }
-  }
+        pushctx (mp);
+        out_function (mp);    /* generate the sub-procedures first */
+        popctx();
+        }
     }
-    spacing = functionspace;
-    for (mp = func; mp->ctx->kind == MK_FUNCTION; mp = mp->ctx) {
-        if (spacing > minfuncspace)
-            spacing--;
+
+  spacing = functionspace;
+  for (mp = func; mp->ctx->kind == MK_FUNCTION; mp = mp->ctx)
+    if (spacing > minfuncspace)
+      spacing--;
+  outsection (spacing);
+
+  flushcomments (&func->comments, -1, 0);
+  if (usePPMacros == 1) {
+    forward_decl (func, 0);
+    outsection (minorspace);
     }
-    outsection(spacing);
-    flushcomments(&func->comments, -1, 0);
-    if (usePPMacros == 1) {
-        forward_decl(func, 0);
-        outsection(minorspace);
-    }
-    opts = ODECL_HEADER;
-    anywords = 0;
-    if (func->namedfile) {
-  checkWord();
-  if (useAnyptrMacros || ansiC < 2)
-      output("Inline");
-  else
-      output("inline");
-    }
-    if (func->bufferedfile) {
-  checkWord();
-  output("virtual");
-    }
-    if (!func->exported) {
-  if (func->ctx->kind == MK_FUNCTION) {
-      if (useAnyptrMacros) {
-    checkWord();
-    output("Local");
-      } else if (use_static) {
-    checkWord();
-    output("static");
-      }
-  } else if ((findsymbol(func->name)->flags & NEEDSTATIC) ||
-       (use_static != 0 && !useAnyptrMacros)) {
-      checkWord();
-      output("static");
-  } else if (use_static && useAnyptrMacros) {
-      checkWord();
-      output("Static");
-  }
-    }
-    if (func->type->basetype != tp_void || ansiC != 0) {
-  checkWord();
-  if (func->type->smin)
-      output(func->type->smin->val.s);
-  else
-      outbasetype(func->type, 0);
-    }
-    if (anywords) {
-        if (newlinefunctions)
-            opts |= ODECL_FUNCTION;
-        else
-            opts |= ODECL_SPACE;
-    }
-    outdeclarator(func->type, func->name, opts);
-    if (fullprototyping == 0) {
-  saveindent = outindent;
-  moreindent(argindent);
-        out_argdecls(func->type);
-  outindent = saveindent;
-    }
-    for (mp = func->type->fbase; mp; mp = mp->xnext) {
-        if (mp->othername && strcmp(mp->name, mp->othername))
-            mp->wasdeclared = 0;    /* make sure we also declare the copy */
-    }
-    func->wasdeclared = 1;
-    outcontext = func;
-    out_block((Stmt *)func->val.i, BR_FUNCTION, 10000);
-    if (useundef) {
+
+  opts = ODECL_HEADER;
   anywords = 0;
-  for (mp = func->cbase; mp; mp = mp->cnext) {
-      if (mp->kind == MK_CONST &&
-    mp->isreturn) {    /* the was-#defined flag */
-    if (!anywords)
-        outsection(minorspace);
-    anywords++;
-    output(format_s("#undef %s\n", mp->name));
-    sym = findsymbol(mp->name);
-    sym->flags &= ~AVOIDNAME;
+  if (func->namedfile) {
+    checkWord();
+    if (useAnyptrMacros || ansiC < 2)
+      output ("Inline");
+    else
+      output ("inline");
+    }
+
+  if (func->bufferedfile) {
+    checkWord();
+    output ("virtual");
+    }
+
+  if (!func->exported) {
+    if (func->ctx->kind == MK_FUNCTION) {
+      if (useAnyptrMacros) {
+        checkWord();
+        output ("Local");
+        }
+      else if (use_static) {
+        checkWord();
+        output ("static");
+        }
       }
-  }
+    else if ((findsymbol (func->name)->flags & NEEDSTATIC) || (use_static != 0 && !useAnyptrMacros)) {
+      checkWord();
+      output ("static");
+      }
+    else if (use_static && useAnyptrMacros) {
+      checkWord();
+      output ("Static");
+      }
     }
-    if (conserve_mem) {
-  free_stmt((Stmt *)func->val.i);   /* is this safe? */
-  func->val.i = 0;
-  forget_ctx(func, 0);
+
+  if (func->type->basetype != tp_void || ansiC != 0) {
+    checkWord();
+    if (func->type->smin)
+      output (func->type->smin->val.s);
+    else
+      outbasetype (func->type, 0);
     }
-    outsection(spacing);
+
+  if (anywords) {
+    if (newlinefunctions)
+      opts |= ODECL_FUNCTION;
+    else
+      opts |= ODECL_SPACE;
+    }
+  outdeclarator (func->type, func->name, opts);
+
+  if (fullprototyping == 0) {
+    saveindent = outindent;
+    moreindent (argindent);
+    out_argdecls (func->type);
+    outindent = saveindent;
+    }
+
+  for (mp = func->type->fbase; mp; mp = mp->xnext)
+    if (mp->othername && strcmp(mp->name, mp->othername))
+      mp->wasdeclared = 0;    /* make sure we also declare the copy */
+
+  func->wasdeclared = 1;
+  outcontext = func;
+  out_block ((Stmt *)func->val.i, BR_FUNCTION, 10000);
+  if (useundef) {
+    anywords = 0;
+    for (mp = func->cbase; mp; mp = mp->cnext) {
+      if (mp->kind == MK_CONST && mp->isreturn) {
+        // the was-#defined flag
+        if (!anywords)
+          outsection (minorspace);
+        anywords++;
+        output (format_s ("#undef %s\n", mp->name));
+        sym = findsymbol (mp->name);
+        sym->flags &= ~AVOIDNAME;
+        }
+      }
+    }
+
+  if (conserve_mem) {
+    // is this safe?
+    free_stmt ((Stmt*)func->val.i);
+    func->val.i = 0;
+    forget_ctx (func, 0);
+    }
+
+  outsection (spacing);
 }
 //}}}
 //{{{
@@ -5003,7 +4995,6 @@ Token blkind;
        TOK_IMPLEMENT:   Implementation section of a module
        TOK_END:         None of the above
 */
-
 void p_block (blkind)
 Token blkind;
 {
@@ -5440,12 +5431,12 @@ int need;
   checkmodulewords();
   if (curtok == TOK_EXPORT)
       gettok();
-        strlist_empty(&curcomments);
+        strlist_empty (&curcomments);
         p_block(TOK_IMPORT);
-        setup_module(mod->sym->name, 0);
+        setup_module (mod->sym->name, 0);
   if (mypermflag) {
-      strlist_add(&permimports, mod->sym->name)->value = (long)mod;
-      perm_import(mod);
+      strlist_add (&permimports, mod->sym->name)->value = (long)mod;
+      perm_import (mod);
   }
   checkmodulewords();
   if (curtok == TOK_END) {
@@ -5474,134 +5465,147 @@ int need;
 //{{{
 void p_program()
 {
-    Meaning *prog;
-    Stmt *sp;
-    int nummods, isdefn = 0;
+  Meaning *prog;
+  Stmt *sp;
+  int nummods, isdefn = 0;
 
-    flushcomments(NULL, -1, -1);
-    output(format_s("\n#include %s\n", p2c_h_name));
-    outsection(majorspace);
-    p_attributes();
-    ignore_attributes();
-    checkmodulewords();
-    if (modula2) {
-  if (curtok == TOK_MODULE) {
+  flushcomments (NULL, -1, -1);
+  output (format_s("\n#include %s\n", p2c_h_name));
+  outsection (majorspace);
+
+  p_attributes();
+  ignore_attributes();
+
+  checkmodulewords();
+  if (modula2) {
+    if (curtok == TOK_MODULE) {
       curtok = TOK_PROGRAM;
-  } else {
+      }
+    else {
       if (curtok == TOK_DEFINITION) {
-    isdefn = 1;
-    gettok();
-    checkmodulewords();
-      } else if (curtok == TOK_IMPLEMENT) {
-    isdefn = 2;
-    gettok();
-    checkmodulewords();
-      }
-  }
-    }
-    switch (curtok) {
-
-        case TOK_MODULE:
-      if (implementationmodules)
-    isdefn = 2;
-            nummods = 0;
-            while (curtok == TOK_MODULE) {
-                if (p_module(0, isdefn)) {
-                    nummods++;
-                    if (nummods == 2 && !requested_module)
-                        warning("Multiple modules in one source file may not work correctly [276]");
-                }
-            }
-      wneedtok(TOK_DOT);
-            break;
-
-        default:
-            if (curtok == TOK_PROGRAM) {
-                gettok();
-                if (!wexpecttok(TOK_IDENT))
-        skiptotoken(TOK_IDENT);
-                prog = addmeaning(curtoksym, MK_MODULE);
-                gettok();
-                if (curtok == TOK_LPAR) {
-                    while (curtok != TOK_RPAR) {
-                        if (curtok == TOK_IDENT &&
-                            strcicmp(curtokbuf, "INPUT") &&
-                            strcicmp(curtokbuf, "OUTPUT")) {
-          if (literalfilesflag == 2) {
-        strlist_add(&literalfiles, curtokbuf);
-          } else if (strcicmp(curtokbuf, "KEYBOARD") &&
-               strcicmp(curtokbuf, "LISTING")) {
-        note(format_s("Unexpected name \"%s\" in program header [262]",
-                curtokcase));
-          }
-                        }
-                        gettok();
-                    }
-                    gettok();
-                }
-    if (curtok == TOK_LBR)
-        skipparens();
-                wneedtok(TOK_SEMI);
-            } else {
-                prog = addmeaning(findsymbol("program"), MK_MODULE);
-            }
-            prog->anyvarflag = 1;
-            if (requested_module && strcicmp(requested_module, prog->name) &&
-                                    strcicmp(requested_module, "program")) {
-                for (;;) {
-                    skiptomodule();
-                    if (curtok == TOK_DOT)
-                        break;
-                     (void)p_module(0, 2);
-                }
-    gettok();
-                break;
-            }
-            pushctx(prog);
-            p_block(TOK_PROGRAM);
-            echoprocname(prog);
-      flushcomments(NULL, -1, -1);
-      if (curtok != TOK_EOF) {
-    nullbody = 0;
-    sp = p_body();
-    if (!nullbody) {
-        strlist_mix(&prog->comments, curcomments);
-        curcomments = NULL;
-        if (*maintype)
-      output(format_s("%s ", maintype));
-        if (fullprototyping > 0) {
-      output(format_sss("main%s(int argc,%s%s *argv[])",
-            spacefuncs ? " " : "",
-            spacecommas ? " " : "",
-            charname));
-        } else {
-      output("main");
-      if (spacefuncs)
-          output(" ");
-      output("(argc,");
-      if (spacecommas)
-          output(" ");
-      output("argv)\n");
-      singleindent(argindent);
-      output("int argc;\n");
-      singleindent(argindent);
-      output(format_s("%s *argv[];\n", charname));
-        }
-        outcontext = prog;
-        out_block(sp, BR_FUNCTION, 10000);
-    }
-    free_stmt(sp);
-    popctx();
-    if (curtok == TOK_SEMI)
+        isdefn = 1;
         gettok();
-    else
-        wneedtok(TOK_DOT);
+        checkmodulewords();
+        }
+      else if (curtok == TOK_IMPLEMENT) {
+        isdefn = 2;
+        gettok();
+        checkmodulewords();
+        }
       }
-            break;
-
     }
-    if (curtok != TOK_EOF) {
-        warning("Junk at end of input file ignored [277]");
+
+  switch (curtok) {
+    //{{{
+    case TOK_MODULE:
+      if (implementationmodules)
+        isdefn = 2;
+
+      nummods = 0;
+      while (curtok == TOK_MODULE) {
+        if (p_module(0, isdefn)) {
+          nummods++;
+          if (nummods == 2 && !requested_module)
+            warning("Multiple modules in one source file may not work correctly [276]");
+          }
+        }
+
+      wneedtok(TOK_DOT);
+      break;
+    //}}}
+    //{{{
+    default:
+      if (curtok == TOK_PROGRAM) {
+        gettok();
+        if (!wexpecttok (TOK_IDENT))
+          skiptotoken (TOK_IDENT);
+
+        prog = addmeaning (curtoksym, MK_MODULE);
+        gettok();
+        if (curtok == TOK_LPAR) {
+          while (curtok != TOK_RPAR) {
+            if (curtok == TOK_IDENT && strcicmp (curtokbuf, "INPUT") && strcicmp (curtokbuf, "OUTPUT")) {
+              if (literalfilesflag == 2) {
+                strlist_add (&literalfiles, curtokbuf);
+                }
+              else if (strcicmp (curtokbuf, "KEYBOARD") && strcicmp (curtokbuf, "LISTING")) {
+                note(format_s ("Unexpected name \"%s\" in program header [262]", curtokcase));
+                }
+              }
+            gettok();
+            }
+          gettok();
+          }
+
+        if (curtok == TOK_LBR)
+          skipparens();
+        wneedtok (TOK_SEMI);
+        }
+      else
+        prog = addmeaning(findsymbol("program"), MK_MODULE);
+
+      prog->anyvarflag = 1;
+      if (requested_module && strcicmp(requested_module, prog->name) &&
+          strcicmp (requested_module, "program")) {
+        for (;;) {
+          skiptomodule();
+          if (curtok == TOK_DOT)
+            break;
+          (void)p_module (0, 2);
+          }
+        gettok();
+        break;
+        }
+      pushctx (prog);
+      p_block (TOK_PROGRAM);
+
+      echoprocname (prog);
+      flushcomments (NULL, -1, -1);
+      if (curtok != TOK_EOF) {
+        //{{{  not eof
+        nullbody = 0;
+        sp = p_body();
+        if (!nullbody) {
+          strlist_mix (&prog->comments, curcomments);
+          curcomments = NULL;
+          if (*maintype)
+            output (format_s("%s ", maintype));
+          if (fullprototyping > 0)
+            output (format_sss ("main%s(int argc,%s%s *argv[])",
+                                spacefuncs ? " " : "", spacecommas ? " " : "", charname));
+          else {
+            output ("main");
+            if (spacefuncs)
+              output (" ");
+            output ("(argc,");
+            if (spacecommas)
+              output (" ");
+            output ("argv)\n");
+            singleindent (argindent);
+            output ("int argc;\n");
+            singleindent (argindent);
+            output (format_s("%s *argv[];\n", charname));
+            }
+          outcontext = prog;
+          out_block (sp, BR_FUNCTION, 10000);
+          }
+
+        free_stmt(sp);
+        popctx();
+
+        if (curtok == TOK_SEMI)
+          gettok();
+        else
+          wneedtok (TOK_DOT);
+        }
+        //}}}
+
+      break;
+    //}}}
+    }
+
+  if (curtok != TOK_EOF) {
+    warning("Junk at end of input file ignored [277]");
     }
 }
 //}}}

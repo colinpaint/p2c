@@ -442,9 +442,6 @@ begin
     getPseudoBuff;
     end;
 
-  writeln ('---- end of dumpPseudo highestKey: ', highestkey: 1, ' ----');
-
-  close (output);
   close (pseudoSharedPtr^.pseudoFile);
-
+  writeln ('---- end of dumpPseudo highestKey: ', highestkey: 1, ' ----');
 end;

@@ -1334,7 +1334,10 @@ function newkey : keyindex;
 
 begin
   if context[contextsp].high = keysize then
-    abort (manykeys)
+    begin
+    abort (manykeys);
+    newkey := 0;
+    end
   else
     newkey := context[contextsp].high + 1;
 end;
@@ -3823,16 +3826,16 @@ var
           ptr := ref(bignodetable[expr1]);
           if expr2 = ord(valprocid) then
             ptr := ref(bignodetable[ptr^.slink]);
-          if ptr^.form = reals then 
+          if ptr^.form = reals then
             targetflag := 1
-          else if ptr^.form = doubles then 
+          else if ptr^.form = doubles then
             targetflag := 2;
           end;
 
         walknode (expr1, expr1key, 0, true);
         if expr2 = ord(getid) then
           genpseudo (sysroutine, 0, 0, 0, 0, expr2, expr1key, 0)
-        else 
+        else
           genpseudo (sysroutine, 0, 0, 0, 0, expr2, 0, targetflag);
         end;
 
@@ -3848,7 +3851,7 @@ var
       i: hashindex; {induction var for generating context[1]}
 
     begin
-      for i := 0 to nodehashsize do 
+      for i := 0 to nodehashsize do
         walknodelist(context[1].opmap[i]);
 
       genpseudo (blockcode, currentstmt.fileline, 0, 0, 0, regtemps, ptrtemps, realtemps);
@@ -3869,10 +3872,10 @@ var
       the proper block;
     }
     begin
-      if needstmtbrk then 
+      if needstmtbrk then
         genstmtbrk;
       genpseudo (jump, 0, 0, 0, 0, getlabel(currentstmt.targblock), level, 0);
-    end; 
+    end;
     {>>>}
     {<<<}
     procedure walkreturn;
@@ -3890,7 +3893,7 @@ var
         clearkeys;
         genpseudo (jump, 0, 0, 0, 0, getlabel(trueblock), 0, 0);
         end;
-    end; 
+    end;
     {>>>}
 
   begin
