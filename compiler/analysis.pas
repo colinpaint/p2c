@@ -1132,37 +1132,6 @@ end;
 {>>>}
 
 {<<<}
-procedure searchsection (id: scoperange; {scope id for search}
-                         var wherefound: tableIndex {resulting name index} );
-{ Search the symbol table for the current token identifier in scope
-  "id".  If found, the name index will be placed in "wherefound".  If not
-  found, zero will be returned. If the identifier found proves to be
-  a constant or type identifier we will update "lastoccurrence" within
-  the symbol table entry to allow enforcement of scope restrictions. }
-
-var
-  p: entryptr; {used for name table access}
-  twherefound: tableIndex; {temp for wherefound during procedure}
-
-begin {searchsection}
-  twherefound := keymap[thistoken.key];
-  p := ref(bigtable[twherefound]);
-  while (twherefound <> 0) and (p^.name <> id) do
-    begin
-    twherefound := p^.nextname;
-    p := ref(bigtable[twherefound]);
-    end;
-  if not probing and (twherefound <> 0) and
-     (p^.lastoccurrence < display[displaytop].scopeid) and
-     (p^.namekind in
-     [procname, funcname, constname, typename, standardproc, standardfunc, undeftypename, fieldname, undefname]) then
-    begin
-    p^.lastoccurrence := display[displaytop].scopeid;
-    end;
-  wherefound := twherefound;
-end {searchsection} ;
-{>>>}
-{<<<}
 procedure searchlsection (value1: integer; {label value}
                          labellist: labelptr; {root of label list}
                          var wherefound: labelptr {result of search} );
@@ -1195,26 +1164,6 @@ begin {searchlabels}
   until (i = 0) or (wherefound <> labelflag);
   lev := i + 1;
 end {searchlabels} ;
-{>>>}
-{<<<}
-procedure search (var wherefound: tableIndex {result of search} );
-{ Search all available scopes for the current token.  The result is
-  returned in "wherefound", with zero indicating no find.  The global
-  variable "lev" is set to the level where the token was found. }
-
-var
-  i: levelindex; {induction var for level search}
-  t: tableIndex; {temp result of search for each level}
-
-begin {search}
-  i := displaytop + 1;
-  repeat
-    i := i - 1;
-    searchsection(display[i].blockid, t);
-  until (i = 0) or (t <> 0);
-  lev := i;
-  wherefound := t;
-end {search} ;
 {>>>}
 {<<<}
 procedure searchvariants (var currentrecord: tableIndex; {record to search}
@@ -1271,6 +1220,58 @@ begin
     if (typ = subranges) then
      objectindex := parenttype;
 end;
+{>>>}
+
+{<<<}
+procedure searchsection (id: scoperange; {scope id for search}
+                         var wherefound: tableIndex {resulting name index} );
+{ Search the symbol table for the current token identifier in scope
+  "id".  If found, the name index will be placed in "wherefound".  If not
+  found, zero will be returned. If the identifier found proves to be
+  a constant or type identifier we will update "lastoccurrence" within
+  the symbol table entry to allow enforcement of scope restrictions. }
+
+var
+  p: entryptr; {used for name table access}
+  twherefound: tableIndex; {temp for wherefound during procedure}
+
+begin {searchsection}
+  twherefound := keymap[thistoken.key];
+  p := ref(bigtable[twherefound]);
+  while (twherefound <> 0) and (p^.name <> id) do
+    begin
+    twherefound := p^.nextname;
+    p := ref(bigtable[twherefound]);
+    end;
+  if not probing and (twherefound <> 0) and
+     (p^.lastoccurrence < display[displaytop].scopeid) and
+     (p^.namekind in
+     [procname, funcname, constname, typename, standardproc, standardfunc, undeftypename, fieldname, undefname]) then
+    begin
+    p^.lastoccurrence := display[displaytop].scopeid;
+    end;
+  wherefound := twherefound;
+end {searchsection} ;
+{>>>}
+{<<<}
+procedure search (var wherefound: tableIndex {result of search} );
+{ Search all available scopes for the current token.  The result is
+  returned in "wherefound", with zero indicating no find.  The global
+  variable "lev" is set to the level where the token was found. }
+
+var
+  i: levelindex; {induction var for level search}
+  t: tableIndex; {temp result of search for each level}
+
+begin {search}
+  i := displaytop + 1;
+  repeat
+    i := i - 1;
+    searchsection(display[i].blockid, t);
+  until (i = 0) or (t <> 0);
+  lev := i;
+  wherefound := t;
+end {search} ;
 {>>>}
 
 {<<<}
@@ -1638,10 +1639,9 @@ end;
 {>>>}
 {<<<}
 function compatible (left, right: tableIndex): boolean;
-{ True if the types represented by the two input forms are compatible
-  as defined by the Pascal standard.  If either input is undefined,
-  they are assumed to be compatible to eliminate redundant error messages. }
-
+{ True if the types represented by the two input forms are compatible as defined by the Pascal standard.  
+  If either input is undefined, they are assumed to be compatible to eliminate redundant error messages
+}
 var
   lptr, rptr: entryptr; { used for access to symbol table }
   c: boolean; {temporary value of compatible}
@@ -1649,7 +1649,9 @@ var
 begin
   stripsubrange (left);
   stripsubrange (right);
-  if identical(left, right) then compatible := true
+
+  if identical (left, right) then 
+    compatible := true
   else
     begin
     compatible := false;
@@ -1659,25 +1661,21 @@ begin
       case lptr^.typ of
         strings: compatible := true;
         arrays:
-          compatible := lptr^.stringtype and rptr^.stringtype and
-                        (lptr^.arraymembers = rptr^.arraymembers);
+          compatible := lptr^.stringtype and rptr^.stringtype and (lptr^.arraymembers = rptr^.arraymembers);
         sets:
           compatible := compatible(lptr^.basetype, rptr^.basetype) and
-                        ((lptr^.packedflag = rptr^.packedflag) or
-                        lptr^.constructedset or rptr^.constructedset);
+                        ((lptr^.packedflag = rptr^.packedflag) or lptr^.constructedset or rptr^.constructedset);
         ptrs:
           if (left = nilindex) or (right = nilindex) then
             compatible := true
           else
             begin {Allow compatibility between pointer types and pointers
-                   created with the address operator if the base types are
-                   the same. Also forstall error messages if either pointer
-                   base type is undef. }
+                   created with the address operator if the base types are the same. 
+                   Also forstall error messages if either pointer base type is undef. }
             lptr := ref(bigtable[lptr^.ptrtypename]);
             rptr := ref(bigtable[rptr^.ptrtypename]);
 
-            c := (lptr^.typeindex = noneindex) or
-                 (rptr^.typeindex = noneindex);
+            c := (lptr^.typeindex = noneindex) or (rptr^.typeindex = noneindex);
             if rptr^.refdefined or lptr^.refdefined then
               c := c or compatible(rptr^.typeindex, lptr^.typeindex);
             compatible := c;
@@ -2966,13 +2964,12 @@ end;
 {>>>}
 {<<<}
 procedure newexprstmt (s: stmttype { statement to generate } );
-{ Begin a new statement which has an expression as part of its structure.
-}
+{ Begin a new statement which has an expression as part of its structure }
 
-begin {newexprstmt}
-  debugstmt(s, thistoken.line, thistoken.filepos, thistoken.fileIndex);
+begin
+  debugstmt (s, thistoken.line, thistoken.filepos, thistoken.fileIndex);
   intstate := opstate;
-end {newexprstmt} ;
+end;
 {>>>}
 {<<<}
 procedure getexprstmt (s: stmttype { statement starting } );
@@ -3159,8 +3156,7 @@ begin
     else
       begin
       l := bits(max(abs(minlimit + 1), abs(maxlimit)));
-      if then
-        l := l + 1;
+      l := l + 1;
       {allow for sign bit and signed 16-bit relative mode on 68K}
       if l <= 16 then
         result := 2
