@@ -1078,14 +1078,14 @@ end;
 
 {<<<}
 procedure enterform (newtyp: types; {type for this form}
-                    var where: tableIndex; {new entry}
-                    var whereptr: entryptr {for access to new entry} );
-{ Enter a new formentry at the current level.
-  This also gets a formnumber for use with the debugger, and sets the type to be newtyp. }
-
+                     var where: tableIndex; {new entry}
+                     var whereptr: entryptr {for access to new entry} );
+{ Enter a new formentry at the current level
+  This also gets a formnumber for use with the debugger, and sets the type to be newtyp
+}
 begin
   if tabletop = tablesize then
-    analysFatal(tablefull)
+    analysFatal (tablefull)
   else
     tabletop := tabletop + 1;
 
@@ -1093,14 +1093,15 @@ begin
   whereptr := ref(bigtable[tabletop]);
   with whereptr^ do
     begin
-    if (newtyp in [subranges, scalars, fields, arrays, sets, files, ptrs, ints, bools,
-                   chars, reals, doubles, conformantarrays, strings]) then
+    if (newtyp in [subranges, scalars, fields, arrays, sets, files, ptrs, 
+                   ints, bools, chars, reals, doubles, conformantarrays, strings]) then
       begin
       lastdebugrecord := lastdebugrecord + 1;
       dbgsymbol := lastdebugrecord;
       end
     else
       dbgsymbol := 0;
+
     form := true;
     typ := newtyp;
     containsfile := false;
@@ -1565,7 +1566,7 @@ procedure constant (follow: tokenset; {legal following symbols}
               else
                 pos := thistoken.pos;
 
-              enterform(subranges, t, t1);
+              enterform (subranges, t, t1);
               with t1^ do
                 begin
                 size := sharedPtr^.targetintsize;
@@ -3097,9 +3098,8 @@ var
   t: tableIndex; {holds subrange}
   t1: entryptr; {for filling in table entry}
 
-
-begin {newstringtype}
-  enterform(subranges, t, t1);
+begin 
+  enterform (subranges, t, t1);
   with t1^ do
     begin
     size := sharedPtr^.targetintsize;
@@ -3114,7 +3114,8 @@ begin {newstringtype}
       upperord := len;
       end;
     end;
-  enterform(newform, newtype, t1);
+
+  enterform (newform, newtype, t1);
   with t1^ do
     begin
     packedflag := true;
@@ -3125,13 +3126,16 @@ begin {newstringtype}
     stringtype := newform = arrays;
     arraymembers := len;
     indextype := t;
+
     size := len div (bitsperunit div stringeltsize);
-    if len mod (bitsperunit div stringeltsize) <> 0 then size := size + 1;
+    if len mod (bitsperunit div stringeltsize) <> 0 then 
+      size := size + 1;
     size := size * bitsperunit;
+
     elementsize := stringeltsize;
     align := stringalign;
     end;
-end {newstringtype} ;
+end;
 {>>>}
 {<<<}
 function range_length (r: range {return length of this range in bytes} ): addressrange;
@@ -7621,7 +7625,7 @@ procedure statement (follow: tokenset {legal following symbols} );
         lbrack:
           begin
           gettoken;
-          enterform(sets, settype, setptr);
+          enterform (sets, settype, setptr);
           setentry := setptr^;
           setisconst := true;
           bumpsp;
@@ -11745,7 +11749,7 @@ var
     begin {ptrtyp}
       if packflag then warn(cantpack);
       gettoken;
-      enterform(ptrs, resulttype, resulp);
+      enterform (ptrs, resulttype, resulp);
       with resulp^ do
         begin
         ptrkey := lastfilekey;
@@ -11916,36 +11920,34 @@ var
   {>>>}
   {<<<}
   procedure filetyp;
-  { Syntactic routine to parse a file type.
-    Production:
-    file-type = "file" "of" component-type  .
-    component-type = type-denoter  .
-  }
+  { Syntactic routine to parse a file type }
 
-    var
-      newfilebasetype: tableIndex; {pointer to type of file}
-      f: entryptr; {access to newfilebasetype}
+  var
+    newfilebasetype: tableIndex; {pointer to type of file}
+    f: entryptr; {access to newfilebasetype}
 
+  begin 
+    gettoken;
+    verifytoken (ofsym, nooferr);
+    gettyp (follow, newfilebasetype);
 
-    begin {filetyp}
-      gettoken;
-      verifytoken(ofsym, nooferr);
-      gettyp(follow, newfilebasetype);
-      f := ref(bigtable[newfilebasetype]);
-      if f^.containsfile then warnbefore(nofilefile);
-      enterform(files, resulttype, resulp);
-      with resulp^ do
-        begin
-        filebasetype := newfilebasetype;
-        packedflag := packflag;
-        bitaddress := false;
-        containsfile := true; { You had better believe it!!! }
-        size := sharedPtr^.ptrsize;
-        align := ptralign;
-        filekey := lastfilekey;
-        lastfilekey := lastfilekey - 1;
-        end
-    end {filetyp} ;
+    f := ref(bigtable[newfilebasetype]);
+    if f^.containsfile then  
+      warnbefore(nofilefile);
+
+    enterform (files, resulttype, resulp);
+    with resulp^ do
+      begin
+      filebasetype := newfilebasetype;
+      packedflag := packflag;
+      bitaddress := false;
+      containsfile := true; { You had better believe it!!! }
+      size := sharedPtr^.ptrsize;
+      align := ptralign;
+      filekey := lastfilekey;
+      lastfilekey := lastfilekey - 1;
+      end
+  end;
   {>>>}
   {<<<}
   procedure settyp;
@@ -11958,50 +11960,53 @@ var
     If a set is not packed, and the size is greater than a word, the
     set is aligned on a word boundary.
   }
+  var
+    m: integer; {number of members of the set}
+    newbasetype: tableIndex; {type of set base}
+    f: entryptr; {access to newbasetype}
 
-    var
-      m: integer; {number of members of the set}
-      newbasetype: tableIndex; {type of set base}
-      f: entryptr; {access to newbasetype}
+  begin {settyp}
+    gettoken;
+    verifytoken(ofsym, nooferr);
+    gettyp(follow, newbasetype);
 
+    f := ref(bigtable[newbasetype]);
+    if not (f^.typ in [none, scalars, bools, chars, subranges]) then
+      warnbefore (badsetbase)
+    else if (lower(f) < 0) or (upper(f) > maxsetord) then
+      warnbefore (bigsetbase);
 
-    begin {settyp}
-      gettoken;
-      verifytoken(ofsym, nooferr);
-      gettyp(follow, newbasetype);
-      f := ref(bigtable[newbasetype]);
-      if not (f^.typ in [none, scalars, bools, chars, subranges]) then
-        warnbefore(badsetbase)
-      else if (lower(f) < 0) or (upper(f) > maxsetord) then
-        warnbefore(bigsetbase);
-      stripsubrange(newbasetype);
-      f := ref(bigtable[newbasetype]);
-      if f^.typ = ints then m := maxsetord + 1
-      else m := upper(f) + 1;
-      enterform(sets, resulttype, resulp);
-      with resulp^ do
+    stripsubrange (newbasetype);
+    f := ref(bigtable[newbasetype]);
+    if f^.typ = ints then 
+      m := maxsetord + 1
+    else 
+      m := upper(f) + 1;
+
+    enterform (sets, resulttype, resulp);
+    with resulp^ do
+      begin
+      constructedset := false;
+      basetype := newbasetype;
+      packedflag := packflag;
+      bitaddress := packflag;
+      if packedflag then
         begin
-        constructedset := false;
-        basetype := newbasetype;
-        packedflag := packflag;
-        bitaddress := packflag;
-        if packedflag then
-          begin
-          if (m > bitsperunit) then
-            size := forcealign(m, 1 { a byte }, true)
-          else size := roundpackedsize(m, true);
-          if size > bitsperunit then align := setalign * bitsperunit
-          else align := 1;
-          end
-        else
-          begin
-          size := (m + bitsperunit - 1) div bitsperunit;
-          if size = unitsize then align := unitsize
-          else align := setalign;
-          size := forcealign(size, align, false);
-          end;
+        if (m > bitsperunit) then
+          size := forcealign(m, 1 { a byte }, true)
+        else size := roundpackedsize(m, true);
+        if size > bitsperunit then align := setalign * bitsperunit
+        else align := 1;
+        end
+      else
+        begin
+        size := (m + bitsperunit - 1) div bitsperunit;
+        if size = unitsize then align := unitsize
+        else align := setalign;
+        size := forcealign(size, align, false);
         end;
-    end {settyp} ;
+      end;
+  end {settyp} ;
   {>>>}
   {<<<}
   procedure stringtyp;
@@ -12011,63 +12016,66 @@ var
     string-type = "string" "[" constant "]".
   }
 
-    var
-      value: operand; {value returned by constant}
-      t: tableIndex; {temp index for entering string type}
-      t1: entryptr; {Temp ptr for entering string type}
+  var
+    value: operand; {value returned by constant}
+    t: tableIndex; {temp index for entering string type}
+    t1: entryptr; {Temp ptr for entering string type}
 
-    begin {stringtyp}
-      gettoken;
-      if token = lpar then
+  begin {stringtyp}
+    gettoken;
+    if token = lpar then
+      begin
+      warn(nolbrackerr);
+      gettoken
+      end
+    else verifytoken(lbrack, nolbrackerr);
+    constant(follow + [rbrack], true, value);
+    if (value.typeindex <> intindex) or (value.cvalue.intvalue <= 0) or
+       (value.cvalue.intvalue > 255) then
+      begin
+      warnbefore(badstringindex);
+      resulttype := noneindex;
+      end
+    else
+      begin
+      enterform (subranges, t, t1);
+      with t1^ do
         begin
-        warn(nolbrackerr);
-        gettoken
-        end
-      else verifytoken(lbrack, nolbrackerr);
-      constant(follow + [rbrack], true, value);
-      if (value.typeindex <> intindex) or (value.cvalue.intvalue <= 0) or
-         (value.cvalue.intvalue > 255) then
-        begin
-        warnbefore(badstringindex);
-        resulttype := noneindex;
-        end
-      else
-        begin
-        enterform(subranges, t, t1);
-        with t1^ do
-          begin
-          size := sharedPtr^.targetintsize;
-          align := intalign;
-          parenttype := intindex;
-          parentform := ints;
-          lowerord := 0;
-          upperord := value.cvalue.intvalue;
-          end;
-        enterform(strings, resulttype, resulp);
-        with resulp^ do
-          begin
-          packedflag := true;
-          bitaddress := true;
-          containsfile := false;
-          elementtype := chartypeindex;
-          stringtype := false;
-          arraymembers := value.cvalue.intvalue + 1;
-          indextype := t;
-          size := arraymembers div (bitsperunit div stringeltsize);
-          if arraymembers mod (bitsperunit div stringeltsize) <> 0 then
-            size := size + 1;
-          size := size * bitsperunit;
-          elementsize := stringeltsize;
-          align := bitsperunit;
-          end;
+        size := sharedPtr^.targetintsize;
+        align := intalign;
+        parenttype := intindex;
+        parentform := ints;
+        lowerord := 0;
+        upperord := value.cvalue.intvalue;
         end;
-      if token = rpar then
+
+      enterform (strings, resulttype, resulp);
+      with resulp^ do
         begin
-        warn(norbrackerr);
-        gettoken
-        end
-      else verifytoken(rbrack, norbrackerr);
-    end {stringtyp} ;
+        packedflag := true;
+        bitaddress := true;
+        containsfile := false;
+        elementtype := chartypeindex;
+        stringtype := false;
+        arraymembers := value.cvalue.intvalue + 1;
+        indextype := t;
+        size := arraymembers div (bitsperunit div stringeltsize);
+        if arraymembers mod (bitsperunit div stringeltsize) <> 0 then
+          size := size + 1;
+        size := size * bitsperunit;
+        elementsize := stringeltsize;
+        align := bitsperunit;
+        end;
+      end;
+
+    if token = rpar then
+      begin
+      warn(norbrackerr);
+      gettoken
+      end
+    else 
+      verifytoken(rbrack, norbrackerr);
+  end;
   {>>>}
   {<<<}
   procedure recordtyp;
@@ -12119,212 +12127,211 @@ var
       "Tagl" is the list of case labels for this variant (or zero), and
       "lastv" is the last variant for linking (or zero).
     }
+    var
+      resulp: entryptr; {access to result}
+      localresult: tableentry; {local copy of "result" to simplify code}
+      a: alignmentrange; {temp value of alignment for tagfield}
+      latestlabel: tableIndex; {last variant label parsed}
+      latestvariant: tableIndex; {last variant parsed}
+      tagcount: unsignedint; {number of tags defined}
+      tagmembers: unsignedint; {number of elements in tag type}
+      lowesttag, highesttag: integer; {for checking that all tags defined}
+      casetype: tableIndex; {type of tagfield}
+      caseptr: entryptr; {access to casetype}
+      f1: tableIndex; {temp for fieldlist within variant}
+      f1ptr: entryptr; {access to f1}
+      t: tableIndex; {tag field name entry (0 for undiscriminated)}
+      p: entryptr; {used for name access}
+      oldany: boolean; {old value of anyfile}
+
+    {<<<}
+    procedure onelabel;
+    { Syntactic routine to parse a single variant label (case-constant in
+      terms of the latest draft standard).
+      Production:
+      case-constant = constant.
+      All labels for a given variant are chained together and the chain is
+      rooted in the formentry for that variant.
+    }
 
       var
-        resulp: entryptr; {access to result}
-        localresult: tableentry; {local copy of "result" to simplify code}
-        a: alignmentrange; {temp value of alignment for tagfield}
-        latestlabel: tableIndex; {last variant label parsed}
-        latestvariant: tableIndex; {last variant parsed}
-        tagcount: unsignedint; {number of tags defined}
-        tagmembers: unsignedint; {number of elements in tag type}
-        lowesttag, highesttag: integer; {for checking that all tags defined}
-        casetype: tableIndex; {type of tagfield}
-        caseptr: entryptr; {access to casetype}
-        f1: tableIndex; {temp for fieldlist within variant}
-        f1ptr: entryptr; {access to f1}
-        t: tableIndex; {tag field name entry (0 for undiscriminated)}
-        p: entryptr; {used for name access}
-        oldany: boolean; {old value of anyfile}
+        t: tableIndex; {temp ptr of various uses}
+        f: entryptr; {used for access to forms}
+        labelval: operand; {constant label value}
 
       {<<<}
-      procedure onelabel;
-      { Syntactic routine to parse a single variant label (case-constant in
-        terms of the latest draft standard).
-        Production:
-        case-constant = constant.
-        All labels for a given variant are chained together and the chain is
-        rooted in the formentry for that variant.
+      procedure checklabs(header: tableIndex {start of a list of labels} );
+      { Check all of the labels on a particular label list to see if there are any
+        with the same value as the current label.
       }
 
         var
-          t: tableIndex; {temp ptr of various uses}
-          f: entryptr; {used for access to forms}
-          labelval: operand; {constant label value}
-
-        {<<<}
-        procedure checklabs(header: tableIndex {start of a list of labels} );
-        { Check all of the labels on a particular label list to see if there are any
-          with the same value as the current label.
-        }
-
-          var
-            f: entryptr; {used to access labels}
+          f: entryptr; {used to access labels}
 
 
-          begin {checklabs}
-            while (header <> 0) do
-              begin
-              f := ref(bigtable[header]);
-              with f^ do
-                begin
-                if (labelval.cvalue.intvalue = varlabvalue) then
-                  warnbefore(dupcaselabel);
-                header := nextvarlab
-                end;
-              end;
-          end {checklabs} ;
-        {>>>}
-
-        begin {onelabel}
-
-          tagcount := tagcount + 1;
-          constant(follow + [comma, colon, lpar, rpar], true, labelval);
-          with labelval.cvalue do
-            if (intvalue < lowesttag) or (intvalue > highesttag) then
-              warnnonstandard(badcasetags);
-          checklabs(latestlabel);
-
-          t := latestvariant;
-          while (t <> 0) do
+        begin {checklabs}
+          while (header <> 0) do
             begin
-            f := ref(bigtable[t]);
+            f := ref(bigtable[header]);
             with f^ do
               begin
-              t := nextvariant;
-              checklabs(firstlabel);
+              if (labelval.cvalue.intvalue = varlabvalue) then
+                warnbefore(dupcaselabel);
+              header := nextvarlab
               end;
             end;
-
-          enterform(variantlabs, t, f);
-          with f^ do
-            begin
-            packedflag := packflag;
-            bitaddress := packflag;
-            nextvarlab := latestlabel;
-            varlabtype := labelval.typeindex;
-            varlabvalue := labelval.cvalue.intvalue;
-            end;
-
-          latestlabel := t;
-          if (casetype <> noneindex) and (labelval.typeindex <> casetype) then
-            warnbefore(badcaselab);
-
-        end {onelabel} ;
+        end {checklabs} ;
       {>>>}
 
-      begin {fieldlist}
-        oldany := anyfile;
-        anyfile := false;
-        enterform(fields, result, resulp);
-        localresult := resulp^;
-        with localresult do
+      begin {onelabel}
+
+        tagcount := tagcount + 1;
+        constant(follow + [comma, colon, lpar, rpar], true, labelval);
+        with labelval.cvalue do
+          if (intvalue < lowesttag) or (intvalue > highesttag) then
+            warnnonstandard(badcasetags);
+        checklabs(latestlabel);
+
+        t := latestvariant;
+        while (t <> 0) do
+          begin
+          f := ref(bigtable[t]);
+          with f^ do
+            begin
+            t := nextvariant;
+            checklabs(firstlabel);
+            end;
+          end;
+
+        enterform (variantlabs, t, f);
+        with f^ do
           begin
           packedflag := packflag;
           bitaddress := packflag;
-          fieldid := id;
-          {link onto variant list}
-          nextvariant := lastv;
-          firstlabel := tagl;
-          firstvariant := 0;
-          tagfield := 0;
-          typ := fields;
-          firstfield := tabletop + 1;
-          variablelist(follow + [rpar, casesym, endsym], [rpar, endsym], id,
-                       dbgscope, startsize, a, fieldname, false, packflag, false);
-          lastfield := tabletop + 1;
-          repeat
-            lastfield := lastfield - 1;
-            p := ref(bigtable[lastfield]);
-          until (p^.name = fieldid) or (lastfield < firstfield);
-          containsfile := anyfile;
-          anyfile := oldany;
-
-          {Now parse a variant-part}
-
-          if token = casesym then
-            begin
-            gettoken;
-            if (token = ident) and (tokenSharedPtr^.nexttoken.token = colon) then
-              begin
-              onevar(id, fieldname, t, false);
-              p := ref(bigtable[t]);
-              p^.varianttag := true;
-              tagfield := t; { tagfield is in a packed record }
-              gettoken;
-              end;
-            casetype := noneindex;
-            if token in
-               [uparrow..stringsym, nilsym, intconst..stringconst, plus,
-               minus, lpar] then
-              warnnonstandard(notypenameerr);
-            gettyp(follow + [ofsym, endsym, ident, colon], casetype);
-            if tagfield <> 0 then
-              begin {allocate a tag field}
-              caseptr := ref(bigtable[casetype]);
-              a := max(a, alignmentof(caseptr, packflag));
-              alloconevar(tagfield, casetype, fieldname, startsize,
-                          alignmentof(caseptr, packflag), sizeof(caseptr,
-                          packflag), false, packflag);
-              end;
-
-            caseptr := ref(bigtable[casetype]);
-            lowesttag := lower(caseptr);
-            highesttag := upper(caseptr);
-            stripsubrange(casetype);
-            if not (caseptr^.typ in
-               [subranges, ints, chars, bools, scalars, none]) then
-              warn(badcasetyp);
-            verifytoken(ofsym, nooferr);
-            latestvariant := 0;
-            tagmembers := highesttag - lowesttag + 1;
-            tagcount := 0;
-            size := startsize;
-            while token in
-                  [comma, colon, lpar, semicolon, plus, minus, ident, nilsym,
-                  intconst..stringconst] do
-              begin {parse a single variant}
-              if token in
-                 [plus, minus, ident, nilsym, intconst..stringconst, comma,
-                 colon, lpar] then
-                begin
-                latestlabel := 0;
-                onelabel;
-                while token in
-                      [plus, minus, ident, nilsym, intconst..stringconst,
-                      comma] do
-                  begin
-                  verifytoken(comma, nocommaerr);
-                  onelabel;
-                  end;
-                verifytoken(colon, nocolonerr);
-                verifytoken(lpar, nolparerr);
-                fieldlist(follow + [comma, colon, rpar], tagfield,
-                          latestlabel, latestvariant, size, f1);
-                f1ptr := ref(bigtable[f1]);
-                containsfile := containsfile or f1ptr^.containsfile;
-                f1ptr^.packedflag := packflag;
-                f1ptr^.bitaddress := packflag;
-                if f1ptr^.size > startsize then startsize := f1ptr^.size;
-                a := max(a, alignmentof(f1ptr, packflag));
-                latestvariant := f1;
-                verifytoken(rpar, norparerr);
-                end;
-              if token = semicolon then gettoken
-              else
-                verify([endsym, rpar], follow + [comma, colon],
-                       nosemiheaderr);
-              end;
-            firstvariant := latestvariant;
-            if tagmembers <> tagcount then warnnonstandard(badcasetags);
-            end;
-          size := roundpackedsize(startsize, packflag);
-          align := a;
+          nextvarlab := latestlabel;
+          varlabtype := labelval.typeindex;
+          varlabvalue := labelval.cvalue.intvalue;
           end;
+
+        latestlabel := t;
+        if (casetype <> noneindex) and (labelval.typeindex <> casetype) then
+          warnbefore(badcaselab);
+
+      end {onelabel} ;
+    {>>>}
+
+    begin {fieldlist}
+      oldany := anyfile;
+      anyfile := false;
+      enterform (fields, result, resulp);
+      localresult := resulp^;
+      with localresult do
+        begin
+        packedflag := packflag;
+        bitaddress := packflag;
+        fieldid := id;
+        {link onto variant list}
+        nextvariant := lastv;
+        firstlabel := tagl;
+        firstvariant := 0;
+        tagfield := 0;
+        typ := fields;
+        firstfield := tabletop + 1;
+        variablelist(follow + [rpar, casesym, endsym], [rpar, endsym], id,
+                     dbgscope, startsize, a, fieldname, false, packflag, false);
+        lastfield := tabletop + 1;
+        repeat
+          lastfield := lastfield - 1;
+          p := ref(bigtable[lastfield]);
+        until (p^.name = fieldid) or (lastfield < firstfield);
+        containsfile := anyfile;
         anyfile := oldany;
-        resulp := ref(bigtable[result]);
-        resulp^ := localresult;
-      end {fieldlist} ;
+
+        {Now parse a variant-part}
+
+        if token = casesym then
+          begin
+          gettoken;
+          if (token = ident) and (tokenSharedPtr^.nexttoken.token = colon) then
+            begin
+            onevar(id, fieldname, t, false);
+            p := ref(bigtable[t]);
+            p^.varianttag := true;
+            tagfield := t; { tagfield is in a packed record }
+            gettoken;
+            end;
+          casetype := noneindex;
+          if token in
+             [uparrow..stringsym, nilsym, intconst..stringconst, plus,
+             minus, lpar] then
+            warnnonstandard(notypenameerr);
+          gettyp(follow + [ofsym, endsym, ident, colon], casetype);
+          if tagfield <> 0 then
+            begin {allocate a tag field}
+            caseptr := ref(bigtable[casetype]);
+            a := max(a, alignmentof(caseptr, packflag));
+            alloconevar(tagfield, casetype, fieldname, startsize,
+                        alignmentof(caseptr, packflag), sizeof(caseptr,
+                        packflag), false, packflag);
+            end;
+
+          caseptr := ref(bigtable[casetype]);
+          lowesttag := lower(caseptr);
+          highesttag := upper(caseptr);
+          stripsubrange(casetype);
+          if not (caseptr^.typ in
+             [subranges, ints, chars, bools, scalars, none]) then
+            warn(badcasetyp);
+          verifytoken(ofsym, nooferr);
+          latestvariant := 0;
+          tagmembers := highesttag - lowesttag + 1;
+          tagcount := 0;
+          size := startsize;
+          while token in
+                [comma, colon, lpar, semicolon, plus, minus, ident, nilsym,
+                intconst..stringconst] do
+            begin {parse a single variant}
+            if token in
+               [plus, minus, ident, nilsym, intconst..stringconst, comma,
+               colon, lpar] then
+              begin
+              latestlabel := 0;
+              onelabel;
+              while token in
+                    [plus, minus, ident, nilsym, intconst..stringconst,
+                    comma] do
+                begin
+                verifytoken(comma, nocommaerr);
+                onelabel;
+                end;
+              verifytoken(colon, nocolonerr);
+              verifytoken(lpar, nolparerr);
+              fieldlist(follow + [comma, colon, rpar], tagfield,
+                        latestlabel, latestvariant, size, f1);
+              f1ptr := ref(bigtable[f1]);
+              containsfile := containsfile or f1ptr^.containsfile;
+              f1ptr^.packedflag := packflag;
+              f1ptr^.bitaddress := packflag;
+              if f1ptr^.size > startsize then startsize := f1ptr^.size;
+              a := max(a, alignmentof(f1ptr, packflag));
+              latestvariant := f1;
+              verifytoken(rpar, norparerr);
+              end;
+            if token = semicolon then gettoken
+            else
+              verify([endsym, rpar], follow + [comma, colon],
+                     nosemiheaderr);
+            end;
+          firstvariant := latestvariant;
+          if tagmembers <> tagcount then warnnonstandard(badcasetags);
+          end;
+        size := roundpackedsize(startsize, packflag);
+        align := a;
+        end;
+      anyfile := oldany;
+      resulp := ref(bigtable[result]);
+      resulp^ := localresult;
+    end {fieldlist} ;
     {>>>}
 
 
@@ -13548,23 +13555,18 @@ procedure analys;
   {>>>}
 
     {<<<}
-    procedure enterstandardid (id: standardids; {key for std id}
-                               n: nametype; {kind of entry}
-                               l: addressrange; {length of the name}
-                               f: tableIndex {type if meaningful} );
-    { Make a name table entry for a standard identifier.  "id" specifies the
-      standard id, and the other vars give necessary data
-    }
+    procedure setId (id: standardids; n: nametype; len: addressrange; f: tableIndex);
+    { Make a name table entry for a standard identifier}
+
     var
-      i: integer; {intermediate check result}
+      i: integer;
 
     begin
       tabletop := tabletop + 1;
-
       i := sharedPtr^.standardidtable[id];
       keymap[i] := tabletop;
-      p := ref(bigtable[tabletop]);
 
+      p := ref(bigtable[tabletop]);
       with p^ do
         begin
         form := false;
@@ -13579,16 +13581,18 @@ procedure analys;
           if n <> boundid then
             begin
             namesdeclared := namesdeclared + 1;
-            if i > highestkey then highestkey := i;
+            if i > highestkey then 
+              highestkey := i;
             end;
 
         case n of
-          typename: typeindex := f;
+          typename: 
+            typeindex := f;
 
           varname, boundid:
             begin
             offset := display[level].blocksize;
-            length := l;
+            length := len;
             if n = varname then
               display[level].blocksize := display[level].blocksize + length;
             vartype := f;
@@ -13599,9 +13603,11 @@ procedure analys;
             varalloc := normalalloc;
             end;
 
-          directivename, standardproc, standardfunc: procid := id;
+          directivename, standardproc, standardfunc: 
+            procid := id;
 
-          constname: consttype := f;
+          constname: 
+            consttype := f;
           end;
 
         end;
@@ -13856,7 +13862,7 @@ procedure analys;
       end;
 
     { fake entry for bad boundid's, will be overwritten by next call }
-    enterstandardid (integerid, boundid, 0, nullboundindex);
+    setId (integerid, boundid, 0, nullboundindex);
     with display[displaytop] do
       namesdeclared := namesdeclared - 1;
 
@@ -13869,7 +13875,7 @@ procedure analys;
       align := intalign;
       end;
 
-    enterstandardid (integerid, typename, sharedPtr^.targetintsize, intindex);
+    setId (integerid, typename, sharedPtr^.targetintsize, intindex);
     {>>>}
     {<<<  define 'shortint' subrange}
     enterform (subranges, f, fptr);
@@ -13884,7 +13890,7 @@ procedure analys;
       parenttype := intindex;
       end;
 
-    enterstandardid (shortintid, typename, shorttargetintsize, shortintindex);
+    setId (shortintid, typename, shorttargetintsize, shortintindex);
     {>>>}
     {<<<  define dummy subrange for set building operations}
     enterform (subranges, f, fptr);
@@ -13909,7 +13915,7 @@ procedure analys;
       align := realalign;
       end;
 
-    enterstandardid (realid, typename, sharedPtr^.targetrealsize, realindex);
+    setId (realid, typename, sharedPtr^.targetrealsize, realindex);
     {>>>}
     {<<<  define 'double'}
     enterform (doubles, f, fptr);
@@ -13923,7 +13929,7 @@ procedure analys;
     if sharedPtr^.switcheverplus[doublereals] then
       doubleindex := realindex;
 
-    enterstandardid (doubleid, typename, doublesize, doubleindex);
+    setId (doubleid, typename, doublesize, doubleindex);
     {>>>}
 
     {<<<  define 'char'}
@@ -13935,7 +13941,7 @@ procedure analys;
       align := charalign;
       end;
 
-    enterstandardid (charid, typename, charsize, chartypeindex);
+    setId (charid, typename, charsize, chartypeindex);
     {>>>}
     {<<<  define 'boolean'}
     enterform (bools, f, fptr);
@@ -13946,7 +13952,7 @@ procedure analys;
       align := scalaralign;
       end;
 
-    enterstandardid (booleanid, typename, scalarsize, boolindex);
+    setId (booleanid, typename, scalarsize, boolindex);
     {>>>}
     {<<<  define 'text'}
     enterform (files, f, fptr);
@@ -13960,120 +13966,120 @@ procedure analys;
       filekey := maxint;
       end;
 
-    enterstandardid (textid, typename, sharedPtr^.ptrsize, textindex);
+    setId (textid, typename, sharedPtr^.ptrsize, textindex);
     {>>>}
 
     {<<<  define 'maxint'}
-    enterstandardid (maxintid, constname, 0, intindex);
+    setId (maxintid, constname, 0, intindex);
     p^.constvalue.representation := ints;
     p^.constvalue.intvalue := sharedPtr^.targetmaxint;
     p^.constvalue.negated := false;
     {>>>}
     {<<<  define 'minint'}
-    enterstandardid (minintid, constname, 0, intindex);
+    setId (minintid, constname, 0, intindex);
     p^.constvalue.representation := ints;
     p^.constvalue.intvalue := sharedPtr^.targetminint;
     p^.constvalue.negated := true;
     {>>>}
 
     {<<<  define 'true'}
-    enterstandardid (trueid, constname, 0, boolindex);
+    setId (trueid, constname, 0, boolindex);
     p^.constvalue.representation := ints;
     p^.constvalue.intvalue := ord(true);
     p^.constvalue.negated := false;
     {>>>}
     {<<<  define 'false'}
-    enterstandardid (falseid, constname, 0, boolindex);
+    setId (falseid, constname, 0, boolindex);
     p^.constvalue.representation := ints;
     p^.constvalue.intvalue := ord(false);
     p^.constvalue.negated := false;
     {>>>}
 
-    enterstandardid (writeid, standardproc, 0, 0);
-    enterstandardid (writelnid, standardproc, 0, 0);
-    enterstandardid (facosid, standardfunc, 0, 0);
-    enterstandardid (fasinid, standardfunc, 0, 0);
-    enterstandardid (fatanid, standardfunc, 0, 0);
-    enterstandardid (fatanhid, standardfunc, 0, 0);
-    enterstandardid (fcoshid, standardfunc, 0, 0);
-    enterstandardid (fetoxm1id, standardfunc, 0, 0);
-    enterstandardid (fgetexpid, standardfunc, 0, 0);
-    enterstandardid (fgetmanid, standardfunc, 0, 0);
-    enterstandardid (fintid, standardfunc, 0, 0);
-    enterstandardid (flog10id, standardfunc, 0, 0);
-    enterstandardid (flog2id, standardfunc, 0, 0);
-    enterstandardid (flognp1id, standardfunc, 0, 0);
-    enterstandardid (fmodid, standardfunc, 0, 0);
-    enterstandardid (fremid, standardfunc, 0, 0);
-    enterstandardid (fscaleid, standardfunc, 0, 0);
-    enterstandardid (fsgldivid, standardfunc, 0, 0);
-    enterstandardid (fsglmulid, standardfunc, 0, 0);
-    enterstandardid (fsinhid, standardfunc, 0, 0);
-    enterstandardid (ftanid, standardfunc, 0, 0);
-    enterstandardid (ftanhid, standardfunc, 0, 0);
-    enterstandardid (ftentoxid, standardfunc, 0, 0);
-    enterstandardid (ftwotoxid, standardfunc, 0, 0);
-    enterstandardid (fmovecrid, standardfunc, 0, 0);
-    enterstandardid (readfpcrid, standardfunc, 0, 0);
-    enterstandardid (snglid, standardfunc, 0, 0);
-    enterstandardid (dblid, standardfunc, 0, 0);
-    enterstandardid (sinid, standardfunc, 0, 0);
-    enterstandardid (cosid, standardfunc, 0, 0);
-    enterstandardid (expid, standardfunc, 0, 0);
-    enterstandardid (sqrtid, standardfunc, 0, 0);
-    enterstandardid (arctanid, standardfunc, 0, 0);
-    enterstandardid (lnid, standardfunc, 0, 0);
-    enterstandardid (oddid, standardfunc, 0, 0);
-    enterstandardid (absid, standardfunc, 0, 0);
-    enterstandardid (sqrid, standardfunc, 0, 0);
-    enterstandardid (truncid, standardfunc, 0, 0);
-    enterstandardid (roundid, standardfunc, 0, 0);
-    enterstandardid (ordid, standardfunc, 0, 0);
-    enterstandardid (chrid, standardfunc, 0, 0);
-    enterstandardid (succid, standardfunc, 0, 0);
-    enterstandardid (predid, standardfunc, 0, 0);
-    enterstandardid (eofid, standardfunc, 0, 0);
-    enterstandardid (eolnid, standardfunc, 0, 0);
-    enterstandardid (timeid, standardfunc, 0, 0);
-    enterstandardid (sizeid, standardfunc, 0, 0);
-    enterstandardid (bitsizeid, standardfunc, 0, 0);
-    enterstandardid (upperid, standardfunc, 0, 0);
-    enterstandardid (lowerid, standardfunc, 0, 0);
-    enterstandardid (loopholeid, standardfunc, 0, 0);
-    enterstandardid (refid, standardfunc, 0, 0);
-    enterstandardid (noioerrorid, standardproc, 0, 0);
-    enterstandardid (ioerrorid, standardfunc, 0, 0);
-    enterstandardid (iostatusid, standardfunc, 0, 0);
-    enterstandardid (copyid, standardfunc, 0, 0);
-    enterstandardid (concatid, standardfunc, 0, 0);
-    enterstandardid (lengthid, standardfunc, 0, 0);
-    enterstandardid (posid, standardfunc, 0, 0);
-    enterstandardid (seekid, standardproc, 0, 0);
-    enterstandardid (readid, standardproc, 0, 0);
-    enterstandardid (readlnid, standardproc, 0, 0);
-    enterstandardid (breakid, standardproc, 0, 0);
-    enterstandardid (newid, standardproc, 0, 0);
-    enterstandardid (disposeid, standardproc, 0, 0);
-    enterstandardid (packid, standardproc, 0, 9);
-    enterstandardid (unpackid, standardproc, 0, 0);
-    enterstandardid (putid, standardproc, 0, 0);
-    enterstandardid (pageid, standardproc, 0, 0);
-    enterstandardid (getid, standardproc, 0, 0);
-    enterstandardid (resetid, standardproc, 0, 0);
-    enterstandardid (rewriteid, standardproc, 0, 0);
-    enterstandardid (closeid, standardproc, 0, 0);
-    enterstandardid (deleteid, standardproc, 0, 0);
-    enterstandardid (renameid, standardproc, 0, 0);
-    enterstandardid (insertid, standardproc, 0, 0);
-    enterstandardid (strid, standardproc, 0, 0);
-    enterstandardid (valprocid, standardproc, 0, 0);
-    enterstandardid (deletestrid, standardproc, 0, 0);
-    enterstandardid (fsincosid, standardproc, 0, 0);
-    enterstandardid (setfpcrid, standardproc, 0, 0);
-    enterstandardid (forwardid, directivename, 0, 0);
-    enterstandardid (externalid, directivename, 0, 0);
-    enterstandardid (nonpascalid, directivename, 0, 0);
-    enterstandardid (interruptid, directivename, 0, 0);
+    setId (writeid, standardproc, 0, 0);
+    setId (writelnid, standardproc, 0, 0);
+    setId (facosid, standardfunc, 0, 0);
+    setId (fasinid, standardfunc, 0, 0);
+    setId (fatanid, standardfunc, 0, 0);
+    setId (fatanhid, standardfunc, 0, 0);
+    setId (fcoshid, standardfunc, 0, 0);
+    setId (fetoxm1id, standardfunc, 0, 0);
+    setId (fgetexpid, standardfunc, 0, 0);
+    setId (fgetmanid, standardfunc, 0, 0);
+    setId (fintid, standardfunc, 0, 0);
+    setId (flog10id, standardfunc, 0, 0);
+    setId (flog2id, standardfunc, 0, 0);
+    setId (flognp1id, standardfunc, 0, 0);
+    setId (fmodid, standardfunc, 0, 0);
+    setId (fremid, standardfunc, 0, 0);
+    setId (fscaleid, standardfunc, 0, 0);
+    setId (fsgldivid, standardfunc, 0, 0);
+    setId (fsglmulid, standardfunc, 0, 0);
+    setId (fsinhid, standardfunc, 0, 0);
+    setId (ftanid, standardfunc, 0, 0);
+    setId (ftanhid, standardfunc, 0, 0);
+    setId (ftentoxid, standardfunc, 0, 0);
+    setId (ftwotoxid, standardfunc, 0, 0);
+    setId (fmovecrid, standardfunc, 0, 0);
+    setId (readfpcrid, standardfunc, 0, 0);
+    setId (snglid, standardfunc, 0, 0);
+    setId (dblid, standardfunc, 0, 0);
+    setId (sinid, standardfunc, 0, 0);
+    setId (cosid, standardfunc, 0, 0);
+    setId (expid, standardfunc, 0, 0);
+    setId (sqrtid, standardfunc, 0, 0);
+    setId (arctanid, standardfunc, 0, 0);
+    setId (lnid, standardfunc, 0, 0);
+    setId (oddid, standardfunc, 0, 0);
+    setId (absid, standardfunc, 0, 0);
+    setId (sqrid, standardfunc, 0, 0);
+    setId (truncid, standardfunc, 0, 0);
+    setId (roundid, standardfunc, 0, 0);
+    setId (ordid, standardfunc, 0, 0);
+    setId (chrid, standardfunc, 0, 0);
+    setId (succid, standardfunc, 0, 0);
+    setId (predid, standardfunc, 0, 0);
+    setId (eofid, standardfunc, 0, 0);
+    setId (eolnid, standardfunc, 0, 0);
+    setId (timeid, standardfunc, 0, 0);
+    setId (sizeid, standardfunc, 0, 0);
+    setId (bitsizeid, standardfunc, 0, 0);
+    setId (upperid, standardfunc, 0, 0);
+    setId (lowerid, standardfunc, 0, 0);
+    setId (loopholeid, standardfunc, 0, 0);
+    setId (refid, standardfunc, 0, 0);
+    setId (noioerrorid, standardproc, 0, 0);
+    setId (ioerrorid, standardfunc, 0, 0);
+    setId (iostatusid, standardfunc, 0, 0);
+    setId (copyid, standardfunc, 0, 0);
+    setId (concatid, standardfunc, 0, 0);
+    setId (lengthid, standardfunc, 0, 0);
+    setId (posid, standardfunc, 0, 0);
+    setId (seekid, standardproc, 0, 0);
+    setId (readid, standardproc, 0, 0);
+    setId (readlnid, standardproc, 0, 0);
+    setId (breakid, standardproc, 0, 0);
+    setId (newid, standardproc, 0, 0);
+    setId (disposeid, standardproc, 0, 0);
+    setId (packid, standardproc, 0, 9);
+    setId (unpackid, standardproc, 0, 0);
+    setId (putid, standardproc, 0, 0);
+    setId (pageid, standardproc, 0, 0);
+    setId (getid, standardproc, 0, 0);
+    setId (resetid, standardproc, 0, 0);
+    setId (rewriteid, standardproc, 0, 0);
+    setId (closeid, standardproc, 0, 0);
+    setId (deleteid, standardproc, 0, 0);
+    setId (renameid, standardproc, 0, 0);
+    setId (insertid, standardproc, 0, 0);
+    setId (strid, standardproc, 0, 0);
+    setId (valprocid, standardproc, 0, 0);
+    setId (deletestrid, standardproc, 0, 0);
+    setId (fsincosid, standardproc, 0, 0);
+    setId (setfpcrid, standardproc, 0, 0);
+    setId (forwardid, directivename, 0, 0);
+    setId (externalid, directivename, 0, 0);
+    setId (nonpascalid, directivename, 0, 0);
+    setId (interruptid, directivename, 0, 0);
 
     {<<<  define noneindex for undef typenames}
     enterform (none, f, fptr);
@@ -14128,7 +14134,7 @@ procedure analys;
       constvalue := nilvalue.cvalue;
       end;
     {>>>}
-    {<<<  efine 'main' program}
+    {<<<  define 'main' program}
     p := ref(bigtable[0]);
     with p^ do
       begin
@@ -14146,19 +14152,18 @@ procedure analys;
     {>>>}
 
     enterblock(1, 0, 0);
-
     display[1].blocksize := display[0].blocksize;
     display[1].oldtabletop := tabletop;
     level := 1;
 
     {<<<  define 'output'}
-    enterstandardid(outputid, varname, sharedPtr^.ptrsize, textindex);
+    setId (outputid, varname, sharedPtr^.ptrsize, textindex);
     outputindex := tabletop;
     outputdeclared := false;
     {>>>}
     {<<<  define 'input'}
     sharedPtr^.inputoffset := display[level].blocksize;
-    enterstandardid(inputid, varname, sharedPtr^.ptrsize, textindex);
+    setId (inputid, varname, sharedPtr^.ptrsize, textindex);
     inputindex := tabletop;
     {>>>}
 
