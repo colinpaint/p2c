@@ -3344,7 +3344,7 @@ var
       if currentstmt.stmtno <> 0 then
         if currentstmt.stmtno <> 0 then
           genpseudo (stmtbrk, currentstmt.srcfileindx, 0, 0, 0,
-                     currentstmt.stmtno, 
+                     currentstmt.stmtno,
                      {** sign screwup *** abs(currentstmt.textline),}
                      currentstmt.textline,
                      ord(controlstmt) + ord(branchstmt) * 2 + ord(targetstmt) * 4);
@@ -3421,7 +3421,7 @@ var
       default: labelrange; {default label or 1 if is an error}
       errordefault: boolean; {true if default gives an error}
       casekey: keyindex; {key for case expression}
-      ptr1, ptr2: nodeptr; { to access nodes }
+      ptr1: nodeptr; { to access nodes }
       currentlabel: labelrange; { current case label for stmt block }
       reskey: keyindex; {result of compare for split cases}
       firstgrouprec: nodeindex; {first split group for the case}
@@ -3572,20 +3572,22 @@ var
         errordefault := (casedefptr = nil) and (sharedPtr^.switchcounters[rangecheck] > 0);
 
         { always need a default label }
-        if errordefault then default := newlabel
-        else if casedefptr = nil then default := getlabel(joinblock)
-        else default := getlabel(casedefptr);
+        if errordefault then
+         default := newlabel
+        else if casedefptr = nil then
+          default := getlabel(joinblock)
+        else default := getlabel (casedefptr);
 
         if errordefault and (elements = 0) then
-          genpseudo(caseerr, 0, 0, 0, 0, 0, 0, 0)
+          genpseudo (caseerr, 0, 0, 0, 0, 0, 0, 0)
         else if elements <> 0 then
           begin
           n := ref(bignodetable[selector]);
           relationcase := n^.relation;
-          walkvalue(selector, casekey, 0);
+          walkvalue (selector, casekey, 0);
           reskey := newkey;
           firstgrouprec := firstgroup;
-          casesplit(1, groupcount);
+          casesplit (1, groupcount);
           end
         end;
     end {walkcase} ;
@@ -5926,7 +5928,6 @@ type
 var
   locallabels: locallabelptr; { ptr to local label chain }
   templink: locallabelptr; { for disposing the local label links }
-  i: integer; {induction var for reading temps}
   temp: nodeindex; { place holder }
   lastblock: basicblockptr; { most recent block added to dfo chain }
   currentblock: basicblockptr; { current basic block }
@@ -6416,11 +6417,8 @@ var
     ptr, ptr1: nodeptr; {for access to bit map nodes}
     varisparam: boolean; {true if the var in question is a parameter}
     varoffset: addressrange; {location at varlev}
-    now, prev: nodeindex; {for walking read chain}
 
-
-  begin {killasreg}
-
+  begin
     ptr := ref(bignodetable[varp]);
     while ptr^.op = commaop do
       begin
@@ -6428,29 +6426,24 @@ var
       ptr := ref(bignodetable[varp]);
       end;
 
-      { Verify that operand is a variable.  Pushaddr also takes
-        structop, pushcvalue, call, unscall, callparam, unscallparam,
-        etc., which are ok but ignored here.
-      }
-
+    { Verify that operand is a variable.  Pushaddr also takes
+      structop, pushcvalue, call, unscall, callparam, unscallparam, etc., which are ok but ignored here }
     if (ptr^.op in [varop, unsvarop, newvarop, newunsvarop]) and
        (ptr^.oprnds[1] = level) then
       begin
       blocksin[1].written := true;
       varoffset := ptr^.oprnds[2];
-      ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
 
+      ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
       if ptr1^.action = copy then
         ptr1 := ref(bignodetable[ptr1^.directlink]);
-
       varisparam := (ptr1^.oprnds[1] = localparamnode);
 
-        { This hashes the variable's offset.  Really should be a
-          function call.  However, it would be called in several
-          high bandwidth places, and would produce an unneeded
-          speed penalty in this phase.  This code is replicated
-          in doreference, dodefine, initbuild and walk:indxnode.
-          }
+      { This hashes the variable's offset.  Really should be a
+        function call.  However, it would be called in several
+        high bandwidth places, and would produce an unneeded
+        speed penalty in this phase.  This code is replicated
+        in doreference, dodefine, initbuild and walk:indxnode }
       i := (varoffset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
       while ((regvars[i].offset <> varoffset) or
             (regvars[i].parameter <> varisparam)) and
@@ -6462,7 +6455,7 @@ var
         regvars[i].registercandidate := false;
         end;
       end;
-  end {killasreg} ;
+  end;
   {>>>}
   {<<<}
   procedure addpredsuccs(predblock, succblock: basicblockptr);
@@ -7336,22 +7329,6 @@ var
     p: nodeptr;      { used for access to root node}
     newop: operator; { new operator if node is changed}
 
-    {<<<}
-    procedure killvars (low, high: levelindex);
-    { We have been writing through a pointer, and some offsets are used as
-      special flags to describe what levels are killed.  This routine
-      actually does the killing.
-    }
-
-    var
-      n: nodeindex; {for tracing list of nodes}
-      p: nodeptr; {for access to nodes}
-      i: contextindex; {induction var}
-
-    begin
-    end; {killvars}
-    {>>>}
-
   begin
     while (newvarcount > 0) and (root <> 0) do
       begin
@@ -7492,7 +7469,7 @@ var
         j: contextindex; {induction var for context search}
         originallink: nodeindex; {points to formal parent of node}
         n1, n2: nodeindex; {pointers for tracing node list}
-        ptr, ptr2: nodeptr; {used for node access}
+        ptr: nodeptr; {used for node access}
         foundcopy: boolean; {true if copy found at this level}
 
 
@@ -10286,9 +10263,6 @@ var
         overflow: boolean; { true if runcount is short }
         start_deadcount: natural; {starting value of deadcount}
         runcount: unsignedint; { number of times for loop executes }
-        exitlabel: labelrange; { label assigne for loop exit }
-        indexaddr: addressrange; { offset of for induction var }
-        savedloopfactor: shortint; {saved value of current loop weight}
 
       begin
         start_deadcount := deadcount;
@@ -10509,63 +10483,61 @@ var
     }
     {>>>}
 
-      var
-        ptr: nodeptr; {to access stmt node}
-        p: nodeindex; {hold fn result till usable}
-        start_deadcount: natural; {deadcount at top of loop}
-        prevblock, {block preceding loop body}
-         exitblock, {block after loop body}
-         tailblock, {block trailing loop body}
-         loopbody: basicblockptr; {block containing loop body}
+    var
+      ptr: nodeptr; {to access stmt node}
+      p: nodeindex; {hold fn result till usable}
+      start_deadcount: natural; { deadcount at top of loop}
+      exitblock: basicblockptr; { block after loop body}
+      tailblock: basicblockptr; { block trailing loop body}
+      loopbody: basicblockptr;  { block containing loop body}
 
+    begin
+      start_deadcount := deadcount;
+      if gotodead = deadcount then
+        deadcode := false;
 
-      begin {buildloopstmt}
+      newblock(loopbody, currentblock, true);
+      with loopbody^ do
+        begin
+        clearop := true;
+        willexecute := true;
+        end;
 
-        start_deadcount := deadcount;
-        if gotodead = deadcount then deadcode := false;
+      clearcontext;
+      newblock (tailblock, loopbody, false);
+      newblock (exitblock, nil, false);
+      tailblock^.clearop := true;
+      currentblock := loopbody;
 
-        newblock(loopbody, currentblock, true);
-        with loopbody^ do
-          begin
-          clearop := true;
-          willexecute := true;
-          end;
-        clearcontext;
-        newblock(tailblock, loopbody, false);
-        newblock(exitblock, nil, false);
-        tailblock^.clearop := true;
-        currentblock := loopbody;
+      newstmt (thisstmt, loophdr);
+      getintfile;
 
-        newstmt(thisstmt, loophdr);
-        getintfile;
+      enterloop (loopbody);
+      pushloop (loopbody, exitblock);
+      this_loop^.looploop := true;
+      buildstmtlist (endloop, tailblock);
+      currentblock := tailblock;
+      { update control block dominate value to proper value }
+      currentblock^.dominates := context[contextsp].dominates;
+      addpredsuccs(currentblock, loopbody);
+      loopbody^.loophdr := true;
+      loopbody^.blocklabel := newlabel;
+      clearcontext;
+      newstmt (p, loopbothdr);
+      { tell bottom of loop where top is ( minus precode ) }
+      ptr := ref(bignodetable[p]);
+      ptr^.looptop := loopbody;
 
-        enterloop(loopbody);
-        pushloop(loopbody, exitblock);
-        this_loop^.looploop := true;
-        buildstmtlist(endloop, tailblock);
-        currentblock := tailblock;
-        { update control block dominate value to proper value }
-        currentblock^.dominates := context[contextsp].dominates;
-        addpredsuccs(currentblock, loopbody);
-        loopbody^.loophdr := true;
-        loopbody^.blocklabel := newlabel;
-        clearcontext;
-        newstmt(p, loopbothdr);
-        { tell bottom of loop where top is ( minus precode ) }
-        ptr := ref(bignodetable[p]);
-        ptr^.looptop := loopbody;
+      exitloop;
+      dead_exit (start_deadcount);
 
-        exitloop;
-        dead_exit(start_deadcount);
+      ptr^.has_break := this_loop^.break_found;
 
-        ptr^.has_break := this_loop^.break_found;
-
-        addpredsuccs(currentblock, exitblock);
-        currentblock := exitblock;
-        currentblock^.dominates := context[contextsp].dominates;
-        poploop;
-
-      end {buildloopstmt} ;
+      addpredsuccs (currentblock, exitblock);
+      currentblock := exitblock;
+      currentblock^.dominates := context[contextsp].dominates;
+      poploop;
+    end;
     {>>>}
     {<<<}
     procedure buildrptstmt;
@@ -10695,9 +10667,7 @@ var
 
       var
         ptr: nodeptr; {used to access stmt node}
-        tempthisstmt: nodeindex; { simulate time machine }
         withvar: nodeindex; { index of the varop being "withed"}
-        temp: nodeindex; { hold fn result till usable }
         endblock, { index to block at with end }
          withstmts: basicblockptr; { block containing with stmts }
         savedominate: boolean; { value of context's dominates field before
@@ -11069,12 +11039,9 @@ var
       is handled separately as it has an additional argument to choose the
       kind of system call.
     }
-
-      var
-        ptr: nodeptr; {for access to node}
-        temp: nodeindex; {hold fn result to usable}
-        tempthisstmt: nodeindex; {simulate time machine}
-
+    var
+      ptr: nodeptr; {for access to node}
+      temp: nodeindex; {hold fn result to usable}
 
       {<<<}
       procedure clobberinput;
@@ -11113,24 +11080,22 @@ var
         end {clobberinput} ;
       {>>>}
 
+    begin
+      newstmt (thisstmt, syscallhdr);
 
-      begin {buildsyscallstmt}
-        newstmt(thisstmt, syscallhdr);
-        getintfile;
-        ptr := ref(bignodetable[thisstmt]);
-        ptr^.expr2 := getintfileint;
-        {
-          We must produce the effect of doing a newvar on input if read
-          or readln were seen without a filevar present.
-        }
-        killinput := (ptr^.expr2 = ord(readid)) or
-                     (ptr^.expr2 = ord(readlnid));
-        getintfile;
-        temp := buildexpr;
-        ptr := ref(bignodetable[thisstmt]);
-        ptr^.expr1 := temp;
-        if killinput then clobberinput;
-      end {buildsyscallstmt} ;
+      getintfile;
+      ptr := ref(bignodetable[thisstmt]);
+      ptr^.expr2 := getintfileint;
+
+      { We must produce the effect of doing a newvar on input if read or readln were seen without a filevar present }
+      killinput := (ptr^.expr2 = ord(readid)) or (ptr^.expr2 = ord(readlnid));
+      getintfile;
+      temp := buildexpr;
+      ptr := ref(bignodetable[thisstmt]);
+      ptr^.expr1 := temp;
+      if killinput then
+        clobberinput;
+    end;
     {>>>}
     {<<<}
     procedure buildlbreak(onlyloop: boolean {only exit "loop" loop} );
@@ -11361,324 +11326,302 @@ procedure traverse;
   { Initialize structured constants (tables) and counters }
 
   var
-    i: integer; {induction var for initializing virtual memory}
-    j: 0..nodesperblock; { induction var so building ptrs }
     o: operator; {induction var for initializing map}
     t, t1: types; {induction vars for initializing maps}
     p: proctableindex; {induction for initializing referenced field}
 
     {<<<}
-      procedure map1;
-
+    procedure map1;
     { Initialize the map which takes input operators and types onto pseudocode.
       This is split into three routines to reduce the size of the code for
       each routine.
     }
+    begin {[s=2] Format two assignments per line}
+      map[indxchkop, ints] := indxchk;     map[rangechkop, ints] := rangechk;
+      map[cindxchkop, ints] := indxchk;    map[ownop, ints] := doown;
+      map[congruchkop, ints] := congruchk; map[levop, ints] := dolevel;
+      map[intop, ints] := doint;           map[originop, ints] := doorigin;
+      map[ptrop, ints] := doptr;           map[realop, ints] := doreal;
+      map[structop, ints] := dostruct;     map[moveop, ints] := movint;
+      map[moveop, reals] := movreal;       map[moveop, bools] := movint;
+      map[moveop, chars] := movint;        map[moveop, ptrs] := movptr;
+      map[moveop, scalars] := movint;      map[moveop, arrays] := movstruct;
+      map[moveop, fields] := movstruct;    map[moveop, sets] := movset;
+      map[moveop, strings] := movstr;      map[moveop, fptrs] := movptr;
+      map[moveop, words] := movint;        map[moveop, opaques] := movptr;
+      map[moveop, bytes] := movint;
+      map[moveop, stringliterals] := movstruct;
+      map[moveop, procs] := movptr;        map[cmoveop, arrays] := movcstruct;
+      map[movelit, words] := movlitint;    map[movelit, opaques] := movlitptr;
+      map[movelit, ints] := movlitint;     map[movelit, chars] := movlitint;
+      map[movelit, bools] := movlitint;    map[movelit, ptrs] := movlitptr;
+      map[movelit, scalars] := movlitint;  map[movelit, reals] := movlitreal;
+      map[movelit, fptrs] := movlitptr;    map[movelit, procs] := movlitptr;
+      map[movelit, bytes] := movlitint;    map[chrstrop, strings] := chrstr;
+      map[chrstrop, stringliterals] := chrstr;
+      map[arraystrop, strings] := arraystr;
+      map[arraystrop, stringliterals] := arraystr;
+      map[chrstrop, chars] := chrstr;      map[arraystrop, arrays] := arraystr;
+      map[chrstrop1, stringliterals] := chrstr;
+      map[arraystrop1, stringliterals] := arraystr;
+      map[chrstrop1, strings] := chrstr;
+      map[arraystrop1, strings] := arraystr;
+      map[plusop, ints] := addint;         map[plusop, ptrs] := addptr;
+      map[plusop, strings] := addstr;      map[plusop, reals] := addreal;
+      map[plusop, sets] := addset;         map[plusop, scalars] := addint;
+      map[minusop, ints] := subint;        map[minusop, scalars] := subint;
+      map[minusop, ptrs] := subptr;        map[minusop, reals] := subreal;
+      map[minusop, sets] := subset;        map[notop, bools] := compbool;
+      map[notop, ints] := compint;         map[notop, scalars] := compint;
+      map[inop, sets] := inset;            map[andop, ints] := andint;
+      map[andop, bools] := andint;         map[andop, scalars] := andint;
+      map[andop, ptrs] := andint;          map[orop, ints] := orint;
+      map[orop, bools] := orint;           map[orop, scalars] := orint;
+      map[orop, ptrs] := orint;            map[incop, ints] := incint;
+      map[decop, ints] := decint;          map[indxop, ints] := indx;
+      map[indrop, ints] := indxindr;       map[openarrayop, ints] := openarray;
+      map[filebufindrop, ints] := indxindr;
+      map[aindxop, ints] := aindx;         map[mulop, ints] := mulint;
+      map[mulop, reals] := mulreal;        map[mulop, sets] := mulset;
+      map[mulop, scalars] := mulint;       map[divop, scalars] := divint;
+      map[divop, ints] := divint;          map[stddivop, ints] := stddivint;
+      map[slashop, sets] := divset;        map[slashop, reals] := divreal;
+      map[quoop, ints] := getquo;          map[remop, ints] := getrem;
+      map[shiftlop, ints] := shiftlint;    map[pindxop, ints] := pindx;
+      map[paindxop, ints] := paindx;       map[eqop, procs] := eqptr;
+      map[eqop, strings] := eqstr;         map[eqop, ints] := eqint;
+      map[eqop, chars] := eqint;           map[eqop, bools] := eqint;
+      map[eqop, ptrs] := eqptr;            map[eqop, fptrs] := eqfptr;
+      map[eqop, scalars] := eqint;         map[eqop, reals] := eqreal;
+      map[eqop, sets] := eqset;            map[eqop, arrays] := eqstruct;
+      map[eqop, words] := eqint;           map[eqop, opaques] := eqptr;
+      map[eqop, bytes] := eqint;           map[neqop, words] := neqint;
+      map[neqop, opaques] := neqptr;       map[neqop, procs] := neqptr;
+      map[neqop, strings] := neqstr;       map[neqop, ints] := neqint;
+      map[neqop, chars] := neqint;         map[neqop, bools] := neqint;
+      map[neqop, ptrs] := neqptr;          map[neqop, fptrs] := neqfptr;
+      map[ptrchkop, ints] := ptrchk;       map[neqop, bytes] := neqint;
+      { new for 32k }                      map[kwoop, ints] := kwoint;
+      map[modop, ints] := modint;          map[stdmodop, ints] := stdmodint;
 
-
-        begin {[s=2] Format two assignments per line}
-          map[indxchkop, ints] := indxchk;     map[rangechkop, ints] := rangechk;
-          map[cindxchkop, ints] := indxchk;    map[ownop, ints] := doown;
-          map[congruchkop, ints] := congruchk; map[levop, ints] := dolevel;
-          map[intop, ints] := doint;           map[originop, ints] := doorigin;
-          map[ptrop, ints] := doptr;           map[realop, ints] := doreal;
-          map[structop, ints] := dostruct;     map[moveop, ints] := movint;
-          map[moveop, reals] := movreal;       map[moveop, bools] := movint;
-          map[moveop, chars] := movint;        map[moveop, ptrs] := movptr;
-          map[moveop, scalars] := movint;      map[moveop, arrays] := movstruct;
-          map[moveop, fields] := movstruct;    map[moveop, sets] := movset;
-          map[moveop, strings] := movstr;      map[moveop, fptrs] := movptr;
-          map[moveop, words] := movint;        map[moveop, opaques] := movptr;
-          map[moveop, bytes] := movint;
-          map[moveop, stringliterals] := movstruct;
-          map[moveop, procs] := movptr;        map[cmoveop, arrays] := movcstruct;
-          map[movelit, words] := movlitint;    map[movelit, opaques] := movlitptr;
-          map[movelit, ints] := movlitint;     map[movelit, chars] := movlitint;
-          map[movelit, bools] := movlitint;    map[movelit, ptrs] := movlitptr;
-          map[movelit, scalars] := movlitint;  map[movelit, reals] := movlitreal;
-          map[movelit, fptrs] := movlitptr;    map[movelit, procs] := movlitptr;
-          map[movelit, bytes] := movlitint;    map[chrstrop, strings] := chrstr;
-          map[chrstrop, stringliterals] := chrstr;
-          map[arraystrop, strings] := arraystr;
-          map[arraystrop, stringliterals] := arraystr;
-          map[chrstrop, chars] := chrstr;      map[arraystrop, arrays] := arraystr;
-          map[chrstrop1, stringliterals] := chrstr;
-          map[arraystrop1, stringliterals] := arraystr;
-          map[chrstrop1, strings] := chrstr;
-          map[arraystrop1, strings] := arraystr;
-          map[plusop, ints] := addint;         map[plusop, ptrs] := addptr;
-          map[plusop, strings] := addstr;      map[plusop, reals] := addreal;
-          map[plusop, sets] := addset;         map[plusop, scalars] := addint;
-          map[minusop, ints] := subint;        map[minusop, scalars] := subint;
-          map[minusop, ptrs] := subptr;        map[minusop, reals] := subreal;
-          map[minusop, sets] := subset;        map[notop, bools] := compbool;
-          map[notop, ints] := compint;         map[notop, scalars] := compint;
-          map[inop, sets] := inset;            map[andop, ints] := andint;
-          map[andop, bools] := andint;         map[andop, scalars] := andint;
-          map[andop, ptrs] := andint;          map[orop, ints] := orint;
-          map[orop, bools] := orint;           map[orop, scalars] := orint;
-          map[orop, ptrs] := orint;            map[incop, ints] := incint;
-          map[decop, ints] := decint;          map[indxop, ints] := indx;
-          map[indrop, ints] := indxindr;       map[openarrayop, ints] := openarray;
-          map[filebufindrop, ints] := indxindr;
-          map[aindxop, ints] := aindx;         map[mulop, ints] := mulint;
-          map[mulop, reals] := mulreal;        map[mulop, sets] := mulset;
-          map[mulop, scalars] := mulint;       map[divop, scalars] := divint;
-          map[divop, ints] := divint;          map[stddivop, ints] := stddivint;
-          map[slashop, sets] := divset;        map[slashop, reals] := divreal;
-          map[quoop, ints] := getquo;          map[remop, ints] := getrem;
-          map[shiftlop, ints] := shiftlint;    map[pindxop, ints] := pindx;
-          map[paindxop, ints] := paindx;       map[eqop, procs] := eqptr;
-          map[eqop, strings] := eqstr;         map[eqop, ints] := eqint;
-          map[eqop, chars] := eqint;           map[eqop, bools] := eqint;
-          map[eqop, ptrs] := eqptr;            map[eqop, fptrs] := eqfptr;
-          map[eqop, scalars] := eqint;         map[eqop, reals] := eqreal;
-          map[eqop, sets] := eqset;            map[eqop, arrays] := eqstruct;
-          map[eqop, words] := eqint;           map[eqop, opaques] := eqptr;
-          map[eqop, bytes] := eqint;           map[neqop, words] := neqint;
-          map[neqop, opaques] := neqptr;       map[neqop, procs] := neqptr;
-          map[neqop, strings] := neqstr;       map[neqop, ints] := neqint;
-          map[neqop, chars] := neqint;         map[neqop, bools] := neqint;
-          map[neqop, ptrs] := neqptr;          map[neqop, fptrs] := neqfptr;
-          map[ptrchkop, ints] := ptrchk;       map[neqop, bytes] := neqint;
-          { new for 32k }                      map[kwoop, ints] := kwoint;
-          map[modop, ints] := modint;          map[stdmodop, ints] := stdmodint;
-
-        end; {[s=1] map1}
+    end; {[s=1] map1}
     {>>>}
     {<<<}
-      procedure map2;
+    procedure map2;
 
-    { More map initialization.
-    }
-
-
-        begin {[s=2] Format two assignments per line}
-          map[neqop, scalars] := neqint;       map[neqop, reals] := neqreal;
-          map[neqop, sets] := neqset;          map[neqop, arrays] := neqstruct;
-          map[lssop, strings] := lssstr;       map[lssop, ints] := lssint;
-          map[lssop, chars] := lssint;         map[lssop, bools] := lssint;
-          map[lssop, ptrs] := lssptr;          map[lssop, scalars] := lssint;
-          map[lssop, reals] := lssreal;        map[lssop, arrays] := lssstruct;
-          map[gtrop, ints] := gtrint;          map[gtrop, strings] := gtrstr;
-          map[gtrop, chars] := gtrint;         map[gtrop, bools] := gtrint;
-          map[gtrop, ptrs] := gtrptr;          map[gtrop, scalars] := gtrint;
-          map[gtrop, reals] := gtrreal;        map[gtrop, arrays] := gtrstruct;
-          map[geqop, strings] := geqstr;       map[geqop, ints] := geqint;
-          map[geqop, chars] := geqint;         map[geqop, bools] := geqint;
-          map[geqop, ptrs] := geqptr;          map[geqop, scalars] := geqint;
-          map[geqop, reals] := geqreal;        map[geqop, sets] := geqset;
-          map[geqop, arrays] := geqstruct;     map[leqop, strings] := leqstr;
-          map[leqop, ints] := leqint;          map[leqop, chars] := leqint;
-          map[leqop, bools] := leqint;         map[leqop, ptrs] := leqptr;
-          map[leqop, scalars] := leqint;       map[leqop, reals] := leqreal;
-          map[leqop, sets] := leqset;          map[leqop, arrays] := leqstruct;
-          map[eqlit, procs] := eqlitptr;       map[eqlit, ints] := eqlitint;
-          map[eqlit, reals] := eqlitreal;      map[eqlit, chars] := eqlitint;
-          map[eqlit, ptrs] := eqlitptr;        map[eqlit, scalars] := eqlitint;
-          map[eqlit, bools] := eqlitint;       map[eqlit, fptrs] := eqlitfptr;
-          map[eqlit, words] := eqlitint;       map[eqlit, opaques] := eqlitptr;
-          map[eqlit, bytes] := eqlitint;       map[neqlit, words] := neqlitint;
-          map[neqlit, opaques] := neqlitptr;   map[neqlit, ints] := neqlitint;
-          map[neqlit, procs] := neqlitptr;     map[neqlit, reals] := neqlitreal;
-          map[neqlit, chars] := neqlitint;     map[neqlit, ptrs] := neqlitptr;
-          map[neqlit, scalars] := neqlitint;   map[neqlit, bools] := neqlitint;
-          map[neqlit, fptrs] := neqlitfptr;    map[neqlit, bytes] := neqlitint;
-          map[lsslit, ints] := lsslitint;      map[lsslit, reals] := lsslitreal;
-          map[lsslit, chars] := lsslitint;     map[lsslit, ptrs] := lsslitptr;
-          map[lsslit, scalars] := lsslitint;   map[lsslit, bools] := lsslitint;
-          map[gtrlit, ints] := gtrlitint;      map[gtrlit, reals] := gtrlitreal;
-          map[gtrlit, chars] := gtrlitint;     map[gtrlit, ptrs] := gtrlitptr;
-          map[gtrlit, scalars] := gtrlitint;   map[gtrlit, bools] := gtrlitint;
-          map[leqlit, ints] := leqlitint;      map[leqlit, reals] := leqlitreal;
-          map[leqlit, chars] := leqlitint;     map[leqlit, ptrs] := leqlitptr;
-          map[leqlit, scalars] := leqlitint;   map[leqlit, bools] := leqlitint;
-        end; {[s=1] map2}
+    begin {[s=2] Format two assignments per line}
+      map[neqop, scalars] := neqint;       map[neqop, reals] := neqreal;
+      map[neqop, sets] := neqset;          map[neqop, arrays] := neqstruct;
+      map[lssop, strings] := lssstr;       map[lssop, ints] := lssint;
+      map[lssop, chars] := lssint;         map[lssop, bools] := lssint;
+      map[lssop, ptrs] := lssptr;          map[lssop, scalars] := lssint;
+      map[lssop, reals] := lssreal;        map[lssop, arrays] := lssstruct;
+      map[gtrop, ints] := gtrint;          map[gtrop, strings] := gtrstr;
+      map[gtrop, chars] := gtrint;         map[gtrop, bools] := gtrint;
+      map[gtrop, ptrs] := gtrptr;          map[gtrop, scalars] := gtrint;
+      map[gtrop, reals] := gtrreal;        map[gtrop, arrays] := gtrstruct;
+      map[geqop, strings] := geqstr;       map[geqop, ints] := geqint;
+      map[geqop, chars] := geqint;         map[geqop, bools] := geqint;
+      map[geqop, ptrs] := geqptr;          map[geqop, scalars] := geqint;
+      map[geqop, reals] := geqreal;        map[geqop, sets] := geqset;
+      map[geqop, arrays] := geqstruct;     map[leqop, strings] := leqstr;
+      map[leqop, ints] := leqint;          map[leqop, chars] := leqint;
+      map[leqop, bools] := leqint;         map[leqop, ptrs] := leqptr;
+      map[leqop, scalars] := leqint;       map[leqop, reals] := leqreal;
+      map[leqop, sets] := leqset;          map[leqop, arrays] := leqstruct;
+      map[eqlit, procs] := eqlitptr;       map[eqlit, ints] := eqlitint;
+      map[eqlit, reals] := eqlitreal;      map[eqlit, chars] := eqlitint;
+      map[eqlit, ptrs] := eqlitptr;        map[eqlit, scalars] := eqlitint;
+      map[eqlit, bools] := eqlitint;       map[eqlit, fptrs] := eqlitfptr;
+      map[eqlit, words] := eqlitint;       map[eqlit, opaques] := eqlitptr;
+      map[eqlit, bytes] := eqlitint;       map[neqlit, words] := neqlitint;
+      map[neqlit, opaques] := neqlitptr;   map[neqlit, ints] := neqlitint;
+      map[neqlit, procs] := neqlitptr;     map[neqlit, reals] := neqlitreal;
+      map[neqlit, chars] := neqlitint;     map[neqlit, ptrs] := neqlitptr;
+      map[neqlit, scalars] := neqlitint;   map[neqlit, bools] := neqlitint;
+      map[neqlit, fptrs] := neqlitfptr;    map[neqlit, bytes] := neqlitint;
+      map[lsslit, ints] := lsslitint;      map[lsslit, reals] := lsslitreal;
+      map[lsslit, chars] := lsslitint;     map[lsslit, ptrs] := lsslitptr;
+      map[lsslit, scalars] := lsslitint;   map[lsslit, bools] := lsslitint;
+      map[gtrlit, ints] := gtrlitint;      map[gtrlit, reals] := gtrlitreal;
+      map[gtrlit, chars] := gtrlitint;     map[gtrlit, ptrs] := gtrlitptr;
+      map[gtrlit, scalars] := gtrlitint;   map[gtrlit, bools] := gtrlitint;
+      map[leqlit, ints] := leqlitint;      map[leqlit, reals] := leqlitreal;
+      map[leqlit, chars] := leqlitint;     map[leqlit, ptrs] := leqlitptr;
+      map[leqlit, scalars] := leqlitint;   map[leqlit, bools] := leqlitint;
+    end; {[s=1] map2}
     {>>>}
     {<<<}
-      procedure map3;
+    procedure map3;
 
-    { Yet more map initialization.
-    }
+    var
+      i: types; {induction var}
 
-        var
-          i: types; {induction var}
+    begin {[s=2] Format two assignments per line}
+      map[wr, files] := wrbin;             map[rd, files] := rdbin;
+      map[geqlit, ints] := geqlitint;      map[geqlit, reals] := geqlitreal;
+      map[geqlit, chars] := geqlitint;     map[geqlit, ptrs] := geqlitptr;
+      map[geqlit, scalars] := geqlitint;   map[geqlit, bools] := geqlitint;
+      map[pushaddr, none] := pshaddr;      map[pushproc, none] := pshproc;
+      map[pushaddr, strings] := pshaddr;   map[pushaddr, ints] := pshaddr;
+      map[pushaddr, arrays] := pshaddr;    map[pushaddr, ptrs] := pshaddr;
+      map[pushaddr, fields] := pshaddr;    map[pushaddr, chars] := pshaddr;
+      map[pushaddr, reals] := pshaddr;     map[pushaddr, scalars] := pshaddr;
+      map[pushaddr, bools] := pshaddr;     map[pushaddr, sets] := pshaddr;
+      map[pushaddr, files] := pshaddr;     map[pushaddr, opaques] := pshaddr;
+      map[pushaddr, words] := pshaddr;     map[pushaddr, bytes] := pshaddr;
+      map[pushaddr, conformantarrays] := pshaddr;
+      map[pushaddr, stringliterals] := pshaddr;
+      map[pushaddr, procs] := pshaddr;     map[pushaddr, flexarrays] := pshaddr;
+      map[pushstraddr, strings] := pshstraddr;
+      map[pushlitvalue, procs] := pshlitptr;
+      map[pushlitvalue, bools] := pshlitint;
+      map[pushlitvalue, chars] := pshlitint;
+      map[pushlitvalue, scalars] := pshlitint;
+      map[pushlitvalue, ptrs] := pshlitptr;
+      map[pushlitvalue, fptrs] := pshlitfptr;
+      map[pushlitvalue, ints] := pshlitint;
+      map[pushlitvalue, bytes] := pshlitint;
+      map[pushlitvalue, reals] := pshlitreal;
+      map[defforindexop, ints] := defforindex;
+      map[defforlitindexop, ints] := defforlitindex;
+      map[defunsforindexop, ints] := defunsforindex;
+      map[defunsforlitindexop, ints] := defunsforlitindex;
+      map[forupchkop, ints] := forupchk;   map[fordnchkop, ints] := fordnchk;
+      map[forerrchkop, ints] := forerrchk; map[pushfinal, ints] := pshint;
+      map[pushvalue, stringliterals] := pshstruct;
+      map[pushvalue, procs] := pshptr;     map[pushvalue, opaques] := pshptr;
+      map[pushvalue, ints] := pshint;      map[pushvalue, reals] := pshreal;
+      map[pushvalue, chars] := pshint;     map[pushvalue, ptrs] := pshptr;
+      map[pushvalue, scalars] := pshint;   map[pushvalue, arrays] := pshstruct;
+      map[pushvalue, fields] := pshstruct; map[pushvalue, sets] := pshset;
+      map[pushvalue, bools] := pshint;     map[pushvalue, strings] := pshstr;
+      map[pushvalue, fptrs] := pshptr;     map[pushvalue, bytes] := pshint;
+      map[pushvalue, words] := pshint;     map[pushvalue, doubles] := pshreal;
 
+      map[pushcvalue, stringliterals] := pshstruct;
+      map[pushcvalue, procs] := pshptr;    map[pushcvalue, opaques] := pshptr;
+      map[pushcvalue, ints] := pshint;     map[pushcvalue, reals] := pshreal;
+      map[pushcvalue, chars] := pshint;    map[pushcvalue, ptrs] := pshptr;
+      map[pushcvalue, scalars] := pshint;  map[pushcvalue, arrays] := pshstruct;
+      map[pushcvalue, fields] := pshstruct;
+      map[pushcvalue, sets] := pshset;     map[pushcvalue, bools] := pshint;
+      map[pushcvalue, strings] := pshstr;  map[pushcvalue, fptrs] := pshptr;
+      map[pushcvalue, bytes] := pshint;    map[pushcvalue, words] := pshint;
+      map[pushcvalue, doubles] := pshreal;
 
-        begin {[s=2] Format two assignments per line}
-          map[wr, files] := wrbin;             map[rd, files] := rdbin;
-          map[geqlit, ints] := geqlitint;      map[geqlit, reals] := geqlitreal;
-          map[geqlit, chars] := geqlitint;     map[geqlit, ptrs] := geqlitptr;
-          map[geqlit, scalars] := geqlitint;   map[geqlit, bools] := geqlitint;
-          map[pushaddr, none] := pshaddr;      map[pushproc, none] := pshproc;
-          map[pushaddr, strings] := pshaddr;   map[pushaddr, ints] := pshaddr;
-          map[pushaddr, arrays] := pshaddr;    map[pushaddr, ptrs] := pshaddr;
-          map[pushaddr, fields] := pshaddr;    map[pushaddr, chars] := pshaddr;
-          map[pushaddr, reals] := pshaddr;     map[pushaddr, scalars] := pshaddr;
-          map[pushaddr, bools] := pshaddr;     map[pushaddr, sets] := pshaddr;
-          map[pushaddr, files] := pshaddr;     map[pushaddr, opaques] := pshaddr;
-          map[pushaddr, words] := pshaddr;     map[pushaddr, bytes] := pshaddr;
-          map[pushaddr, conformantarrays] := pshaddr;
-          map[pushaddr, stringliterals] := pshaddr;
-          map[pushaddr, procs] := pshaddr;     map[pushaddr, flexarrays] := pshaddr;
-          map[pushstraddr, strings] := pshstraddr;
-          map[pushlitvalue, procs] := pshlitptr;
-          map[pushlitvalue, bools] := pshlitint;
-          map[pushlitvalue, chars] := pshlitint;
-          map[pushlitvalue, scalars] := pshlitint;
-          map[pushlitvalue, ptrs] := pshlitptr;
-          map[pushlitvalue, fptrs] := pshlitfptr;
-          map[pushlitvalue, ints] := pshlitint;
-          map[pushlitvalue, bytes] := pshlitint;
-          map[pushlitvalue, reals] := pshlitreal;
-          map[defforindexop, ints] := defforindex;
-          map[defforlitindexop, ints] := defforlitindex;
-          map[defunsforindexop, ints] := defunsforindex;
-          map[defunsforlitindexop, ints] := defunsforlitindex;
-          map[forupchkop, ints] := forupchk;   map[fordnchkop, ints] := fordnchk;
-          map[forerrchkop, ints] := forerrchk; map[pushfinal, ints] := pshint;
-          map[pushvalue, stringliterals] := pshstruct;
-          map[pushvalue, procs] := pshptr;     map[pushvalue, opaques] := pshptr;
-          map[pushvalue, ints] := pshint;      map[pushvalue, reals] := pshreal;
-          map[pushvalue, chars] := pshint;     map[pushvalue, ptrs] := pshptr;
-          map[pushvalue, scalars] := pshint;   map[pushvalue, arrays] := pshstruct;
-          map[pushvalue, fields] := pshstruct; map[pushvalue, sets] := pshset;
-          map[pushvalue, bools] := pshint;     map[pushvalue, strings] := pshstr;
-          map[pushvalue, fptrs] := pshptr;     map[pushvalue, bytes] := pshint;
-          map[pushvalue, words] := pshint;     map[pushvalue, doubles] := pshreal;
+      map[bldfmt, none] := fmt;            map[wr, ints] := wrint;
+      map[wr, reals] := wrreal;            map[wr, chars] := wrchar;
+      map[wr, arrays] := wrst;             map[wr, bools] := wrbool;
+      map[wr, strings] := wrxstr;          map[rd, ints] := rdint;
+      map[rd, reals] := rdreal;            map[rd, chars] := rdchar;
+      map[rd, arrays] := rdst;             map[rd, strings] := rdxstr;
+      map[addrop, opaques] := addr;        map[addrop, words] := addr;
+      map[addrop, bytes] := addr;          map[addrop, ptrs] := addr;
+      map[addrop, fptrs] := addr;          map[addrop, procs] := addr;
+      map[negop, scalars] := negint;       map[negop, ints] := negint;
+      map[negop, ptrs] := negint;          map[negop, reals] := negreal;
+      map[sysfn, ints] := sysfnint;        map[sysfn, chars] := sysfnint;
+      map[sysfn, bools] := sysfnint;       map[sysfn, scalars] := sysfnint;
+      map[sysfn, reals] := sysfnreal;      map[sysfn, ptrs] := sysfnint;
+      map[sysfn, strings] := sysfnstring;  map[float, ints] := flt;
+      map[float1, ints] := flt;            map[float_double, ints] := flt;
+      map[real_to_dbl, reals] := cvtrd;    map[dbl_to_real, doubles] := cvtdr;
+      map[definelazyop, files] := definelazy;
+      map[setbinfileop, files] := setbinfile;
+      map[setfileop, none] := setfile;
+      map[closerangeop, none] := closerange;
 
-          map[pushcvalue, stringliterals] := pshstruct;
-          map[pushcvalue, procs] := pshptr;    map[pushcvalue, opaques] := pshptr;
-          map[pushcvalue, ints] := pshint;     map[pushcvalue, reals] := pshreal;
-          map[pushcvalue, chars] := pshint;    map[pushcvalue, ptrs] := pshptr;
-          map[pushcvalue, scalars] := pshint;  map[pushcvalue, arrays] := pshstruct;
-          map[pushcvalue, fields] := pshstruct;
-          map[pushcvalue, sets] := pshset;     map[pushcvalue, bools] := pshint;
-          map[pushcvalue, strings] := pshstr;  map[pushcvalue, fptrs] := pshptr;
-          map[pushcvalue, bytes] := pshint;    map[pushcvalue, words] := pshint;
-          map[pushcvalue, doubles] := pshreal;
+      { Map entries for doubles }
 
-          map[bldfmt, none] := fmt;            map[wr, ints] := wrint;
-          map[wr, reals] := wrreal;            map[wr, chars] := wrchar;
-          map[wr, arrays] := wrst;             map[wr, bools] := wrbool;
-          map[wr, strings] := wrxstr;          map[rd, ints] := rdint;
-          map[rd, reals] := rdreal;            map[rd, chars] := rdchar;
-          map[rd, arrays] := rdst;             map[rd, strings] := rdxstr;
-          map[addrop, opaques] := addr;        map[addrop, words] := addr;
-          map[addrop, bytes] := addr;          map[addrop, ptrs] := addr;
-          map[addrop, fptrs] := addr;          map[addrop, procs] := addr;
-          map[negop, scalars] := negint;       map[negop, ints] := negint;
-          map[negop, ptrs] := negint;          map[negop, reals] := negreal;
-          map[sysfn, ints] := sysfnint;        map[sysfn, chars] := sysfnint;
-          map[sysfn, bools] := sysfnint;       map[sysfn, scalars] := sysfnint;
-          map[sysfn, reals] := sysfnreal;      map[sysfn, ptrs] := sysfnint;
-          map[sysfn, strings] := sysfnstring;  map[float, ints] := flt;
-          map[float1, ints] := flt;            map[float_double, ints] := flt;
-          map[real_to_dbl, reals] := cvtrd;    map[dbl_to_real, doubles] := cvtdr;
-          map[definelazyop, files] := definelazy;
-          map[setbinfileop, files] := setbinfile;
-          map[setfileop, none] := setfile;
-          map[closerangeop, none] := closerange;
+      map[moveop, doubles] := movreal;     map[movelit, doubles] := movlitreal;
+      map[plusop, doubles] := addreal;     map[minusop, doubles] := subreal;
+      map[mulop, doubles] := mulreal;      map[slashop, doubles] := divreal;
+      map[eqop, doubles] := eqreal;        map[neqop, doubles] := neqreal;
+      map[lssop, doubles] := lssreal;      map[gtrop, doubles] := gtrreal;
+      map[geqop, doubles] := geqreal;      map[leqop, doubles] := leqreal;
+      map[eqlit, doubles] := eqlitreal;    map[neqlit, doubles] := neqlitreal;
+      map[lsslit, doubles] := lsslitreal;  map[gtrlit, doubles] := gtrlitreal;
+      map[leqlit, doubles] := leqlitreal;  map[geqlit, doubles] := geqlitreal;
+      map[pushaddr, doubles] := pshaddr;
+      map[pushlitvalue, doubles] := pshlitreal;
+      map[wr, doubles] := wrreal;          map[rd, doubles] := rdreal;
+      map[negop, doubles] := negreal;      map[sysfn, doubles] := sysfnreal;
 
-          { Map entries for doubles }
-
-          map[moveop, doubles] := movreal;     map[movelit, doubles] := movlitreal;
-          map[plusop, doubles] := addreal;     map[minusop, doubles] := subreal;
-          map[mulop, doubles] := mulreal;      map[slashop, doubles] := divreal;
-          map[eqop, doubles] := eqreal;        map[neqop, doubles] := neqreal;
-          map[lssop, doubles] := lssreal;      map[gtrop, doubles] := gtrreal;
-          map[geqop, doubles] := geqreal;      map[leqop, doubles] := leqreal;
-          map[eqlit, doubles] := eqlitreal;    map[neqlit, doubles] := neqlitreal;
-          map[lsslit, doubles] := lsslitreal;  map[gtrlit, doubles] := gtrlitreal;
-          map[leqlit, doubles] := leqlitreal;  map[geqlit, doubles] := geqlitreal;
-          map[pushaddr, doubles] := pshaddr;
-          map[pushlitvalue, doubles] := pshlitreal;
-          map[wr, doubles] := wrreal;          map[rd, doubles] := rdreal;
-          map[negop, doubles] := negreal;      map[sysfn, doubles] := sysfnreal;
-
-          for i := subranges to none do map[loopholeop, i] := loopholefn;
-          for i := subranges to none do map[dummyargop, i] := dummyarg;
-          for i := subranges to none do map[dummyarg2op, i] := dummyarg2;
-        end; {[s=1] map3}
+      for i := subranges to none do map[loopholeop, i] := loopholefn;
+      for i := subranges to none do map[dummyargop, i] := dummyarg;
+      for i := subranges to none do map[dummyarg2op, i] := dummyarg2;
+    end; {[s=1] map3}
     {>>>}
     {<<<}
-      procedure map4;
+    procedure map4;
+    { Initialize operators used for C }
 
-    { Initialize operators used for C
-    }
-
-        var
-          i: types; {induction var}
-
-
-        begin {[s=2] Format two assignments per line}
-          map[addeqop, ints] := addint;        map[addeqop, reals] := addreal;
-          map[addeqop, ptrs] := addptr;        map[andeqop, ints] := andint;
-          map[addeqop, scalars] := addint;     map[castfptrop, ints] := castintfptr;
-          map[castfptrop, ptrs] := castintfptr; {***hmmm...***}
-          map[castintop, ptrs] := castptrint;  map[castintop, ints] := castint;
-          map[castintop, fptrs] := castfptrint;
-          map[castintop, reals] := castrealint;
-          map[castptrop, ints] := castintptr;  map[castptrop, ptrs] := castptr;
-          map[castrealop, ints] := flt;        map[castrealop, reals] := castreal;
-          map[compop, ints] := compint;        map[daddop, none] := dataadd;
-          map[daddrop, none] := dataaddr;      map[dendop, none] := dataend;
-          map[dfaddrop, none] := datafaddr;    map[dfieldop, none] := datafield;
-          map[dfillop, none] := datafill;      map[dintop, none] := dataint;
-          map[diveqop, ints] := getquo;        map[diveqop, reals] := divreal;
-          map[diveqop, scalars] := getquo;     map[drealop, none] := datareal;
-          map[dstartop, none] := datastart;    map[dstoreop, none] := datastore;
-          map[dstructop, none] := datastruct;  map[dsubop, none] := datasub;
-          map[extop, none] := bad;             map[fptrop, ints] := dofptr;
-          map[modeqop, ints] := getrem;        map[modeqop, scalars] := getrem;
-          map[muleqop, ints] := mulint;        map[muleqop, reals] := mulreal;
-          map[muleqop, scalars] := mulint;     map[oreqop, scalars] := orint;
-          map[oreqop, ints] := orint;          map[postincop, ints] := postint;
-          map[postincop, scalars] := postint;  map[postincop, reals] := postreal;
-          map[postincop, ptrs] := postptr;     map[preincop, ptrs] := preincptr;
-          map[pushfptr, fptrs] := pshfptr;     map[pushret, ptrs] := pshretptr;
-          map[jumpvfuncop, none] := jumpvfunc; map[jumpvfuncop, ints] := jumpvfunc;
-          map[returnop, ints] := returnint;    map[returnop, reals] := returnreal;
-          map[returnop, ptrs] := returnptr;    map[returnop, fptrs] := returnfptr;
-          map[returnop, fields] := returnstruct;
-          map[returnop, stringliterals] := returnstruct;
-          map[returnop, chars] := returnint;   map[returnop, bools] := returnint;
-          map[returnop, scalars] := returnint;
-          map[returnop, strings] := returnstruct;
-          map[returnop, words] := returnint;   map[returnop, bytes] := returnint;
-          map[returnop, procs] := returnfptr;  map[returnop, doubles] := returnreal;
-          map[returnop, arrays] := returnstruct;
-          map[returnop, sets] := returnstruct; map[returnop, opaques] := returnptr;
-          map[shiftleqop, scalars] := shiftlint;
-          map[shiftleqop, ints] := shiftlint;  map[shiftreqop, ints] := shiftrint;
-          map[shiftreqop, scalars] := shiftrint;
-          map[shiftrop, scalars] := shiftrint; map[shiftrop, ints] := shiftrint;
-          map[subeqop, ints] := subint;        map[subeqop, scalars] := subint;
-          map[subeqop, reals] := subreal;      map[subeqop, ptrs] := subptr;
-          map[tempop, ints] := regtemp;        map[tempop, scalars] := regtemp;
-          map[tempop, ptrs] := ptrtemp;        map[tempop, reals] := realtemp;
-          map[tempop, fptrs] := ptrtemp;       map[xoreqop, scalars] := xorint;
-          map[xoreqop, ints] := xorint;        map[xorop, ints] := xorint;
-          map[xorop, scalars] := xorint;
-        end; {[s=1] map4}
+    begin {[s=2] Format two assignments per line}
+      map[addeqop, ints] := addint;        map[addeqop, reals] := addreal;
+      map[addeqop, ptrs] := addptr;        map[andeqop, ints] := andint;
+      map[addeqop, scalars] := addint;     map[castfptrop, ints] := castintfptr;
+      map[castfptrop, ptrs] := castintfptr; {***hmmm...***}
+      map[castintop, ptrs] := castptrint;  map[castintop, ints] := castint;
+      map[castintop, fptrs] := castfptrint;
+      map[castintop, reals] := castrealint;
+      map[castptrop, ints] := castintptr;  map[castptrop, ptrs] := castptr;
+      map[castrealop, ints] := flt;        map[castrealop, reals] := castreal;
+      map[compop, ints] := compint;        map[daddop, none] := dataadd;
+      map[daddrop, none] := dataaddr;      map[dendop, none] := dataend;
+      map[dfaddrop, none] := datafaddr;    map[dfieldop, none] := datafield;
+      map[dfillop, none] := datafill;      map[dintop, none] := dataint;
+      map[diveqop, ints] := getquo;        map[diveqop, reals] := divreal;
+      map[diveqop, scalars] := getquo;     map[drealop, none] := datareal;
+      map[dstartop, none] := datastart;    map[dstoreop, none] := datastore;
+      map[dstructop, none] := datastruct;  map[dsubop, none] := datasub;
+      map[extop, none] := bad;             map[fptrop, ints] := dofptr;
+      map[modeqop, ints] := getrem;        map[modeqop, scalars] := getrem;
+      map[muleqop, ints] := mulint;        map[muleqop, reals] := mulreal;
+      map[muleqop, scalars] := mulint;     map[oreqop, scalars] := orint;
+      map[oreqop, ints] := orint;          map[postincop, ints] := postint;
+      map[postincop, scalars] := postint;  map[postincop, reals] := postreal;
+      map[postincop, ptrs] := postptr;     map[preincop, ptrs] := preincptr;
+      map[pushfptr, fptrs] := pshfptr;     map[pushret, ptrs] := pshretptr;
+      map[jumpvfuncop, none] := jumpvfunc; map[jumpvfuncop, ints] := jumpvfunc;
+      map[returnop, ints] := returnint;    map[returnop, reals] := returnreal;
+      map[returnop, ptrs] := returnptr;    map[returnop, fptrs] := returnfptr;
+      map[returnop, fields] := returnstruct;
+      map[returnop, stringliterals] := returnstruct;
+      map[returnop, chars] := returnint;   map[returnop, bools] := returnint;
+      map[returnop, scalars] := returnint;
+      map[returnop, strings] := returnstruct;
+      map[returnop, words] := returnint;   map[returnop, bytes] := returnint;
+      map[returnop, procs] := returnfptr;  map[returnop, doubles] := returnreal;
+      map[returnop, arrays] := returnstruct;
+      map[returnop, sets] := returnstruct; map[returnop, opaques] := returnptr;
+      map[shiftleqop, scalars] := shiftlint;
+      map[shiftleqop, ints] := shiftlint;  map[shiftreqop, ints] := shiftrint;
+      map[shiftreqop, scalars] := shiftrint;
+      map[shiftrop, scalars] := shiftrint; map[shiftrop, ints] := shiftrint;
+      map[subeqop, ints] := subint;        map[subeqop, scalars] := subint;
+      map[subeqop, reals] := subreal;      map[subeqop, ptrs] := subptr;
+      map[tempop, ints] := regtemp;        map[tempop, scalars] := regtemp;
+      map[tempop, ptrs] := ptrtemp;        map[tempop, reals] := realtemp;
+      map[tempop, fptrs] := ptrtemp;       map[xoreqop, scalars] := xorint;
+      map[xoreqop, ints] := xorint;        map[xorop, ints] := xorint;
+      map[xorop, scalars] := xorint;
+    end; {[s=1] map4}
     {>>>}
     {<<<}
-      procedure cmap;
+    procedure cmap;
+    { Initialize the cast map }
 
-    { Initialize the cast map
-    }
-
-
-        begin
-          castmap[ints, ints] := castint;
-          castmap[ints, ptrs] := castptrint;
-          castmap[ints, fptrs] := castfptrint;
-          castmap[ints, reals] := castrealint;
-          castmap[ptrs, ints] := castintptr;
-          castmap[fptrs, ints] := castintfptr;
-          castmap[reals, ints] := flt;
-          castmap[reals, reals] := castreal;
-        end;
+    begin
+      castmap[ints, ints] := castint;
+      castmap[ints, ptrs] := castptrint;
+      castmap[ints, fptrs] := castfptrint;
+      castmap[ints, reals] := castrealint;
+      castmap[ptrs, ints] := castintptr;
+      castmap[fptrs, ints] := castintfptr;
+      castmap[reals, ints] := flt;
+      castmap[reals, reals] := castreal;
+    end;
     {>>>}
 
   begin

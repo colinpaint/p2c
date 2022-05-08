@@ -514,12 +514,8 @@ procedure parseCommandLine;
     p: filenamelistptr; {induction on existing list}
     q: filenamelistptr; {points to new entry}
     i: filenameindex; {induction on filename}
-    directorydelim: boolean; {flags a delimiter}
-    dotcount: integer; {counts down vdos fields}
 
   begin
-    directorydelim := false;
-
     new (q);
     with q^ do
       begin
@@ -932,9 +928,6 @@ procedure parseCommandLine;
   {<<<}
   procedure checkConsistency;
   { Check the command line and qualifiers for consistency. }
-
-  var
-    thisopt: quals; {current hardware options}
 
   begin
     if not ((outspeced and manyfound) or firstfound) then

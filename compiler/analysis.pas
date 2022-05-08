@@ -3726,22 +3726,21 @@ end;
 procedure foldsetelt;
 { Fold a single set member-designator by inserting the bit into a constant set if the operand is constant }
 
-  var
-    i: integer; {constant member value}
+begin
+  foldedunary := oconst;
+  if foldedunary then
+    begin
+    with oprndstk[sp - 1].cvalue do
+      if (representation = sets) and (getintvalue(sp) >= 0) and
+         (getintvalue(sp) <= maxsetord) then
+        setvalue^ := setvalue^ + [getintvalue(sp)]
+      else
+        warnbefore (bigsetbase);
 
-  begin {foldsetelt}
-    foldedunary := oconst;
-    if foldedunary then
-      begin
-      with oprndstk[sp - 1].cvalue do
-        if (representation = sets) and (getintvalue(sp) >= 0) and
-           (getintvalue(sp) <= maxsetord) then
-          setvalue^ := setvalue^ + [getintvalue(sp)]
-        else warnbefore(bigsetbase);
-      oprndstk[sp].operandkind := exproperand;
-      oprndstk[sp].cost := 0;
-      end;
-  end {foldsetelt} ;
+    oprndstk[sp].operandkind := exproperand;
+    oprndstk[sp].cost := 0;
+    end;
+end;
 {>>>}
 {<<<}
 procedure foldchk (adjustlow: boolean; {adjust lower bound to 0}
@@ -4124,7 +4123,6 @@ procedure foldcmp (op: operator {operation being folded} );
   var
     i: integer; {constant values for compare}
     uns: boolean; {use unsigned comparisons on integers}
-    f: entryptr; {to get at a form entry}
     temp: operand; {used for swapping operands}
     result: boolean; { result of folded compare }
 
@@ -5038,7 +5036,6 @@ procedure statement (follow: tokenset {legal following symbols} );
   {>>>}
 
     var
-      textfile: boolean; {set true if "^" applied to text file}
       nowunpacking: boolean; { true if now unpacking }
       indexwanted: tableIndex; { index type, used by onearrayindex}
       arrayelement: tableIndex; { element type, used by onearrayindex}
@@ -5089,7 +5086,6 @@ procedure statement (follow: tokenset {legal following symbols} );
       eltsize: integer; {size of an array element}
       alreadyunpacking: boolean; {true if we were unpacking at entry}
       outofbounds: boolean; {set of index out of bounds}
-      dum1: boolean; {dummy arguments for range check}
       indextypeptr: entryptr; {for access to index type entry}
       lowerbound: integer; {lower bound of the array index}
 
@@ -5306,7 +5302,6 @@ procedure statement (follow: tokenset {legal following symbols} );
           end
         else if token = uparrow then
           begin
-          textfile := resulttype = textindex;
           nowvariant := false;
           with p1^ do
             begin
@@ -7737,7 +7732,6 @@ procedure statement (follow: tokenset {legal following symbols} );
         leftptr: entryptr; {pointer to left node, for the 'in' operator}
         op: tokentype; { relational operator (if any) }
         opseen: boolean; {set if there is actually an operator}
-        exprstdstring: boolean; {set if operands are 'standard' strings}
 
       {<<<}
       procedure term;
@@ -7766,7 +7760,6 @@ procedure statement (follow: tokenset {legal following symbols} );
       var
         op: tokentype; {operator (if found)}
         specialdiv: boolean; {may need to correct remainder for mod}
-        gendone: boolean; { true if gen op already emitted }
         f: entryptr; {used to get lower bound for div/mod}
 
       begin
@@ -7776,7 +7769,6 @@ procedure statement (follow: tokenset {legal following symbols} );
 
         while token in termops do
           begin
-          gendone := false;
           if (token = slash) and (resultform = ints) then
             begin
             newresulttype (realindex);
@@ -7843,13 +7835,10 @@ procedure statement (follow: tokenset {legal following symbols} );
               end;
             end;
 
-          if not gendone then
-            begin
-            if op in [divsym, modsym] then
-              genunary(optable[op], resultform)
-            else
-              genbinary (optable[op], resultform);
-            end;
+          if op in [divsym, modsym] then
+            genunary(optable[op], resultform)
+          else
+            genbinary (optable[op], resultform);
           end;
       end;
       {>>>}
@@ -8143,7 +8132,6 @@ procedure statement (follow: tokenset {legal following symbols} );
     currentrecord: tableIndex; {current part of record spec}
     currentptr: entryptr; {used to access currentrecord}
     f: entryptr; {used for general form access}
-    tagtype: tableIndex; { tagfield type }
     callnew: boolean; {true if new instead of dispose}
     containedfile: boolean; {true if parent record contains file}
 
@@ -8432,135 +8420,143 @@ procedure statement (follow: tokenset {legal following symbols} );
     procedure writeparams;
     { Parse the parameters to a write procedure. }
 
-      var
-        restoresp: - 1..oprnddepth; {used to restore operand stack}
-        writefile: boolean; {true if write(f,...) form}
-        writefiledeclared: boolean; {set true if file was declared in program
-                                     header}
-
+    var
+      restoresp: - 1..oprnddepth; {used to restore operand stack}
+      writefiledeclared: boolean; {set true if file was declared in program header}
 
       {<<<}
-      procedure onewriteparam(varread: boolean {var already read?} );
+      procedure onewriteparam (varread: boolean);
       {<<<}
       { Parse a single parameter to a write procedure.  The flag "varread" is
         set if a variable has been read to check for the default file parameter.
       }
       {>>>}
 
-        var
-          writeform: types; {form of argument}
-          writelen: addressrange; {length of write parameter}
-          stringflag: boolean; {used to check for string argument}
-          basetype: tableIndex; {pointer to base type}
+      var
+        writeform: types; {form of argument}
+        writelen: addressrange; {length of write parameter}
+        stringflag: boolean; {used to check for string argument}
+        basetype: tableIndex; {pointer to base type}
 
-        begin {onewriteparam}
-          if filetype <> textindex then filehack(filetype, false);
-          skipfactor := varread;
-          expression(follow + [comma, rpar, colon], false);
-          stripsubrange(resulttype);
-          newresulttype(resulttype);
-          writeform := resultform;
-          if writeform = ints then setdefaulttargetintsize;
-          writelen := oprndstk[sp].oprndlen;
+      begin
+        if filetype <> textindex then
+          filehack(filetype, false);
 
-          if filetype = textindex then
-            begin
-            {set stringflag before upcoming genunary modifies resulttype}
-            if writeform = arrays then stringflag := resultptr^.stringtype
-            else stringflag := writeform = strings;
+        skipfactor := varread;
+        expression(follow + [comma, rpar, colon], false);
+        stripsubrange(resulttype);
+        newresulttype(resulttype);
+        writeform := resultform;
 
-            if ((token <> rpar) or not writeflag) then gencopystack(0);
+        if writeform = ints then
+          setdefaulttargetintsize;
+        writelen := oprndstk[sp].oprndlen;
 
-            case writeform of
-              bools, chars, ints:
-                begin
-                genunary(pushvalue, writeform);
-                parsecolons(1);
-                end;
-              none, reals, doubles:
-                begin
-                genunary(pushvalue, writeform);
-                parsecolons(2);
-                end;
-              arrays, strings:
-                begin
-                if not stringflag then warnbefore(badwritearg)
-                else pushstringparam(writeform = strings);
-                parsecolons(1)
-                end;
-              otherwise
-                begin
-                warnbefore(badwritearg);
-                parsecolons(maxint)
-                end
+        if filetype = textindex then
+          begin
+          {set stringflag before upcoming genunary modifies resulttype}
+          if writeform = arrays then
+            stringflag := resultptr^.stringtype
+          else
+            stringflag := writeform = strings;
+
+          if ((token <> rpar) or not writeflag) then
+            gencopystack(0);
+
+          case writeform of
+            bools, chars, ints:
+              begin
+              genunary(pushvalue, writeform);
+              parsecolons(1);
               end;
 
-            end
-          else
-            begin
-            f := ref(bigtable[filetype]);
-            basetype := f^.filebasetype;
-            f := ref(bigtable[basetype]);
-            if ((getform(f) = ints) and ((writeform = reals) or
-               (writeform = doubles))) or
-               not compatible(basetype, resulttype) then
-              warnbefore(typesincomp);
-            genbinary(moveop, resultform);
-            writeform := files;
+            none, reals, doubles:
+              begin
+              genunary(pushvalue, writeform);
+              parsecolons(2);
+              end;
+
+            arrays, strings:
+              begin
+              if not stringflag then warnbefore(badwritearg)
+              else pushstringparam(writeform = strings);
+              parsecolons(1)
+              end;
+
+            otherwise
+              begin
+              warnbefore(badwritearg);
+              parsecolons(maxint)
+              end
             end;
-          genop(wr);
-          genint(writelen);
-          genint(0);
-          genform(writeform);
-          sp := restoresp;
-        end {onewriteparam} ;
+          end
+        else
+          begin
+          f := ref(bigtable[filetype]);
+          basetype := f^.filebasetype;
+          f := ref(bigtable[basetype]);
+          if ((getform(f) = ints) and ((writeform = reals) or (writeform = doubles))) or
+              not compatible(basetype, resulttype) then
+              warnbefore(typesincomp);
+            genbinary (moveop, resultform);
+            writeform := files;
+          end;
+
+        genop (wr);
+        genint (writelen);
+        genint (0);
+        genform (writeform);
+        sp := restoresp;
+      end;
       {>>>}
 
-      begin {writeparams}
-        writefile := false;
-        restoresp := - 1;
-        verifytoken(lpar, nolparerr);
-        filetype := textindex;
-        if token = ident then
+    begin
+      restoresp := - 1;
+      verifytoken (lpar, nolparerr);
+
+      filetype := textindex;
+      if token = ident then
+        begin
+        writefiledeclared := filedeclared;
+        factor;
+        if resultform = files then
           begin
-          writefiledeclared := filedeclared;
-          factor;
-          if resultform = files then
-            begin
-            if not writefiledeclared then warnbefore(filenotdeclared);
-            writefile := true;
-            filetype := resulttype;
-            verify1([comma, rpar], badparamerr);
-            genunary(pushaddr, ptrs);
-            restoresp := sp;
-            if filetype = textindex then genunary(setfileop, none);
-            if (filetype <> textindex) and (procid = writelnid) then
-              warnbefore(nottextfile);
-            if writeflag and (token = rpar) then warn(nowritearg)
-            end
-          else
-            begin
-            if not outputdeclared then
-              warnnonstandard(outputnotdeclared);
-            onewriteparam (true);
-            end
+          if not writefiledeclared then
+            warnbefore (filenotdeclared);
+          filetype := resulttype;
+
+          verify1([comma, rpar], badparamerr);
+          genunary (pushaddr, ptrs);
+          restoresp := sp;
+          if filetype = textindex then
+            genunary (setfileop, none);
+          if (filetype <> textindex) and (procid = writelnid) then
+            warnbefore (nottextfile);
+          if writeflag and (token = rpar) then
+            warn (nowritearg)
           end
         else
           begin
           if not outputdeclared then
-            warnnonstandard(outputnotdeclared);
-          onewriteparam(false);
-          end;
+            warnnonstandard (outputnotdeclared);
+          onewriteparam (true);
+          end
+        end
+      else
+        begin
+        if not outputdeclared then
+          warnnonstandard (outputnotdeclared);
+        onewriteparam (false);
+        end;
 
-        while token in
-              [comma, eql..andsym, ident, intconst..stringconst, lbrack,
-              lpar, notsym, nilsym] do
-          begin
-          verifytoken(comma, nocommaerr);
-          onewriteparam(false)
-          end;
-        parseextraargs;
-      end {writeparams} ;
+      while token in [comma, eql..andsym, ident, intconst..stringconst, lbrack, lpar, notsym, nilsym] do
+        begin
+        verifytoken (comma, nocommaerr);
+        onewriteparam (false)
+        end;
+
+      parseextraargs;
+    end;
     {>>>}
 
   begin
@@ -11034,96 +11030,95 @@ var
                          packing: boolean; {set if packing this element}
                          var value1: operand; {result, if not written}
                          var written: boolean {value already written} );
-
     { Parse a constant value.  If the value is in turn a structured constant,
       it may be written to the string file as it is scanned.  Otherwise,
       its value is placed in "value1", and must be written.
     }
-
       var
         tindex: tableIndex; {type name index}
         p: entryptr; {access to type name block}
         elp: entryptr; {for access to elttype}
-        kludge: constbuffer; {converts to integer}
         i: 1..cbufsize; {induction var for conversion}
-        start, finish: addressrange; {start and end of constant in file}
 
-    {<<<}
-    procedure getconstant(follow: tokenset; {legal following symbols}
-                          elttype: tableIndex; {desired value type}
-                          var value1: operand {result} );
-    { Parse a simple constant and make sure it's in range for the field
-      it's being assigned to.
-    }
+      {<<<}
+      procedure getconstant(follow: tokenset; {legal following symbols}
+                            elttype: tableIndex; {desired value type}
+                            var value1: operand {result} );
+      { Parse a simple constant and make sure it's in range for the field
+        it's being assigned to.
+      }
 
-      var
-        elp: entryptr; {for access to elttype}
-        unsvalue: unsignedint; {for unsigned comparisons}
+        var
+          elp: entryptr; {for access to elttype}
+          unsvalue: unsignedint; {for unsigned comparisons}
 
 
-      begin {getconstant}
-        constant(follow, false, value1);
-        with value1, cvalue do
-          if (representation = ints) and (elttype <> noneindex) and
-             compatible(typeindex, elttype) then
-            begin
-            elp := ref(bigtable[elttype]);
-            if extended and not elp^.extendedrange or (intvalue < 0) and
-               negated and elp^.extendedrange then
-              warnbefore(badconsterr)
-            else if elp^.extendedrange then
+        begin {getconstant}
+          constant(follow, false, value1);
+          with value1, cvalue do
+            if (representation = ints) and (elttype <> noneindex) and
+               compatible(typeindex, elttype) then
               begin
-              unsvalue := intvalue;
-              if (unsvalue < lower(elp)) or
-                 (unsvalue > upper(elp)) then
+              elp := ref(bigtable[elttype]);
+              if extended and not elp^.extendedrange or (intvalue < 0) and
+                 negated and elp^.extendedrange then
+                warnbefore(badconsterr)
+              else if elp^.extendedrange then
+                begin
+                unsvalue := intvalue;
+                if (unsvalue < lower(elp)) or
+                   (unsvalue > upper(elp)) then
+                  warnbefore(badconsterr);
+                end
+              else if (intvalue < lower(elp)) or
+                      (intvalue > upper(elp)) then
                 warnbefore(badconsterr);
-              end
-            else if (intvalue < lower(elp)) or
-                    (intvalue > upper(elp)) then
-              warnbefore(badconsterr);
-            end;
-      end {getconstant} ;
-    {>>>}
+              end;
+        end {getconstant} ;
+      {>>>}
 
-
-    begin {constvalue}
+    begin
       written := false;
       if token = ident then
         begin
-        search(tindex);
+        search (tindex);
         p := ref(bigtable[tindex]);
         with p^ do
           if namekind = typename then
             begin
-            if not compatible(typeindex, elttype) then warn(typesincomp);
+            if not compatible (typeindex, elttype) then
+              warn (typesincomp);
             gettoken;
-            innercstruct(eltloc, typeindex, packing);
+            innercstruct (eltloc, typeindex, packing);
             written := true;
             end
-          else getconstant(follow, elttype, value1);
+          else
+            getconstant (follow, elttype, value1);
         end
+
       else if token = lpar then
         begin
         elp := ref(bigtable[elttype]);
         if not (elp^.typ in [arrays, fields, none]) then
           begin
-          warn(badconsterr);
+          warn (badconsterr);
           value1.typeindex := noneindex;
           value1.cvalue.representation := ints;
           end;
-        innercstruct(eltloc, elttype, packing);
+        innercstruct (eltloc, elttype, packing);
         written := true;
         end
-      else getconstant(follow, elttype, value1);
+      else
+        getconstant (follow, elttype, value1);
+
       if not written then
         begin
         elp := ref(bigtable[value1.typeindex]);
-        if not (eltstring and ((elp^.typ = chars) or
-           (elp^.typ = arrays) and (elp^.stringtype)) or
-           compatible(elttype, value1.typeindex)) then
-          warnbefore(typesincomp);
+        if not (eltstring and ((elp^.typ = chars) or (elp^.typ = arrays) and (elp^.stringtype)) or
+           compatible (elttype, value1.typeindex)) then
+          warnbefore (typesincomp);
         end;
-    end {constvalue} ;
+    end;
     {>>>}
     {<<<}
     procedure constelement (eltloc: addressrange; {loc to for this element}
@@ -11662,7 +11657,6 @@ var
   first: tableIndex; {first ident in a list}
   last: tableIndex; {last ident in a list}
   t: tableIndex; {induction var for allocation}
-  p: entryptr; {used in name access}
   f: tableIndex; {type of a variable list}
   tptr, fptr: entryptr; {for access to the pointer}
   a: alignmentrange; {alignment for one varlist}

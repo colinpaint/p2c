@@ -474,7 +474,6 @@ var
   p: filerememberptr; {induction on filerememberlist}
   q: filerememberptr; {points to item to be added}
   i: FilenameIndex; {induction on file name}
-  temp: shortint; { temporary file name length }
 
 begin
   curFileIndex := sharedPtr^.stringtabletop + 1;
@@ -2518,9 +2517,6 @@ var
   }
   var
     stringpos: lineindex; { start of the string in the stringtable}
-    stringlen: lineindex; { string length}
-    i: lineindex;         { induction var}
-    tempch: char;         { temporary holder for ch}
 
     {<<<}
     procedure stuff;

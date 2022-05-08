@@ -1,7 +1,7 @@
 program test (output);
 
 var
-  i: 0..16#FFFF;
+  i: integer;
   j: integer;
 
 begin

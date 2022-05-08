@@ -15,7 +15,6 @@ BufferedFile      tokenFile
 BufferedFile      interFile
 BufferedFile      pseudoFile
 BufferedFile      objFile
-BufferedFile      listFile
 BufferedFile      relFile
 BufferedFile      dumpFile
 BufferedFile      debugfile

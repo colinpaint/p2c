@@ -687,7 +687,6 @@ var
       stmtno: integer; {statement number for current line (if any)}
       first: boolean; {first printing for this line}
       column, newcolumn: columnindex;
-      temppos1, temppos2: integer; {for getpos, because statement file is packed}
 
       {<<<}
       procedure printLineNum;
@@ -766,10 +765,6 @@ var
         if topofpage then
           title;
 
-        { if ((sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling]) and
-           (sharedPtr^.lasterror = 0) and not sharedPtr^.switcheverplus[defineswitch]) then
-          msdos, unix, apollo: getpos (listing, temppos1, temppos2);
-        }
         if sharedPtr^.sourcelevel > 1 then
           listInt (sharedPtr^.sourcelevel, 1)
         else
@@ -868,7 +863,7 @@ var
           printLineNum;
         listLine;
 
-        {getpos(listing, temppos1, temppos2); }
+        { getpos ??? }
         totallines := totallines + 1;
         if (pageline > pagelimit) then
           begin
