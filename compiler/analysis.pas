@@ -340,20 +340,26 @@ var
 
   {token records bracketing the current, having several helps error recovery}
   thistoken, lasttoken: tokenrecord;
-
   token: tokentype; {current token}
-  tokenbufindex: 0..diskbufsize; {current token file entry}
 
-  dbgsourceindex: unsignedint;
   sourcestringindex: unsignedint; {pos in stringtable of source file name}
 
   display: array [levelindex] of displayentry; {compile time display}
 
-  {the following are entries for standard types}
-  intindex, shortintindex, realindex, doubleindex, chartypeindex,
-    boolindex, noneindex, nilindex, textindex, inputindex, outputindex,
-    subrangeindex: tableIndex;
-  nullboundindex: tableIndex; {undefined boundid}
+  { the following are entries for standard types }
+  intindex: tableIndex;
+  shortintindex: tableIndex;
+  realindex: tableIndex;
+  doubleindex: tableIndex;
+  chartypeindex: tableIndex;
+  boolindex: tableIndex;
+  noneindex: tableIndex;
+  nilindex: tableIndex;
+  textindex: tableIndex;
+  inputindex: tableIndex;
+  outputindex: tableIndex;
+  subrangeindex: tableIndex;
+  nullboundindex: tableIndex;
 
   emptysetgenerated: boolean; {true if '[]' already emitted}
   emptysetcount: integer; {where it is, if it is}
@@ -383,8 +389,6 @@ var
   lastscope: totalscoperange; { last marker for scope checking}
   level: levelindex;          { current block level }
   lev: levelindex;            { Returned by search -- level of item found }
-
-  tokencount: integer; { count of tokens read}
 
   nilvalue: operand; { value of reserved word nil}
 
@@ -1093,7 +1097,7 @@ begin
   whereptr := ref(bigtable[tabletop]);
   with whereptr^ do
     begin
-    if (newtyp in [subranges, scalars, fields, arrays, sets, files, ptrs, 
+    if (newtyp in [subranges, scalars, fields, arrays, sets, files, ptrs,
                    ints, bools, chars, reals, doubles, conformantarrays, strings]) then
       begin
       lastdebugrecord := lastdebugrecord + 1;
@@ -3098,7 +3102,7 @@ var
   t: tableIndex; {holds subrange}
   t1: entryptr; {for filling in table entry}
 
-begin 
+begin
   enterform (subranges, t, t1);
   with t1^ do
     begin
@@ -3128,7 +3132,7 @@ begin
     indextype := t;
 
     size := len div (bitsperunit div stringeltsize);
-    if len mod (bitsperunit div stringeltsize) <> 0 then 
+    if len mod (bitsperunit div stringeltsize) <> 0 then
       size := size + 1;
     size := size * bitsperunit;
 
@@ -11760,7 +11764,7 @@ var
         if token = ident then
           begin
           probing := true;
-          search(t);
+          search (t);
           probing := false;
           p := ref(bigtable[t]);
           if (t = 0) or
@@ -11783,10 +11787,12 @@ var
             end
           else
             gettoken;
+
           resulp = ref(bigtable[resulttype]);
           resulp^.ptrtypename := t
           end
-        else warnbetween(novarerr);
+        else 
+          warnbetween(novarerr);
         end;
     end {ptrtyp} ;
   {>>>}
@@ -11926,13 +11932,13 @@ var
     newfilebasetype: tableIndex; {pointer to type of file}
     f: entryptr; {access to newfilebasetype}
 
-  begin 
+  begin
     gettoken;
     verifytoken (ofsym, nooferr);
     gettyp (follow, newfilebasetype);
 
     f := ref(bigtable[newfilebasetype]);
-    if f^.containsfile then  
+    if f^.containsfile then
       warnbefore(nofilefile);
 
     enterform (files, resulttype, resulp);
@@ -11978,9 +11984,9 @@ var
 
     stripsubrange (newbasetype);
     f := ref(bigtable[newbasetype]);
-    if f^.typ = ints then 
+    if f^.typ = ints then
       m := maxsetord + 1
-    else 
+    else
       m := upper(f) + 1;
 
     enterform (sets, resulttype, resulp);
@@ -12073,7 +12079,7 @@ var
       warn(norbrackerr);
       gettoken
       end
-    else 
+    else
       verifytoken(rbrack, norbrackerr);
   end;
   {>>>}
@@ -13581,12 +13587,12 @@ procedure analys;
           if n <> boundid then
             begin
             namesdeclared := namesdeclared + 1;
-            if i > highestkey then 
+            if i > highestkey then
               highestkey := i;
             end;
 
         case n of
-          typename: 
+          typename:
             typeindex := f;
 
           varname, boundid:
@@ -13603,10 +13609,10 @@ procedure analys;
             varalloc := normalalloc;
             end;
 
-          directivename, standardproc, standardfunc: 
+          directivename, standardproc, standardfunc:
             procid := id;
 
-          constname: 
+          constname:
             consttype := f;
           end;
 
@@ -13756,14 +13762,11 @@ procedure analys;
       line := 1
       end;
 
-    tokencount := 0;
-    tokenbufindex := 0;
     probing := false;
     sourcestringindex := 0;
-
     fewestblocks := lastblocksin;
     mostblocks := lastblocksin;
-
+    {<<<  init csregiontable}
     for i := 0 to cseregions do
       begin
       with sharedPtr^.cseregiontable[i, false] do
@@ -13777,6 +13780,7 @@ procedure analys;
           high := maxaddr;
         end;
       end;
+    {>>>}
 
     for i := 0 to hashtablesize do
       keymap[i] := 0;
