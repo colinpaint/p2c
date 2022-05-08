@@ -613,10 +613,12 @@ type
 
   {<<<}
   { built-in types }
-  types = (subranges, fields, variantlabs, arrays, conformantarrays, strings,
-           sets, files, ptrs, scalars, ints, bools, chars, reals,
-           doubles, fptrs, funcs, procs, stringliterals, flexarrays, opaques,
-           bytes, words, none);
+  types = (subranges,        fields,  variantlabs,    arrays,
+       {4} conformantarrays, strings, sets,           files,
+       {8} ptrs,             scalars, ints,           bools,
+      {12} chars,            reals,   doubles,        fptrs,
+      {16} funcs,            procs,   stringliterals, flexarrays,
+      {20} opaques,          bytes,   words,          none);
   {>>>}
   {<<<}
   { symbol table entry types }
@@ -747,8 +749,7 @@ type
       case kind: debugrecordtype of
         {<<<}
         identdesc:
-          (
-           { PDB identifier }
+          ( { PDB identifier }
            identchars: symbolname; {user supplied name}
            chainoffset: p_symbolindex; {previous symbol name that has same first character}
            );
