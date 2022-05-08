@@ -7,15 +7,19 @@ var
   i: integer;
   j: integer;
   uc: upperCase;
+  ch: char;
 
 begin
-  uc[64] := 'a';
+  uc['a'] := 'A';
+  uc['A'] := 'A';
+
   for i := 2 to 20 do
     begin
     j := 3 * i;
     Writeln ('hello colin', i, j, i+j);
     end;
 
-  for i := 0 to 255 do
-    Writeln ('convert', uc[i]);
+
+  for ch := ' ' to 'Z' do
+    Writeln ('convert', uc[ch]);
 end.
