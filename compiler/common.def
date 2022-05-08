@@ -267,7 +267,6 @@ const
 
   nodehashsize = 67; {number of buckets in node hash table}
 
-  maxrefcount = 1023; {max number of refs to a node}
   maxcost = 127; {max cost value considered}
 
   divtarget = - 2; {result is a future dividend}
@@ -336,6 +335,10 @@ type
   targetint = integer;       { signed integer on TARGET }
   targetaddress = addressrange; { address on TARGET }
   unsignedword = 0..maxusword;
+
+  {maxrefcount = 1023;} {max number of refs to a node}
+  {refcountrange = 0..1023;} { range for refcounts, *** watch out for problem -unsigned decrementing count failing }
+  refcountrange = integer; { range for refcounts, *** watch out for problem -unsigned decrementing count failing }
 
   { new stringTable definitions }
   string_len = 0..max_string_len; {for holding string data}

@@ -154,7 +154,6 @@ var
       var
         this_op: operator; {current operator}
         len, op1, op2: integer; {operands}
-        realval: realarray; {a value if it's a real}
 
       begin
         this_op := interSharedPtr^.interFile^.block[nextintcode].o;

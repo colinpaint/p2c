@@ -59,12 +59,12 @@ type
 
   {<<<}
   pseudocode = record { no need to pack }
-               len: integer; {operand length}
-               op: pseudoop; {operator}
-               key: keyindex; {node label for flattened tree}
-               refcount: integer; {number of references to this node}
-               copycount: integer; {number of copies of this node}
-               oprnds: array [1..3] of integer {misc. operands}
+               len: integer;       { operand length }
+               op: pseudoop;       { operator }
+               key: keyindex;      { node label for flattened tree }
+               refcount: integer;  { number of references to this node }
+               copycount: integer; { number of copies of this node }
+               oprnds: array [1..3] of integer { misc. operands }
                end;
   {>>>}
 

@@ -49,53 +49,61 @@ begin
   new (interSharedPtr);
   new (pseudoSharedPtr);
 
-  sharedPtr^.current_stmt := 0;
-  sharedPtr^.current_line := 0;
-  sharedPtr^.fatalflag := false;
-  sharedPtr^.lasterror := 0;
+  with sharedPtr^ do
+    {<<<}
+    begin
+    current_stmt := 0;
+    current_line := 0;
+    fatalflag := false;
+    lasterror := 0;
 
-  sharedPtr^.sourcelevel := 0;
-  sharedPtr^.currentswitch := 1;
-  sharedPtr^.lastswitch := 0;
-  sharedPtr^.genoptmask := 0;
+    sourcelevel := 0;
+    for i := 1 to sourcedepth do
+      source[i] := nil;
 
-  sharedPtr^.lastList := 0;
-  sharedPtr^.forceList := false;
+    currentswitch := 1;
+    lastswitch := 0;
+    genoptmask := 0;
 
-  sharedPtr^.sourceListHead := nil;
-  sharedPtr^.objname := nil;
-  sharedPtr^.macname := nil;
-  sharedPtr^.listname := nil;
+    lastList := 0;
+    forceList := false;
 
-  sharedPtr^.stringfilecount := 0;
-  sharedPtr^.stringtablelimit := 0;
-  sharedPtr^.stringtabletop := 0;
-  sharedPtr^.curstringblock := 1;
-  new (sharedPtr^.stringblkptr);
-  sharedPtr^.stringblkptrtbl[1] := sharedPtr^.stringblkptr;
+    sourceListHead := nil;
+    objname := nil;
+    macname := nil;
+    listname := nil;
 
-  for i := 2 to maxstringblks do
-    sharedPtr^.stringblkptrtbl[i] := nil;
-  new (sharedPtr^.stringtable);
+    stringfilecount := 0;
+    stringtablelimit := 0;
+    stringtabletop := 0;
+    curstringblock := 1;
+    new (stringblkptr);
+    stringblkptrtbl[1] := stringblkptr;
 
-  sharedPtr^.insertions := 0;
-  sharedPtr^.nextstringfile := 0;
-  sharedPtr^.filerememberlist := nil;
+    for i := 2 to maxstringblks do
+      stringblkptrtbl[i] := nil;
+    new (stringtable);
 
-  sharedPtr^.shortsection := false;
-  sharedPtr^.codesection := oursection; { default code section }
-  sharedPtr^.codesect_string := 0;    { codesect name }
-  sharedPtr^.codesect_strlength := 0; { length of codesect name }
-  sharedPtr^.identstring := 0;
-  sharedPtr^.identstrlength := 0;
-  sharedPtr^.module_string :=    0;   { module name }
-  sharedPtr^.module_strlength := 0;   { length of module name }
-  sharedPtr^.ownsect_string := 0;     { ownsect name }
-  sharedPtr^.ownsect_strlength := 0;  { length of ownsect name }
-  sharedPtr^.ident_string := 0;       { ident name}
-  sharedPtr^.ident_strlength := 0;    { length of ident name }
-  sharedPtr^.objversion := 0;
-  sharedPtr^.objrevision := 0;
+    insertions := 0;
+    nextstringfile := 0;
+    filerememberlist := nil;
+
+    shortsection := false;
+    codesection := oursection; { default code section }
+    codesect_string := 0;    { codesect name }
+    codesect_strlength := 0; { length of codesect name }
+    identstring := 0;
+    identstrlength := 0;
+    module_string :=    0;   { module name }
+    module_strlength := 0;   { length of module name }
+    ownsect_string := 0;     { ownsect name }
+    ownsect_strlength := 0;  { length of ownsect name }
+    ident_string := 0;       { ident name}
+    ident_strlength := 0;    { length of ident name }
+    objversion := 0;
+    objrevision := 0;
+    end;
+    {>>>}
 
   tokenSharedPtr^.tokenCount := 0;
   tokenSharedPtr^.nexttoken.baseline := 0;

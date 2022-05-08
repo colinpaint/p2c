@@ -611,8 +611,8 @@ type
 
   {<<<}
   keyx = packed record
-      refcount: 0..maxrefcount;  { reference info from pseudocode}
-      copycount: 0..maxrefcount; { reference info from pseudocode}
+      refcount: refcountrange;         { reference info from pseudocode} { *** was refcountrange }
+      copycount: refcountrange;        { reference info from pseudocode} { *** was refcountrange }
       len: integer;              { length of this operand, from pseudocode}
       copylink: keyindex;        { node we copied, if created by copyaccess op}
       access: accesstype;        { type of entry}
@@ -1131,7 +1131,7 @@ procedure markareg (r: regindex); forward;
 function dump_externals: integer; forward;
 
 {<<<}
-function getvartableptr (i: integer): vartablerecptr};
+function getvartableptr (i: integer): vartablerecptr;
 { Returns a pointer to the ith vartable entry }
 
 begin
@@ -1215,6 +1215,7 @@ var
     finished: boolean;   { the only possible reference has been removed }
 
   begin
+    cp2 := nil;
     finished := false;
     cp1 := firstbr;
     while (cp1 <> nil) and not finished do
@@ -1872,8 +1873,7 @@ function uselesstemp : boolean;
 { True if the top temp on the tempstack is no longer needed }
 
 begin
-  uselesstemp := (keytable[stackcounter].instmark >
-                 context[contextsp].lastbranch) and
+  uselesstemp := (keytable[stackcounter].instmark > context[contextsp].lastbranch) and
                  (keytable[stackcounter].refcount = 0);
 end;
 {>>>}
@@ -9063,30 +9063,18 @@ end;
 {>>>}
 {<<<  externals}
 procedure fmtx; external;
-
 procedure closerangex; external;
-
 procedure setfilex; external;
-
 procedure setbinfilex; external;
-
 procedure copystackx; external;
-
 procedure definelazyx; external;
-
 procedure rdxstrx; external;
-
 procedure rdintcharx(libroutine: libroutines; {support routine to call} length: datarange); external;
-
 procedure wrrealx; external;
-
 procedure wrcommon(libroutine: libroutines; {formatting routine to call}
                    deffmt: integer {default width if needed} ); external;
-
 procedure wrstx(stdstring: boolean {true if packed array[1..n] kind} ); external;
-
 procedure clearcontext; external;
-
 procedure initloop(src: keyindex; {main source operand}
                    src1: keyindex; {secondary source operand}
                    dst: keyindex; {destination operand}
@@ -9094,125 +9082,72 @@ procedure initloop(src: keyindex; {main source operand}
                    maxpieces: integer; {max pieces to generate inline}
                    var loop: boolean; {set if an actual loop is generated}
                    var pieces: integer {number of inline operations to gen} ); external;
-
 procedure bumploop(dbinst: insttype; {inst to finish loop}
                    var loop: boolean {value returned by initloop} ); external;
-
 procedure finishloop; external;
-
 procedure onlyreference(k: keyindex {loop address counter} ); external;
-
 procedure arithcommon(commute: boolean; {commutative operation?}
                       kill_d4: boolean; {controls killing of d4}
                       kill_d3: boolean; {controls killing of d3}
                       libentry_s: libroutines; {support routine for signed}
                       libentry_u: libroutines {support routine for unsigned} ); external;
-
 procedure realarithmeticx(commute: boolean; {commutative operation?}
                           realentry: libroutines; {support routine if single}
                           doubentry: libroutines; {support routine if double}
                           mc68881_inst: insttype); {68881 inst} external;
-
 procedure movrealx; external;
-
 procedure cmprealx(brinst: insttype; {true branch}
                    double_call: libroutines; {routine numbers}
                    mc68881_inst: insttype); external;
-
 procedure cmplitrealx(brinst: insttype; {true branch}
                       double_call: libroutines; {routine numbers}
                       mc68881_inst: insttype); external;
-
 procedure postrealx; external;
-
 procedure fltx; external;
-
 procedure incdec(inst: insttype; {add or sub} negflag: boolean {true if preliminary "neg" desired} ); external;
-
 procedure cvtrdx; external;
-
 procedure cvtdrx; external;
-
 procedure castrealx; external;
-
 procedure castrealintx; external;
-
 procedure sysroutinex; external;
-
 procedure loopholefnx; external;
-
 procedure sysfnstringx; external;
-
 procedure sysfnintx; external;
-
 procedure negrealx; external;
-
 procedure sysfnrealx; external;
-
 procedure address(var k: keyindex); external;
-
 procedure addressboth; external;
-
 procedure adjustregcount(k: keyindex; {operand to adjust} delta: integer {amount to adjust count by} ); external;
-
 function bestareg(reg: regindex {address reg to check} ): boolean; external;
-
-procedure bumptempcount(k: keyindex; {key of temp desired} delta: integer {amount to adjust ref count} ); external;
-
 procedure callandpop(entry: libroutines; args: integer); external;
-
 procedure dereference(k: keyindex {operand} ); external;
-
 function fix_effective_addr(k: keyindex): keyindex; external;
-
 procedure forcerelative(var k: keyindex; {force key to be of relative mode}
                         needareg: boolean; {true if a-reg based mode needed}
                         indexedok: boolean; {true if indexed mode will suffice}
                         offsetbias: integer; {amount which will bias offset}
                         shortoffset: boolean {true if need an 8-bit offset} ); external;
-
-procedure gensimplemove(src, dst: keyindex {move src to dst} ); external;
-
-procedure gensingle(i: insttype; {instruction to generate}
-                    dst: keyindex {keytable descriptor of operand} ); external;
-
 function getdreg: regindex; external;
-
 function is_sp(r: regindex): boolean; external;
-
 procedure loaddreg(src: keyindex; {operand to load}
                    other: keyindex; {other operand to avoid}
                    regneeded: boolean {set if must be in register} ); external;
-
 procedure lock(k: keyindex {operand to lock} ); external;
-
 procedure makeaddressable(var k: keyindex); external;
-
 procedure markdreg(r: regindex {register to clobber} ); external;
-
 procedure markfpreg(r: regindex {register to clobber} ); external;
-
 procedure movx(packedleft: boolean; {true if bits get packed from left end
                                      of word, not right end}
                regmode: modes; {should be "areg" or "dreg"}
                function getreg: regindex {routine used to allocate a reg} ); external;
-
 function popping(k: keyindex {expression to check} ): boolean; external;
-
 procedure pshx; external;
-
 procedure reserve_dreg(k: keyindex; { key to check } r: regindex  { register needed } ); external;
-
 procedure saveactivekeys; external;
-
 function savefpreg(r: regindex {register to save} ): keyindex; external;
-
 procedure savekey(k: keyindex {operand to save} ); external;
-
 procedure setallfields(k: keyindex); external;
-
 procedure setkeyvalue(k: keyindex); external;
-
 procedure setvalue(m: modes; {hardware operand mode}
                    reg: regindex; {register field, if any}
                    indxr: regindex; {index register field, if any}
@@ -9220,543 +9155,295 @@ procedure setvalue(m: modes; {hardware operand mode}
                    offset: addressrange; {immediate operand or fixed offset}
                    offset1: addressrange {extension for 32 bit fixed operand} );
   external;
-
 procedure unlock(k: keyindex {operand to unlock} ); external;
-
 procedure unpack(var k: keyindex; {operand to unpack} finallen: integer {length desired} ); external;
-
 procedure unpackshrink(var k: keyindex; {keytable reference} len: integer {desired length} ); external;
-
 function bytelength(k: keyindex {operand to examine} ): datarange; external;
-
-function equivaccess(l, r: keyindex): boolean; external;
-
 procedure extend(var k: keyindex; {operand to be sign extended} newlen: addressrange {desired length} ); external;
-
 procedure fpmovx; external;
-
 procedure genblockmove(src, dst: keyindex {move operands} ;
                        minpiecesize: integer {minimum size chunk to move} ); external;
-
 procedure genfpmove(src, dst: keyindex {move src to dst} ); external;
-
-function getfpreg: regindex;
-  external;
-
+function getfpreg: regindex; external;
 procedure loadareg(src: keyindex; {operand to load}
                    other: keyindex; {other operand to avoid}
-                   regneeded: boolean {set if must be in register} );
-  external;
-
+                   regneeded: boolean {set if must be in register} ); external;
 function loadeddreg(k: keyindex; {operand to check}
-                    regneeded: boolean {must be in a register} ): boolean;
-  external;
-
+                    regneeded: boolean {must be in a register} ): boolean; external;
 procedure loadfpreg(src: keyindex; {operand to load}
                     other: keyindex; {other operand to avoid}
-                    regneeded: boolean {set if must be in register} );
-  external;
-
-procedure makestacktarget;
-  external;
-
-procedure pushboth(commute: boolean {true if operands can be commuted} );
-  external;
-
-function pushing(k: keyindex {expression to check} ): boolean;
-  external;
-
-procedure pushone(k: keyindex {operand to push} );
-  external;
-
-procedure setbr(inst: insttype {branch instruction used} );
-  external;
-
-procedure setd4result;
-  external;
-
-procedure setlongvalue(i:integer);
-  external;
-
-procedure settos(args: integer {original number of arguments} );
-  external;
-
-function signedoprnds: boolean;
-  external;
-
-procedure clearsp(n: integer {words to clear} );
-  external;
-
-procedure popstack(n: integer {number of items to physically pop} );
-  external;
-
-procedure fpgensingle(i: insttype; {instruction to generate}
-                      src: keyindex {operand descriptor});
-  external;
-
-procedure fixaccess(oprndlen: datarange; {instruction operand length}
-                    k: keyindex; {key holding operand}
-                    var oprnd: operand {operand to change} );
-external;
-
-procedure stmtbrkx;
-  external;
-
-procedure pascallabelx;
-  external;
-
-procedure pascalgotox;
-  external;
-
-procedure casebranchx;
-  external;
-
-procedure caseeltx;
-  external;
-
-procedure caseerrx;
-  external;
-
-procedure addstrx;
-  external;
-
-procedure makeroomx;
-  external;
-
-procedure callroutinex(s: boolean {signed function value} );
-  external;
-
+                    regneeded: boolean {set if must be in register} ); external;
+procedure makestacktarget; external;
+procedure pushboth(commute: boolean {true if operands can be commuted} ); external;
+function pushing(k: keyindex {expression to check} ): boolean; external;
+procedure pushone(k: keyindex {operand to push} ); external;
+procedure setbr(inst: insttype {branch instruction used} ); external;
+procedure setd4result; external;
+procedure setlongvalue(i:integer); external;
+procedure settos(args: integer {original number of arguments} ); external;
+function signedoprnds: boolean; external;
+procedure clearsp(n: integer {words to clear} ); external;
+procedure popstack(n: integer {number of items to physically pop} ); external;
+procedure fixaccess(oprndlen: datarange; {instruction operand length} k: keyindex; {key holding operand}
+                    var oprnd: operand {operand to change} ); external;
+procedure stmtbrkx; external;
+procedure pascallabelx; external;
+procedure pascalgotox; external;
+procedure casebranchx; external;
+procedure caseeltx; external;
+procedure caseerrx; external;
+procedure addstrx; external;
+procedure makeroomx; external;
+procedure callroutinex(s: boolean {signed function value} ); external;
 procedure jumpx(lab: integer; {label to jump to}
-                picbr: boolean {if true generate 68000 pic branch} );
-  external;
-
-procedure jumpcond(inv: boolean {invert the sense of the branch} );
-  external;
-
-procedure dummyargx;
-  external;
-
-procedure dummyarg2x;
-  external;
-
-procedure openarrayx;
-  external;
-
-function equivaddr(l, r: keyindex): boolean;
-  external;
-
+                picbr: boolean {if true generate 68000 pic branch} ); external;
+procedure jumpcond(inv: boolean {invert the sense of the branch} ); external;
+procedure dummyargx; external;
+procedure dummyarg2x; external;
+procedure openarrayx; external;
+function equivaddr(l, r: keyindex): boolean; external;
 procedure forcebranch(k: keyindex; {operand to test}
                       newsignedbr: insttype; {branch to generate}
-                      newunsignedbr: insttype {unless operand is unsigned} );
-  external;
-
-procedure loadstack(src: keyindex {operand to load} );
-  external;
-
-function get_stringfile_byte(loc: integer): integer;
-  external;
-
+                      newunsignedbr: insttype {unless operand is unsigned} ); external;
+procedure loadstack(src: keyindex {operand to load} ); external;
 function loadedfpreg(k: keyindex; {operand to check}
-                     regneeded: boolean {must be in a register} ): boolean;
-  external;
+                     regneeded: boolean {must be in a register} ): boolean; external;
 {>>>}
 {<<<  forwards}
-procedure enterloop;
-  forward;
-
-procedure reloadloop;
-  forward;
-
-procedure savelabelx;
-  forward;
-
-procedure restorelabelx;
-  forward;
-
-procedure joinlabelx;
-  forward;
-
-procedure clearlabelx;
-  forward;
-
-procedure pseudolabelx;
-  forward;
-
-procedure restoreloopx;
-  forward;
-
-procedure copyaccessx;
-  forward;
-
 procedure defforindexx(sgn, { true if signed induction var }
-                       lit: boolean { true if constant starter value } );
-  forward;
-
-procedure fortopx(signedbr, unsignedbr: insttype { proper exit branch } );
-  forward;
-
+                       lit: boolean { true if constant starter value } ); forward;
+procedure fortopx(signedbr, unsignedbr: insttype { proper exit branch } ); forward;
 procedure forbottomx(improved: boolean; { true if cmp at bottom }
                      incinst, { add or sub }
-                      signedbr, unsignedbr: insttype {branch to top} );
-  forward;
-
-procedure forcheckx(up: boolean {we are going up} );
-  forward;
-
-procedure forerrchkx;
-  forward;
-
-procedure movintx;
-  forward;
-
-procedure mulintx;
-  forward;
-
-procedure unaryintx(inst: insttype {instruction to generate} );
-  forward;
-
-procedure postintptrx(isptr: boolean);
-  forward;
-
-procedure divintx(correctrem: boolean {need to correct remainder} );
-  forward;
-
-procedure getremquox(remflag: boolean {true if "getrem"} );
-  forward;
-
-procedure integerarithmetic(inst: insttype {simple integer inst} );
-  forward;
-
-procedure xorintx;
-  forward;
-
-procedure addptrx;
-  forward;
-
-procedure shiftlintx(backwards: boolean);
-  forward;
-
-procedure castintx;
-  forward;
-
+                      signedbr, unsignedbr: insttype {branch to top} ); forward;
+procedure forcheckx(up: boolean {we are going up} ); forward;
+procedure unaryintx(inst: insttype {instruction to generate} ); forward;
+procedure postintptrx(isptr: boolean); forward;
+procedure divintx(correctrem: boolean {need to correct remainder} ); forward;
+procedure getremquox(remflag: boolean {true if "getrem"} ); forward;
+procedure integerarithmetic(inst: insttype {simple integer inst} ); forward;
+procedure shiftlintx(backwards: boolean); forward;
 procedure setarithmetic(inst: insttype; {to form result}
-                        compflag: boolean {complement right side if true} );
-  forward;
-
+                        compflag: boolean {complement right side if true} ); forward;
 function accessbit(k: keyindex; {describes set operand}
-                   forcedreg: boolean {true sez a dreg is required} )
-                   : keyindex;
-  forward;
-
-procedure dosetx;
-  forward;
-
-procedure insetx;
-  forward;
-
-procedure setinsertx;
-  forward;
-
-procedure generror(err: integer);
-  forward;
-
-function saveareg(r: regindex): keyindex;
-  forward;
-
-function savedreg(r: regindex {register to save} ): keyindex;
-  forward;
-
-procedure shrink(var k: keyindex; {item to shrink}
-                 newlen: integer {size to squeeze to} );
-  forward;
-
-procedure allowmodify(var k: keyindex; {operand to be modified}
-                      forcecopy: boolean {caller can force temp} );
-  forward;
-
-procedure saveresult;
-  forward;
-
-procedure unpkshkboth(len: integer {desired length} );
-  forward;
-
-procedure unpackboth(len: integer {desired length} );
-  forward;
-
-function loadedareg(k: keyindex; {operand to check}
-                    regneeded: boolean {must be in a register} ): boolean;
-  forward;
-
-procedure make_immediate(var k: keyindex; { the key to change }
-                         compflag: boolean {complement constant if true} );
-  forward;
-
-procedure loadset(src: keyindex {Operand to load} );
-  forward;
-
-procedure changevalue(var key1: keyindex; {key to be changed}
-                      key2: keyindex {source of key data} );
-
-  forward;
-
-procedure rereference(k: keyindex {operand} );
-  forward;
-
-
-procedure calliosupport(libroutine: libroutines; {support routine to call}
-                        args: integer {number of stacked params} );
-  forward;
-
-procedure dumpstack;
-  forward;
-
-procedure firstreference(k: keyindex {loop address counter} );
-  forward;
-
-procedure middlereference(k: keyindex {loop address counter} );
-  forward;
-
-procedure lastreference(k: keyindex {loop address counter} );
-  forward;
-
-procedure unaryrealx(inst: insttype {'bchg' for neg, 'bclr' for abs} );
-  forward;
-
-procedure callsinglesim(n: libroutines {simulation routine to call} );
-  forward;
-
-procedure fpfunction(inst: insttype);
-  forward;
-
-procedure fpfunc2(op: standardids);
-  forward;
-
-procedure fmovecrfn;
-  forward;
+                   forcedreg: boolean {true sez a dreg is required} ) : keyindex; forward;
+procedure generror(err: integer); forward;
+function saveareg(r: regindex): keyindex; forward;
+function savedreg(r: regindex {register to save} ): keyindex; forward;
+procedure shrink(var k: keyindex; {item to shrink} newlen: integer {size to squeeze to} ); forward;
+procedure allowmodify(var k: keyindex; {operand to be modified} forcecopy: boolean {caller can force temp} ); forward;
+procedure unpkshkboth(len: integer {desired length} ); forward;
+procedure unpackboth(len: integer {desired length} ); forward;
+function loadedareg(k: keyindex; {operand to check} regneeded: boolean {must be in a register} ): boolean; forward;
+procedure make_immediate(var k: keyindex; { the key to change } compflag: boolean {complement constant if true} ); forward;
+procedure loadset(src: keyindex {Operand to load} ); forward;
+procedure changevalue(var key1: keyindex; {key to be changed} key2: keyindex {source of key data} ); forward;
+procedure rereference(k: keyindex {operand} ); forward;
+procedure calliosupport(libroutine: libroutines; {support routine to call} args: integer {number of stacked params} ); forward;
+procedure firstreference(k: keyindex {loop address counter} ); forward;
+procedure middlereference(k: keyindex {loop address counter} ); forward;
+procedure lastreference(k: keyindex {loop address counter} ); forward;
+procedure unaryrealx(inst: insttype {'bchg' for neg, 'bclr' for abs} ); forward;
+procedure callsinglesim(n: libroutines {simulation routine to call} ); forward;
+procedure fpfunction(inst: insttype); forward;
+procedure fpfunc2(op: standardids); forward;
 {>>>}
 {<<<  genblk utils}
 {<<<}
-function get_stringfile_byte{(loc: integer): integer};
-
+function getStringfileByte (loc: integer): integer;
 { Return a byte from the string table.
 }
-  begin
-  { Adjust loc if constant is in the structured constant section.
-  }
-  if loc >= sharedPtr^.stringfilecount then
-    loc := sharedPtr^.stringtablelimit + loc - sharedPtr^.stringfilecount;
+begin
+{ Adjust loc if constant is in the structured constant section.
+}
+if loc >= sharedPtr^.stringfilecount then
+  loc := sharedPtr^.stringtablelimit + loc - sharedPtr^.stringfilecount;
 
-  sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
-  sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-  sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
-  get_stringfile_byte := sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile];
-  end;
+sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
+sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
+getStringfileByte := sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile];
+end;
 {>>>}
 
 {<<<}
-procedure debugkey(k :keyindex);
+procedure debugkey (k: keyindex);
 
 begin
   with keytable[k] do
     begin
-      write('key is ',k:1, ', access is ');
+      write ('key is ',k:1, ', access is ');
       case access of
-        valueaccess: write('valueaccess');
-        noaccess: write('noaccess');
-        branchaccess: write('branchaccess');
+        valueaccess:  write ('valueaccess');
+        noaccess:     write ('noaccess');
+        branchaccess: write ('branchaccess');
         end;
-      writeln(' and refcount is ',refcount:1);
+      writeln (' and refcount is ',refcount:1);
     end;
 end;
 {>>>}
 
 {<<<}
-function equivaddr{(l, r: keyindex): boolean};
-
+function equivaddr (l, r: keyindex): boolean;
 { True if the addresses accessed for key l and key r are the same.
 }
-
-
-  begin {equivaddr}
-    with keytable[l].oprnd, keytable[r] do
-      if (access <> valueaccess) or (keytable[l].access <> valueaccess) or
-         (packedaccess <> keytable[l].packedaccess) or (oprnd.m <> m) or
-         (oprnd.reg <> reg) or (oprnd.offset <> offset) then
-        equivaddr := false
-      else if not (m in [dreg, areg, fpreg, indr, autoi, autod, twodregs,
-                         twofpregs]) and
-         ((oprnd.offset <> offset) or (oprnd.offset1 <> offset1) or
-         (oprnd.indxr <> indxr) or
-         (oprnd.commonlong_reloc <> commonlong_reloc)) then equivaddr := false
-      else equivaddr := true;
-  end {equivaddr} ;
+begin
+  with keytable[l].oprnd, keytable[r] do
+    if (access <> valueaccess) or (keytable[l].access <> valueaccess) or
+       (packedaccess <> keytable[l].packedaccess) or (oprnd.m <> m) or
+       (oprnd.reg <> reg) or (oprnd.offset <> offset) then
+      equivaddr := false
+    else if not (m in [dreg, areg, fpreg, indr, autoi, autod, twodregs,
+                       twofpregs]) and
+       ((oprnd.offset <> offset) or (oprnd.offset1 <> offset1) or
+       (oprnd.indxr <> indxr) or
+       (oprnd.commonlong_reloc <> commonlong_reloc)) then equivaddr := false
+    else
+      equivaddr := true;
+end;
 {>>>}
 {<<<}
-function equivaccess{l, r: keyindex: boolean};
-
+function equivaccess (l, r: keyindex): boolean;
 { True if the addresses accessed for key l and key r are the same.
 }
-
-
-  begin {equivaccess}
-    equivaccess := equivaddr(l,r) and (keytable[l].regvalid =
-                   keytable[r].regvalid) and (keytable[l].indxrvalid =
-                   keytable[r].indxrvalid);
-  end {equivaccess} ;
+begin
+  equivaccess := equivaddr(l,r) and (keytable[l].regvalid =
+                 keytable[r].regvalid) and (keytable[l].indxrvalid =
+                 keytable[r].indxrvalid);
+end;
 {>>>}
 
 {<<<}
-procedure bumptempcount{k: keyindex; (key of temp desired)
-                        delta: integer (amount to adjust ref count) };
-
+procedure bumpTempCount (k: keyindex; delta: integer);
 { Increment the reference of any temp containing the value for key "k".
   If there is no temp assigned, this is a no-op
 }
-
-
-  begin
-    with keytable[k] do
-      begin
-      if regsaved and (properreg >= stackcounter) then
-        with keytable[properreg] do
+begin
+  with keytable[k] do
+    begin
+    if regsaved and (properreg >= stackcounter) then
+      with keytable[properreg] do
+        begin
+        if (delta < -refcount) then { overflow is rarely a problem }
           begin
-          if (delta < - refcount) then { overflow is rarely a problem }
-            begin
-            write('BUMPTEMPCOUNT, refcount underflow');
-            abort(inconsistent);
-            end;
-          refcount := refcount + delta;
+          write ('bumpTempCount, refcount underflow - delta:', delta:2, ' refcount:', refcount:2);
+          abort (inconsistent);
           end;
+        refcount := refcount + delta;
+        end;
 
-      if indxrsaved and (properindxr >= stackcounter) then
-        with keytable[properindxr] do
+    if indxrsaved and (properindxr >= stackcounter) then
+      with keytable[properindxr] do
+        begin
+        if (delta < -refcount) then { overflow is rarely a problem }
           begin
-          if (delta < - refcount) then { overflow is rarely a problem }
-            begin
-            write('BUMPTEMPCOUNT, refcount underflow');
-            abort(inconsistent);
-            end;
-          refcount := refcount + delta;
+          write ('bumpTempCount, refcount underflow - delta:', delta:2, ' refcount:', refcount:2);
+          abort (inconsistent);
           end;
-      end;
-  end {bumptempcount} ;
+        refcount := refcount + delta;
+        end;
+    end;
+end;
 {>>>}
 
 {<<<}
-function pushing{k: keyindex (expression to check) : boolean};
-
+function pushing (k: keyindex): boolean;
 { True if the value of "k" is being pushed onto the stack.
 }
-
-
-  begin
-    with keytable[k], oprnd do
-      pushing := (m = relative) and (reg = sp) and
-                 (stackoffset + len + offset <= 0);
-  end {pushing} ;
+begin
+  with keytable[k], oprnd do
+    pushing := (m = relative) and (reg = sp) and (stackoffset + len + offset <= 0);
+end;
 {>>>}
 {<<<}
-function popping{k: keyindex (expression to check) : boolean};
-
+function popping (k: keyindex): boolean;
 { True if the value of "k" is being popped off the stack.
 }
-
-
-  begin
-    with keytable[k], oprnd do
-      popping := (m = relative) and (reg = sp) and uselesstemp and
-                 ( - offset = stackoffset) and
-                 (keytable[stackcounter + 1].oprnd.offset - offset <=
-                  len + 1);
-  end {popping} ;
+begin
+  with keytable[k], oprnd do
+    popping := (m = relative) and (reg = sp) and
+               uselesstemp and
+               ( - offset = stackoffset) and
+               (keytable[stackcounter + 1].oprnd.offset - offset <= len + 1);
+end;
 {>>>}
 
 {<<<}
-procedure fixaccess{oprndlen: datarange; (instruction operand length)
-                    k: keyindex; (key holding operand)
-                    var oprnd: operand (operand to change) };
+procedure fixaccess (oprndlen: datarange; k: keyindex; var oprnd: operand);
+{ Changes relative-sp mode to (sp)+ or -(sp) where possible }
 
-{ Changes relative-sp mode to (sp)+ or -(sp) where possible.
-}
+begin
+  oprndlen := max(word, oprndlen);
 
-
-  begin {fixaccess}
-    oprndlen := max(word, oprndlen);
-    oprnd := keytable[k].oprnd;
-    with oprnd do
-      if popping(k) and
-         (stackoffset - oprndlen =
-         - keytable[stackcounter + 1].oprnd.offset) then
-        begin
-        returntemps(1);
-        m := autoi;
-        offset := 0;
-        end
-      else if pushing(k) and
-              (stackoffset + oprndlen =
-              - keytable[stackcounter].oprnd.offset) then
-        begin
-        stackoffset := stackoffset + oprndlen;
-        m := autod;
-        offset := 0;
-        end;
-  end {fixaccess} ;
+  oprnd := keytable[k].oprnd;
+  with oprnd do
+    if popping(k) and
+       (stackoffset - oprndlen =
+       - keytable[stackcounter + 1].oprnd.offset) then
+      begin
+      returntemps(1);
+      m := autoi;
+      offset := 0;
+      end
+    else if pushing(k) and
+            (stackoffset + oprndlen =
+            - keytable[stackcounter].oprnd.offset) then
+      begin
+      stackoffset := stackoffset + oprndlen;
+      m := autod;
+      offset := 0;
+      end;
+end;
 {>>>}
 
 {<<<}
-procedure gensingle{i: insttype; (instruction to generate)
-                    dst: keyindex (keytable descriptor of operand) };
-
+procedure gensingle (i: insttype; dst: keyindex);
 { Generate a single operand instruction.  Differs from "gen1" (defined
   previously) in that operand length is calculated from the operand, and
   stack pops and pushes are calculated using "fixaccess".
 }
+var
+  dstoprnd: operand; {holds result of fixaccess}
 
-  var
-    dstoprnd: operand; {holds result of fixaccess}
-
-
-  begin {gensingle}
-    geninst(i, 1, keytable[dst].len);
-    fixaccess(keytable[dst].len, dst, dstoprnd);
-    genoprnd(dstoprnd);
-    keytable[dst].oprnd.flavor := int;
-  end {gensingle} ;
+begin
+  geninst (i, 1, keytable[dst].len);
+  fixaccess (keytable[dst].len, dst, dstoprnd);
+  genoprnd (dstoprnd);
+  keytable[dst].oprnd.flavor := int;
+end;
 {>>>}
 {<<<}
-procedure fpgensingle{i: insttype; (instruction to generate)
-                      src: keyindex (operand descriptor)};
+procedure fpgensingle (i: insttype; src: keyindex);
+{ Generate a single operand f.p. instruction.  Currently this is only used for FTST }
 
-{ Generate a single operand f.p. instruction.  Currently this is only used for
-  FTST.
-}
+var
+  l: datarange; {calculated operand length}
+  srcoprnd: operand; {modified operands returned by fixaccess}
 
-  var
-    l: datarange; {calculated operand length}
-    srcoprnd: operand; {modified operands returned by fixaccess}
+begin
+  l := keytable[src].len; { instlength uses this for immediate constants }
+  geninst(i, 1, l);
 
-
-  begin {fpgensingle}
-    l := keytable[src].len; { instlength uses this for immediate constants }
-    geninst(i, 1, l);
-
-    { Insert the 68881 floating-point format in the instruction node.
-    }
-    if (i <> fmove) and (keytable[src].oprnd.m = fpreg) then
+  { Insert the 68881 floating-point format in the instruction node.
+  }
+  if (i <> fmove) and (keytable[src].oprnd.m = fpreg) then
+    lastptr^.fp_format := extended_real
+  else if keytable[src].oprnd.flavor = float then
+    if l = 12 then
       lastptr^.fp_format := extended_real
-    else if keytable[src].oprnd.flavor = float then
-      if l = 12 then lastptr^.fp_format := extended_real
-      else if l = quad then lastptr^.fp_format := double_real
-      else lastptr^.fp_format := single_real
-    else { It's an int_float }
-      begin
-      write('Illegal 68881 data type in fpgensingle');
-      abort(inconsistent);
-      end;
+    else if l = quad then
+      lastptr^.fp_format := double_real
+    else
+      lastptr^.fp_format := single_real
+  else { It's an int_float }
+    begin
+    write ('Illegal 68881 data type in fpgensingle');
+    abort (inconsistent);
+    end;
 
-    fixaccess(l, src, srcoprnd);
-    genoprnd(srcoprnd);
-  end {fpgensingle} ;
+  fixaccess (l, src, srcoprnd);
+  genoprnd (srcoprnd);
+end;
 {>>>}
 {<<<}
 procedure gendouble (i: insttype; src, dst: keyindex);
@@ -9856,276 +9543,239 @@ begin {fpgendouble}
 end {fpgendouble} ;
 {>>>}
 {<<<}
-procedure gensimplemove{src, dst: keyindex (move src to dst) };
+procedure gensimplemove (src, dst: keyindex);
+{ Generate a move of a simple operand }
 
-{ Generate a move of a simple operand.
-}
-
-
-  begin
-    if not equivaddr(src, dst) then gendouble(move, src, dst);
-  end {gensimplemove} ;
+begin
+  if not equivaddr (src, dst) then
+    gendouble (move, src, dst);
+end;
 {>>>}
 {<<<}
-procedure genfpmove{src, dst: keyindex (move src to dst) };
+procedure genfpmove (src, dst: keyindex);
+{ Generate a floating-point move of a simple operand }
 
-{ Generate a floating-point move of a simple operand.
-}
-
-
-  begin
-    if not equivaddr(src, dst) then fpgendouble(fmove, src, dst);
-  end {genfpmove} ;
+begin
+  if not equivaddr(src, dst) then
+    fpgendouble(fmove, src, dst);
+end;
 {>>>}
 {<<<}
-procedure generror{err: integer};
+procedure generror (err: integer);
+{ Generate an error node to pass more precise data to the postmortem analyzer }
 
-{ Generate an error node to pass more precise data to the postmortem analyzer
-}
-
-
-  begin
-    newnode;
-    with lastptr^ do
-      begin
-      tempcount := 0; {for node dump only}
-      kind := errornode;
-      errorno := err;
-      oprndcount := 0;
-      end;
-  end; {generror}
+begin
+  newnode;
+  with lastptr^ do
+    begin
+    tempcount := 0; {for node dump only}
+    kind := errornode;
+    errorno := err;
+    oprndcount := 0;
+    end;
+end;
 {>>>}
 
 {<<<}
-function signedoprnds;
-
+function signedoprnds: boolean;
 { True if both left and right operands of the current operation are
   signed.  Picks up the operands from the globals "left" and "right".
 }
 
-
-  begin
-    signedoprnds := keytable[left].signed and keytable[right].signed;
-  end {signedoprnds} ;
+begin
+  signedoprnds := keytable[left].signed and keytable[right].signed;
+end;
 {>>>}
 {<<<}
-function bytelength{k: keyindex (operand to examine) : datarange};
-
+function bytelength (k: keyindex) : datarange;
 { Returns the operand length in bytes, regardless of whether the operand
   is packed or not.  Note that a byte length of 3 is a special case that is
   rounded up to long.
 }
+var
+  length: integer;
 
-  var
-    length: integer;
-
-  begin
-    with keytable[k],oprnd do
-      if packedaccess then
-        begin
-        length := (len + bitsperunit - 1) div bitsperunit;
-        if length = 3 then bytelength := long else bytelength := length;
-        end
-      else if (m <> immediate) then
-        bytelength := len
-      else if (offset >= - 128) and (offset <= 127) then
-        bytelength := byte
-      else if (offset >= - 32767 - 1) and (offset <= 32767) then
-        bytelength := word
-      else bytelength := long;
-  end {bytelength} ;
+begin
+  with keytable[k],oprnd do
+    if packedaccess then
+      begin
+      length := (len + bitsperunit - 1) div bitsperunit;
+      if length = 3 then bytelength := long else bytelength := length;
+      end
+    else if (m <> immediate) then
+      bytelength := len
+    else if (offset >= - 128) and (offset <= 127) then
+      bytelength := byte
+    else if (offset >= - 32767 - 1) and (offset <= 32767) then
+      bytelength := word
+    else bytelength := long;
+end;
 {>>>}
 
 {<<<}
 function roundbytes(bytelen: addressrange): addressrange;
-
 { Round given byte length to a power-of-two.
 }
-
-
-  begin
-    if bytelen > word then roundbytes := long
-    else roundbytes := bytelen;
-  end {roundbytes} ;
+begin
+  if bytelen > word then
+    roundbytes := long
+  else
+    roundbytes := bytelen;
+end;
 {>>>}
 {<<<}
-procedure setlongvalue{i:integer};
-
+procedure setlongvalue (i:integer);
 { Set a keytable entry to the value of i.  The global variable "right"
   is set to the entry's index, since this routine is designed to be called
   by routines which handle pseudoops of the form xxxlitptr and xxxlitreal.
 }
-
-
-  begin
-    settemp(len, immediate, 0, 0, false, i, 0, 1, unknown);
-    right := tempkey;
-  end {setlongvalue} ;
+begin
+  settemp (len, immediate, 0, 0, false, i, 0, 1, unknown);
+  right := tempkey;
+end;
 {>>>}
 {<<<}
-procedure adjustregcount{k: keyindex; (operand to adjust)
-                         delta: integer (amount to adjust count by) };
-
+procedure adjustregcount (k: keyindex; delta: integer);
 { Adjusts the register reference count for any registers used in the
   specified operand.  If a register pair is used, both registers will
   be adjusted by the same amount.
 }
-
-
-  begin
-    with keytable[k], oprnd do
-      if access = valueaccess then
-        case m of
-          dreg:
-            if regvalid then
-              dregisters[reg] := dregisters[reg] + delta;
-          pcindexed:
-            if indxrvalid then
-              dregisters[indxr] := dregisters[indxr] + delta;
-          areg, indr, autoi, autod, relative:
-            if regvalid then
-              aregisters[reg] := aregisters[reg] + delta;
-          fpreg:
-            begin
-            if regvalid then
-              fpregisters[reg] := fpregisters[reg] + delta;
-            end;
-          indexed, bitindexed:
-            begin
-            if indxrvalid then
-              dregisters[indxr] := dregisters[indxr] + delta;
-            if regvalid then
-              aregisters[reg] := aregisters[reg] + delta;
-            end;
-          twodregs:
-            begin
-            if indxrvalid then
-              dregisters[indxr] := dregisters[indxr] + delta;
-            if regvalid then
-              dregisters[reg] := dregisters[reg] + delta;
-            end;
-          twofpregs:
-            begin
-            if indxrvalid then
-              fpregisters[indxr] := fpregisters[indxr] + delta;
-            if regvalid then
-              fpregisters[reg] := fpregisters[reg] + delta;
-            end;
-          otherwise
+begin
+  with keytable[k], oprnd do
+    if access = valueaccess then
+      case m of
+        dreg:
+          if regvalid then
+            dregisters[reg] := dregisters[reg] + delta;
+        pcindexed:
+          if indxrvalid then
+            dregisters[indxr] := dregisters[indxr] + delta;
+        areg, indr, autoi, autod, relative:
+          if regvalid then
+            aregisters[reg] := aregisters[reg] + delta;
+        fpreg:
+          begin
+          if regvalid then
+            fpregisters[reg] := fpregisters[reg] + delta;
           end;
-  end {adjustregcount} ;
+        indexed, bitindexed:
+          begin
+          if indxrvalid then
+            dregisters[indxr] := dregisters[indxr] + delta;
+          if regvalid then
+            aregisters[reg] := aregisters[reg] + delta;
+          end;
+        twodregs:
+          begin
+          if indxrvalid then
+            dregisters[indxr] := dregisters[indxr] + delta;
+          if regvalid then
+            dregisters[reg] := dregisters[reg] + delta;
+          end;
+        twofpregs:
+          begin
+          if indxrvalid then
+            fpregisters[indxr] := fpregisters[indxr] + delta;
+          if regvalid then
+            fpregisters[reg] := fpregisters[reg] + delta;
+          end;
+        otherwise
+        end;
+end;
 {>>>}
 {<<<}
-procedure setbr{inst: insttype (branch instruction used) };
-
+procedure setbr (inst: insttype);
 { Sets the operand data for an operand which is accessed by a branch.
   That is, only the condition code is used.  The type of conditions tested
   for are implicit in the branch instruction.
-
   This uses the global "key", which is the operand for the latest
   pseudoinstruction.
 }
-
-
-  begin
-    adjustdelay := true;
-    with keytable[key] do
-      begin
-      access := branchaccess;
-      brinst := inst
-      end;
-  end {setbr} ;
+begin
+  adjustdelay := true;
+  with keytable[key] do
+    begin
+    access := branchaccess;
+    brinst := inst
+    end;
+end;
 {>>>}
 {<<<}
-procedure setvalue{m: modes; (hardware operand mode)
-                   reg: regindex; (register field, if any)
-                   indxr: regindex; (index register field, if any)
-                   indxlong: boolean; (true if index register is long)
-                   offset: addressrange; (immediate operand or fixed offset)
-                   offset1: addressrange (extension for 32 bit fixed operand)
-                   };
-
+procedure setvalue (m: modes; reg: regindex;
+                    indxr: regindex; indxlong: boolean;
+                    offset: addressrange; offset1: addressrange);
 { Sets the current operand to be a value access and sets reference counts
   according to the data in the current pseudo-instruction.
-
   This uses the global "key", which is the operand for the latest
   pseudoinstruction.
 }
+begin
+  with keytable[key] do
+    begin
+    access := valueaccess;
+    oprnd.m := m;
+    oprnd.reg := reg;
+    oprnd.indxr := indxr;
+    oprnd.indxlong := indxlong;
+    oprnd.offset := offset;
+    oprnd.offset1 := offset1;
+    oprnd.scale := 1;
+    oprnd.commonlong_reloc := unknown;
 
+    if m = fpreg then oprnd.flavor := float
+    else if m = dreg then oprnd.flavor := int
+    else oprnd.flavor := int_float;
 
-  begin
-    with keytable[key] do
-      begin
-      access := valueaccess;
-      oprnd.m := m;
-      oprnd.reg := reg;
-      oprnd.indxr := indxr;
-      oprnd.indxlong := indxlong;
-      oprnd.offset := offset;
-      oprnd.offset1 := offset1;
-      oprnd.scale := 1;
-      oprnd.commonlong_reloc := unknown;
+    high_word_dirty := false;
+    instmark := lastnode + 1;
 
-      if m = fpreg then oprnd.flavor := float
-      else if m = dreg then oprnd.flavor := int
-      else oprnd.flavor := int_float;
-
-      high_word_dirty := false;
-      instmark := lastnode + 1;
-      adjustregcount(key, refcount);
-      bumptempcount(key, refcount);
-      end;
-  end {setvalue} ;
+    adjustregcount (key, refcount);
+    bumpTempCount (key, refcount);
+    end;
+end;
 {>>>}
 {<<<}
-procedure setkeyvalue{k: keyindex};
+procedure setkeyvalue (k: keyindex);
+{call setvalue with fields from keytable[k] }
 
-{call setvalue with fields from keytable[k]
-}
-
-
-  begin
-    with keytable[k], oprnd do
-      begin
-      keytable[key].packedaccess := packedaccess;
-      setvalue(m, reg, indxr, indxlong, offset, offset1);
-      keytable[key].oprnd.flavor := flavor;
-      keytable[key].oprnd.scale := scale;
-      keytable[key].oprnd.commonlong_reloc := commonlong_reloc;
-      keytable[key].signed := signed;
-      keytable[key].signlimit := signlimit;
-      keytable[key].knowneven := knowneven;
-      keytable[key].high_word_dirty := high_word_dirty;
-      end;
-  end {setkeyvalue} ;
+begin
+  with keytable[k], oprnd do
+    begin
+    keytable[key].packedaccess := packedaccess;
+    setvalue(m, reg, indxr, indxlong, offset, offset1);
+    keytable[key].oprnd.flavor := flavor;
+    keytable[key].oprnd.scale := scale;
+    keytable[key].oprnd.commonlong_reloc := commonlong_reloc;
+    keytable[key].signed := signed;
+    keytable[key].signlimit := signlimit;
+    keytable[key].knowneven := knowneven;
+    keytable[key].high_word_dirty := high_word_dirty;
+    end;
+end;
 {>>>}
 {<<<}
-procedure setallfields{k: keyindex};
-
+procedure setallfields (k: keyindex);
 {similar to setkeyvalue but also copies properaddress, packedrecord,
  etc.  Can only be used if we are copying a keyvalue and not changing
  regset, mode, or offset, as in dovarx.
 }
-
-
-  begin
-    with keytable[k] do
-      begin
-      keytable[key].regsaved := regsaved;
-      keytable[key].indxrsaved := indxrsaved;
-      keytable[key].regvalid := regvalid;
-      keytable[key].indxrvalid := indxrvalid;
-      keytable[key].properreg := properreg;
-      keytable[key].properindxr := properindxr;
-      keytable[key].tempflag := tempflag;
-      setkeyvalue(k);
-      end;
-  end {setallfields} ;
+begin
+  with keytable[k] do
+    begin
+    keytable[key].regsaved := regsaved;
+    keytable[key].indxrsaved := indxrsaved;
+    keytable[key].regvalid := regvalid;
+    keytable[key].indxrvalid := indxrvalid;
+    keytable[key].properreg := properreg;
+    keytable[key].properindxr := properindxr;
+    keytable[key].tempflag := tempflag;
+    setkeyvalue(k);
+    end;
+end;
 {>>>}
 
 {<<<}
-function savedreg{r: regindex (register to save) : keyindex};
-
+function savedreg (r: regindex) : keyindex;
 { Save the given volatile data register on the runtime stack.  This
   routine is quite clever about the process since it attempts to reuse
   an existing copy of the register if possible.  If not, the contents
@@ -10134,81 +9784,74 @@ function savedreg{r: regindex (register to save) : keyindex};
   as a procedure with a var param, but one cannot pass a packed field as a
   var param.
 }
+var
+  i: keyindex; {induction var used to search keytable}
+  found: boolean; {set true when we find an existing saved copy}
+  passed_reg: boolean; {set true when we pass the same register but not necessarily "found".}
+  dreglen: word..long; {length of longest item in dreg}
 
-  var
-    i: keyindex; {induction var used to search keytable}
-    found: boolean; {set true when we find an existing saved copy}
-    passed_reg: boolean; {set true when we pass the same register but not
-                          necessarily "found".}
-    dreglen: word..long; {length of longest item in dreg}
+begin
+  i := lastkey;
+  found := false;
+  dreglen := word;
+  passed_reg := false;
 
-
-  begin {savedreg}
-    i := lastkey;
-    found := false;
-    dreglen := word;
-    passed_reg := false;
-
-    with context[contextsp] do
-      while not found and (i >= keymark) do
-        begin
-        with keytable[i], oprnd do
-          if (access = valueaccess) and (refcount > 0) then
-            begin
-            if (m in [dreg, twodregs]) and (r = reg) and regvalid then
-              begin
-              passed_reg := true;
-
-              if regsaved and keytable[properreg].validtemp and
-                ((properreg >= stackcounter) or (properreg <= lastkey)) then
-                begin
-                found := true;
-                savedreg := properreg;
-                end
-              else if len > dreglen then
-                dreglen := len;
-              end
-            else if (m in [pcindexed, indexed, bitindexed, twodregs]) and
-                    (r = indxr) and indxrvalid then
-              begin
-              passed_reg := true;
-
-              if indxrsaved and keytable[properindxr].validtemp then
-                begin
-                found := true;
-                savedreg := properindxr;
-                end
-              else if (m = twodregs) and (len > dreglen) then dreglen := len
-              else if (m = indexed) and indxlong then dreglen := long;
-              end;
-            end;
-        i := i - 1;
-        end;
-    if not found then
+  with context[contextsp] do
+    while not found and (i >= keymark) do
       begin
-{      if dontchangevalue > 0 then
+      with keytable[i], oprnd do
+        if (access = valueaccess) and (refcount > 0) then
+          begin
+          if (m in [dreg, twodregs]) and (r = reg) and regvalid then
+            begin
+            passed_reg := true;
+
+            if regsaved and keytable[properreg].validtemp and
+              ((properreg >= stackcounter) or (properreg <= lastkey)) then
+              begin
+              found := true;
+              savedreg := properreg;
+              end
+            else if len > dreglen then
+              dreglen := len;
+            end
+          else if (m in [pcindexed, indexed, bitindexed, twodregs]) and (r = indxr) and indxrvalid then
+            begin
+            passed_reg := true;
+            if indxrsaved and keytable[properindxr].validtemp then
+              begin
+              found := true;
+              savedreg := properindxr;
+              end
+            else if (m = twodregs) and (len > dreglen) then dreglen := len
+            else if (m = indexed) and indxlong then dreglen := long;
+            end;
+          end;
+      i := i - 1;
+      end;
+
+  if not found then
+    begin
+    { if dontchangevalue > 0 then
         begin
         write('Can''t save register in a parameter list');
         abort(inconsistent);
         end; }
+    { We didn't pass an occurance of this register, even one that couldn't be used, so we must assume long }
+    if not passed_reg then
+      dreglen := long;
 
-      { We didn't pass an occurance of this register, even one that couldn't
-        be used, so we must assume long.
-      }
-      if not passed_reg then dreglen := long;
-
-      aligntemps;
-      newtemp(dreglen);
-      settempdreg(dreglen, r);
-      gensimplemove(tempkey, stackcounter);
-      tempkey := tempkey + 1;
-      savedreg := stackcounter;
-      end;
-  end {savedreg} ;
+    aligntemps;
+    newtemp (dreglen);
+    settempdreg (dreglen, r);
+    gensimplemove (tempkey, stackcounter);
+    tempkey := tempkey + 1;
+    savedreg := stackcounter;
+    end;
+end;
 {>>>}
 {<<<}
 function savefpreg{r: regindex (register to save) : keyindex};
-
 { Save the given volatile f.p. register on the runtime stack.  This
   routine is quite clever about the process since it attempts to reuse
   an existing copy of the register if possible.  If not, the contents
@@ -10217,89 +9860,83 @@ function savefpreg{r: regindex (register to save) : keyindex};
   as a procedure with a var param, but one cannot pass a packed field as a
   var param.
 }
+var
+  i: keyindex; {induction var used to search keytable}
+  found: boolean; {set true when we find an existing saved copy}
 
-  var
-    i: keyindex; {induction var used to search keytable}
-    found: boolean; {set true when we find an existing saved copy}
+begin
+  i := lastkey;
+  found := false;
 
-
-  begin {savefpreg}
-    i := lastkey;
-    found := false;
-
-    with context[contextsp] do
-      while not found and (i >= keymark) do
-        begin
-        with keytable[i], oprnd do
-          if (access = valueaccess) then
-            if (m in [fpreg, twofpregs]) and (r = reg) and regvalid then
-              begin
-              if regsaved and keytable[properreg].validtemp then
-                begin
-                found := true;
-                savefpreg := properreg;
-                end;
-              end;
-        i := i - 1;
-        end;
-    if not found then
+  with context[contextsp] do
+    while not found and (i >= keymark) do
       begin
-{      if dontchangevalue > 0 then
+      with keytable[i], oprnd do
+        if (access = valueaccess) then
+          if (m in [fpreg, twofpregs]) and (r = reg) and regvalid then
+            begin
+            if regsaved and keytable[properreg].validtemp then
+              begin
+              found := true;
+              savefpreg := properreg;
+              end;
+            end;
+      i := i - 1;
+      end;
+  if not found then
+    begin
+    { if dontchangevalue > 0 then
         begin
         write('Can''t save register in a parameter list');
         abort(inconsistent);
         end; }
 
-      aligntemps;
-      newtemp(12); { Always save an fpreg as an extended to prevent rounding. }
-      settempfpreg(r);
-      keytable[stackcounter].len := 12;
-      keytable[stackcounter].oprnd.flavor := float;
-      genfpmove(tempkey, stackcounter);
-      tempkey := tempkey + 1;
-      savefpreg := stackcounter;
-      end;
-  end {savefpreg} ;
+    aligntemps;
+    newtemp(12); { Always save an fpreg as an extended to prevent rounding. }
+    settempfpreg(r);
+    keytable[stackcounter].len := 12;
+    keytable[stackcounter].oprnd.flavor := float;
+    genfpmove(tempkey, stackcounter);
+    tempkey := tempkey + 1;
+    savefpreg := stackcounter;
+    end;
+end;
 {>>>}
 {<<<}
 function saveareg{r: regindex: keyindex};
-
 { Save an address register.  Much like "savedreg" above, but simpler.
 }
+var
+  i: keyindex; {running induction var}
 
-  var
-    i: keyindex; {running induction var}
-
-
-  begin {saveareg}
-    i := lastkey;
-    with context[contextsp] do
+begin {saveareg}
+  i := lastkey;
+  with context[contextsp] do
+    begin
+    while (i >= keymark) and not ((keytable[i].access = valueaccess) and
+          (keytable[i].oprnd.m in
+          [areg, indexed, bitindexed, relative, indr, autoi, autod]) and
+          (keytable[i].oprnd.reg = r) and keytable[i].regvalid and
+          keytable[i].regsaved and
+          keytable[keytable[i].properreg].validtemp) do
+      i := i - 1;
+    if i < keymark {no safe copy found} then
       begin
-      while (i >= keymark) and not ((keytable[i].access = valueaccess) and
-            (keytable[i].oprnd.m in
-            [areg, indexed, bitindexed, relative, indr, autoi, autod]) and
-            (keytable[i].oprnd.reg = r) and keytable[i].regvalid and
-            keytable[i].regsaved and
-            keytable[keytable[i].properreg].validtemp) do
-        i := i - 1;
-      if i < keymark {no safe copy found} then
-        begin
-{        if dontchangevalue > 0 then
+      { if dontchangevalue > 0 then
           begin
           write('Can''t save register in a parameter list');
           abort(inconsistent);
           end; }
-
-        aligntemps;
-        newtemp(long);
-        settempareg(r);
-        gensimplemove(tempkey, stackcounter);
-        tempkey := tempkey + 1;
-        saveareg := stackcounter;
-        end
-      else saveareg := keytable[i].properreg;
-      end;
-  end {saveareg} ;
+      aligntemps;
+      newtemp(long);
+      settempareg(r);
+      gensimplemove(tempkey, stackcounter);
+      tempkey := tempkey + 1;
+      saveareg := stackcounter;
+      end
+    else saveareg := keytable[i].properreg;
+    end;
+end {saveareg} ;
 {>>>}
 {<<<}
 procedure savekey{k: keyindex (operand to save) };
@@ -10314,7 +9951,7 @@ procedure savekey{k: keyindex (operand to save) };
       with keytable[k] do
         if access = valueaccess then
           begin
-          bumptempcount(k, - refcount);
+          bumpTempCount (k, -refcount);
           with oprnd do
             case m of
               fpreg, twofpregs:
@@ -10371,30 +10008,28 @@ procedure savekey{k: keyindex (operand to save) };
                 end;
               otherwise
               end;
-          bumptempcount(k, refcount);
+          bumpTempCount (k, refcount);
           end;
   end {savekey} ;
 {>>>}
 {<<<}
 procedure saveactivekeys;
 
-  var
-    i: keyindex; {for stepping through active portion of keytable}
+var
+  i: keyindex; {for stepping through active portion of keytable}
 
-
-  begin {saveactivekeys}
-   if dontchangevalue <= 0 then
-    begin
-    for i := context[contextsp].keymark to lastkey do
-    with keytable[i] do
-      if (refcount > 0) and not (regsaved and indxrsaved)
-      then savekey(i);
-    end;
-  end {saveactivekeys} ;
+begin
+ if dontchangevalue <= 0 then
+  begin
+  for i := context[contextsp].keymark to lastkey do
+  with keytable[i] do
+    if (refcount > 0) and not (regsaved and indxrsaved) then
+      savekey(i);
+  end;
+end;
 {>>>}
 {<<<}
 procedure saveresult;
-
 { Save the result of an arithmetic operation, as described by
   keytable[key].  Called by routines that leave their results
   in the dedicated arithmetic registers.  The result can be in
@@ -10412,32 +10047,28 @@ procedure saveresult;
   If the only reference is a move or push, we don't bother, as
   the result is being saved at its destination.
 }
-
-
-  begin {saveresult}
-    if not ((pseudoSharedPtr^.pseudobuff.op in [movint, movreal]) and
-            (pseudoSharedPtr^.pseudobuff.oprnds[2] = key) or
-            (pseudoSharedPtr^.pseudobuff.op in [pshint, pshreal]) and
-            (pseudoSharedPtr^.pseudobuff.oprnds[1] = key)) then
-      begin
-      adjusttemps;
-      if key > lastkey then
-        lastkey := key;
-      savekey(key);
-      end;
-  end {saveresult} ;
+begin
+  if not ((pseudoSharedPtr^.pseudobuff.op in [movint, movreal]) and
+          (pseudoSharedPtr^.pseudobuff.oprnds[2] = key) or
+          (pseudoSharedPtr^.pseudobuff.op in [pshint, pshreal]) and
+          (pseudoSharedPtr^.pseudobuff.oprnds[1] = key)) then
+    begin
+    adjusttemps;
+    if key > lastkey then
+      lastkey := key;
+    savekey(key);
+    end;
+end;
 {>>>}
 {<<<}
 procedure setd4result;
-
 { set result of an operation to d4.
   Used by 32-bit integer and floating point emulator.
 }
-
-begin {setd4result}
-  setvalue(dreg, 4, 0, false, 0, 0);
+begin
+  setvalue (dreg, 4, 0, false, 0, 0);
   saveresult;
-end   {setd4result};
+end;
 {>>>}
 
 {<<<}
@@ -10746,6 +10377,7 @@ function getdreg;
     getdreg := r;
   end {getdreg} ;
 {>>>}
+
 {<<<}
 function countfpreg: integer;
 
@@ -10803,6 +10435,7 @@ function getfpreg;
     getfpreg := r;
   end {getfpreg} ;
 {>>>}
+
 {<<<}
 function countareg: integer;
 
@@ -10867,6 +10500,7 @@ begin {getareg}
   getareg := r;
 end {getareg} ;
 {>>>}
+
 {<<<}
 procedure allowmodify{var k: keyindex; (operand to be modified)
                       forcecopy: boolean (caller can force temp) };
@@ -10897,6 +10531,7 @@ procedure allowmodify{var k: keyindex; (operand to be modified)
       end;
   end {allowmodify} ;
 {>>>}
+
 {<<<}
 procedure lock{k: keyindex (operand to lock) };
 
@@ -10907,7 +10542,7 @@ procedure lock{k: keyindex (operand to lock) };
 
   begin
     adjustregcount(k, 100);
-    bumptempcount(k, 100);
+    bumpTempCount(k, 100);
   end {lock} ;
 {>>>}
 {<<<}
@@ -10918,49 +10553,46 @@ procedure unlock{k: keyindex (operand to unlock) };
 
 
   begin
-    bumptempcount(k, - 100);
-    adjustregcount(k, - 100);
+    bumpTempCount(k, -100);
+    adjustregcount(k, -100);
   end {unlock} ;
 {>>>}
-{<<<}
-procedure changevalue{var key1: keyindex; (key to be changed)
-                      key2: keyindex (source of key data) };
 
+{<<<}
+procedure changevalue (var key1: keyindex; key2: keyindex);
 { Effectively assigns the contents of key2 to key1.  This is complicated
   by the same things as allowmodify, and by the need to adjust reference
   counts.  If the key will be referenced later, it is saved.
 }
+begin
+  allowmodify(key1, dontchangevalue > 0);
+  with keytable[key1] do
+    begin
+    adjustregcount (key1, -refcount);
+    bumpTempCount (key1, -refcount);
 
+    regsaved := keytable[key2].regsaved or (refcount <= 0);
+    indxrsaved := keytable[key2].indxrsaved or (refcount <= 0);
+    regvalid := keytable[key2].regvalid;
+    indxrvalid := keytable[key2].indxrvalid;
+    properreg := keytable[key2].properreg;
+    properindxr := keytable[key2].properindxr;
+    packedaccess := keytable[key2].packedaccess;
+    high_word_dirty := keytable[key2].high_word_dirty;
+    oprnd := keytable[key2].oprnd;
 
-  begin
-    allowmodify(key1, dontchangevalue > 0);
-    with keytable[key1] do
-      begin
-      adjustregcount(key1, - refcount);
-      bumptempcount(key1, - refcount);
-      regsaved := keytable[key2].regsaved or (refcount <= 0);
-      indxrsaved := keytable[key2].indxrsaved or (refcount <= 0);
-      regvalid := keytable[key2].regvalid;
-      indxrvalid := keytable[key2].indxrvalid;
-      properreg := keytable[key2].properreg;
-      properindxr := keytable[key2].properindxr;
-      packedaccess := keytable[key2].packedaccess;
-      high_word_dirty := keytable[key2].high_word_dirty;
-      oprnd := keytable[key2].oprnd;
-      bumptempcount(key1, refcount);
-      adjustregcount(key1, refcount);
-      end;
-    savekey(key1);
-  end {changevalue} ;
+    bumpTempCount (key1, refcount);
+    adjustregcount (key1, refcount);
+    end;
+  savekey(key1);
+end;
 {>>>}
+
 {<<<}
-function fix_effective_addr{k: keyindex: keyindex};
+function fix_effective_addr (k: keyindex): keyindex;
+{ LEA and PEA can't have an areg or dreg as an argument so this function forces the use of the stack copy }
 
-{ LEA and PEA can't have an areg or dreg as an argument so this function
-  forces the use of the stack copy.
-}
-
-  begin {fix_effective_addr}
+begin
   with keytable[k], oprnd do
     if (m = dreg) or (m = areg) then
       begin
@@ -10968,174 +10600,159 @@ function fix_effective_addr{k: keyindex: keyindex};
       fix_effective_addr := properreg;
       if not regsaved then
         begin
-        write('fix_effective_addr screw-up');
-        abort(inconsistent);
+        write ('fix_effective_addr screw-up');
+        abort (inconsistent);
         end;
       end
     else
       fix_effective_addr := k;
-  end; {fix_effective_addr}
+end;
 {>>>}
 {<<<}
-procedure forcerelative{var k: keyindex; (force key to be of relative mode)
-                        needareg: boolean; (true if a-reg based mode needed)
-                        indexedok: boolean; (true if indexed mode will suffice)
-                        offsetbias: integer; (amount which will bias offset)
-                        shortoffset: boolean (true if need an 8-bit offset) };
-
+procedure forcerelative (var k: keyindex; needareg: boolean; indexedok: boolean;
+                         offsetbias: integer; shortoffset: boolean);
 { Force keytable[k].oprnd.m to be "relative" or "indexed" (optional) mode.
   "offsetbias" is the value we will end up indexing by.  In addition, if
   "shortoffset" is true, we will require the offset word to have an 8-bit
   representation (signed), useful in setting up the hardware "indexed"
   mode.  Uses "changevalue" to make the change.
-
   "bitindexed" is considered equivalent to "indexed", in this case.
   "indexedok" forces "shortoffset" true -- simplifies calling code.
 }
+var
+  tempoffset: addressrange; {for reaching long relative addresses}
 
-  var
-    tempoffset: addressrange; {for reaching long relative addresses}
+begin
+  with keytable[k], oprnd do
+    begin
+    if (m = indexed) and indexedok then
+      shortoffset := true;
 
-
-  begin {forcerelative}
-    with keytable[k], oprnd do
-      begin
-      if (m = indexed) and indexedok then
-        shortoffset := true;
-
-      if ((m <> indexed) or not indexedok) and
-         not (m in [immediate, immediatequad, abslong, pcrelative, commonlong,
-                    bitindexed, relative]) or
-         not (m in [abslong, commonlong]) and
-         not mc68020 and (abs(offset + offsetbias) + len > 32767) or
-         needareg and (m in [abslong, pcrelative, commonlong]) or
-         (targetopsys = apollo) and sharedPtr^.switcheverplus[sharecode] and
-         (m = commonlong) or
-         shortoffset and ((m in [abslong, pcrelative, commonlong]) or
-          (not mc68020 and (abs(offset + offsetbias) > 127))) then
-          { ^^^ (mc68020 only)  Must be careful in last case not to prevent
-            an LEA for a pcrelative operand when caller expects it.  i.e.
-            accessbit when argument is a constant.
-          }
-        begin
-        adjustregcount(k, - refcount);
-
-        { For Versados the global section is acquired dynamicly, so we must
-          always reference it using the gp register.  For unix the global
-          section is static, so we use the gp register as an optimization
-          to allow shorter instructions.
+    if ((m <> indexed) or not indexedok) and
+       not (m in [immediate, immediatequad, abslong, pcrelative, commonlong,
+                  bitindexed, relative]) or
+       not (m in [abslong, commonlong]) and
+       not mc68020 and (abs(offset + offsetbias) + len > 32767) or
+       needareg and (m in [abslong, pcrelative, commonlong]) or
+       (targetopsys = apollo) and sharedPtr^.switcheverplus[sharecode] and
+       (m = commonlong) or
+       shortoffset and ((m in [abslong, pcrelative, commonlong]) or
+        (not mc68020 and (abs(offset + offsetbias) > 127))) then
+        { ^^^ (mc68020 only)  Must be careful in last case not to prevent
+          an LEA for a pcrelative operand when caller expects it.  i.e.
+          accessbit when argument is a constant.
         }
-        settempareg(getareg);
-        adjustregcount(k, refcount);
-        if (targetopsys = apollo) and sharedPtr^.switcheverplus[sharecode] and
-           (m = commonlong) then
+      begin
+      adjustregcount(k, - refcount);
+
+      { For Versados the global section is acquired dynamicly, so we must
+        always reference it using the gp register.  For unix the global
+        section is static, so we use the gp register as an optimization to allow shorter instructions }
+      settempareg(getareg);
+      adjustregcount(k, refcount);
+      if (targetopsys = apollo) and sharedPtr^.switcheverplus[sharecode] and
+         (m = commonlong) then
+        begin
+        gen2(move, long, tempkey, tempkey + 1);
+        tempkey := tempkey + 1;
+        end
+      else if ((offset > 32767) or (offset < -32768)) and not (m in
+               [abslong, commonlong]) then
+        begin
+        if (targetopsys = unix) and (reg = gp) and (m = relative) then
           begin
-          gen2(move, long, tempkey, tempkey + 1);
+          { Unix code is never pic, so we may address variables in the global section directly.
+            On the 68020 this is faster than relative mode with a long displacement }
+          settemp (long, commonlong, 0, 0, false, offset, 0, 1, global_section);
+          gen2 (lea, long, tempkey, tempkey + 1);
           tempkey := tempkey + 1;
           end
-        else if ((offset > 32767) or (offset < -32768)) and not (m in
-                 [abslong, commonlong]) then
+
+        else if not mc68020 then
           begin
-          if (targetopsys = unix) and (reg = gp) and (m = relative) then
-            begin
-            { Unix code is never pic, so we may address variables in the
-              global section directly.  On the 68020 this is faster than
-              relative mode with a long displacement.
-            }
-            settemp(long, commonlong, 0, 0, false, offset, 0, 1,
-                    global_section);
-            gen2(lea, long, tempkey, tempkey + 1);
-            tempkey := tempkey + 1;
-            end
-          else if not mc68020 then
-            begin
-            tempoffset := offset;
-            offset := 0;
-            settempimmediate(long, tempoffset);
-            gen2(lea, long, fix_effective_addr(k), tempkey + 1);
-            gendouble(add, tempkey, tempkey + 1);
-            offset := tempoffset;
-            tempkey := tempkey + 1;
-            end
-          else {mc68020 only -- generate long displacement}
-            gen2(lea, long, fix_effective_addr(k), tempkey);
+          tempoffset := offset;
+          offset := 0;
+          settempimmediate (long, tempoffset);
+          gen2 (lea, long, fix_effective_addr(k), tempkey + 1);
+          gendouble (add, tempkey, tempkey + 1);
+          offset := tempoffset;
+          tempkey := tempkey + 1;
           end
-        else
-          gen2(lea, long, fix_effective_addr(k), tempkey);
-        keytable[tempkey].oprnd.m := relative;
-        changevalue(k, tempkey);
-        end;
+        else {mc68020 only -- generate long displacement}
+          gen2 (lea, long, fix_effective_addr(k), tempkey);
+        end
+
+      else
+        gen2 (lea, long, fix_effective_addr(k), tempkey);
+
+      keytable[tempkey].oprnd.m := relative;
+      changevalue(k, tempkey);
       end;
-  end {forcerelative} ;
-{>>>}
-{<<<}
-procedure make_immediate{var k: keyindex; ( the key to change )
-                         compflag: boolean (complement constant if true) };
-
-{ Pull a constant out of the constant section and make it immediate.
-}
-
-  var
-    i: integer; { loop counter }
-    constant: unsigned;
-
-  begin { make_immediate }
-  with keytable[k],oprnd do
-    begin
-    constant := get_stringfile_byte(offset);
-
-    for i := 2 to len do
-      constant := constant * 256 + get_stringfile_byte(offset + i - 1);
-
-    if compflag then constant := not constant;
-
-    settempimmediate(len, constant);
-    k := tempkey;
     end;
-  end; { make_immediate }
+end;
 {>>>}
 {<<<}
-procedure popstack{n: integer (number of items to physically pop) };
+procedure make_immediate (var k: keyindex; compflag: boolean);
+{ Pull a constant out of the constant section and make it immediate }
 
-{ Return temps and adjust the stack pointer to reflect the fact.
-}
+var
+  i: integer; { loop counter }
+  constant: unsigned;
 
-  var
-    oldoffset: integer; {used in calculating space vacated by params}
+begin
+with keytable[k],oprnd do
+  begin
+  constant := getStringfileByte (offset);
 
+  for i := 2 to len do
+    constant := constant * 256 + getStringfileByte(offset + i - 1);
 
-  begin {popstack}
-    oldoffset := - keytable[stackcounter].oprnd.offset;
-    returntemps(n);
-    if oldoffset - stackoffset <> 0 then
-      begin
-      settempareg(sp);
-      settempimmediate(long, oldoffset - stackoffset);
-      gendouble(add, tempkey, tempkey + 1);
-      end;
-  end {popstack} ;
+  if compflag then
+    constant := not constant;
+
+  settempimmediate (len, constant);
+  k := tempkey;
+  end;
+end;
+{>>>}
+
+{<<<}
+procedure popstack (n: integer);
+{ Return temps and adjust the stack pointer to reflect the fact }
+
+var
+  oldoffset: integer; {used in calculating space vacated by params}
+
+begin
+  oldoffset := - keytable[stackcounter].oprnd.offset;
+  returntemps(n);
+  if oldoffset - stackoffset <> 0 then
+    begin
+    settempareg (sp);
+    settempimmediate (long, oldoffset - stackoffset);
+    gendouble (add, tempkey, tempkey + 1);
+    end;
+end;
 {>>>}
 {<<<}
-procedure callandpop{entry: libroutines; args: integer};
+procedure callandpop (entry: libroutines; args: integer);
+{ Calls support library routine, and returns arguments afterwards }
 
-{ Calls support library routine, and returns arguments afterwards.
-}
-
-begin {callandpop}
-  callsupport(entry);
-  popstack(args);
-end {callandpop} ;
+begin
+  callsupport (entry);
+  popstack (args);
+end;
 {>>>}
-{<<<}
-function is_sp{r: regindex: boolean};
 
-{ Returns true if argument is sp or if /noframe and argument is fp.
-}
+{<<<}
+function is_sp (r: regindex): boolean;
+{ Returns true if argument is sp or if /noframe and argument is fp }
 
 begin
   if (r = sp) or (not blockusesframe and (r = fp)) then
     is_sp := true
-  else is_sp := false;
+  else
+    is_sp := false;
 end;
 {>>>}
 {>>>}
@@ -11650,7 +11267,7 @@ procedure finishloop;
   end {finishloop} ;
 {>>>}
 {>>>}
-{<<<  reference}
+{<<<  Reference count book-keeping}
 {<<<}
 procedure firstreference{k: keyindex (loop address counter) };
 
@@ -11708,8 +11325,7 @@ procedure onlyreference{k: keyindex (loop address counter) };
         else if loopupflag then m := autoi;
   end {onlyreference} ;
 {>>>}
-{>>>}
-{<<<  Reference count book-keeping}
+
 {<<<}
 procedure dereference{k: keyindex (operand) };
 
@@ -11731,7 +11347,7 @@ procedure dereference{k: keyindex (operand) };
 
         refcount := refcount - 1;
         end;
-      bumptempcount(k, - 1);
+      bumpTempCount(k, - 1);
       adjustregcount(k, - 1);
       end;
   end {dereference} ;
@@ -11762,10 +11378,11 @@ procedure rereference{k: keyindex (operand) };
       begin
       with keytable[k] do refcount := refcount + 1;
       adjustregcount(k, 1);
-      bumptempcount(k, 1);
+      bumpTempCount(k, 1);
       end;
   end {rereference} ;
 {>>>}
+
 {<<<}
 procedure makeaddressable{var k: keyindex};
 
@@ -11912,6 +11529,7 @@ procedure makeaddressable{var k: keyindex};
       end;
   end {makeaddressable} ;
 {>>>}
+
 {<<<}
 procedure address{var k: keyindex};
 
@@ -14110,8 +13728,8 @@ procedure movstrx;
         begin { it's a constant string, handle any truncation now }
         if keytable[right].len > keytable[left].len then
           settempimmediate(word, keytable[left].len - 1)
-        else settempimmediate(word, get_stringfile_byte(keytable[right].oprnd.
-                              offset) - 1);
+        else
+          settempimmediate(word, getStringfileByte(keytable[right].oprnd.offset) - 1);
         gensimplemove(tempkey, lengthreg);
         end
       else
@@ -14635,7 +14253,7 @@ procedure cmpstrx(brinst: insttype {beq, etc etc} );
     }
     if keytable[left].oprnd.m = pcrelative then
       begin { constant string }
-      settempimmediate(word, get_stringfile_byte(keytable[left].oprnd.offset));
+      settempimmediate (word, getStringfileByte (keytable[left].oprnd.offset));
       left_len := tempkey;
       left_const := true;
       end
@@ -14647,7 +14265,7 @@ procedure cmpstrx(brinst: insttype {beq, etc etc} );
 
     if keytable[right].oprnd.m = pcrelative then
       begin { constant string }
-      settempimmediate(word, get_stringfile_byte(keytable[right].oprnd.offset));
+      settempimmediate(word, getStringfileByte(keytable[right].oprnd.offset));
       right_len := tempkey;
       end
     else right_len := right;
@@ -15039,7 +14657,7 @@ procedure pshstrx;
     with keytable[left], oprnd do
       if m = pcrelative then
         begin
-        constlen := get_stringfile_byte(offset) + 1;
+        constlen := getStringfileByte(offset) + 1;
 
         if constlen <= keytable[key].len then
           begin { Keep from moving too many bytes. }
@@ -15467,7 +15085,7 @@ procedure addstrx;
     left_const := not twoaddress and (keytable[left].oprnd.m = pcrelative);
 
     if left_const then
-      left_length := get_stringfile_byte(keytable[left].oprnd.offset)
+      left_length := getStringfileByte(keytable[left].oprnd.offset)
     else left_length := keytable[left].len - 1;
 
     { Set up a key that points to left's length field if not a constant or
@@ -15631,8 +15249,8 @@ procedure addstrx;
     if keytable[right].oprnd.m = pcrelative then
       begin
       right_const := true;
-      right_length := get_stringfile_byte(keytable[right].oprnd.offset);
-      settempimmediate(word, right_length);
+      right_length := getStringfileByte (keytable[right].oprnd.offset);
+      settempimmediate (word, right_length);
       end
     else
       begin
@@ -17056,7 +16674,7 @@ procedure restorelabelx;
     while lastkey >= context[contextsp].keymark do
       with keytable[lastkey] do
         begin
-        bumptempcount(lastkey, - refcount);
+        bumpTempCount(lastkey, - refcount);
         adjustregcount(lastkey, - refcount);
         refcount := 0;
         lastkey := lastkey - 1;
@@ -17319,7 +16937,7 @@ procedure copyaccessx;
         begin
         refcount := refcount - delta;
         copycount := copycount - delta;
-        bumptempcount(left, - delta);
+        bumpTempCount(left, - delta);
         left := copylink;
         end;
     until left = 0;
@@ -17858,7 +17476,7 @@ procedure arithcommon{commute: boolean; (commutative operation?)
                     popping(right) and not ((m = dreg) and (reg = 3) and
                     keytable[left].regvalid);
       refcount := refcount + 1;
-      bumptempcount(right, 1);
+      bumpTempCount(right, 1);
       adjustregcount(right, 1);
       end;
 
@@ -18505,7 +18123,7 @@ procedure postintptrx{isptr: boolean};
     with keytable[right] do
       begin
       refcount := refcount + 1;
-      bumptempcount(right, 1);
+      bumpTempCount(right, 1);
       adjustregcount(right, 1);
       end;
     movx(false, dreg, getdreg);
@@ -18583,7 +18201,7 @@ procedure divintx{correctrem: boolean (need to correct remainder) };
           begin
           keytable[right].refcount := keytable[right].refcount + 1;
           adjustregcount(right, 1);
-          bumptempcount(right, 1);
+          bumpTempCount(right, 1);
           keytable[key].oprnd.offset1 := right;
           end
         else { Indicate that there is no need to correct the remainder. }
@@ -18631,10 +18249,10 @@ procedure divintx{correctrem: boolean (need to correct remainder) };
             unlock(right);
             unlock(key);
             adjustregcount(key, -refcount);
-            bumptempcount(key, - refcount);
+            bumpTempCount(key, - refcount);
             indxr := indexreg;
             m := twodregs;
-            bumptempcount(key, refcount);
+            bumpTempCount(key, refcount);
             adjustregcount(key, refcount);
             offset1 := lowesttemp - 1;
             end;
@@ -18648,7 +18266,7 @@ procedure divintx{correctrem: boolean (need to correct remainder) };
           begin {getrem will have to generate code to add right}
           keytable[right].refcount := keytable[right].refcount + 1;
           adjustregcount(right, 1);
-          bumptempcount(right, 1);
+          bumpTempCount(right, 1);
           if s then gendouble(divsl, right, key)
           else gendouble(divul, right, key);
           keytable[key].oprnd.offset1 := right;
@@ -19476,7 +19094,7 @@ procedure setinsertx;
           keytable[target].regsaved := true;
           keytable[target].knowneven := true;
           keytable[target].regvalid := true;
-          bumptempcount(target, keytable[target].refcount);
+          bumpTempCount(target, keytable[target].refcount);
           end;
 
     firstsetinsert := false;
@@ -20824,13 +20442,11 @@ var
   xi: nodeindex; {index of previous instruction}
   xip, xsp, xdp: nodeptr; {pointers to previous instruction and operands}
 
-  straightline: boolean; {true if no labels intervene between the previous
-                          and the current instruction nodes}
-  waslabelled: boolean; {used to remember whether straightline should be
-                         cleared when we have deleted the current instruction}
-  firsttime: boolean; {xip, xdp, and xsp are uninitialized}
-  tempoffset: integer; {temporary for arithmetic on operand node offsets}
-  check_last_test: boolean; {the last instruction may be a deletable tst instruction.}
+  straightline: boolean;    { true if no labels intervene between the previous and the current instruction nodes}
+  waslabelled: boolean;     { used to remember if straightline should be cleared when we have deleted the current instruction}
+  firsttime: boolean;       { xip, xdp, and xsp are uninitialized}
+  tempoffset: integer;      { temporary for arithmetic on operand node offsets}
+  check_last_test: boolean; { the last instruction may be a deletable tst instruction.}
 
   {<<<}
   function lowprecisionlong(p: nodeptr): boolean;
@@ -20881,6 +20497,10 @@ var
   {>>>}
 
 begin
+  xip := nil;
+  xsp := nil;
+  xdp := nil;
+
   i := 0;
   xi := 0;
   firsttime := true;

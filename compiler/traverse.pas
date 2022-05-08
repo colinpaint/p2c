@@ -144,104 +144,124 @@ type
   oprndindex = 1..3;
   operandarray = array [oprndindex] of integer;
   nodeoperandarray = packed array [oprndindex] of boolean;
+
   levelarray = packed array [levelindex] of boolean;
 
-  stackindex = 0..maxexprstack; {index to operand stack}
-  contextindex = 0..contextdepth; {index to context stack}
-  maphashindex = 0..nodehashsize; {index to node hash table}
-  reghashindex = 0..regtablelimit; {index to var hash table}
+  stackindex =   0..maxexprstack;  { index to operand stack }
+  contextindex = 0..contextdepth;  { index to context stack }
+  maphashindex = 0..nodehashsize;  { index to node hash table }
+  reghashindex = 0..regtablelimit; { index to var hash table }
+
+  fonrange = shortint; { range for fon's }
 
   nodeformtype = (stmtnode, exprnode);
-  fonrange = shortint; {range for fon's}
-  refcountrange = 0..maxrefcount; {range for refcounts}
-  {<<<}
-  node = packed record {describes a node in the expression tree}
+  node = packed record { describes a node in the expression tree }
            case nodeform: nodeformtype of
+             {<<<}
              exprnode:
-               (refcount: refcountrange; {number of active references to this node}
-                copycount: refcountrange; {number of copies mode of this node}
-                valid: boolean; {set if node is valid for cse search}
-                mustinvalidate: boolean; {invalidate node after next statement}
-                join: boolean; {invalidate node at next join}
-                target: boolean; {this node is an assignment target}
-                relation: boolean; {subnodes contain a relational operator}
-                local: boolean; {local to a conditional expression}
-                nodeoprnd: nodeoperandarray; {set if oprnds[i] is a link}
-                looplink: nodeindex; { link to other vars in this loop/ read or
-                                      writes}
-                cost: 0..maxcost; {cost of computing this node}
-                prelink: nodeindex; { link of nodes that must be hoisted }
-                hoistedby: basicblockptr; { this node is hoisted by this block }
-                case action: actions of
-                  visit, revisit:
-                    (op: operator; { Operator from Analys }
-                     form: types; {type of operands}
-                     hasvalue: boolean; { true if we know the value of expression }
-                     invariant: boolean; { true if expression is invariant }
-                     ownvar: boolean; {true if expression is own variable}
-                     regcandidate: boolean; {true if var is a register candidate}
-                     deepestvalid: contextindex; {deepest level where node is valid}
-                     slink: nodeindex; { Search link -- next node on hash chain }
-                     len: addressrange; {length of operation result}
-                     case {isrealnode:} boolean of
-                       true: (realvalue: realarray);
-                       false:
-                         (oprnds: operandarray; {tree nodes or literal integers}
-                          value: integer; { value propogated here } ); );
-                  copy, recopy:
-                    (oldlink: nodeindex; {link to next outer node being copied}
-                     directlink: nodeindex {link to parent node being copied} ));
-             stmtnode:
-               (nextstmt: nodeindex; { Next statement in this basic block }
-                textline: integer; { Textline where this statement starts }
-                stmtno: integer; { statement counter value when encountered }
-                srcfileindx: integer; { codegen access to file name }
-                case stmtkind: stmthdrtype of
+               (refcount: refcountrange;     { number of active references to this node}
+                copycount: refcountrange;    { number of copies mode of this node}
 
+                valid: boolean;              { set if node is valid for cse search}
+                mustinvalidate: boolean;     { invalidate node after next statement}
+                join: boolean;               { invalidate node at next join}
+                target: boolean;             { this node is an assignment target}
+                relation: boolean;           { subnodes contain a relational operator}
+                local: boolean;              { local to a conditional expression}
+
+                nodeoprnd: nodeoperandarray; { set if oprnds[i] is a link}
+                looplink: nodeindex;         { link to other vars in this loop/ read or writes}
+
+                cost: 0..maxcost;            { cost of computing this node}
+                prelink: nodeindex;          { link of nodes that must be hoisted }
+                hoistedby: basicblockptr;    { this node is hoisted by this block }
+
+                case action: actions of
+                  visit,
+                  revisit:
+                    (op: operator;           { Operator from Analys }
+                     form: types;            { type of operands}
+                     hasvalue: boolean;      { true if we know the value of expression }
+                     invariant: boolean;     { true if expression is invariant }
+                     ownvar: boolean;        { true if expression is own variable}
+                     regcandidate: boolean;  { true if var is a register candidate}
+                     deepestvalid: contextindex; { deepest level where node is valid}
+                     slink: nodeindex;       { Search link -- next node on hash chain }
+                     len: addressrange;      { length of operation result}
+                     case {isrealnode:} boolean of
+                       true:  (realvalue: realarray);
+                       false: (oprnds: operandarray; { tree nodes or literal integers}
+                               value: integer;       { value propogated here }
+                              );
+                   );
+
+                  copy,
+                  recopy:
+                    (oldlink: nodeindex;   { link to next outer node being copied}
+                     directlink: nodeindex { link to parent node being copied}
+                    )
+                 );
+             {>>>}
+             {<<<}
+             stmtnode:
+               (nextstmt: nodeindex;  { Next statement in this basic block }
+                textline: integer;    { Textline where this statement starts }
+                stmtno: integer;      { statement counter value when encountered }
+                srcfileindx: integer; { codegen access to file name }
+
+                case stmtkind: stmthdrtype of
                   blkhdr:
-                    (procref: proctableindex; { Reference into global proc table }
-                     bs, ps: addressrange; { Local storage and parameter storage }
-                     blkbody: nodeindex; { Point to first statement in block }
-                     blkexit: basicblockptr; {exit block for return}
-                     fileline: integer {line in actual file where block starts} );
+                    (procref: proctableindex;   { Reference into global proc table }
+                     bs, ps: addressrange;      { Local storage and parameter storage }
+                     blkbody: nodeindex;        { Point to first statement in block }
+                     blkexit: basicblockptr;    { exit block for return}
+                     fileline: integer          { line in actual file where block starts}
+                     );
 
                   casehdr:
-                    (selector: nodeindex; { selector expression }
-                     elements: nodeindex; { index to caselabhdrs in numeric order}
-                     joinblock: basicblockptr; {ptr to stmtblock that defines tail}
-                     firstgroup: nodeindex; {first case group produced by split}
-                     groupcount: shortint; {number of groups produced by split}
-                     casedefptr: basicblockptr; {default statement blk, if any} );
+                    (selector: nodeindex;       { selector expression }
+                     elements: nodeindex;       { index to caselabhdrs in numeric order}
+                     joinblock: basicblockptr;  { ptr to stmtblock that defines tail}
+                     firstgroup: nodeindex;     { first case group produced by split}
+                     groupcount: shortint;      { number of groups produced by split}
+                     casedefptr: basicblockptr; { default statement blk, if any}
+                    );
 
                   caselabhdr:
-                    (caselabellow, caselabelhigh: integer; {label values}
-                     stmtblock: basicblockptr; { ptr to stmt block for this label }
-                     stmtlabel: labelrange; { label of stmt block }
-                     orderedlink: nodeindex; {used to link case label table} );
+                    (caselabellow, caselabelhigh: integer; { label values}
+                     stmtblock: basicblockptr;  { ptr to stmt block for this label }
+                     stmtlabel: labelrange;     { label of stmt block }
+                     orderedlink: nodeindex;    { used to link case label table}
+                    );
 
                   casegroup:
-                    (highestlabel, lowestlabel: nodeindex; {limiting entries}
-                     ordered: boolean; {this is a contiguous ordered group}
-                     groupno: shortint; {which group this is} );
+                    (highestlabel, lowestlabel: nodeindex; { limiting entries }
+                     ordered: boolean;          { this is a contiguous ordered group }
+                     groupno: shortint;         { which group this is}
+                    );
 
                   forbothdr, whilebothdr, loopbothdr, whilehdr, rpthdr, ifhdr,
                   foruphdr, fordnhdr, withhdr, simplehdr, syscallhdr, untilhdr,
                   cforbothdr, returnhdr, nohdr:
-                    (looptop: basicblockptr; { top of for/while }
-                     expr1, expr2: nodeindex; {Expressions used by statement}
-                     has_break: boolean; {loop body contains a break}
-                     trueblock, falseblock: basicblockptr; {blocks for statement}
-                     forstepsize: integer; { for step for Modula-2 } );
+                    (looptop: basicblockptr;    { top of for/while }
+                     expr1, expr2: nodeindex;   { Expressions used by statement }
+                     has_break: boolean;        { loop body contains a break }
+                     trueblock, falseblock: basicblockptr; { blocks for statement }
+                     forstepsize: integer;      { for step for Modula-2 }
+                    );
 
                   loopbrkhdr, loopconthdr, swbrkhdr, cswbrkhdr:
-                    (targblock: basicblockptr; {target block for this statement} );
+                    (targblock: basicblockptr;  { target block for this statement}
+                    );
 
                   gotohdr, labelhdr:
-                    (labelno: labelrange; {label value or internal label number}
-                     nonlocalref: boolean; {true if label ref'd by non-local goto}
-                     labellevel: levelindex; {For non-local gotos} ); );
-         end;
-  {>>>}
+                    (labelno: labelrange;       { label value or internal label number}
+                     nonlocalref: boolean;      { true if label ref'd by non-local goto}
+                     labellevel: levelindex;    { For non-local gotos}
+                    );
+               );
+             {>>>}
+           end;
 
   {<<<}
   { Note about has_break: when the loop has a break statement, travrs does
@@ -373,9 +393,8 @@ type
                  worth: shortint; { value of this var }
                end;
   {>>>}
-  {<<<}
-  { used to dump the tree if necessary }
   dumpFileType = file of
+    {<<<}
     record
       case bblock: boolean of
         true:
@@ -386,7 +405,7 @@ type
           (nodelab: nodeindex; {used to label the record}
            nodeent: node {a node copy} ; );
     end;
-  {>>>}
+    {>>>}
 {>>>}
 {<<<}
 var
@@ -3325,7 +3344,9 @@ var
       if currentstmt.stmtno <> 0 then
         if currentstmt.stmtno <> 0 then
           genpseudo (stmtbrk, currentstmt.srcfileindx, 0, 0, 0,
-                     currentstmt.stmtno, abs(currentstmt.textline),
+                     currentstmt.stmtno, 
+                     {** sign screwup *** abs(currentstmt.textline),}
+                     currentstmt.textline,
                      ord(controlstmt) + ord(branchstmt) * 2 + ord(targetstmt) * 4);
 
       controlstmt := false;

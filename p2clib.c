@@ -875,7 +875,7 @@ int P_getcmdline (int l, int h, Char* line) {
 //{{{
 Void TimeStamp (long* Day, long* Month, long* Year, long* Hour, long* Min, long* Sec) {
 
-  long clock;
+  time_t clock;
   time (&clock);
   struct tm* tm = localtime (&clock);
 
@@ -895,7 +895,7 @@ Void TimeStamp (long* Day, long* Month, long* Year, long* Hour, long* Min, long*
 Void VAXdate (s)
 char *s;
 {
-  long clock;
+  time_t clock;
   char *c;
   int i;
   static int where[] = {8, 9, 0, 4, 5, 6, 0, 20, 21, 22, 23};
@@ -912,7 +912,7 @@ char *s;
 Void VAXtime (s)
 char *s;
 {
-  long clock;
+  time_t clock;
   char *c;
   int i;
 

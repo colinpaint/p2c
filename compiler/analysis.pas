@@ -2432,24 +2432,22 @@ procedure setstoragerange (t: entryptr; {variable or field in question}
                           len: addressrange; {length of field}
                           packedfield: boolean; {field is packed}
                           var r: range {resulting range} );
-
 { Set up a range according to what the storage will hold
 }
 
-  var
-    ov: boolean; {overflow dummy argument}
+var
+  ov: boolean; {overflow dummy argument}
 
-
-  begin {setstoragerange}
-    with r do
-      begin
-      ov := unsigned(t, len, packedfield);
-      storagelimit(ov, len, packedfield, maxlimit);
-      if unsigned(t, len, packedfield) then minlimit := 0
-      else minlimit := - maxlimit - 1;
-      extended := t^.extendedrange;
-      end;
-  end {setstoragerange} ;
+begin
+  with r do
+    begin
+    ov := unsigned(t, len, packedfield);
+    storagelimit(ov, len, packedfield, maxlimit);
+    if unsigned(t, len, packedfield) then minlimit := 0
+    else minlimit := - maxlimit - 1;
+    extended := t^.extendedrange;
+    end;
+end;
 {>>>}
 {<<<}
 procedure setvarrange (len: addressrange; {range of variable}
@@ -2495,17 +2493,13 @@ var
 begin
   if extended then
     begin
-    dorange(left.optimistic, right.optimistic, result.optimistic, unsignedop,
-            mayoverflow);
-    dorange(left.pessimistic, right.pessimistic, result.pessimistic,
-            unsignedop, ov);
+    dorange(left.optimistic, right.optimistic, result.optimistic, unsignedop, mayoverflow);
+    dorange(left.pessimistic, right.pessimistic, result.pessimistic, unsignedop, ov);
     end
   else
     begin
-    dorange(left.optimistic, right.optimistic, result.optimistic, signedop,
-            mayoverflow);
-    dorange(left.pessimistic, right.pessimistic, result.pessimistic, signedop,
-            ov);
+    dorange(left.optimistic, right.optimistic, result.optimistic, signedop, mayoverflow);
+    dorange(left.pessimistic, right.pessimistic, result.pessimistic, signedop, ov);
     end;
 end;
 {>>>}
@@ -2521,8 +2515,7 @@ procedure modrange (left, right: range; {operands}
 var
   ov: boolean; {dummy overflow operator}
 
-
-begin {modrange}
+begin
   with right do
     mayoverflow := (minlimit = 0) or not extended and (minlimit < 0);
   with left do
@@ -2537,7 +2530,7 @@ begin {modrange}
       result.minlimit := 0;
       end;
   result.extended := right.extended;
-end {modrange} ;
+end;
 {>>>}
 {<<<}
 procedure divrange (left, right: range; {operands}
@@ -2566,10 +2559,12 @@ begin
     right.maxlimit := - 1;
     mayoverflow := true;
     end;
-  op(left.maxlimit, right.maxlimit, maxmax, ov);
-  op(left.maxlimit, right.minlimit, maxmin, ov);
-  op(left.minlimit, right.maxlimit, minmax, ov);
-  op(left.minlimit, right.minlimit, minmin, ov);
+
+  op (left.maxlimit, right.maxlimit, maxmax, ov);
+  op (left.maxlimit, right.minlimit, maxmin, ov);
+  op (left.minlimit, right.maxlimit, minmax, ov);
+  op (left.minlimit, right.minlimit, minmin, ov);
+
   rightpos := right.extended or (right.minlimit > 0);
   rightneg := not right.extended and (right.maxlimit < 0);
   with left do
@@ -2694,12 +2689,14 @@ var
   ov: boolean; {operation overflowed}
 
 begin
-  op(left.maxlimit, right.maxlimit, maxmax, mayoverflow);
-  op(left.maxlimit, right.minlimit, maxmin, ov);
+  op (left.maxlimit, right.maxlimit, maxmax, mayoverflow);
+  op (left.maxlimit, right.minlimit, maxmin, ov);
   mayoverflow := mayoverflow or ov;
-  op(left.minlimit, right.maxlimit, minmax, ov);
+
+  op (left.minlimit, right.maxlimit, minmax, ov);
   mayoverflow := mayoverflow or ov;
-  op(left.minlimit, right.minlimit, minmin, ov);
+
+  op (left.minlimit, right.minlimit, minmin, ov);
   mayoverflow := mayoverflow or ov;
 
   if (not left.extended and (left.minlimit <= 0) and (left.maxlimit > 0)) or
@@ -2749,7 +2746,6 @@ procedure andrange (var left, right: range; {operands, var to save space}
 
 var
   minbits: integer; {value with fewest bits in representation}
-  ov: boolean; {dummy overflow result}
 
 begin
   if (left.maxlimit = left.minlimit) and
@@ -2758,8 +2754,7 @@ begin
     result.maxlimit := left.maxlimit and right.maxlimit;
     result.minlimit := result.maxlimit;
     end
-  else if left.extended or right.extended or (left.minlimit >= 0) or
-          (right.minlimit >= 0) then
+  else if left.extended or right.extended or (left.minlimit >= 0) or (right.minlimit >= 0) then
     begin
     if (left.minlimit < 0) then minbits := right.maxlimit
     else if (right.minlimit < 0) then minbits := left.maxlimit
@@ -2782,7 +2777,6 @@ procedure orrange (var left, right: range; {operands, var to save space}
 
 var
   maxbits: integer; {value with most bits in representation}
-  ov: boolean; {dummy overflow argument}
 
 begin
   if (left.maxlimit = left.minlimit) and
@@ -2791,20 +2785,22 @@ begin
     result.maxlimit := left.maxlimit or right.maxlimit;
     result.minlimit := result.maxlimit;
     end
-  else if left.extended or right.extended or (left.minlimit >= 0) and
-          (right.minlimit >= 0) then
+  else if left.extended or right.extended or (left.minlimit >= 0) and (right.minlimit >= 0) then
     begin
     if (left.maxlimit < 0) then maxbits := left.maxlimit
-    else if (right.maxlimit < 0) then maxbits := right.maxlimit
-    else maxbits := max(left.maxlimit, right.maxlimit);
-    storagelimit(true, bits(maxbits), true, result.maxlimit);
+    else if (right.maxlimit < 0) then
+      maxbits := right.maxlimit
+    else
+      maxbits := max(left.maxlimit, right.maxlimit);
+    storagelimit (true, bits(maxbits), true, result.maxlimit);
     result.minlimit := 0;
     end
   else
     begin
-    storagelimit(false, sharedPtr^.targetintsize, false, result.maxlimit);
+    storagelimit (false, sharedPtr^.targetintsize, false, result.maxlimit);
     result.minlimit := - result.maxlimit - 1;
     end;
+
   result.extended := left.extended or right.extended;
 end;
 {>>>}
@@ -3361,59 +3357,65 @@ procedure genbinary (op: operator; {operation to generate}
 {<<<}
 procedure foldneg;
 { Fold a negate operation if the operand is constant }
-  var
-    temp: integer; {used for negation}
-    ov: boolean; {set if overflow can occur}
 
-  begin {foldneg}
-    foldedunary := false;
-    with result_range.optimistic do
+var
+  temp: integer; {used for negation}
+  ov: boolean; {set if overflow can occur}
+
+begin
+  foldedunary := false;
+
+  with result_range.optimistic do
+    begin
+    negate(minlimit, temp, ov);
+    negate(maxlimit, minlimit, ov);
+    maxlimit := temp;
+    end;
+
+  with result_range.pessimistic do
+    begin
+    negate(minlimit, temp, ov);
+    negate(maxlimit, minlimit, ov);
+    maxlimit := temp;
+    end;
+
+  if oconst then
+    if (unaryform = reals) or (unaryform = doubles) then
       begin
-      negate(minlimit, temp, ov);
-      negate(maxlimit, minlimit, ov);
-      maxlimit := temp;
-      end;
-    with result_range.pessimistic do
+      oprndstk[sp].cvalue.realvalue.realbuffer := negaterealconst (getrealbuffer(sp));
+      foldedunary := true;
+      end
+    else
       begin
-      negate(minlimit, temp, ov);
-      negate(maxlimit, minlimit, ov);
-      maxlimit := temp;
-      end;
-    if oconst then
-      if (unaryform = reals) or (unaryform = doubles) then
-        begin
-        oprndstk[sp].cvalue.realvalue.realbuffer := negaterealconst (getrealbuffer(sp));
-        foldedunary := true;
-        end
-      else
-        begin
-        if oextended then
-          if (oprndstk[sp].cvalue.intvalue <> sharedPtr^.targetminint) or
-             ((oprndstk[sp].cvalue.intvalue = sharedPtr^.targetminint) and
-               oprndstk[sp].cvalue.negated)
-          then ov := true
-          else
-            with result_range do begin  {oops; - (maxint + 1)}
-            ov := false;
-            pessimistic.extended := false;
-            optimistic.extended  := false;
-            pessimistic.maxlimit := sharedPtr^.targetminint;
-            pessimistic.minlimit := sharedPtr^.targetminint;
-            optimistic.maxlimit  := sharedPtr^.targetminint;
-            optimistic.minlimit  := sharedPtr^.targetminint;
-            oprndstk[sp].cvalue.negated := true;
-            oprndstk[sp].value_range := result_range;
-            end
+      if oextended then
+        if (oprndstk[sp].cvalue.intvalue <> sharedPtr^.targetminint) or
+           ((oprndstk[sp].cvalue.intvalue = sharedPtr^.targetminint) and oprndstk[sp].cvalue.negated)
+        then
+          ov := true
         else
-          with oprndstk[sp].cvalue do
-            begin
-            intvalue := result_range.optimistic.maxlimit;
-            negated := not negated;
-            end;
-        if ov then warnbefore(overflow);
-        foldedunary := true;
-        end;
-  end {foldneg} ;
+          with result_range do begin  {oops; - (maxint + 1)}
+          ov := false;
+          pessimistic.extended := false;
+          optimistic.extended  := false;
+          pessimistic.maxlimit := sharedPtr^.targetminint;
+          pessimistic.minlimit := sharedPtr^.targetminint;
+          optimistic.maxlimit  := sharedPtr^.targetminint;
+          optimistic.minlimit  := sharedPtr^.targetminint;
+          oprndstk[sp].cvalue.negated := true;
+          oprndstk[sp].value_range := result_range;
+          end
+      else
+        with oprndstk[sp].cvalue do
+          begin
+          intvalue := result_range.optimistic.maxlimit;
+          negated := not negated;
+          end;
+
+      if ov then
+        warnbefore (overflow);
+      foldedunary := true;
+      end;
+end;
 {>>>}
 {<<<}
 procedure foldrem;
@@ -3689,35 +3691,36 @@ procedure foldpush;
 procedure foldnot;
 { Fold a boolean or integer "not" operation if possible }
 
-  var
-    ov: boolean; {overflow has happened}
-    temp: integer; {used in "not-ing" the range}
+var
+  temp: integer; {used in "not-ing" the range}
 
-  begin {foldnot}
-    foldedunary := oconst;
-    with oprndstk[sp], cvalue do
-      if oconst then
+begin
+  foldedunary := oconst;
+  with oprndstk[sp], cvalue do
+    if oconst then
+      begin
+      if unaryform = bools then
+        intvalue := 1 - intvalue
+      else
+        intvalue := not intvalue;
+      setconstrange (intvalue, negated, result_range);
+      end
+    else if unaryform <> bools then
+      begin
+      with result_range.optimistic do
         begin
-        if unaryform = bools then intvalue := 1 - intvalue
-        else intvalue := not intvalue;
-        setconstrange(intvalue, negated, result_range);
-        end
-      else if unaryform <> bools then
-        begin
-        with result_range.optimistic do
-          begin
-          temp := not minlimit;
-          minlimit := not maxlimit;
-          maxlimit := temp;
-          end;
-        with result_range.pessimistic do
-          begin
-          temp := not minlimit;
-          minlimit := not maxlimit;
-          maxlimit := temp;
-          end;
+        temp := not minlimit;
+        minlimit := not maxlimit;
+        maxlimit := temp;
         end;
-  end {foldnot} ;
+      with result_range.pessimistic do
+        begin
+        temp := not minlimit;
+        minlimit := not maxlimit;
+        maxlimit := temp;
+        end;
+      end;
+end;
 {>>>}
 {<<<}
 procedure foldsetelt;
@@ -3896,44 +3899,46 @@ procedure foldintplusminus (sign: integer {1 if add, -1 if sub} );
   right operand will be placed into the linear factor for use in
   array accessing.
 }
-
   var
     mayoverflow: boolean; {overflow is possible this op}
-    ov: boolean; {dummy overflow}
 
   begin {foldintplusminus}
     if sign > 0 then
-      binaryrange(oprndstk[l].value_range, oprndstk[r].value_range, oextended,
-                  add, usadd, addrange, result_range, mayoverflow)
+      binaryrange (oprndstk[l].value_range, oprndstk[r].value_range, oextended,
+                   add, usadd, addrange, result_range, mayoverflow)
     else
-      binaryrange(oprndstk[l].value_range, oprndstk[r].value_range, oextended,
-                  subtract, ussubtract, subrange, result_range, mayoverflow);
+      binaryrange (oprndstk[l].value_range, oprndstk[r].value_range, oextended,
+                   subtract, ussubtract, subrange, result_range, mayoverflow);
 
     if (lconst and rconst) then returnresult(mayoverflow)
     else if rconst and linearize then
       begin
       linearfactor := linearfactor + sign * getintvalue(r);
-      returnoprnd(l);
+      returnoprnd (l);
       end
-    else if lconst and (getintvalue(l) = 0) and (sign > 0) then returnoprnd(r)
-    else if rconst and (getintvalue(r) = 0) then returnoprnd(l)
+    else if lconst and (getintvalue(l) = 0) and (sign > 0) then
+      returnoprnd (r)
+    else if rconst and (getintvalue(r) = 0) then
+      returnoprnd (l)
     else if rconst and (getintvalue(r) = 1) then
       begin
-      returnoprnd(l);
-      if sign = 1 then genunary(incop, binaryform)
-      else genunary(decop, binaryform);
+      returnoprnd (l);
+      if sign = 1 then
+        genunary(incop, binaryform)
+      else
+        genunary (decop, binaryform);
       end
     else if lconst and (getintvalue(l) = 1) and (sign > 0) then
       begin
-      returnoprnd(r);
-      genunary(incop, binaryform)
+      returnoprnd (r);
+      genunary (incop, binaryform)
       end
     else
       begin
       newlen := sharedPtr^.targetintsize;
       foldedbinary := false;
       end;
-  end {foldintplusminus} ;
+  end;
 {>>>}
 {<<<}
 procedure foldrealplusminus (sign: integer {1 if add, -1 if sub} );
@@ -3996,30 +4001,35 @@ procedure foldintmul;
     power2: boolean; {set if operand is power of 2}
     power2value: integer; {resulting shift distance}
     mayoverflow: boolean; {operation might overflow}
-    ov: boolean; {dummy overflow value}
 
   begin {foldintmul}
-    binaryrange(oprndstk[l].value_range, oprndstk[r].value_range, oextended,
-                multiply, usmultiply, mulrange, result_range, mayoverflow);
+    binaryrange (oprndstk[l].value_range, oprndstk[r].value_range, oextended,
+                 multiply, usmultiply, mulrange, result_range, mayoverflow);
 
-    if (lconst and rconst) then returnresult(mayoverflow)
-    else if lconst and (getintvalue(l) = 1) then returnoprnd(r)
-    else if rconst and (getintvalue(r) = 1) then returnoprnd(l)
+    if (lconst and rconst) then
+      returnresult(mayoverflow)
+    else if lconst and (getintvalue(l) = 1) then
+      returnoprnd(r)
+    else if rconst and (getintvalue(r) = 1) then
+      returnoprnd(l)
     else if rconst then
       begin
-      power2check(getintvalue(r), power2, power2value);
+      power2check (getintvalue(r), power2, power2value);
       if power2 then
         begin
-        returnoprnd(l);
-        pushint(power2value);
+        returnoprnd (l);
+        pushint (power2value);
         binaryop := shiftlop;
         foldedbinary := false;
         end
-      else foldedbinary := false;
+      else
+        foldedbinary := false;
       end
-    else foldedbinary := false;
-    if not foldedbinary then newlen := sharedPtr^.targetintsize;
-  end {foldintmul} ;
+    else
+      foldedbinary := false;
+    if not foldedbinary then
+      newlen := sharedPtr^.targetintsize;
+  end;
 {>>>}
 {<<<}
 procedure foldrealmul;
@@ -4383,10 +4393,8 @@ procedure genbinary { op:operator; (operation to generate) form: types (type of 
 }
 var
   lrange, rrange: addressrange; {size of operands, based on range}
-  comparision: boolean; {use different length analysis if op is comparision}
-  same_signedness: boolean; {true if l and r both unsigned/signed}
 
-begin {genbinary}
+begin
   if sp >= 1 then
     begin
     l := sp - 1;
@@ -4406,8 +4414,7 @@ begin {genbinary}
     foldbinary;
 
     if (binaryform = ints) and
-       not (binaryop in [indxop, aindxop, addrop, indrop] {addressing
-         operators} ) then
+       not (binaryop in [indxop, aindxop, addrop, indrop] {addressing operators} ) then
       begin
       lrange := range_length(oprndstk[l].value_range.optimistic);
       rrange := range_length(oprndstk[r].value_range.optimistic);
@@ -4416,22 +4423,26 @@ begin {genbinary}
         newlen := range_length(result_range.optimistic);
         if divfolded or not foldedbinary then
           begin
-          if lrange > newlen then newlen := lrange;
-          if rrange > newlen then newlen := rrange;
+          if lrange > newlen then
+            newlen := lrange;
+          if rrange > newlen then
+            newlen := rrange;
           end;
         end
-      else {truncate} newlen := max(lrange, rrange);
+      else {truncate}
+        newlen := max (lrange, rrange);
       end;
     if not foldedbinary then
       begin
       genoprnd;
       genoprnd;
-      if lconst then genop(switchstack);
+      if lconst then
+        genop (switchstack);
       sp := sp + 1;
-      genop(binaryop);
-      genint(newlen);
-      genint(newcost);
-      genform(binaryform);
+      genop (binaryop);
+      genint (newlen);
+      genint (newcost);
+      genform (binaryform);
       end;
 
     with oprndstk[sp] do
@@ -4447,7 +4458,7 @@ begin {genbinary}
       end;
     end;
   resultptr := ref(bigtable[resulttype]);
-end {genbinary} ;
+end;
 {>>>}
 {<<<}
 procedure setdefaulttargetintsize;
@@ -5078,7 +5089,7 @@ procedure statement (follow: tokenset {legal following symbols} );
       eltsize: integer; {size of an array element}
       alreadyunpacking: boolean; {true if we were unpacking at entry}
       outofbounds: boolean; {set of index out of bounds}
-      dum1, dum2: boolean; {dummy arguments for range check}
+      dum1: boolean; {dummy arguments for range check}
       indextypeptr: entryptr; {for access to index type entry}
       lowerbound: integer; {lower bound of the array index}
 
@@ -5771,7 +5782,6 @@ procedure statement (follow: tokenset {legal following symbols} );
 
       var
         f: entryptr; {for access to file base type}
-        fileident: tableIndex; {for checking program statement declaration}
 
       begin {fileparam}
         if pushit then
@@ -6735,22 +6745,23 @@ procedure statement (follow: tokenset {legal following symbols} );
                            var result: range {resulting range} );
         { Compute resulting range for the "abs" function }
 
-          var
-            temp: integer; {used to negate values}
-            ov: boolean; {dummy overflow flag}
+        var
+          temp: integer; {used to negate values}
+          ov: boolean; {dummy overflow flag}
 
-
-          begin {absrange}
-            result := operand;
-            with operand do
-              if not result.extended and (minlimit < 0) then
-                begin
-                negate(minlimit, temp, ov);
-                result.maxlimit := max(temp, maxlimit);
-                if (maxlimit < 0) then negate(maxlimit, result.minlimit, ov)
-                else result.minlimit := 0;
-                end;
-          end {absrange} ;
+        begin {absrange}
+          result := operand;
+          with operand do
+            if not result.extended and (minlimit < 0) then
+              begin
+              negate (minlimit, temp, ov);
+              result.maxlimit := max (temp, maxlimit);
+              if (maxlimit < 0) then
+                negate (maxlimit, result.minlimit, ov)
+              else
+                result.minlimit := 0;
+              end;
+        end;
         {>>>}
 
         begin {absfunction}
@@ -6776,23 +6787,25 @@ procedure statement (follow: tokenset {legal following symbols} );
                            var result: range {resulting range} );
         { Compute resulting range for the "sqr" function }
 
-          var
-            temp: integer; {used to square values}
-            ov: boolean; {dummy overflow flag}
+        var
+          temp: integer; {used to square values}
+          ov: boolean; {dummy overflow flag}
 
+        begin
+          with operand do
+            begin
+            op (maxlimit, maxlimit, result.maxlimit, ov);
+            op (minlimit, minlimit, temp, ov);
 
-          begin {sqrrange}
-            with operand do
-              begin
-              op(maxlimit, maxlimit, result.maxlimit, ov);
-              op(minlimit, minlimit, temp, ov);
-              result.maxlimit := max(temp, result.maxlimit);
-              if (minlimit < 0) then result.minlimit := 0
-              else result.minlimit := temp;
-              result.extended := extended;
-              end;
-          end {sqrrange} ;
+            result.maxlimit := max (temp, result.maxlimit);
+            if (minlimit < 0) then
+              result.minlimit := 0
+            else
+              result.minlimit := temp;
 
+            result.extended := extended;
+            end;
+        end;
         {>>>}
 
         begin {sqrfunction}
@@ -8585,11 +8598,11 @@ procedure statement (follow: tokenset {legal following symbols} );
     f: entryptr; {used to get index and element data}
 
   begin
-    if token = ident then 
+    if token = ident then
       search(varindex);
     if assigning or (token <> ident) or (varindex = 0) then
       modifyvariable (true, true)
-    else 
+    else
       variable (true, true, false, true, true, varindex);
 
     f := nil;
@@ -8597,7 +8610,7 @@ procedure statement (follow: tokenset {legal following symbols} );
       begin
       with resultptr^ do
         begin
-        if packedflag <> packedarray then 
+        if packedflag <> packedarray then
           warnbefore (badparamerr);
         elttype := elementtype;
         indxtype := indextype;
@@ -8609,7 +8622,7 @@ procedure statement (follow: tokenset {legal following symbols} );
           highid := highbound;
           lowid := lowbound;
           end
-        else 
+        else
           f := ref(bigtable[indextype]);
         end;
 
@@ -11195,7 +11208,7 @@ var
         localform: tableentry; {local copy of form entry}
         f, f1: entryptr; {access to form data}
 
-      begin 
+      begin
         if finished then
           constelement (eltloc, noneindex, unitsize, false, false)
         else
@@ -11209,14 +11222,14 @@ var
             begin
             currentfield := currentfield + 1;
             p := ref(bigtable[currentfield]);
-            if not p^.form then 
+            if not p^.form then
               found := p^.name = localform.fieldid;
             end;
 
           if found then
             begin
             f1 := ref(bigtable[p^.vartype]);
-            constelement (p^.offset + eltloc, p^.vartype, 
+            constelement (p^.offset + eltloc, p^.vartype,
                           sizeof(f1, localform.packedflag), f1^.typ = strings, localform.packedflag)
             end
           else if localform.firstvariant = 0 then
@@ -11242,10 +11255,10 @@ var
                 f := ref(bigtable[f^.firstlabel]);
                 elttype := f^.varlabtype;
                 end
-              else 
+              else
                 elttype := noneindex;
               end
-            else 
+            else
               elttype := noneindex;
 
             constvalue (tagoffset + eltloc, elttype, false, localform.packedflag, temp, written);
@@ -11362,7 +11375,6 @@ procedure onevar (id: integer; varkind: nametype; var where: tableIndex; sharedv
 var
   p: entryptr; {used to access name entry}
   assignedaddress: operand; {holds ORIGIN value or external name, if any}
-  defineflag: boolean; {true if this is a DEFINE variable}
   varblock: 0..maxvarptrs; {for calculating block number of USE/DEFINE var}
   alias_needed: boolean; {true if string follows USE/DEFINE var}
   vartab_state: (new_entry, reuse_entry, no_entry); {used with multidef switch to handle mutiple definitions}
@@ -12229,7 +12241,6 @@ var
         t: tableIndex; {tag field name entry (0 for undiscriminated)}
         p: entryptr; {used for name access}
         oldany: boolean; {old value of anyfile}
-        firstdbglabel: p_symbolindex; {index of first variant label for debug}
 
       {<<<}
       procedure onelabel;
@@ -12632,7 +12643,7 @@ procedure constantdefinition;
   }
 var
   t: tableIndex; { constant identifier entry}
-  p, tp: entryptr; {used for nametable access}
+  p: entryptr; {used for nametable access}
   newvalue: operand; {value of the constant}
   startpos: integer; {position of first var in source file}
   startline: integer; {line number of first var}
@@ -13209,7 +13220,6 @@ var
   returntype: tableIndex; {function result type formentry}
   directive: standardids; {which directive, forward etc}
   directiveindex: tableIndex; {and symbol table index thereof}
-  proctemp: proctableindex; {saves procref while block is compiled}
   funcline: integer; {line number where function defined}
   funccol: columnindex; {col where func defined (for not assigned msg)}
   f: entryptr; {used for access to returntype}
