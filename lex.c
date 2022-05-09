@@ -19,6 +19,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define _CRT_SECURE_NO_WARNINGS
 #define PROTO_LEX_C
 #include "main.h"
+
 /* Define LEXDEBUG for a token trace */
 #define LEXDEBUG
 #define EOFMARK 1
@@ -40,17 +41,25 @@ Static Strlist *endnotelist;
 #define INP_STRLIST  2
 //{{{
 Static struct inprec {
-    struct inprec *next;
-    short kind;
-    char *fname, *inbufptr;
-    int lnum;
-    FILE *filep;
-    Strlist *strlistp, *tempopts;
-    Token curtok, saveblockkind;
-    Symbol *curtoksym;
-    Meaning *curtokmeaning;
-    char *curtokbuf, *curtokcase;
-} *topinput;
+  struct inprec* next;
+
+  short kind;
+  char* fname;
+  char* inbufptr;
+  int lnum;
+
+  FILE* filep;
+
+  Strlist* strlistp;
+  Strlist* tempopts;
+
+  Token curtok, saveblockkind;
+  Symbol* curtoksym;
+  Meaning* curtokmeaning;
+
+  char* curtokbuf;
+  char* curtokcase;
+  } *topinput;
 //}}}
 
 //{{{
@@ -304,599 +313,593 @@ Static void makePascalwords()
 //}}}
 
 //{{{
-Static void deterministic (name)
-char *name;
-{
-    Symbol *sym;
+Static void deterministic (char *name) {
 
-    if (*name) {
-        sym = findsymbol(name);
-        sym->flags |= DETERMF;
+  Symbol *sym;
+  if (*name) {
+    sym = findsymbol(name);
+    sym->flags |= DETERMF;
     }
-}
+  }
 //}}}
 //{{{
-Static void nosideeff(name)
-char *name;
-{
-    Symbol *sym;
+Static void nosideeff (char *name) {
 
-    if (*name) {
-        sym = findsymbol(name);
-        sym->flags |= NOSIDEEFF;
+  Symbol *sym;
+  if (*name) {
+    sym = findsymbol(name);
+    sym->flags |= NOSIDEEFF;
     }
-}
+  }
 //}}}
 //{{{
-Static void recordsideeffects()
-{
-    deterministic("abs");
-    deterministic("acos");
-    deterministic("asin");
-    deterministic("atan");
-    deterministic("atan2");
-    deterministic("atof");
-    deterministic("atoi");
-    deterministic("atol");
-    deterministic("ceil");
-    deterministic("cos");
-    deterministic("cosh");
-    deterministic("exp");
-    deterministic("fabs");
-    deterministic("feof");
-    deterministic("feoln");
-    deterministic("ferror");
-    deterministic("floor");
-    deterministic("fmod");
-    deterministic("ftell");
-    deterministic("isalnum");
-    deterministic("isalpha");
-    deterministic("isdigit");
-    deterministic("islower");
-    deterministic("isspace");
-    deterministic("isupper");
-    deterministic("labs");
-    deterministic("ldexp");
-    deterministic("log");
-    deterministic("log10");
-    deterministic("memcmp");
-    deterministic("memchr");
-    deterministic("pow");
-    deterministic("sin");
-    deterministic("sinh");
-    deterministic("sqrt");
-    deterministic("strchr");
-    deterministic("strcmp");
-    deterministic("strcspn");
-    deterministic("strlen");
-    deterministic("strncmp");
-    deterministic("strpbrk");
-    deterministic("strrchr");
-    deterministic("strspn");
-    deterministic("strstr");
-    deterministic("tan");
-    deterministic("tanh");
-    deterministic("tolower");
-    deterministic("toupper");
-    deterministic(setequalname);
-    deterministic(subsetname);
-    deterministic(signextname);
-}
+Static void recordsideeffects() {
+
+  deterministic ("abs");
+  deterministic ("acos");
+  deterministic ("asin");
+  deterministic ("atan");
+  deterministic ("atan2");
+  deterministic ("atof");
+  deterministic ("atoi");
+  deterministic ("atol");
+  deterministic ("ceil");
+  deterministic ("cos");
+  deterministic ("cosh");
+  deterministic ("exp");
+  deterministic ("fabs");
+  deterministic ("feof");
+  deterministic ("feoln");
+  deterministic ("ferror");
+  deterministic ("floor");
+  deterministic ("fmod");
+  deterministic ("ftell");
+  deterministic ("isalnum");
+  deterministic ("isalpha");
+  deterministic ("isdigit");
+  deterministic ("islower");
+  deterministic ("isspace");
+  deterministic ("isupper");
+  deterministic ("labs");
+  deterministic ("ldexp");
+  deterministic ("log");
+  deterministic ("log10");
+  deterministic ("memcmp");
+  deterministic ("memchr");
+  deterministic ("pow");
+  deterministic ("sin");
+  deterministic ("sinh");
+  deterministic ("sqrt");
+  deterministic ("strchr");
+  deterministic ("strcmp");
+  deterministic ("strcspn");
+  deterministic ("strlen");
+  deterministic ("strncmp");
+  deterministic ("strpbrk");
+  deterministic ("strrchr");
+  deterministic ("strspn");
+  deterministic ("strstr");
+  deterministic ("tan");
+  deterministic ("tanh");
+  deterministic ("tolower");
+  deterministic ("toupper");
+  deterministic (setequalname);
+  deterministic (subsetname);
+  deterministic (signextname);
+  }
 //}}}
 
 //{{{
-void init_lex()
-{
-    int i;
+void init_lex() {
 
-    inputkind = INP_FILE;
-    inf_lnum = 0;
-    inf_ltotal = 0;
-    *inbuf = 0;
-    inbufptr = inbuf;
-    keepingstrlist = NULL;
-    tempoptionlist = NULL;
-    switch_strpos = 0;
-    dollar_flag = 0;
-    if_flag = 0;
-    if_skip = 0;
-    commenting_flag = 0;
-    skipflag = 0;
-    inbufindent = 0;
-    modulenotation = 1;
-    notephase = 0;
-    endnotelist = NULL;
-    for (i = 0; i < SYMHASHSIZE; i++)
-        symtab[i] = 0;
-    C_lex = 0;
-    lex_initialized = 0;
-}
+  int i;
+
+  inputkind = INP_FILE;
+  inf_lnum = 0;
+  inf_ltotal = 0;
+  *inbuf = 0;
+  inbufptr = inbuf;
+  keepingstrlist = NULL;
+  tempoptionlist = NULL;
+  switch_strpos = 0;
+  dollar_flag = 0;
+  if_flag = 0;
+  if_skip = 0;
+  commenting_flag = 0;
+  skipflag = 0;
+  inbufindent = 0;
+  modulenotation = 1;
+  notephase = 0;
+  endnotelist = NULL;
+  for (i = 0; i < SYMHASHSIZE; i++)
+    symtab[i] = 0;
+  C_lex = 0;
+  lex_initialized = 0;
+  }
 //}}}
 //{{{
-void setup_lex()
-{
-    lex_initialized = 1;
-    if (!strcmp(language, "MODCAL"))
-        sysprog_flag = 2;
-    else
-        sysprog_flag = 0;
-    if (shortcircuit < 0)
-        partial_eval_flag = (which_lang == LANG_TURBO ||
-           which_lang == LANG_VAX ||
-           which_lang == LANG_OREGON ||
-           which_lang == LANG_TIP ||
-           modula2 ||
-           hpux_lang);
-    else
-        partial_eval_flag = shortcircuit;
-    iocheck_flag = 1;
-    range_flag = 1;
-    ovflcheck_flag = 1;
-    stackcheck_flag = 1;
-    fixedflag = 0;
-    taggedflag = 0;
-    withlevel = 0;
-    makekeywords();
-    makePascalwords();
-    recordsideeffects();
-    topinput = 0;
-    ignore_directives = 0;
-    skipping_module = 0;
-    blockkind = TOK_END;
-    gettok();
-}
+void setup_lex() {
+
+  lex_initialized = 1;
+  if (!strcmp(language, "MODCAL"))
+      sysprog_flag = 2;
+  else
+      sysprog_flag = 0;
+
+  if (shortcircuit < 0)
+    partial_eval_flag = (which_lang == LANG_TURBO ||
+                         which_lang == LANG_VAX ||
+                         which_lang == LANG_OREGON ||
+                         which_lang == LANG_TIP ||
+                         modula2 || hpux_lang);
+  else
+    partial_eval_flag = shortcircuit;
+
+  iocheck_flag = 1;
+  range_flag = 1;
+  ovflcheck_flag = 1;
+  stackcheck_flag = 1;
+  fixedflag = 0;
+  taggedflag = 0;
+  withlevel = 0;
+
+  makekeywords();
+  makePascalwords();
+  recordsideeffects();
+
+  topinput = 0;
+  ignore_directives = 0;
+  skipping_module = 0;
+  blockkind = TOK_END;
+
+  gettok();
+  }
 //}}}
 //{{{
-int checkeatnote (msg)
-char *msg;
-{
-    Strlist *lp;
-    char *cp;
-    int len;
+int checkeatnote (char *msg) {
 
-    for (lp = eatnotes; lp; lp = lp->next) {
-  if (!strcmp(lp->s, "1")) {
+  Strlist *lp;
+  char *cp;
+  int len;
+
+  for (lp = eatnotes; lp; lp = lp->next) {
+    if (!strcmp(lp->s, "1")) {
       echoword("[*]", 0);
       return 1;
-  }
-  if (!strcmp(lp->s, "0"))
+      }
+
+    if (!strcmp(lp->s, "0"))
       return 0;
-  len = strlen(lp->s);
-  cp = msg;
-  while (*cp && (*cp != lp->s[0] || strncmp(cp, lp->s, len)))
+
+    len = strlen(lp->s);
+    cp = msg;
+    while (*cp && (*cp != lp->s[0] || strncmp(cp, lp->s, len)))
       cp++;
-  if (*cp) {
+
+    if (*cp) {
       cp = lp->s;
       if (*cp != '[')
-    cp = format_s("[%s", cp);
+        cp = format_s("[%s", cp);
       if (cp[strlen(cp)-1] != ']')
-    cp = format_s("%s]", cp);
+        cp = format_s("%s]", cp);
       echoword(cp, 0);
       return 1;
-  }
+      }
     }
-    return 0;
-}
 
+  return 0;
+  }
 //}}}
 //{{{
-void beginerror()
-{
-    end_source();
-    if (showprogress) {
-        fprintf(stderr, "\r%60s\r", "");
-        clearprogress();
-    } else
-  echobreak();
-}
+void beginerror() {
+
+  end_source();
+  if (showprogress) {
+    fprintf(stderr, "\r%60s\r", "");
+    clearprogress();
+    }
+  else
+    echobreak();
+  }
 //}}}
 //{{{
-void counterror()
-{
-    if (maxerrors > 0) {
-  if (--maxerrors == 0) {
+void counterror() {
+
+  if (maxerrors > 0) {
+    if (--maxerrors == 0) {
       fprintf(outf, "\n/* Translation aborted: Too many errors. */\n");
       fprintf(outf,   "-------------------------------------------\n");
+
       if (outf != stdout)
-    printf("Translation aborted: Too many errors.\n");
+        printf("Translation aborted: Too many errors.\n");
+
       if (verbose)
-    fprintf(logfile, "Translation aborted: Too many errors.\n");
+        fprintf(logfile, "Translation aborted: Too many errors.\n");
+
       closelogfile();
       exit_failure();
-  }
-    }
-}
-//}}}
-//{{{
-void error (msg)     /* does not return */
-char *msg;
-{
-    flushcomments(NULL, -1, -1);
-    beginerror();
-    fprintf(outf, "/* %s, line %d: %s */\n", infname, inf_lnum, msg);
-    fprintf(outf, "/* Translation aborted. */\n");
-    fprintf(outf, "--------------------------\n");
-    if (outf != stdout) {
-        printf("\"%s\", line %d,%d: %s\n", infname, inf_lnum, outf_lnum, msg);
-        printf("Translation aborted.\n");
-    }
-    if (verbose) {
-  fprintf(logfile, "%s:%d:%d: %s\n",
-    infname, inf_lnum, outf_lnum, msg);
-  fprintf(logfile, "Translation aborted.\n");
-    }
-    closelogfile();
-    exit_failure();
-}
-//}}}
-//{{{
-void interror (proc, msg)      /* does not return */
-char *proc, *msg;
-{
-    error(format_ss("Internal error in %s: %s", proc, msg));
-}
-//}}}
-//{{{
-void warning(msg)
-char *msg;
-{
-    if (checkeatnote(msg)) {
-  if (verbose)
-      fprintf(logfile, "%s:%d:%d: Omitted warning: %s\n",
-        infname, inf_lnum, outf_lnum, msg);
-  return;
-    }
-    beginerror();
-    addnote(format_s("Warning: %s", msg), curserial);
-    counterror();
-}
-
-//}}}
-//{{{
-void intwarning (proc, msg)
-char *proc, *msg;
-{
-    if (checkeatnote(msg)) {
-  if (verbose)
-      fprintf(logfile, "%s:%d:%d: Omitted internal error in %s: %s\n",
-        infname, inf_lnum, outf_lnum, proc, msg);
-  return;
-    }
-    beginerror();
-    addnote(format_ss("Internal error in %s: %s", proc, msg), curserial);
-    if (error_crash)
-        exit_failure();
-    counterror();
-}
-//}}}
-
-//{{{
-void note (msg)
-char *msg;
-{
-    if (blockkind == TOK_IMPORT || checkeatnote(msg)) {
-  if (verbose)
-      fprintf(logfile, "%s:%d:%d: Omitted note: %s\n",
-        infname, inf_lnum, outf_lnum, msg);
-  return;
-    }
-    beginerror();
-    addnote(format_s("Note: %s", msg), curserial);
-    counterror();
-}
-//}}}
-//{{{
-void endnote (msg)
-char *msg;
-{
-    if (blockkind == TOK_IMPORT || checkeatnote(msg)) {
-  if (verbose)
-      fprintf(logfile, "%s:%d:%d: Omitted end-note: %s\n",
-        infname, inf_lnum, outf_lnum, msg);
-  return;
-    }
-    if (verbose)
-  fprintf(logfile, "%s:%d:%d: Recorded end-note: %s\n",
-    infname, inf_lnum, outf_lnum, msg);
-    (void) strlist_add(&endnotelist, msg);
-}
-//}}}
-//{{{
-void showendnotes()
-{
-    while (initialcalls) {
-  if (initialcalls->value)
-      endnote(format_s("Remember to call %s in main program [215]",
-           initialcalls->s));
-  strlist_eat(&initialcalls);
-    }
-    if (endnotelist) {
-  end_source();
-  while (endnotelist) {
-      if (!quietmode) {
-    if (outf != stdout) {
-        beginerror();
-        printf("Note: %s\n", endnotelist->s);
-    } else
-        fprintf(stderr, "Note: %s\n", endnotelist->s);
       }
-      if (slashslash)
-    fprintf(outf, "// p2c: Note: %s\n", endnotelist->s);
-      else
-    fprintf(outf, "/* p2c: Note: %s */\n", endnotelist->s);
-      outf_lnum++;
-      strlist_eat(&endnotelist);
+    }
   }
-    }
-}
 //}}}
-
 //{{{
-char *tok_name (tok)
-Token tok;
-{
-    if (tok == TOK_END && inputkind == INP_STRLIST)
-  return "end of macro";
-    if (tok == curtok && tok == TOK_IDENT)
-        return format_s("'%s'", curtokcase);
-    if (!modulenotation) {
-        switch (tok) {
-            case TOK_MODULE:    return "UNIT";
-            case TOK_IMPORT:    return "USES";
-            case TOK_EXPORT:    return "INTERFACE";
-            case TOK_IMPLEMENT: return "IMPLEMENTATION";
-      default:    break;
+void error (char *msg) {
+
+  flushcomments (NULL, -1, -1);
+  beginerror();
+
+  fprintf (outf, "/* %s, line %d: %s */\n", infname, inf_lnum, msg);
+  fprintf (outf, "/* Translation aborted. */\n");
+  fprintf (outf, "--------------------------\n");
+
+  if (outf != stdout) {
+    printf ("\"%s\", line %d,%d: %s\n", infname, inf_lnum, outf_lnum, msg);
+    printf ("Translation aborted.\n");
+    }
+
+  if (verbose) {
+    fprintf (logfile, "%s:%d:%d: %s\n", infname, inf_lnum, outf_lnum, msg);
+    fprintf (logfile, "Translation aborted.\n");
+    }
+
+  closelogfile();
+  exit_failure();
+  }
+//}}}
+//{{{
+void interror (char* proc, char *msg) {
+  error (format_ss ("Internal error in %s: %s", proc, msg));
+  }
+//}}}
+//{{{
+void warning (char *msg) {
+
+  if (checkeatnote (msg)) {
+    if (verbose)
+      fprintf (logfile, "%s:%d:%d: Omitted warning: %s\n", infname, inf_lnum, outf_lnum, msg);
+    return;
+    }
+
+  beginerror();
+  addnote (format_s("Warning: %s", msg), curserial);
+  counterror();
+  }
+//}}}
+//{{{
+void intwarning (char* proc, char* msg) {
+
+  if (checkeatnote (msg)) {
+    if (verbose)
+      fprintf (logfile, "%s:%d:%d: Omitted internal error in %s: %s\n", infname, inf_lnum, outf_lnum, proc, msg);
+    return;
+    }
+
+  beginerror();
+  addnote (format_ss ("Internal error in %s: %s", proc, msg), curserial);
+
+  if (error_crash)
+   exit_failure();
+
+  counterror();
+  }
+//}}}
+//{{{
+void note (char *msg) {
+
+  if (blockkind == TOK_IMPORT || checkeatnote (msg)) {
+    if (verbose)
+      fprintf (logfile, "%s:%d:%d: Omitted note: %s\n", infname, inf_lnum, outf_lnum, msg);
+    return;
+    }
+
+  beginerror();
+  addnote (format_s("Note: %s", msg), curserial);
+  counterror();
+  }
+//}}}
+//{{{
+void endnote (char *msg) {
+
+  if (blockkind == TOK_IMPORT || checkeatnote (msg)) {
+    if (verbose)
+      fprintf (logfile, "%s:%d:%d: Omitted end-note: %s\n", infname, inf_lnum, outf_lnum, msg);
+    return;
+    }
+
+  if (verbose)
+    fprintf (logfile, "%s:%d:%d: Recorded end-note: %s\n", infname, inf_lnum, outf_lnum, msg);
+
+  (void) strlist_add (&endnotelist, msg);
+  }
+//}}}
+//{{{
+void showendnotes() {
+
+  while (initialcalls) {
+    if (initialcalls->value)
+      endnote (format_s ("Remember to call %s in main program [215]", initialcalls->s));
+
+    strlist_eat (&initialcalls);
+    }
+
+  if (endnotelist) {
+    end_source();
+    while (endnotelist) {
+      if (!quietmode) {
+        if (outf != stdout) {
+          beginerror();
+          printf ("Note: %s\n", endnotelist->s);
+          }
+        else
+          fprintf (stderr, "Note: %s\n", endnotelist->s);
         }
-    }
-    return toknames[(int) tok];
-}
-//}}}
-//{{{
-void expected (msg)
-char *msg;
-{
-    error(format_ss("Expected %s, found %s", msg, tok_name(curtok)));
-}
-//}}}
-//{{{
-void expecttok (tok)
-Token tok;
-{
-    if (curtok != tok)
-        expected(tok_name(tok));
-}
-//}}}
-//{{{
-void needtok (tok)
-Token tok;
-{
-    if (curtok != tok)
-        expected(tok_name(tok));
-    gettok();
-}
-//}}}
-
-//{{{
-int wexpected (msg)
-char *msg;
-{
-    warning(format_ss("Expected %s, found %s [227]", msg, tok_name(curtok)));
-    return 0;
-}
-//}}}
-//{{{
-int wexpecttok (tok)
-Token tok;
-{
-    if (curtok != tok)
-        return wexpected(tok_name(tok));
-    else
-  return 1;
-}
-//}}}
-//{{{
-int wneedtok (tok)
-Token tok;
-{
-    if (wexpecttok(tok)) {
-  gettok();
-  return 1;
-    } else
-  return 0;
-}
-//}}}
-//{{{
-void alreadydef (sym)
-Symbol *sym;
-{
-    warning(format_s("Symbol '%s' was already defined [220]", sym->name));
-}
-//}}}
-//{{{
-void undefsym (sym)
-Symbol *sym;
-{
-    warning(format_s("Symbol '%s' is not defined [221]", sym->name));
-}
-//}}}
-//{{{
-void symclass (sym)
-Symbol *sym;
-{
-    warning(format_s("Symbol '%s' is not of the appropriate class [222]", sym->name));
-}
-//}}}
-//{{{
-void badtypes()
-{
-    warning("Type mismatch [223]");
-}
-//}}}
-//{{{
-void valrange()
-{
-    warning("Value range error [224]");
-}
-//}}}
-
-//{{{
-void skipparens()
-{
-    Token begintok;
-
-    if (curtok == TOK_LPAR) {
-        gettok();
-        while (curtok != TOK_RPAR)
-            skipparens();
-    } else if (curtok == TOK_LBR) {
-        gettok();
-        while (curtok != TOK_RBR)
-            skipparens();
-    } else if (curtok == TOK_BEGIN || curtok == TOK_RECORD ||
-         curtok == TOK_CASE) {
-  begintok = curtok;
-        gettok();
-        while (curtok != TOK_END)
-      if (curtok == TOK_CASE && begintok == TOK_RECORD)
-    gettok();
+      if (slashslash)
+        fprintf (outf, "// p2c: Note: %s\n", endnotelist->s);
       else
-    skipparens();
+        fprintf (outf, "/* p2c: Note: %s */\n", endnotelist->s);
+
+      outf_lnum++;
+      strlist_eat (&endnotelist);
+      }
     }
+  }
+//}}}
+
+//{{{
+char* tok_name (Token tok) {
+
+  if (tok == TOK_END && inputkind == INP_STRLIST)
+    return "end of macro";
+
+  if (tok == curtok && tok == TOK_IDENT)
+    return format_s("'%s'", curtokcase);
+
+  if (!modulenotation) {
+    switch (tok) {
+      case TOK_MODULE:    return "UNIT";
+      case TOK_IMPORT:    return "USES";
+      case TOK_EXPORT:    return "INTERFACE";
+      case TOK_IMPLEMENT: return "IMPLEMENTATION";
+      default:    break;
+      }
+    }
+
+  return toknames[(int) tok];
+  }
+//}}}
+//{{{
+void expected (char *msg) {
+  error(format_ss("Expected %s, found %s", msg, tok_name(curtok)));
+  }
+//}}}
+//{{{
+void expecttok (Token tok) {
+
+  if (curtok != tok)
+    expected (tok_name(tok));
+  }
+//}}}
+//{{{
+void needtok (Token tok) {
+
+  if (curtok != tok)
+    expected(tok_name(tok));
     gettok();
-}
+  }
 //}}}
 //{{{
-void skiptotoken2 (tok1, tok2)
-Token tok1, tok2;
-{
-    while (curtok != tok1 && curtok != tok2 &&
-     curtok != TOK_END && curtok != TOK_RPAR &&
-     curtok != TOK_RBR && curtok != TOK_EOF)
+int wexpected (char* msg) {
+
+  warning (format_ss ("Expected %s, found %s [227]", msg, tok_name(curtok)));
+  return 0;
+  }
+//}}}
+//{{{
+int wexpecttok (Token tok) {
+
+  if (curtok != tok)
+    return wexpected(tok_name(tok));
+  else
+    return 1;
+  }
+//}}}
+//{{{
+int wneedtok (Token tok) {
+
+  if (wexpecttok(tok)) {
+    gettok();
+    return 1;
+    }
+  else
+    return 0;
+  }
+//}}}
+
+//{{{
+void alreadydef (Symbol* sym) {
+  warning (format_s ("Symbol '%s' was already defined [220]", sym->name));
+  }
+//}}}
+//{{{
+void undefsym (Symbol* sym) {
+  warning (format_s ("Symbol '%s' is not defined [221]", sym->name));
+  }
+//}}}
+//{{{
+void symclass (Symbol* sym) {
+  warning(format_s("Symbol '%s' is not of the appropriate class [222]", sym->name));
+  }
+//}}}
+//{{{
+void badtypes() {
+  warning ("Type mismatch [223]");
+  }
+//}}}
+//{{{
+void valrange() {
+  warning ("Value range error [224]");
+  }
+//}}}
+
+//{{{
+void skipparens() {
+
+  Token begintok;
+
+  if (curtok == TOK_LPAR) {
+    gettok();
+    while (curtok != TOK_RPAR)
+      skipparens();
+    }
+  else if (curtok == TOK_LBR) {
+    gettok();
+   while (curtok != TOK_RBR)
+     skipparens();
+    }
+  else if (curtok == TOK_BEGIN || curtok == TOK_RECORD || curtok == TOK_CASE) {
+    begintok = curtok;
+    gettok();
+    while (curtok != TOK_END)
+      if (curtok == TOK_CASE && begintok == TOK_RECORD)
+        gettok();
+      else
+        skipparens();
+    }
+
+  gettok();
+  }
+//}}}
+//{{{
+void skiptotoken2 (Token tok1, Token tok2) {
+
+  while (curtok != tok1 && curtok != tok2 &&
+         curtok != TOK_END && curtok != TOK_RPAR &&
+         curtok != TOK_RBR && curtok != TOK_EOF)
   skipparens();
-}
+  }
 //}}}
 //{{{
-void skippasttoken2 (tok1, tok2)
-Token tok1, tok2;
-{
-    skiptotoken2(tok1, tok2);
-    if (curtok == tok1 || curtok == tok2)
-  gettok();
-}
+void skippasttoken2 (Token tok1, Token tok2) {
+
+  skiptotoken2(tok1, tok2);
+  if (curtok == tok1 || curtok == tok2)
+    gettok();
+  }
 //}}}
 //{{{
-void skippasttotoken (tok1, tok2)
-Token tok1, tok2;
-{
-    skiptotoken2(tok1, tok2);
-    if (curtok == tok1)
-  gettok();
-}
+void skippasttotoken (Token tok1, Token tok2) {
+
+  skiptotoken2(tok1, tok2);
+  if (curtok == tok1)
+    gettok();
+  }
 //}}}
 //{{{
-void skiptotoken (tok)
-Token tok;
-{
-    skiptotoken2(tok, tok);
-}
+void skiptotoken (Token tok) {
+  skiptotoken2(tok, tok);
+  }
 //}}}
 //{{{
-void skippasttoken (tok)
-Token tok;
-{
-    skippasttoken2(tok, tok);
-}
+void skippasttoken (Token tok) {
+  skippasttoken2(tok, tok);
+  }
 //}}}
 //{{{
-int skipopenparen()
-{
-    if (wneedtok(TOK_LPAR))
-  return 1;
-    skiptotoken(TOK_SEMI);
-    return 0;
-}
+int skipopenparen() {
+
+  if (wneedtok(TOK_LPAR))
+    return 1;
+  skiptotoken(TOK_SEMI);
+  return 0;
+  }
 //}}}
 //{{{
-int skipcloseparen()
-{
-    if (curtok == TOK_COMMA)
-  warning("Too many arguments for built-in routine [225]");
-    else
-  if (wneedtok(TOK_RPAR))
+int skipcloseparen() {
+
+  if (curtok == TOK_COMMA)
+    warning("Too many arguments for built-in routine [225]");
+  else
+    if (wneedtok(TOK_RPAR))
       return 1;
-    skippasttotoken(TOK_RPAR, TOK_SEMI);
-    return 0;
-}
+
+  skippasttotoken(TOK_RPAR, TOK_SEMI);
+  return 0;
+  }
 //}}}
 //{{{
-int skipcomma()
-{
-    if (curtok == TOK_RPAR)
-  warning("Too few arguments for built-in routine [226]");
-    else
-  if (wneedtok(TOK_COMMA))
+int skipcomma() {
+
+  if (curtok == TOK_RPAR)
+    warning("Too few arguments for built-in routine [226]");
+  else
+    if (wneedtok(TOK_COMMA))
       return 1;
-    skippasttotoken(TOK_RPAR, TOK_SEMI);
-    return 0;
-}
+
+  skippasttotoken(TOK_RPAR, TOK_SEMI);
+  return 0;
+  }
 //}}}
 
 //{{{
-char* findaltname (name, num)
-char *name;
-int num;
-{
-    char *cp;
+char* findaltname (char *name, int num) {
 
-    if (num <= 0)
-        return name;
-    if (num == 1 && *alternatename1)
-        return format_s(alternatename1, name);
-    if (num == 2 && *alternatename2)
-        return format_s(alternatename2, name);
-    if (*alternatename)
-        return format_sd(alternatename, name, num);
-    cp = name;
-    if (*alternatename1) {
-        while (--num >= 0)
-      cp = format_s(alternatename1, cp);
-    } else {
-  while (--num >= 0)
+  char *cp;
+
+  if (num <= 0)
+    return name;
+
+  if (num == 1 && *alternatename1)
+    return format_s(alternatename1, name);
+
+  if (num == 2 && *alternatename2)
+    return format_s(alternatename2, name);
+
+  if (*alternatename)
+    return format_sd(alternatename, name, num);
+
+  cp = name;
+  if (*alternatename1) {
+    while (--num >= 0)
+    cp = format_s(alternatename1, cp);
+    }
+  else {
+    while (--num >= 0)
       cp = format_s("%s_", cp);
     }
-    return cp;
-}
+
+  return cp;
+  }
 //}}}
 //{{{
-Symbol* findsymbol_opt (name)
-char *name;
-{
-    register int i;
-    register unsigned int hash;
-    register char *cp;
-    register Symbol *sp;
+Symbol* findsymbol_opt (char *name) {
 
-    hash = 0;
-    for (cp = name; *cp; cp++)
-        hash = hash*3 + *cp;
-    sp = symtab[hash % SYMHASHSIZE];
-    while (sp && (i = strcmp(sp->name, name)) != 0) {
-        if (i < 0)
-            sp = sp->left;
-        else
-            sp = sp->right;
+  int i;
+  unsigned int hash;
+  char *cp;
+  Symbol *sp;
+
+  hash = 0;
+  for (cp = name; *cp; cp++)
+    hash = hash*3 + *cp;
+  sp = symtab[hash % SYMHASHSIZE];
+  while (sp && (i = strcmp(sp->name, name)) != 0) {
+    if (i < 0)
+      sp = sp->left;
+    else
+      sp = sp->right;
     }
-    return sp;
-}
+
+  return sp;
+  }
 //}}}
 //{{{
 Symbol* findsymbol (name)
 char *name;
 {
-    register int i;
-    register unsigned int hash;
-    register char *cp;
-    register Symbol **prev, *sp;
+    int i;
+    unsigned int hash;
+    char *cp;
+    Symbol **prev, *sp;
 
     hash = 0;
     for (cp = name; *cp; cp++)
@@ -1326,7 +1329,7 @@ char *fn;
       curtok = TOK_INCLUDE;
       strcpy (curtokbuf, fn);
       }
-    else 
+    else
       push_input_file (fp, fn, 1);
 
     return 1;
@@ -2316,7 +2319,7 @@ int p2c_only, starparen;
 Static void comment (starparen)
 int starparen;    /* 0={ }, 1=(* *), 2=C comments, 3=" " */
 {
-    register char ch;
+    char ch;
     int nestcount = 1, startlnum = inf_lnum, wasrel = 0, trailing;
     int i, cmtindent, cmtindent2, saveeat = eatcomments;
     char *cp;
@@ -2774,7 +2777,7 @@ char *word;
         case TOK_OCTLIT:
         case TOK_INTLIT:
         case TOK_MININT:
-          printf(", curtokint = %ld", curtokint);
+          printf (", curtokint = %ld", curtokint);
           break;
 
         case TOK_REALLIT:
@@ -2786,7 +2789,7 @@ char *word;
           break;
         }
 
-      putchar('\n');
+      putchar ('\n');
       }
     }
   //}}}
@@ -2795,10 +2798,10 @@ char *word;
   void gettok() {
 #endif
 
-  register char ch;
-  register char *cp;
+  char ch;
+  char* cp;
   char ch2;
-  char *startcp;
+  char* startcp;
   int i;
 
   debughook();
@@ -3146,99 +3149,107 @@ char *word;
       //}}}
       /* fall through */
       //{{{
-       case '\'':
-                 if (C_lex && ch == '\'') {
-                     get_C_string(ch);
-                     if (curtokint != 1)
-                         warning("Character constant has length != 1 [242]");
-                     curtokint = *curtokbuf;
-                     curtok = TOK_CHARLIT;
-                     return;
-                 }
-           stringLiteral:
-                 cp = curtokbuf;
-             ch2 = (ch == '"') ? '"' : '\'';
-                 do {
-                     if (ch == ch2) {
-                         while ((ch = *inbufptr++) != '\n' &&
-                                ch != EOF) {
-                             if (ch == ch2) {
-                                 if (*inbufptr != ch2 || modula2)
-                                     break;
-                                 else
-                                     inbufptr++;
-                             }
-           if (ch == '#' && which_lang == LANG_TIP) {
-         if (isxdigit(*inbufptr) &&
-             isxdigit(inbufptr[1])) {
-             ch = *inbufptr++;
-             if (isdigit(ch))
-           i = ch - '0';
-             else
-           i = toupper(ch) - 'A' + 10;
-             ch = *inbufptr++;
-             if (isdigit(ch))
-           i = i*16 + ch - '0';
-             else
-           i = i*16 + toupper(ch) - 'A' + 10;
-             ch = i;
-         } else if (*inbufptr == ch)
-             inbufptr++;
-           }
-                             *cp++ = ch;
-                         }
-                         if (ch != ch2)
-                             warning("Error in string literal [243]");
-                     } else {
-                         ch = *inbufptr++;
-       /* Check for Turbo #$FF hex constant */
-       /* (Contributed by Robert Andersson, robert@gar.no) */
-       if (ch == '$' && isxdigit(*inbufptr)) {
-           /* Pick out the hex number */
-           i = 0;
-           ch = *inbufptr++;
-           while (isxdigit(ch)) {
-         if (isdigit(ch))
-             i = i*16 + ch - '0';
-         else if (ch >= 'a')
-             i = i*16 + ch - 'a' + 10;
-         else if (ch >= 'A')
-             i = i*16 + ch - 'A' + 10;
-         ch = *inbufptr++;
-           }
-           while (ch == ' ' || ch == '\t')
-         ch = *inbufptr++;
-           inbufptr--;
-       #if 0
-       /* Not safe---consider "var ch:char; begin ch:=#$ff end". */
-           /* Check if part of a string */
-           if (cp == curtokbuf && ch != '#' && ch != ch2) {
-         curtokint = i;
-         curtok = TOK_HEXLIT;
-         return;
-           }
-      #endif
-           *cp++ = i;
-       } else if (isdigit(ch)) {
-                             i = 0;
-                             while (isdigit(ch)) {
-                                 i = i*10 + ch - '0';
-                                 ch = *inbufptr++;
-                             }
-                             inbufptr--;
-                             *cp++ = i;
-                         } else {
-                             *cp++ = ch & 0x1f;
-                         }
-                     }
-                     while (*inbufptr == ' ' || *inbufptr == '\t')
-                         inbufptr++;
-                 } while ((ch = *inbufptr++) == ch2 || ch == '#');
-                 inbufptr--;
-                 *cp = 0;
-                 curtokint = cp - curtokbuf;
-                 curtok = TOK_STRLIT;
+      case '\'':
+        if (C_lex && ch == '\'') {
+          get_C_string(ch);
+          if (curtokint != 1)
+            warning("Character constant has length != 1 [242]");
+
+          curtokint = *curtokbuf;
+          curtok = TOK_CHARLIT;
+          return;
+          }
+
+      stringLiteral:
+        cp = curtokbuf;
+        ch2 = (ch == '"') ? '"' : '\'';
+        do {
+          if (ch == ch2) {
+            while ((ch = *inbufptr++) != '\n' && ch != EOF) {
+              if (ch == ch2) {
+                if (*inbufptr != ch2 || modula2)
+                  break;
+                else
+                  inbufptr++;
+                }
+
+              if (ch == '#' && which_lang == LANG_TIP) {
+                if (isxdigit (*inbufptr) && isxdigit (inbufptr[1])) {
+                  ch = *inbufptr++;
+                  if (isdigit (ch))
+                    i = ch - '0';
+                  else
+                    i = toupper(ch) - 'A' + 10;
+                  ch = *inbufptr++;
+                  if (isdigit(ch))
+                    i = i*16 + ch - '0';
+                  else
+                    i = i*16 + toupper(ch) - 'A' + 10;
+                  ch = i;
+                  } 
+                else if (*inbufptr == ch)
+                  inbufptr++;
+                }
+              *cp++ = ch;
+              }
+            if (ch != ch2)
+              warning("Error in string literal [243]");
+            } 
+          else {
+            ch = *inbufptr++;
+
+            /* Check for Turbo #$FF hex constant (Contributed by Robert Andersson, robert@gar.no) */
+            if (ch == '$' && isxdigit(*inbufptr)) {
+              /* Pick out the hex number */
+              i = 0;
+              ch = *inbufptr++;
+              while (isxdigit (ch)) {
+                if (isdigit (ch))
+                  i = i*16 + ch - '0';
+                else if (ch >= 'a')
+                  i = i*16 + ch - 'a' + 10;
+                else if (ch >= 'A')
+                  i = i*16 + ch - 'A' + 10;
+                ch = *inbufptr++;
+                }
+              while (ch == ' ' || ch == '\t')
+                ch = *inbufptr++;
+              inbufptr--;
+
+               #if 0
+               /* Not safe---consider "var ch:char; begin ch:=#$ff end". */
+                   /* Check if part of a string */
+                   if (cp == curtokbuf && ch != '#' && ch != ch2) {
+                 curtokint = i;
+                 curtok = TOK_HEXLIT;
                  return;
+                   }
+              #endif
+              *cp++ = i;
+              } 
+            else if (isdigit (ch)) {
+              i = 0;
+              while (isdigit (ch)) {
+                i = i*10 + ch - '0';
+                ch = *inbufptr++;
+                }
+              inbufptr--;
+              *cp++ = i;
+              } 
+            else {
+              *cp++ = ch & 0x1f;
+              }
+            }
+
+          while (*inbufptr == ' ' || *inbufptr == '\t')
+            inbufptr++;
+          } while ((ch = *inbufptr++) == ch2 || ch == '#');
+
+        inbufptr--;
+        *cp = 0;
+        curtokint = cp - curtokbuf;
+        curtok = TOK_STRLIT;
+        return;
       //}}}
       //{{{
       case '(':
@@ -3270,29 +3281,35 @@ char *word;
       //}}}
       //{{{
       case '{':
-                    if (C_lex || modula2) {
-                        curtok = TOK_LBRACE;
-                        return;
-                    }
-                    switch (commenting_flag ? 0 : parsecomment(0, 0)) {
-                        case 0:
-                            comment(0);
-                            break;
-                        case 2:
-                            return;
-                    }
-                    break;
+        if (C_lex || modula2) {
+          curtok = TOK_LBRACE;
+          return;
+          }
 
-                case '}':
-                    if (C_lex || modula2) {
-                        curtok = TOK_RBRACE;
-                        return;
-                    }
+        switch (commenting_flag ? 0 : parsecomment(0, 0)) {
+          case 0:
+            comment(0);
+            break;
+          case 2:
+            return;
+          }
+
+        break;
+      //}}}
+      //{{{
+      case '}':
+        if (C_lex || modula2) {
+          curtok = TOK_RBRACE;
+          return;
+          }
+
         if (skipflag > 0) {
-            skipflag = 0;
-        } else
-            warning("Unmatched '}' in input file [244]");
-                    break;
+          skipflag = 0;
+          } 
+        else
+          warning("Unmatched '}' in input file [244]"); 
+
+        break;
       //}}}
       //{{{
       case ')':
@@ -3488,24 +3505,24 @@ char *word;
           return;
       //}}}
       default:
-        if (isdigit(ch)) {
+        if (isdigit (ch)) {
           //{{{  isdigit
           cp = inbufptr;
-          while (isxdigit(*cp))
+          while (isxdigit (*cp))
             cp++;
-          if (*cp == '#' && isxdigit(cp[1])) {
+          if (*cp == '#' && isxdigit (cp[1])) {
             i = atoi(inbufptr-1);
             inbufptr = cp+1;
             }
-          else if (toupper(cp[-1]) == 'B' || toupper(cp[-1]) == 'C') {
+          else if (toupper (cp[-1]) == 'B' || toupper (cp[-1]) == 'C') {
             inbufptr--;
             i = 8;
             }
-          else if (toupper(*cp) == 'H') {
+          else if (toupper (*cp) == 'H') {
             inbufptr--;
             i = 16;
             }
-          else if ((ch == '0' && toupper(*inbufptr) == 'X' && isxdigit(inbufptr[1]))) {
+          else if ((ch == '0' && toupper (*inbufptr) == 'X' && isxdigit (inbufptr[1]))) {
             inbufptr++;
             i = 16;
             }
@@ -3549,37 +3566,40 @@ char *word;
 
           cp = curtokbuf;
           i = 0;
+
           while (ch == '0')
             ch = *inbufptr++;
-          if (isdigit(ch)) {
-            while (isdigit(ch)) {
+          if (isdigit (ch)) {
+            while (isdigit (ch)) {
               *cp++ = ch;
               ch = *inbufptr++;
               }
             }
           else
             *cp++ = '0';
+
           if (ch == '.') {
-            if (isdigit(*inbufptr)) {
+            if (isdigit (*inbufptr)) {
               *cp++ = ch;
               ch = *inbufptr++;
               i = 1;
-              while (isdigit(ch)) {
+              while (isdigit (ch)) {
                 *cp++ = ch;
                 ch = *inbufptr++;
                 }
               }
             }
+
           if (ch == 'e' || ch == 'E' || ch == 'd' || ch == 'D' || ch == 'l' || ch == 'L' || ch == 'q' || ch == 'Q') {
             ch = *inbufptr;
-            if (isdigit(ch) || ch == '+' || ch == '-') {
+            if (isdigit (ch) || ch == '+' || ch == '-') {
               *cp++ = 'e';
               inbufptr++;
               i = 1;
               do {
                 *cp++ = ch;
                 ch = *inbufptr++;
-                } while (isdigit(ch));
+                } while (isdigit (ch));
               }
             }
           inbufptr--;
@@ -3610,8 +3630,8 @@ char *word;
               //}}}
 
             curtok = TOK_INTLIT;
-            curtokint = atol(curtokbuf);
-            if (toupper(*inbufptr) == 'L') {
+            curtokint = atol (curtokbuf);
+            if (toupper (*inbufptr) == 'L') {
               strcat (curtokbuf, "L");
               inbufptr++;
               }
@@ -3620,17 +3640,18 @@ char *word;
           return;
           }
           //}}}
-        else if (isalpha(ch) || ch == '_') {
+        else if (isalpha (ch) || ch == '_') {
           //{{{  isalpha
           ident:
-
             {
-            register char *cp2;
+            char *cp2;
             curtoksym = NULL;
+
             cp = curtokbuf;
             cp2 = curtokcase;
             *cp2++ = symcase ? ch : tolower(ch);
             *cp++ = pascalcasesens ? ch : toupper(ch);
+
             while (isalnum((ch = *inbufptr++)) || ch == '_' || (ch == '%' && !C_lex) || (ch == '$' && dollar_idents)) {
               *cp2++ = symcase ? ch : tolower(ch);
               if (!ignorenonalpha || isalnum(ch))
@@ -3648,39 +3669,39 @@ char *word;
             //{{{  %
             if (!strcicmp(curtokbuf, "%INCLUDE")) {
               char *cp2 = inbufptr;
-              while (isspace(*cp2)) cp2++;
+              while (isspace (*cp2)) cp2++;
               if (*cp2 == '\'')
                 cp2++;
               cp = curtokbuf;
-              while (*cp2 && *cp2 != '\'' && *cp2 != ';' && !isspace(*cp2)) {
+              while (*cp2 && *cp2 != '\'' && *cp2 != ';' && !isspace (*cp2)) {
                 *cp++ = *cp2++;
                 }
               *cp = 0;
-              cp = my_strrchr(curtokbuf, '/');
-              if (cp && (!strcicmp(cp, "/LIST") || !strcicmp(cp, "/NOLIST")))
+              cp = my_strrchr (curtokbuf, '/');
+              if (cp && (!strcicmp (cp, "/LIST") || !strcicmp(cp, "/NOLIST")))
                 *cp = 0;
               if (*cp2 == '\'')
                 cp2++;
 
-              while (isspace(*cp2)) cp2++;
+              while (isspace (*cp2)) cp2++;
               if (*cp2 == ';')
                 cp2++;
 
-              while (isspace(*cp2)) cp2++;
+              while (isspace (*cp2)) cp2++;
               if (!*cp2) {
                 inbufptr = cp2;
-                (void) handle_include(stralloc(curtokbuf));
+                (void) handle_include (stralloc (curtokbuf));
                 return;
                 }
               }
 
-            else if (!strcicmp(curtokbuf, "%TITLE") || !strcicmp(curtokbuf, "%SUBTITLE")) {
+            else if (!strcicmp (curtokbuf, "%TITLE") || !strcicmp (curtokbuf, "%SUBTITLE")) {
               //{{{  title
               gettok();   /* string literal */
               break;
               }
               //}}}
-            else if (!strcicmp(curtokbuf, "%PAGE")) {
+            else if (!strcicmp (curtokbuf, "%PAGE")) {
               //{{{  page
               /* should store a special page-break comment? */
               break;   /* ignore token */
@@ -3715,17 +3736,17 @@ char *word;
                 }
               }
               //}}}
-
             }
             //}}}
 
             {
-            register unsigned int hash;
-            register Symbol *sp;
+            unsigned int hash;
+            Symbol* sp;
 
             hash = 0;
             for (cp = curtokbuf; *cp; cp++)
               hash = hash*3 + *cp;
+
             sp = symtab[hash % SYMHASHSIZE];
             while (sp && (i = strcmp(sp->name, curtokbuf)) != 0) {
               if (i < 0)
@@ -3736,23 +3757,22 @@ char *word;
 
             if (!sp)
               sp = findsymbol(curtokbuf);
-
             if (sp->flags & SSYNONYM) {
              //{{{  SSYNONYM
               i = 100;
               while (--i > 0 && sp && (sp->flags & SSYNONYM)) {
-                Strlist *sl;
-                sl = strlist_find(sp->symbolnames, "===");
+                Strlist* sl;
+                sl = strlist_find (sp->symbolnames, "===");
                 if (sl)
-                  sp = (Symbol *)sl->value;
+                  sp = (Symbol*)sl->value;
                 else
                   sp = NULL;
                 }
+
               if (!sp)
                 break;    /* ignore token */
              }
              //}}}
-
             if (sp->kwtok && !(sp->flags & KWPOSS) &&
                               (pascalcasesens != 2 || !islower(*curtokbuf)) &&
                               (pascalcasesens != 3 || !isupper(*curtokbuf))) {
@@ -3782,33 +3802,34 @@ char *word;
             curtokmeaning = sp->mbase;
             while (curtokmeaning && !curtokmeaning->isactive)
               curtokmeaning = curtokmeaning->snext;
-
             if (!curtokmeaning)
               return;
-
             while (curtokmeaning->kind == MK_SYNONYM)
               curtokmeaning = curtokmeaning->xnext;
 
-            /* look for unit.ident notation */
+            // look for unit.ident notation
             if (curtokmeaning->kind == MK_MODULE || curtokmeaning->kind == MK_FUNCTION) {
               //{{{  unit.ident
-              for (cp = inbufptr; isspace(*cp); cp++) ;
+              for (cp = inbufptr; isspace (*cp); cp++) ;
+
               if (*cp == '.') {
-                for (cp++; isspace(*cp); cp++) ;
-                if (isalpha(*cp)) {
+                for (cp++; isspace (*cp); cp++) ;
+                if (isalpha (*cp)) {
                   Meaning *mp = curtokmeaning;
                   Symbol *sym = curtoksym;
                   char *saveinbufptr = inbufptr;
+
                   gettok();
                   if (curtok == TOK_DOT)
                     gettok();
                   else
                     curtok = TOK_END;
+
                   if (curtok == TOK_IDENT) {
                     curtokmeaning = curtoksym->mbase;
                     while (curtokmeaning && curtokmeaning->ctx != mp)
                       curtokmeaning = curtokmeaning->snext;
-                    if (!curtokmeaning && !strcmp(sym->name, "SYSTEM")) {
+                    if (!curtokmeaning && !strcmp (sym->name, "SYSTEM")) {
                       curtokmeaning = curtoksym->mbase;
                       while (curtokmeaning &&
                        curtokmeaning->ctx != nullctx)
@@ -3830,59 +3851,61 @@ char *word;
               //}}}
             return;
             }
-
           }
           //}}}
-        else {
-          warning (format_d("Unrecognized character 0%o in file [247]", ch));
-          }
+        else
+          warning (format_d ("Unrecognized character 0%o in file [247]", ch));
       }
     }
   }
 //}}}
 //{{{
-void checkkeyword (tok)
-Token tok;
-{
-    if (curtok == TOK_IDENT &&
-  curtoksym->kwtok == tok) {
-  curtoksym->flags &= ~KWPOSS;
-  curtok = tok;
+void checkkeyword (Token tok) {
+
+  if (curtok == TOK_IDENT && curtoksym->kwtok == tok) {
+    curtoksym->flags &= ~KWPOSS;
+    curtok = tok;
     }
-}
+  }
 //}}}
 //{{{
-void checkmodulewords()
-{
-    if (modula2) {
-  checkkeyword(TOK_FROM);
-  checkkeyword(TOK_DEFINITION);
-  checkkeyword(TOK_IMPLEMENT);
-  checkkeyword(TOK_MODULE);
-  checkkeyword(TOK_IMPORT);
-  checkkeyword(TOK_EXPORT);
-    } else if (curtok == TOK_IDENT &&
-         (curtoksym->kwtok == TOK_MODULE ||
-    curtoksym->kwtok == TOK_IMPORT ||
-    curtoksym->kwtok == TOK_EXPORT ||
-    curtoksym->kwtok == TOK_IMPLEMENT)) {
-  if (!strcmp(curtokbuf, "UNIT") ||
-      !strcmp(curtokbuf, "USES") ||
-      !strcmp(curtokbuf, "INTERFACE") ||
-      !strcmp(curtokbuf, "IMPLEMENTATION")) {
-      modulenotation = 0;
-      findsymbol("UNIT")->flags &= ~KWPOSS;
-      findsymbol("USES")->flags &= ~KWPOSS;
-      findsymbol("INTERFACE")->flags &= ~KWPOSS;
-      findsymbol("IMPLEMENTATION")->flags &= ~KWPOSS;
-  } else {
-      modulenotation = 1;
-      findsymbol("MODULE")->flags &= ~KWPOSS;
-      findsymbol("EXPORT")->flags &= ~KWPOSS;
-      findsymbol("IMPORT")->flags &= ~KWPOSS;
-      findsymbol("IMPLEMENT")->flags &= ~KWPOSS;
-  }
-  curtok = curtoksym->kwtok;
+void checkmodulewords() {
+
+  if (modula2) {
+    checkkeyword (TOK_FROM);
+    checkkeyword (TOK_DEFINITION);
+    checkkeyword (TOK_IMPLEMENT);
+    checkkeyword (TOK_MODULE);
+    checkkeyword (TOK_IMPORT);
+    checkkeyword (TOK_EXPORT);
     }
-}
+
+  else if (curtok == TOK_IDENT &&
+           (curtoksym->kwtok == TOK_MODULE ||
+            curtoksym->kwtok == TOK_IMPORT ||
+            curtoksym->kwtok == TOK_EXPORT ||
+            curtoksym->kwtok == TOK_IMPLEMENT)) {
+
+    if (!strcmp (curtokbuf, "UNIT") ||
+        !strcmp (curtokbuf, "USES") ||
+        !strcmp (curtokbuf, "INTERFACE") ||
+        !strcmp (curtokbuf, "IMPLEMENTATION")) {
+      modulenotation = 0;
+      findsymbol ("UNIT")->flags &= ~KWPOSS;
+      findsymbol ("USES")->flags &= ~KWPOSS;
+      findsymbol ("INTERFACE")->flags &= ~KWPOSS;
+      findsymbol ("IMPLEMENTATION")->flags &= ~KWPOSS;
+      }
+
+    else {
+      modulenotation = 1;
+      findsymbol ("MODULE")->flags &= ~KWPOSS;
+      findsymbol ("EXPORT")->flags &= ~KWPOSS;
+      findsymbol ("IMPORT")->flags &= ~KWPOSS;
+      findsymbol ("IMPLEMENT")->flags &= ~KWPOSS;
+      }
+
+    curtok = curtoksym->kwtok;
+    }
+  }
 //}}}

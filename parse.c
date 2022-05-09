@@ -4850,86 +4850,6 @@ int need;
 }
 //}}}
 //{{{
-Static void p_import (inheader)
-int inheader;
-{
-    Strlist *sl;
-    Symbol *sym;
-    char *name;
-    int found, isfrom = (curtok == TOK_FROM);
-
-    outsection(minorspace);
-    do {
-        gettok();
-        if (!wexpecttok(TOK_IDENT)) {
-      skiptotoken(TOK_SEMI);
-      break;
-  }
-        sym = curtoksym;
-        if (curtokmeaning && curtokmeaning->kind == MK_MODULE) {
-            found = 1;
-  } else if (strlist_cifind(permimports, sym->name)) {
-            found = 2;   /* built-in module, there already! */
-        } else {
-            found = 0;
-            sl = strlist_cifind(importfrom, sym->name);
-            name = (sl) ? format_none((char *)sl->value) : NULL;
-            if (name) {
-                if (tryimport(sym, name, "pas", 1))
-                    found = 1;
-            } else {
-                for (sl = importdirs; sl && !found; sl = sl->next) {
-                    if (tryimport(sym, format_s(sl->s, curtokcase), NULL, 0))
-                        found = 1;
-                }
-            }
-        }
-        if (found == 1) {
-            if (!inheader) {
-                sl = strlist_cifind(includefrom, curtokmeaning->name);
-                name = (sl) ? (char *)sl->value :
-        format_ss(*headerfnfmt2 ? headerfnfmt2 : headerfnfmt,
-            infname, curtokmeaning->name);
-                if (name && !strlist_find(includedfiles, name)) {
-                    strlist_insert(&includedfiles, name);
-                    if (*name_HSYMBOL)
-                        output(format_s("#ifndef %s\n", format_s(name_HSYMBOL, sym->name)));
-        out_include(name, quoteincludes);
-                    if (*name_HSYMBOL)
-                        output("#endif\n");
-                    outsection(minorspace);
-                }
-            }
-            import_ctx(curtokmeaning);
-  } else if (curtokmeaning) {
-      /* Modula-2, importing a single ident */
-      /* Ignored for now, since we always import whole modules */
-        } else if (found == 0) {
-            warning(format_s("Could not find module %s [271]", sym->name));
-            if (!inheader) {
-                out_include(format_ss(*headerfnfmt2?headerfnfmt2:headerfnfmt,
-              sym->name, sym->name),
-          quoteincludes);
-            }
-        }
-        gettok();
-    } while (curtok == TOK_COMMA);
-    if (isfrom) {
-  checkkeyword(TOK_IMPORT);
-  if (wneedtok(TOK_IMPORT)) {
-      do {
-    gettok();
-    if (curtok == TOK_IDENT)
-        gettok();
-      } while (curtok == TOK_COMMA);
-  }
-    }
-    if (!wneedtok(TOK_SEMI))
-  skippasttoken(TOK_SEMI);
-    outsection(minorspace);
-}
-//}}}
-//{{{
 void do_include (blkind)
 Token blkind;
 {
@@ -4986,145 +4906,6 @@ Token blkind;
 }
 //}}}
 
-//{{{
-/* blockkind is one of:
-       TOK_PROGRAM:     Global declarations of a program
-       TOK_FUNCTION:    Declarations local to a procedure or function
-       TOK_IMPORT:      Import text read from a module
-       TOK_EXPORT:      Export section of a module
-       TOK_IMPLEMENT:   Implementation section of a module
-       TOK_END:         None of the above
-*/
-void p_block (blkind)
-Token blkind;
-{
-    Token saveblockkind = blockkind;
-    Token lastblockkind = TOK_END;
-
-    blockkind = blkind;
-    for (;;) {
-    while (curtok == TOK_INTFONLY) {
-      include_as_import();
-      gettok();
-    }
-
-    if (curtok == TOK_CONST || curtok == TOK_TYPE ||
-      curtok == TOK_VAR || curtok == TOK_VALUE ||
-      curtok == TOK_COMMON || curtok == TOK_ACCESS) {
-            while (curtok == TOK_CONST || curtok == TOK_TYPE ||
-       curtok == TOK_VAR || curtok == TOK_VALUE ||
-       curtok == TOK_COMMON || curtok == TOK_ACCESS) {
-                lastblockkind = curtok;
-                switch (curtok) {
-
-                    case TOK_CONST:
-                        p_constdecl();
-                        break;
-
-                    case TOK_TYPE:
-                        p_typedecl();
-                        break;
-
-                    case TOK_VAR:
-                        p_vardecl(0);
-                        break;
-
-        case TOK_VALUE:
-      p_valuedecl();
-      break;
-
-                    case TOK_COMMON:
-                        p_commondecl();
-                        break;
-
-                    case TOK_ACCESS:
-      skippasttoken(TOK_SEMI);
-      lastblockkind = TOK_END;
-                        break;
-
-        default:
-      break;
-                }
-            }
-            if ((blkind == TOK_PROGRAM ||
-                 blkind == TOK_EXPORT ||
-                 blkind == TOK_IMPLEMENT) &&
-                (curtok != TOK_BEGIN || !mainlocals)) {
-                outsection(majorspace);
-                if (declarevars(curctx, 0))
-                    outsection(majorspace);
-            }
-        } else {
-      checkmodulewords();
-      checkkeyword(TOK_SEGMENT);
-      if (curtok == TOK_SEGMENT) {
-    note("SEGMENT or OVERLAY keyword ignored [259]");
-    gettok();
-      }
-      p_attributes();
-            switch (curtok) {
-
-                case TOK_LABEL:
-                    p_labeldecl();
-                    break;
-
-                case TOK_IMPORT:
-                case TOK_FROM:
-                    p_import(0);
-                    break;
-
-    case TOK_EXPORT:
-        do {
-      gettok();
-      checkkeyword(TOK_QUALIFIED);
-      if (curtok == TOK_QUALIFIED)
-          gettok();
-      wneedtok(TOK_IDENT);
-        } while (curtok == TOK_COMMA);
-        if (!wneedtok(TOK_SEMI))
-      skippasttoken(TOK_SEMI);
-        break;
-
-                case TOK_MODULE:
-        p_nested_module();
-                    break;
-
-                case TOK_PROCEDURE:
-                case TOK_CONSTRUCTOR:
-                case TOK_DESTRUCTOR:
-                    p_function(0);
-                    break;
-
-                case TOK_FUNCTION:
-                    p_function(1);
-                    break;
-
-                case TOK_INCLUDE:
-                    if (blockkind == TOK_PROGRAM ||
-                        blockkind == TOK_IMPLEMENT ||
-      (blockkind == TOK_FUNCTION && !collectnest)) {
-                        do_include(lastblockkind);
-                    } else {
-                        badinclude();
-                    }
-                    break;
-
-                default:
-        if (curtok == TOK_BEGIN && blockkind == TOK_IMPORT) {
-      warning("BEGIN encountered in interface text [274]");
-      skipparens();
-      if (curtok == TOK_SEMI)
-          gettok();
-      break;
-        }
-                    blockkind = saveblockkind;
-                    return;
-            }
-            lastblockkind = TOK_END;
-        }
-    }
-}
-//}}}
 //{{{
 Static void skipunitheader()
 {
@@ -5363,108 +5144,362 @@ int isdefn;    /* Modula-2: 0=local module, 1=DEFINITION, 2=IMPLEMENTATION */
 }
 //}}}
 //{{{
-int p_search (fname, ext, need)
-char *fname, *ext;
-int need;
-{
-    char infnbuf[300];
-    FILE *fp;
-    Meaning *mod;
-    int savesysprog, savecopysource;
-    int outerimportmark, importmark, mypermflag;
+Static void p_import (int inheader) {
 
-    strcpy(infnbuf, fname);
-    fixfname(infnbuf, ext);
-    fp = fopen(infnbuf, "r");
-    if (!fp) {
-        if (need)
-            perror(infnbuf);
-  if (logfile)
-      fprintf(logfile, "(Unable to open search file \"%s\")\n", infnbuf);
-        return 0;
+  Strlist* sl;
+  Symbol* sym;
+  char* name;
+  int found, isfrom = (curtok == TOK_FROM);
+
+  outsection (minorspace);
+  do {
+    gettok();
+    if (!wexpecttok (TOK_IDENT)) {
+      skiptotoken (TOK_SEMI);
+      break;
+      }
+
+    sym = curtoksym;
+    if (curtokmeaning && curtokmeaning->kind == MK_MODULE) 
+      found = 1;
+    else if (strlist_cifind (permimports, sym->name))
+      found = 2;   /* built-in module, there already! */
+    else {
+      found = 0;
+      sl = strlist_cifind (importfrom, sym->name);
+      name = (sl) ? format_none ((char *)sl->value) : NULL;
+      if (name) {
+        if (tryimport (sym, name, "pas", 1))
+          found = 1;
+        } 
+      else 
+        for (sl = importdirs; sl && !found; sl = sl->next)
+          if (tryimport (sym, format_s(sl->s, curtokcase), NULL, 0))
+            found = 1;
+      }
+
+    if (found == 1) {
+      if (!inheader) {
+        sl = strlist_cifind (includefrom, curtokmeaning->name);
+        name = (sl) ? (char *)sl->value : format_ss (*headerfnfmt2 ? headerfnfmt2 : headerfnfmt, infname, curtokmeaning->name);
+        if (name && !strlist_find (includedfiles, name)) {
+          strlist_insert (&includedfiles, name);
+          if (*name_HSYMBOL)
+            output (format_s("#ifndef %s\n", format_s(name_HSYMBOL, sym->name)));
+          out_include (name, quoteincludes);
+          if (*name_HSYMBOL)
+            output ("#endif\n");
+          outsection (minorspace);
+          }
+        }
+      import_ctx (curtokmeaning);
+      } 
+    else if (curtokmeaning) {
+      /* Modula-2, importing a single ident Ignored for now, since we always import whole modules */
+      } 
+    else if (found == 0) {
+      warning (format_s ("Could not find module %s [271]", sym->name));
+      if (!inheader)
+        out_include (format_ss (*headerfnfmt2?headerfnfmt2:headerfnfmt, sym->name, sym->name), quoteincludes);
+      }
+    gettok();
+    } while (curtok == TOK_COMMA);
+
+  if (isfrom) {
+    checkkeyword (TOK_IMPORT);
+    if (wneedtok (TOK_IMPORT)) {
+      do {
+        gettok();
+        if (curtok == TOK_IDENT)
+          gettok();
+        } while (curtok == TOK_COMMA);
+      }
     }
-    flushcomments(NULL, -1, -1);
-    ignore_directives++;
-    savesysprog = sysprog_flag;
-    sysprog_flag |= 3;
-    savecopysource = copysource;
-    copysource = 0;
-    outerimportmark = numimports;   /*obsolete*/
-    importmark = push_imports();
-    clearprogress();
-    push_input_file(fp, infnbuf, 0);
-    do {
-  strlist_empty(&curcomments);
-  checkmodulewords();
-  permflag = 0;
-  if (curtok == TOK_DEFINITION) {
+  if (!wneedtok (TOK_SEMI))
+    skippasttoken (TOK_SEMI);
+
+  outsection (minorspace);
+  }
+//}}}
+
+//{{{
+int p_search (char* fname, char* ext, int need) {
+
+  int savesysprog, savecopysource;
+  int outerimportmark, importmark, mypermflag;
+
+  char infnbuf[300];
+  strcpy (infnbuf, fname);
+  fixfname (infnbuf, ext);
+
+  FILE* fp = fopen (infnbuf, "r");
+  if (!fp) {
+    if (need)
+      perror (infnbuf);
+    if (logfile)
+      fprintf (logfile, "(Unable to open search file \"%s\")\n", infnbuf);
+    return 0;
+    }
+
+  flushcomments (NULL, -1, -1);
+  ignore_directives++;
+
+  savesysprog = sysprog_flag;
+  sysprog_flag |= 3;
+
+  savecopysource = copysource;
+  copysource = 0;
+
+  outerimportmark = numimports;   /*obsolete*/
+  importmark = push_imports();
+
+  clearprogress();
+  push_input_file (fp, infnbuf, 0);
+
+  do {
+    strlist_empty (&curcomments);
+    checkmodulewords();
+    permflag = 0;
+    if (curtok == TOK_DEFINITION) {
+      //{{{  definition
       gettok();
       checkmodulewords();
-  } else if (curtok == TOK_IMPLEMENT && modula2) {
+      } 
+      //}}}
+    else if (curtok == TOK_IMPLEMENT && modula2) {
+      //{{{  implement modula2
       gettok();
       checkmodulewords();
       warning("IMPLEMENTATION module in search text! [275]");
-  }
-        if (!wneedtok(TOK_MODULE))
+      }
+      //}}}
+    if (!wneedtok (TOK_MODULE))
       break;
-        if (!wexpecttok(TOK_IDENT))
+    if (!wexpecttok (TOK_IDENT))
       break;
-        mod = addmeaning(curtoksym, MK_MODULE);
-        mod->anyvarflag = 0;
-        if (!quietmode && !showprogress)
+
+    Meaning* mod = addmeaning(curtoksym, MK_MODULE);
+    mod->anyvarflag = 0;
+    if (!quietmode && !showprogress)
       if (outf == stdout)
-    fprintf(stderr, "Reading import text for \"%s\"\n", mod->name);
+        fprintf (stderr, "Reading import text for \"%s\"\n", mod->name);
       else
-    printf("Reading import text for \"%s\"\n", mod->name);
-  if (verbose)
-      fprintf(logfile, "%s, %d/%d: Reading import text for \"%s\"\n",
-        infname, inf_lnum, outf_lnum, mod->name);
-        pushctx(mod);
-        gettok();
-        skipunitheader();
-        wneedtok(TOK_SEMI);
-  mypermflag = permflag;
-        if (debug>0) printf("Found module %s\n", mod->name);
-  checkmodulewords();
-        while (curtok == TOK_IMPORT || curtok == TOK_FROM)
-            p_import(1);
-  checkmodulewords();
-  if (curtok == TOK_EXPORT)
+        printf ("Reading import text for \"%s\"\n", mod->name);
+    if (verbose)
+      fprintf (logfile, "%s, %d/%d: Reading import text for \"%s\"\n", infname, inf_lnum, outf_lnum, mod->name);
+
+    pushctx (mod);
+    gettok();
+    skipunitheader();
+    wneedtok (TOK_SEMI);
+    mypermflag = permflag;
+
+    printf ("using module %s\n", mod->name);
+    checkmodulewords();
+    while (curtok == TOK_IMPORT || curtok == TOK_FROM)
+      p_import (1);
+
+    checkmodulewords();
+    if (curtok == TOK_EXPORT)
       gettok();
-        strlist_empty (&curcomments);
-        p_block(TOK_IMPORT);
-        setup_module (mod->sym->name, 0);
-  if (mypermflag) {
+
+    strlist_empty (&curcomments);
+    p_block (TOK_IMPORT);
+    setup_module (mod->sym->name, 0);
+
+    if (mypermflag) {
       strlist_add (&permimports, mod->sym->name)->value = (long)mod;
       perm_import (mod);
-  }
-  checkmodulewords();
-  if (curtok == TOK_END) {
+      }
+
+    checkmodulewords();
+    if (curtok == TOK_END) {
       gettok();
       if (curtok == TOK_SEMI)
-    gettok();
-  } else {
-      wexpecttok(TOK_IMPLEMENT);
-      if (importall) {
-    skiptomodule();
-            }
-        }
-        popctx();
+        gettok();
+      }
+    else {
+      wexpecttok (TOK_IMPLEMENT);
+      if (importall)
+        skiptomodule();
+      }
+    popctx();
     } while (curtok == TOK_MODULE);
-    pop_imports(importmark);
-    unimport(outerimportmark);
-    sysprog_flag = savesysprog;
-    copysource = savecopysource;
-    ignore_directives--;
-    pop_input();
-    strlist_empty(&curcomments);
-    clearprogress();
-    return 1;
-}
+
+  pop_imports (importmark);
+  unimport (outerimportmark);
+
+  sysprog_flag = savesysprog;
+  copysource = savecopysource;
+  ignore_directives--;
+  pop_input();
+
+  strlist_empty (&curcomments);
+  clearprogress();
+  return 1;
+  }
 //}}}
 //{{{
-void p_program()
-{
+void p_block (Token blkind) {
+//{{{
+/* blockkind is one of:
+       TOK_PROGRAM:     Global declarations of a program
+       TOK_FUNCTION:    Declarations local to a procedure or function
+       TOK_IMPORT:      Import text read from a module
+       TOK_EXPORT:      Export section of a module
+       TOK_IMPLEMENT:   Implementation section of a module
+       TOK_END:         None of the above
+*/
+//}}}
+
+  Token saveblockkind = blockkind;
+  Token lastblockkind = TOK_END;
+
+  blockkind = blkind;
+  for (;;) {
+  while (curtok == TOK_INTFONLY) {
+    include_as_import();
+    gettok();
+    }
+
+  if (curtok == TOK_CONST || curtok == TOK_TYPE ||
+      curtok == TOK_VAR || curtok == TOK_VALUE ||
+      curtok == TOK_COMMON || curtok == TOK_ACCESS) {
+    while (curtok == TOK_CONST || curtok == TOK_TYPE ||
+           curtok == TOK_VAR || curtok == TOK_VALUE ||
+           curtok == TOK_COMMON || curtok == TOK_ACCESS) {
+      lastblockkind = curtok;
+      switch (curtok) {
+        //{{{
+        case TOK_CONST:
+          p_constdecl();
+          break;
+        //}}}
+         //{{{
+         case TOK_TYPE:
+           p_typedecl();
+           break;
+         //}}}
+         //{{{
+         case TOK_VAR:
+           p_vardecl(0);
+           break;
+         //}}}
+         //{{{
+         case TOK_VALUE:
+           p_valuedecl();
+           break;
+         //}}}
+         //{{{
+         case TOK_COMMON:
+           p_commondecl();
+           break;
+         //}}}
+         //{{{
+         case TOK_ACCESS:
+           skippasttoken(TOK_SEMI);
+           lastblockkind = TOK_END;
+           break;
+         //}}}
+         //{{{
+         default:
+           break;
+         //}}}
+         }
+       }
+
+      if ((blkind == TOK_PROGRAM ||
+           blkind == TOK_EXPORT ||
+           blkind == TOK_IMPLEMENT) &&
+           (curtok != TOK_BEGIN || !mainlocals)) {
+        outsection (majorspace);
+        if (declarevars (curctx, 0))
+          outsection (majorspace);
+        }
+      }
+    else {
+      checkmodulewords();
+      checkkeyword(TOK_SEGMENT);
+      if (curtok == TOK_SEGMENT) {
+        note ("SEGMENT or OVERLAY keyword ignored [259]");
+        gettok();
+        }
+      p_attributes();
+      switch (curtok) {
+        //{{{
+        case TOK_LABEL:
+            p_labeldecl();
+            break;
+        //}}}
+        case TOK_IMPORT:
+        //{{{
+        case TOK_FROM:
+            p_import(0);
+            break;
+        //}}}
+        //{{{
+        case TOK_EXPORT:
+            do {
+          gettok();
+          checkkeyword(TOK_QUALIFIED);
+          if (curtok == TOK_QUALIFIED)
+              gettok();
+          wneedtok(TOK_IDENT);
+            } while (curtok == TOK_COMMA);
+            if (!wneedtok(TOK_SEMI))
+          skippasttoken(TOK_SEMI);
+            break;
+        //}}}
+        //{{{
+        case TOK_MODULE:
+           p_nested_module();
+            break;
+        //}}}
+        case TOK_PROCEDURE:
+        case TOK_CONSTRUCTOR:
+        //{{{
+        case TOK_DESTRUCTOR:
+            p_function(0);
+            break;
+        //}}}
+        //{{{
+        case TOK_FUNCTION:
+            p_function(1);
+            break;
+        //}}}
+        //{{{
+        case TOK_INCLUDE:
+            if (blockkind == TOK_PROGRAM ||
+                blockkind == TOK_IMPLEMENT ||
+                (blockkind == TOK_FUNCTION && !collectnest)) {
+              do_include(lastblockkind);
+              } 
+            else {
+                badinclude();
+              }
+            break;
+        //}}}
+        //{{{
+        default:
+          if (curtok == TOK_BEGIN && blockkind == TOK_IMPORT) {
+            warning("BEGIN encountered in interface text [274]");
+            skipparens();
+            if (curtok == TOK_SEMI)
+              gettok();
+            break;
+            }
+          blockkind = saveblockkind;
+          return;
+        //}}}
+        }
+      lastblockkind = TOK_END;
+      }
+    }
+  }
+//}}}
+//{{{
+void p_program() {
+
   Meaning *prog;
   Stmt *sp;
   int nummods, isdefn = 0;
@@ -5478,20 +5513,17 @@ void p_program()
 
   checkmodulewords();
   if (modula2) {
-    if (curtok == TOK_MODULE) {
+    if (curtok == TOK_MODULE) 
       curtok = TOK_PROGRAM;
+    else if (curtok == TOK_DEFINITION) {
+      isdefn = 1;
+      gettok();
+      checkmodulewords();
       }
-    else {
-      if (curtok == TOK_DEFINITION) {
-        isdefn = 1;
-        gettok();
-        checkmodulewords();
-        }
-      else if (curtok == TOK_IMPLEMENT) {
-        isdefn = 2;
-        gettok();
-        checkmodulewords();
-        }
+    else if (curtok == TOK_IMPLEMENT) {
+      isdefn = 2;
+      gettok();
+      checkmodulewords();
       }
     }
 
@@ -5604,8 +5636,7 @@ void p_program()
     //}}}
     }
 
-  if (curtok != TOK_EOF) {
+  if (curtok != TOK_EOF) 
     warning("Junk at end of input file ignored [277]");
-    }
-}
+  }
 //}}}
