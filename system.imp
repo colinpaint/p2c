@@ -1,11 +1,9 @@
 { Declarations for Pascal built-in objects }
 { Note: All functions with unusual syntaxes are not included here }
-
 {*IgnoreNonAlpha=0}   { If Language=UCSD, make sure we can parse "__module" }
 {*UseRefs=0}
 
 __module SYSTEM;   {PERMANENT}
-
 __export
 
 { Standard Pascal functions }
@@ -23,8 +21,8 @@ function  trunc(x : longreal) : integer;
 
 { Oregon Software Pascal-2 extensions }
 {FuncMacro p2_inew(n) = malloc(n)}
-{FuncMacro p2_new(x,n) = (*x = Malloc(n))}
-{FuncMacro p2_dispose(x,n) = Free(*x)}
+{FuncMacro p2_new(x,n) = (*x = malloc(n))}
+{FuncMacro p2_dispose(x,n) = free(*x)}
 
 procedure noioerror(var f);
 function ioerror(var f) : boolean;

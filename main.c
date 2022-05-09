@@ -22,61 +22,57 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define PROTO_TRANS_C
 #include "main.h"
 #include <time.h>
- //{{{  description
- /*
-   main.h          Declarations for all public global variables, types, and macros.
-                   Functions are declared in separate files p2c.{proto,hdrs} which are created
-                   mechanically by the makeproto program.
-   main.c          Main program.  Parses the p2crc file.  Also reserves storage for public globals in trans.h.
+//{{{  description
+/*
+  main.h          Declarations for all public global variables, types, and macros.
+                  Functions are declared in separate files p2c.{proto,hdrs} which are created
+                  mechanically by the makeproto program.
+  main.c          Main program.  Parses the p2crc file.  Also reserves storage for public globals in trans.h.
 
-   stuff.c         Miscellaneous support routines.
+  stuff.c         Miscellaneous support routines.
 
-   out.c           Routines to handle the writing of C code to the output file.
-                   This includes line breaking and indentation support.
+  out.c           Routines to handle the writing of C code to the output file.
+                  This includes line breaking and indentation support.
 
-   comment.c       Routines for managing comments and comment lists.
+  comment.c       Routines for managing comments and comment lists.
 
-   lex.c           Lexical analyzer.  Manages input files and streams, splits input stream into Pascal tokens.
-                   Parses compiler directives and special comments. Also keeps the symbol table.
-   parse.c         Parsing and writing statements and blocks.
+  lex.c           Lexical analyzer.  Manages input files and streams, splits input stream into Pascal tokens.
+                  Parses compiler directives and special comments. Also keeps the symbol table.
+  parse.c         Parsing and writing statements and blocks.
 
-   decl.c          Parsing and writing declarations.
+  decl.c          Parsing and writing declarations.
 
-   expr.c          Manipulating expressions.
+  expr.c          Manipulating expressions.
 
-   pexpr.c         Parsing and writing expressions.
+  pexpr.c         Parsing and writing expressions.
 
-   funcs.c         Built-in special functions and procedures.
+  funcs.c         Built-in special functions and procedures.
 
-   dir.c           Interface file to "external" functions and procedures such as hpmods and citmods.
+  dir.c           Interface file to "external" functions and procedures such as hpmods and citmods.
 
-   hpmods.c        Definitions for HP-supplied Pascal modules.
+  hpmods.c        Definitions for HP-supplied Pascal modules.
 
-   citmods.c       Definitions for some Caltech-local Pascal modules.
-                   (Outside of Caltech this file is mostly useful as a large body of examples of how to write your
-                   own translator extensions.)
+  citmods.c       Definitions for some Caltech-local Pascal modules.
+                  (Outside of Caltech this file is mostly useful as a large body of examples of how to write your
+                  own translator extensions.)
 
-   p2crc           Control file (read when p2c starts up).
+  p2crc           Control file (read when p2c starts up).
 
-   p2c.h           Header file used by translated programs.
-   p2clib.c        Run-time library used by translated programs.
- */
- //}}}
+  p2c.h           Header file used by translated programs.
+  p2clib.c        Run-time library used by translated programs.
+*/
+//}}}
 
 //{{{
 #if !defined(NO_ISBOGUS) && (defined(mc68000) || defined(m68k) || defined(vax))
-   int ISBOGUS(p)
-   char *p;
-     {
+   int ISBOGUS(char *p) {
      unsigned long ip = (unsigned long)p;
-
      if (ip < 0) {
        if (ip < (unsigned long)&ip)
          return 1;    /* below the start of the stack */
        }
      else
        return 1;
-
      return 0;
      }
 #else
@@ -96,7 +92,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 Static Strlist* tweaksymbols;
 Static Strlist* synonyms;
 Strlist* addmacros;
-
+Static long starting_time;
 //{{{
 Static void initrc() {
 
@@ -157,7 +153,7 @@ Static int readrc (char* rcname, int need) {
   int i;
   Strlist* sl;
 
-  printf ("reading resource from %s\n", rcname);
+  printf ("using resource %s\n", rcname);
 
   rc = fopen (rcname, "r");
   if (!rc) {
@@ -612,8 +608,6 @@ Static void postrc() {
   fix_parameters();
   }
 //}}}
-
-Static long starting_time;
 //{{{
 Static void openlogfile() {
 
@@ -690,12 +684,6 @@ void usage() {
 //{{{
 void exit_failure() {
   exit(EXIT_FAILURE);
-  }
-//}}}
-//{{{
-int outmem() {
-  fprintf (stderr, "p2c: Out of memory!\n");
-  exit (EXIT_FAILURE);
   }
 //}}}
 
@@ -1238,16 +1226,20 @@ int main (int argc, char** argv) {
   //{{{  over complicated argv parser
   argc--;
   argv++;
+
   while (argc > 0) {
     if (**argv == '-' && (*argv)[1]) {
       // options
-      if (!strcmp(*argv, "-q")) {
-        //{{{  -q quiet
+      if (!strcmp(*argv, "-q"))
         quietmode = 1;
-        }
-        //}}}
-      else if (!strcmp(*argv, "-check")) {
-        //{{{  -check enable all errors
+
+      else if (!strcmp (*argv, "-t"))
+        tokentrace++;
+
+      else if (!strcmp (*argv, "-x"))
+        error_crash++;
+
+      else if (!strcmp(*argv, "-c")) {
         /* Enable all error checking */
         casecheck = 1;
         arraycheck = 1;
@@ -1259,45 +1251,33 @@ int main (int argc, char** argv) {
         checkstdineof = 1;
         checkfileseek = 1;
         }
-        //}}}
-      else if (!strcmp (*argv, "-t")) {
-       //{{{  -t tokentrace
-       tokentrace++;
-       }
-       //}}}
-       else if (!strcmp (*argv, "-x")) {
-        //{{{  -x error crash
-        error_crash++;
-        }
-        //}}}
+
       else if (argv[0][1] == 'e') {
-        //{{{  -eE maxerrors
         if (strlen (*argv) == 2)
           maxerrors = 0;
         else
           maxerrors = atoi (*argv + 2);
         }
-        //}}}
+
       else if (argv[0][1] == 'd') {
-       //{{{  -d debug n
         nobuffer = 1;
         if (strlen (*argv) == 2)
           debug = 1;
         else
           debug = atoi (*argv + 2);
-       }
-       //}}}
+        }
+
       else if (argv[0][1] == 'V') {
-        //{{{  -v
         if (strlen (*argv) == 2)
           verbose = 1;
         else
           verbose = atoi (*argv + 2);
         }
-        //}}}
+
       else
         usage();
       }
+
     argc--;
     argv++;
     }

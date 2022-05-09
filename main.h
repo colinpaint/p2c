@@ -167,39 +167,27 @@ typedef enum E_token {
   //{{{
   char* toknames[(int)TOK_LAST] = {
      "",
-     "AND", "ARRAY", "BEGIN", "CASE", "CONST",
-     "DIV", "DO", "DOWNTO", "ELSE", "END",
-     "FILE", "FOR", "FUNCTION", "GOTO", "IF",
-     "IN", "LABEL", "MOD", "NIL", "NOT",
-     "OF", "OR", "PACKED", "PROCEDURE", "PROGRAM",
-     "RECORD", "REPEAT", "SET", "THEN", "TO",
+
+     "AND", "ARRAY", "BEGIN", "CASE", "CONST", "DIV", "DO", "DOWNTO", "ELSE", "END",
+     "FILE", "FOR", "FUNCTION", "GOTO", "IF", "IN", "LABEL", "MOD", "NIL", "NOT",
+     "OF", "OR", "PACKED", "PROCEDURE", "PROGRAM", "RECORD", "REPEAT", "SET", "THEN", "TO",
      "TYPE", "UNTIL", "VAR", "WHILE", "WITH",
 
-     "a '$'", "a string literal", "a '('", "a ')'", "a '*'",
-     "a '+'", "a comma", "a '-'", "a '.'", "'..'",
-     "a '/'", "an integer", "a real number", "a colon", "a ':='",
-     "a semicolon", "a '<>'", "a '<'", "a '>'", "a '<='", "a '>='",
-     "an '='", "a '['", "a ']'", "a '^'",
-     "an \"include\" file", "$end$",
-     "an identifier", "an integer", "end of file",
+     "$", "stringLiteral", "(", ")", "*", "+", ",", "-", ".", "..", "/",
+     "integer", "real", ":", ":=", ";", "<>", "<", ">", "<=", ">=", "=", "[", "]", "^",
+     "include", "end", "identifier", "integer", "eof",
 
-     "an '->'", "an '&'", "a '|'", "a '!'",
-     "a '~'", "a '%'", "a '?'",
-     "a '<<'", "a '>>'", "a '=='", "a '!='",
-     "a '++'", "a '--'", "a '&&'", "a '||'",
-     "a '{'", "a '}'", "a character literal",
+     "->", "&", "|", "!", "~", "%", "?", "<<", ">>", "==", "!=", "++", "--", "&&", "||", "{", "}", "characterLiteral",
 
-     "ANYVAR", "EXPORT", "IMPLEMENT", "IMPORT", "MODULE",
-     "OTHERWISE", "RECOVER", "TRY",
+     "ANYVAR", "EXPORT", "IMPLEMENT", "IMPORT", "MODULE", "OTHERWISE", "RECOVER", "TRY",
 
-     "SHL", "SHR", "XOR", "INLINE", "ABSOLUTE",
-     "INTERRUPT", "an '@'", "a hex integer", "OBJECT",
+     "SHL", "SHR", "XOR", "INLINE", "ABSOLUTE", "INTERRUPT", "an '@'", "a hex integer", "OBJECT",
      "CONSTRUCTOR", "DESTRUCTOR", "VIRTUAL", "PRIVATE",
 
      "ORIGIN", "INTF-ONLY",
 
-     "REM", "VALUE", "VARYING", "an octal integer", "a '::'",
-     "a '**'",
+     "REM", "VALUE", "VARYING", "octal", "::",
+     "**",
 
      "BY", "DEFINITION", "ELSIF", "FROM", "LOOP",
      "POINTER", "QUALIFIED", "RETURN",
@@ -211,10 +199,7 @@ typedef enum E_token {
      "INHERITED", "OVERRIDE"
     };
   //}}}
-  //{{{
-  char* CMT_NAMES[] = {
-    "DONE", "PRE", "POST", "3", "TRAIL", "5", "BEGIN", "END", "ELSE", "PREELSE" };
-  //}}}
+  char* CMT_NAMES[] = { "DONE", "PRE", "POST", "3", "TRAIL", "5", "BEGIN", "END", "ELSE", "PREELSE" };
 #else
   extern char* toknames[];
   extern char* CMT_NAMES[];

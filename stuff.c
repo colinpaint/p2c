@@ -20,7 +20,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define PROTO_STUFF_C
 #include "main.h"
 
-
 //{{{
 /* Add a string to end of strlist */
 Strlist* strlist_append (Strlist** base, char* s) {

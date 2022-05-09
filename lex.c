@@ -20,8 +20,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define PROTO_LEX_C
 #include "main.h"
 
-/* Define LEXDEBUG for a token trace */
-#define LEXDEBUG
 #define EOFMARK 1
 //{{{  static vars
 Static char dollar_flag, lex_initialized;
@@ -74,7 +72,7 @@ char* fixpascalname (char* name) {
        upc (name);
     else if (pascalcasesens == 3)
       lwc (name);
-    } 
+    }
   else if (!pascalcasesens)
     name = strupper (name);
   else if (pascalcasesens == 3)
@@ -2907,42 +2905,59 @@ int peeknextword (char *word) {
   }
 //}}}
 
-//{{{  void gettok()
-#ifdef LEXDEBUG
-  Static void zgettok();
-  //{{{
-  void gettok() {
+//{{{
+void checkkeyword (Token tok) {
 
-    zgettok();
-
-    if (tokentrace) {
-      printf ("gettok() found %s", tok_name (curtok));
-
-      switch (curtok) {
-        case TOK_HEXLIT:
-        case TOK_OCTLIT:
-        case TOK_INTLIT:
-        case TOK_MININT:
-          printf (", curtokint = %ld", curtokint);
-          break;
-
-        case TOK_REALLIT:
-        case TOK_STRLIT:
-          printf (", curtokbuf = %s", makeCstring (curtokbuf, curtokint));
-          break;
-
-        default:
-          break;
-        }
-
-      putchar ('\n');
-      }
+  if (curtok == TOK_IDENT && curtoksym->kwtok == tok) {
+    curtoksym->flags &= ~KWPOSS;
+    curtok = tok;
     }
-  //}}}
-  Static void zgettok() {
-#else
-  void gettok() {
-#endif
+  }
+//}}}
+//{{{
+void checkmodulewords() {
+
+  if (modula2) {
+    checkkeyword (TOK_FROM);
+    checkkeyword (TOK_DEFINITION);
+    checkkeyword (TOK_IMPLEMENT);
+    checkkeyword (TOK_MODULE);
+    checkkeyword (TOK_IMPORT);
+    checkkeyword (TOK_EXPORT);
+    }
+
+  else if (curtok == TOK_IDENT &&
+           (curtoksym->kwtok == TOK_MODULE ||
+            curtoksym->kwtok == TOK_IMPORT ||
+            curtoksym->kwtok == TOK_EXPORT ||
+            curtoksym->kwtok == TOK_IMPLEMENT)) {
+
+    if (!strcmp (curtokbuf, "UNIT") ||
+        !strcmp (curtokbuf, "USES") ||
+        !strcmp (curtokbuf, "INTERFACE") ||
+        !strcmp (curtokbuf, "IMPLEMENTATION")) {
+      modulenotation = 0;
+      findsymbol ("UNIT")->flags &= ~KWPOSS;
+      findsymbol ("USES")->flags &= ~KWPOSS;
+      findsymbol ("INTERFACE")->flags &= ~KWPOSS;
+      findsymbol ("IMPLEMENTATION")->flags &= ~KWPOSS;
+      }
+
+    else {
+      modulenotation = 1;
+      findsymbol ("MODULE")->flags &= ~KWPOSS;
+      findsymbol ("EXPORT")->flags &= ~KWPOSS;
+      findsymbol ("IMPORT")->flags &= ~KWPOSS;
+      findsymbol ("IMPLEMENT")->flags &= ~KWPOSS;
+      }
+
+    curtok = curtoksym->kwtok;
+    }
+  }
+//}}}
+
+//{{{
+Static void debugGettok() {
 
   char ch;
   char* cp;
@@ -4006,52 +4021,31 @@ int peeknextword (char *word) {
   }
 //}}}
 //{{{
-void checkkeyword (Token tok) {
+void gettok() {
 
-  if (curtok == TOK_IDENT && curtoksym->kwtok == tok) {
-    curtoksym->flags &= ~KWPOSS;
-    curtok = tok;
-    }
-  }
-//}}}
-//{{{
-void checkmodulewords() {
+  debugGettok();
 
-  if (modula2) {
-    checkkeyword (TOK_FROM);
-    checkkeyword (TOK_DEFINITION);
-    checkkeyword (TOK_IMPLEMENT);
-    checkkeyword (TOK_MODULE);
-    checkkeyword (TOK_IMPORT);
-    checkkeyword (TOK_EXPORT);
-    }
+  if (tokentrace) {
+    printf ("gettok - %s", tok_name (curtok));
 
-  else if (curtok == TOK_IDENT &&
-           (curtoksym->kwtok == TOK_MODULE ||
-            curtoksym->kwtok == TOK_IMPORT ||
-            curtoksym->kwtok == TOK_EXPORT ||
-            curtoksym->kwtok == TOK_IMPLEMENT)) {
+    switch (curtok) {
+      case TOK_HEXLIT:
+      case TOK_OCTLIT:
+      case TOK_INTLIT:
+      case TOK_MININT:
+        printf (" %ld", curtokint);
+        break;
 
-    if (!strcmp (curtokbuf, "UNIT") ||
-        !strcmp (curtokbuf, "USES") ||
-        !strcmp (curtokbuf, "INTERFACE") ||
-        !strcmp (curtokbuf, "IMPLEMENTATION")) {
-      modulenotation = 0;
-      findsymbol ("UNIT")->flags &= ~KWPOSS;
-      findsymbol ("USES")->flags &= ~KWPOSS;
-      findsymbol ("INTERFACE")->flags &= ~KWPOSS;
-      findsymbol ("IMPLEMENTATION")->flags &= ~KWPOSS;
+      case TOK_REALLIT:
+      case TOK_STRLIT:
+        printf (" %s", makeCstring (curtokbuf, curtokint));
+        break;
+
+      default:
+        break;
       }
 
-    else {
-      modulenotation = 1;
-      findsymbol ("MODULE")->flags &= ~KWPOSS;
-      findsymbol ("EXPORT")->flags &= ~KWPOSS;
-      findsymbol ("IMPORT")->flags &= ~KWPOSS;
-      findsymbol ("IMPLEMENT")->flags &= ~KWPOSS;
-      }
-
-    curtok = curtoksym->kwtok;
+    putchar ('\n');
     }
   }
 //}}}

@@ -168,358 +168,356 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_index(ex, ex2)
-Expr *ex, *ex2;
-{
-    Expr *ex3;
-    Type *tp, *ot;
-    Meaning *mp;
-    int bits;
+Expr *p_index(Expr *ex, Expr *ex2) {
 
-    tp = ex->val.type;
-    if (tp->kind == TK_STRING) {
-  if (checkconst(ex2, 0))   /* is it "s[0]"? */
-      return makeexpr_bicall_1("strlen", tp_char, ex);
-  else
-      return makeexpr_index(ex, ex2, makeexpr_long(1));
-    } else if (tp->kind == TK_ARRAY ||
-         tp->kind == TK_SMALLARRAY) {
-  if (tp->smax) {
-      ord_range_expr(tp->indextype, &ex3, NULL);
-      if (ex3->kind == EK_VAR)
-    var_reference((Meaning *)ex3->val.i);
-      ex2 = makeexpr_minus(ex2, copyexpr(ex3));
-      if (!nodependencies(ex2, 0) &&
-    *getbitsname == '*') {
-    mp = makestmttempvar(tp_integer, name_TEMP);
-    ex3 = makeexpr_assign(makeexpr_var(mp), ex2);
-    ex2 = makeexpr_var(mp);
-      } else
-    ex3 = NULL;
-      ex = makeexpr_bicall_3(getbitsname, tp_int,
-           ex, ex2,
-           makeexpr_long(tp->escale));
-      if (tp->kind == TK_ARRAY) {
-    if (tp->basetype == tp_sshort)
-        bits = 4;
+  Expr *ex3;
+  Type *tp, *ot;
+  Meaning *mp;
+  int bits;
+
+  tp = ex->val.type;
+  if (tp->kind == TK_STRING) {
+    if (checkconst (ex2, 0))   /* is it "s[0]"? */
+      return makeexpr_bicall_1 ("strlen", tp_char, ex);
     else
-        bits = 3;
-    insertarg(&ex, 3, makeexpr_long(bits));
-      }
-      ex = makeexpr_comma(ex3, ex);
-      ot = ord_type(tp->smax->val.type);
+      return makeexpr_index (ex, ex2, makeexpr_long(1));
+    } 
+  else if (tp->kind == TK_ARRAY ||
+    tp->kind == TK_SMALLARRAY) {
+
+    if (tp->smax) {
+      ord_range_expr (tp->indextype, &ex3, NULL);
+      if (ex3->kind == EK_VAR)
+        var_reference ((Meaning *)ex3->val.i);
+      ex2 = makeexpr_minus (ex2, copyexpr(ex3));
+      if (!nodependencies (ex2, 0) && *getbitsname == '*') {
+        mp = makestmttempvar (tp_integer, name_TEMP);
+        ex3 = makeexpr_assign (makeexpr_var(mp), ex2);
+        ex2 = makeexpr_var (mp);
+        } 
+      else
+        ex3 = NULL;
+
+      ex = makeexpr_bicall_3 (getbitsname, tp_int, ex, ex2, makeexpr_long(tp->escale));
+      if (tp->kind == TK_ARRAY) {
+        if (tp->basetype == tp_sshort)
+          bits = 4;
+        else
+          bits = 3;
+        insertarg (&ex, 3, makeexpr_long(bits));
+        }
+
+      ex = makeexpr_comma (ex3, ex);
+      ot = ord_type (tp->smax->val.type);
       if (ot->kind == TK_ENUM && ot->meaning && useenum)
-    ex = makeexpr_cast(ex, tp->smax->val.type);
+        ex = makeexpr_cast (ex, tp->smax->val.type);
       ex->val.type = tp->smax->val.type;
       return ex;
-  } else {
-      ord_range_expr(ex->val.type->indextype, &ex3, NULL);
-      if (ex3->kind == EK_VAR)
-    var_reference((Meaning *)ex3->val.i);
-      if (debug>2) { fprintf(outf, "ord_range_expr returns "); dumpexpr(ex3); fprintf(outf, "\n"); }
-      return makeexpr_index(ex, ex2, copyexpr(ex3));
-  }
-    } else {
-  warning("Index on a non-array variable [287]");
-  return makeexpr_bin(EK_INDEX, tp_integer, ex, ex2);
-    }
-}
-//}}}
-
-//{{{
-Expr *fake_dots_n_hats(ex)
-Expr *ex;
-{
-    for (;;) {
-        switch (curtok) {
-
-            case TOK_HAT:
-      case TOK_ADDR:
-          if (ex->val.type->kind == TK_POINTER)
-        ex = makeexpr_hat(ex, 0);
+      } 
     else {
-        ex->val.type = makepointertype(ex->val.type);
-        ex = makeexpr_un(EK_HAT, ex->val.type->basetype, ex);
-    }
-                gettok();
-                break;
-
-            case TOK_LBR:
-                do {
-                    gettok();
-                    ex = makeexpr_bin(EK_INDEX, tp_integer, ex, p_expr(tp_integer));
-                } while (curtok == TOK_COMMA);
-                if (!wneedtok(TOK_RBR))
-        skippasttotoken(TOK_RBR, TOK_SEMI);
-                break;
-
-            case TOK_DOT:
-                gettok();
-                if (!wexpecttok(TOK_IDENT))
-        break;
-                ex = makeexpr_dotq(ex, curtokcase, tp_integer);
-                gettok();
-                break;
-
-      case TOK_COLONCOLON:
-    gettok();
-    if (wexpecttok(TOK_IDENT)) {
-        ex = pascaltypecast(curtokmeaning->type, ex);
-        gettok();
-    }
-    break;
-
-            default:
-                return ex;
+      ord_range_expr (ex->val.type->indextype, &ex3, NULL);
+      if (ex3->kind == EK_VAR)
+        var_reference ((Meaning *)ex3->val.i);
+      if (debug > 2) { 
+        fprintf (outf, "ord_range_expr returns "); 
+        dumpexpr(ex3); 
+        fprintf (outf, "\n"); 
         }
+      return makeexpr_index (ex, ex2, copyexpr(ex3));
+      }
+    } 
+  else {
+    warning ("Index on a non-array variable [287]");
+    return makeexpr_bin (EK_INDEX, tp_integer, ex, ex2);
     }
-}
+  }
+//}}}
+
+//{{{
+Expr *fake_dots_n_hats (Expr *ex) {
+
+  for (;;) {
+    switch (curtok) {
+      case TOK_HAT:
+      case TOK_ADDR:
+        if (ex->val.type->kind == TK_POINTER)
+          ex = makeexpr_hat(ex, 0);
+        else {
+          ex->val.type = makepointertype(ex->val.type);
+          ex = makeexpr_un(EK_HAT, ex->val.type->basetype, ex);
+          }
+        gettok();
+        break;
+
+        case TOK_LBR:
+          do {
+            gettok();
+            ex = makeexpr_bin(EK_INDEX, tp_integer, ex, p_expr(tp_integer));
+            } while (curtok == TOK_COMMA);
+          if (!wneedtok(TOK_RBR))
+            skippasttotoken(TOK_RBR, TOK_SEMI);
+          break;
+
+        case TOK_DOT:
+          gettok();
+          if (!wexpecttok(TOK_IDENT))
+            break;
+          ex = makeexpr_dotq(ex, curtokcase, tp_integer);
+          gettok();
+          break;
+
+        case TOK_COLONCOLON:
+         gettok();
+         if (wexpecttok(TOK_IDENT)) {
+           ex = pascaltypecast(curtokmeaning->type, ex);
+           gettok();
+           }
+         break;
+
+        default:
+          return ex;
+      }
+    }
+  }
 //}}}
 //{{{
-Static void bindnames(ex)
-Expr *ex;
-{
-    int i;
-    Symbol *sp;
-    Meaning *mp;
+Static void bindnames (Expr* ex) {
 
-    if (ex->kind == EK_NAME) {
-  sp = findsymbol_opt(fixpascalname(ex->val.s));
-  if (sp) {
+  int i;
+  Symbol *sp;
+  Meaning *mp;
+
+  if (ex->kind == EK_NAME) {
+    sp = findsymbol_opt(fixpascalname(ex->val.s));
+    if (sp) {
       mp = sp->mbase;
       while (mp && !mp->isactive)
-    mp = mp->snext;
+        mp = mp->snext;
       if (mp && !strcmp(mp->name, ex->val.s)) {
-    ex->kind = EK_VAR;
-    ex->val.i = (long)mp;
-    ex->val.type = mp->type;
-      }
-  }
-    }
-    i = ex->nargs;
-    while (--i >= 0)
-  bindnames(ex->args[i]);
-}
-//}}}
-
-//{{{
-void var_reference(mp)
-Meaning *mp;
-{
-    Meaning *mp2;
-
-    mp->refcount++;
-    if (mp->ctx && mp->ctx->kind == MK_FUNCTION &&
-  mp->ctx->needvarstruct &&
-  (mp->kind == MK_VAR ||
-   mp->kind == MK_VARREF ||
-   mp->kind == MK_VARMAC ||
-   mp->kind == MK_PARAM ||
-   mp->kind == MK_VARPARAM ||
-   (mp->kind == MK_CONST &&
-    (mp->type->kind == TK_ARRAY ||
-     mp->type->kind == TK_RECORD)))) {
-        if (debug>1) { fprintf(outf, "varstruct'ing %s\n", mp->name); }
-        if (!mp->varstructflag) {
-            mp->varstructflag = 1;
-            if (mp->constdefn &&      /* move init code into function body */
-    mp->kind != MK_VARMAC) {
-                mp2 = addmeaningafter(mp, curtoksym, MK_VAR);
-                curtoksym->mbase = mp2->snext;  /* hide this fake variable */
-                mp2->snext = mp;      /* remember true variable */
-                mp2->type = mp->type;
-                mp2->constdefn = mp->constdefn;
-                mp2->isforward = 1;   /* declare it "static" */
-                mp2->refcount++;      /* so it won't be purged! */
-                mp->constdefn = NULL;
-                mp->isforward = 0;
-            }
-        }
-        for (mp2 = curctx->ctx; mp2 != mp->ctx; mp2 = mp2->ctx)
-            mp2->varstructflag = 1;
-        mp2->varstructflag = 1;
-    }
-}
-//}}}
-//{{{
-Expr *expr_reference(ex)
-Expr *ex;
-{
-    int i;
-
-    for (i = 0; i < ex->nargs; i++)
-        expr_reference(ex->args[i]);
-    if (ex->kind == EK_VAR)
-  var_reference((Meaning *)ex->val.i);
-    return ex;
-}
-//}}}
-
-//{{{
-Expr *p_variable(target)
-Type *target;
-{
-    Expr *ex, *ex2;
-    Meaning *mp;
-    Symbol *sym;
-
-    if (curtok != TOK_IDENT) {
-        warning("Expected a variable [289]");
-  return makeexpr_long(0);
-    }
-    if (!curtokmeaning) {
-  sym = curtoksym;
-        ex = makeexpr_name(curtokcase, tp_integer);
-        gettok();
-        if (curtok == TOK_LPAR) {
-            ex = makeexpr_bicall_0(ex->val.s, tp_integer);
-            do {
-                gettok();
-                insertarg(&ex, ex->nargs, p_expr(NULL));
-            } while (curtok == TOK_COMMA || curtok == TOK_ASSIGN);
-            if (!wneedtok(TOK_RPAR))
-    skippasttotoken(TOK_RPAR, TOK_SEMI);
-        }
-  if (!tryfuncmacro(&ex, NULL))
-      undefsym(sym);
-        return fake_dots_n_hats(ex);
-    }
-    var_reference(curtokmeaning);
-    mp = curtokmeaning;
-    if (curtokint >= 0  /*mp->kind == MK_FIELD*/) {
-  if (withexprs[curtokint])
-      ex = makeexpr_dot(copyexpr(withexprs[curtokint]), mp);
-  else
-      ex = makeexpr_name(mp->name, mp->type);
-    } else if (mp->kind == MK_CONST &&
-         mp->type->kind == TK_SET &&
-         mp->constdefn) {
-  ex = copyexpr(mp->constdefn);
-  mp = makestmttempvar(ex->val.type, name_SET);
-        ex2 = makeexpr(EK_MACARG, 0);
-        ex2->val.type = ex->val.type;
-  ex = replaceexprexpr(ex, ex2, makeexpr_var(mp), 0);
-        freeexpr(ex2);
-    } else if (mp->kind == MK_CONST &&
-               (mp == mp_false ||
-                mp == mp_true ||
-                mp->anyvarflag ||
-                (foldconsts > 0 &&
-                 (mp->type->kind == TK_INTEGER ||
-                  mp->type->kind == TK_BOOLEAN ||
-                  mp->type->kind == TK_CHAR ||
-                  mp->type->kind == TK_ENUM ||
-                  mp->type->kind == TK_SUBR ||
-                  mp->type->kind == TK_REAL)) ||
-                (foldstrconsts > 0 &&
-                 (mp->type->kind == TK_STRING)))) {
-        if (mp->constdefn) {
-            ex = copyexpr(mp->constdefn);
-            if (ex->val.type == tp_int)   /* kludge! */
-                ex->val.type = tp_integer;
-        } else
-            ex = makeexpr_val(copyvalue(mp->val));
-    } else if (mp->kind == MK_VARPARAM ||
-               mp->kind == MK_VARREF) {
-        ex = makeexpr_hat(makeexpr_var(mp), 0);
-    } else if (mp->kind == MK_VARMAC) {
-        ex = copyexpr(mp->constdefn);
-  bindnames(ex);
-        ex = gentle_cast(ex, mp->type);
+        ex->kind = EK_VAR;
+        ex->val.i = (long)mp;
         ex->val.type = mp->type;
-    } else if (mp->kind == MK_SPVAR && mp->handler) {
-        gettok();
-        ex = (*mp->handler)(mp);
-        return dots_n_hats(ex, target);
-    } else if (mp->kind == MK_VAR ||
-               mp->kind == MK_CONST ||
-               mp->kind == MK_PARAM) {
-  if (mp->varstructflag && mp->isref) {
-      ex = makeexpr_var(mp);
-      ex->val.type = makepointertype(ex->val.type);
-      ex = makeexpr_hat(ex, 0);
-  } else
-      ex = makeexpr_var(mp);
-    } else {
-        symclass(mp->sym);
-        ex = makeexpr_name(mp->name, tp_integer);
+        }
+      }
     }
+  i = ex->nargs;
+  while (--i >= 0)
+    bindnames(ex->args[i]);
+  }
+//}}}
+
+//{{{
+void var_reference (Meaning *mp) {
+
+  Meaning *mp2;
+
+  mp->refcount++;
+  if (mp->ctx && mp->ctx->kind == MK_FUNCTION && mp->ctx->needvarstruct &&
+      (mp->kind == MK_VAR ||
+       mp->kind == MK_VARREF ||
+       mp->kind == MK_VARMAC ||
+       mp->kind == MK_PARAM ||
+       mp->kind == MK_VARPARAM ||
+       (mp->kind == MK_CONST &&
+        (mp->type->kind == TK_ARRAY ||
+         mp->type->kind == TK_RECORD)))) {
+
+    if (debug > 1) { 
+      fprintf (outf, "varstruct'ing %s\n", mp->name); 
+      }
+
+    if (!mp->varstructflag) {
+      mp->varstructflag = 1;
+      if (mp->constdefn &&      /* move init code into function body */
+          mp->kind != MK_VARMAC) {
+        mp2 = addmeaningafter(mp, curtoksym, MK_VAR);
+        curtoksym->mbase = mp2->snext;  /* hide this fake variable */
+        mp2->snext = mp;      /* remember true variable */
+        mp2->type = mp->type;
+        mp2->constdefn = mp->constdefn;
+        mp2->isforward = 1;   /* declare it "static" */
+        mp2->refcount++;      /* so it won't be purged! */
+        mp->constdefn = NULL;
+        mp->isforward = 0;
+        }
+      }
+
+    for (mp2 = curctx->ctx; mp2 != mp->ctx; mp2 = mp2->ctx)
+      mp2->varstructflag = 1;
+    mp2->varstructflag = 1;
+    }
+  }
+//}}}
+//{{{
+Expr* expr_reference (Expr *ex) {
+
+  int i;
+  for (i = 0; i < ex->nargs; i++)
+    expr_reference(ex->args[i]);
+
+  if (ex->kind == EK_VAR)
+    var_reference((Meaning *)ex->val.i);
+
+  return ex;
+  }
+//}}}
+
+//{{{
+Expr* p_variable (Type* target) {
+
+  Expr *ex, *ex2;
+  Meaning *mp;
+  Symbol *sym;
+
+  if (curtok != TOK_IDENT) {
+    warning("Expected a variable [289]");
+    return makeexpr_long(0);
+    }
+  if (!curtokmeaning) {
+    sym = curtoksym;
+    ex = makeexpr_name(curtokcase, tp_integer);
     gettok();
-    return dots_n_hats(ex, target);
-}
-//}}}
-//{{{
-Expr *p_ord_expr()
-{
-    return makeexpr_charcast(p_expr(tp_integer));
-}
-//}}}
-//{{{
-Static Expr *makesmallsetconst(bits, type)
-long bits;
-Type *type;
-{
-    Expr *ex;
-
-    ex = makeexpr_long(bits);
-    ex->val.type = type;
-    if (smallsetconst != 2)
-        insertarg(&ex, 0, makeexpr_name("%#lx", tp_integer));
-    return ex;
-}
-//}}}
-//{{{
-Expr *packset(ex, type)
-Expr *ex;
-Type *type;
-{
-    Meaning *mp;
-    Expr *ex2;
-    long max2;
-
-    if (ex->kind == EK_BICALL) {
-        if (!strcmp(ex->val.s, setexpandname) &&
-            (mp = istempvar(ex->args[0])) != NULL) {
-            canceltempvar(mp);
-            return grabarg(ex, 1);
-        }
-        if (!strcmp(ex->val.s, setunionname) &&
-            (mp = istempvar(ex->args[0])) != NULL &&
-            !exproccurs(ex->args[1], ex->args[0]) &&
-            !exproccurs(ex->args[2], ex->args[0])) {
-            canceltempvar(mp);
-            return makeexpr_bin(EK_BOR, type, packset(ex->args[1], type),
-                                              packset(ex->args[2], type));
-        }
-        if (!strcmp(ex->val.s, setaddname)) {
-            ex2 = makeexpr_bin(EK_LSH, type,
-                               makeexpr_longcast(makeexpr_long(1), 1),
-                               ex->args[1]);
-            ex = packset(ex->args[0], type);
-            if (checkconst(ex, 0))
-                return ex2;
-            else
-                return makeexpr_bin(EK_BOR, type, ex, ex2);
-        }
-        if (!strcmp(ex->val.s, setaddrangename)) {
-            if (ord_range(type->indextype, NULL, &max2) && max2 == setbits-1)
-                note("Range construction was implemented by a subtraction which may overflow [278]");
-            ex2 = makeexpr_minus(makeexpr_bin(EK_LSH, type,
-                                              makeexpr_longcast(makeexpr_long(1), 1),
-                                              makeexpr_plus(ex->args[2],
-                                                            makeexpr_long(1))),
-                                 makeexpr_bin(EK_LSH, type,
-                                              makeexpr_longcast(makeexpr_long(1), 1),
-                                              ex->args[1]));
-            ex = packset(ex->args[0], type);
-            if (checkconst(ex, 0))
-                return ex2;
-            else
-                return makeexpr_bin(EK_BOR, type, ex, ex2);
-        }
+    if (curtok == TOK_LPAR) {
+      ex = makeexpr_bicall_0(ex->val.s, tp_integer);
+      do {
+        gettok();
+        insertarg(&ex, ex->nargs, p_expr(NULL));
+        } while (curtok == TOK_COMMA || curtok == TOK_ASSIGN);
+      if (!wneedtok(TOK_RPAR))
+        skippasttotoken(TOK_RPAR, TOK_SEMI);
+      }
+    if (!tryfuncmacro(&ex, NULL))
+      undefsym(sym);
+    return fake_dots_n_hats(ex);
     }
-    return makeexpr_bicall_1(setpackname, type, ex);
-}
+
+  var_reference(curtokmeaning);
+  mp = curtokmeaning;
+  if (curtokint >= 0  /*mp->kind == MK_FIELD*/) {
+    if (withexprs[curtokint])
+      ex = makeexpr_dot(copyexpr(withexprs[curtokint]), mp);
+    else
+      ex = makeexpr_name(mp->name, mp->type);
+    } 
+  else if (mp->kind == MK_CONST && mp->type->kind == TK_SET && mp->constdefn) {
+    ex = copyexpr (mp->constdefn);
+    mp = makestmttempvar (ex->val.type, name_SET);
+    ex2 = makeexpr(EK_MACARG, 0);
+    ex2->val.type = ex->val.type;
+    ex = replaceexprexpr (ex, ex2, makeexpr_var(mp), 0);
+    freeexpr (ex2);
+    } 
+  else if (mp->kind == MK_CONST &&
+           (mp == mp_false || mp == mp_true || mp->anyvarflag ||
+            (foldconsts > 0 &&
+             (mp->type->kind == TK_INTEGER || mp->type->kind == TK_BOOLEAN || mp->type->kind == TK_CHAR || 
+              mp->type->kind == TK_ENUM || mp->type->kind == TK_SUBR || mp->type->kind == TK_REAL)) ||
+            (foldstrconsts > 0 && (mp->type->kind == TK_STRING)))) {
+    if (mp->constdefn) {
+      ex = copyexpr(mp->constdefn);
+      if (ex->val.type == tp_int)   /* kludge! */
+        ex->val.type = tp_integer;
+      }
+    else
+      ex = makeexpr_val(copyvalue (mp->val));
+    }
+  else if (mp->kind == MK_VARPARAM || mp->kind == MK_VARREF) {
+    ex = makeexpr_hat (makeexpr_var (mp), 0);
+    }
+  else if (mp->kind == MK_VARMAC) {
+    ex = copyexpr (mp->constdefn);
+    bindnames (ex);
+    ex = gentle_cast (ex, mp->type);
+    ex->val.type = mp->type;
+    }
+  else if (mp->kind == MK_SPVAR && mp->handler) {
+    gettok();
+    ex = (*mp->handler)(mp);
+    return dots_n_hats (ex, target);
+    }
+  else if (mp->kind == MK_VAR || mp->kind == MK_CONST || mp->kind == MK_PARAM) {
+    if (mp->varstructflag && mp->isref) {
+      ex = makeexpr_var (mp);
+      ex->val.type = makepointertype (ex->val.type);
+      ex = makeexpr_hat (ex, 0);
+      }
+    else
+      ex = makeexpr_var (mp);
+    }
+  else {
+    symclass(mp->sym);
+    ex = makeexpr_name (mp->name, tp_integer);
+    }
+
+  gettok();
+  return dots_n_hats (ex, target);
+  }
+//}}}
+//{{{
+Expr* p_ord_expr() {
+  return makeexpr_charcast(p_expr(tp_integer));
+  }
+//}}}
+//{{{
+Static Expr* makesmallsetconst (long bits, Type* type) {
+
+  Expr* ex = makeexpr_long(bits);
+  ex->val.type = type;
+
+  if (smallsetconst != 2)
+    insertarg(&ex, 0, makeexpr_name("%#lx", tp_integer));
+
+  return ex;
+  }
+//}}}
+//{{{
+Expr *packset (Expr* ex, Type* type) {
+
+  Meaning *mp;
+  Expr *ex2;
+  long max2;
+
+  if (ex->kind == EK_BICALL) {
+    if (!strcmp (ex->val.s, setexpandname) && 
+        (mp = istempvar (ex->args[0])) != NULL) {
+      canceltempvar (mp);
+      return grabarg(ex, 1);
+      }
+
+    if (!strcmp (ex->val.s, setunionname) &&
+        (mp = istempvar (ex->args[0])) != NULL &&
+        !exproccurs (ex->args[1], ex->args[0]) &&
+        !exproccurs (ex->args[2], ex->args[0])) {
+      canceltempvar (mp);
+      return makeexpr_bin (EK_BOR, type, packset(ex->args[1], type), packset(ex->args[2], type));
+      }
+    if (!strcmp (ex->val.s, setaddname)) {
+      ex2 = makeexpr_bin (EK_LSH, type, makeexpr_longcast (makeexpr_long(1), 1), ex->args[1]);
+      ex = packset (ex->args[0], type);
+      if (checkconst (ex, 0))
+        return ex2;
+      else
+        return makeexpr_bin (EK_BOR, type, ex, ex2);
+      }
+
+    if (!strcmp (ex->val.s, setaddrangename)) {
+      if (ord_range (type->indextype, NULL, &max2) && max2 == setbits-1)
+        note ("Range construction was implemented by a subtraction which may overflow [278]");
+
+      ex2 = makeexpr_minus (makeexpr_bin (EK_LSH, type, makeexpr_longcast (makeexpr_long(1), 1),
+                                          makeexpr_plus (ex->args[2], makeexpr_long(1))),
+                            makeexpr_bin (EK_LSH, type, makeexpr_longcast (makeexpr_long(1), 1),
+                                          ex->args[1]));
+      ex = packset(ex->args[0], type);
+
+      if (checkconst(ex, 0))
+        return ex2;
+      else
+        return makeexpr_bin (EK_BOR, type, ex, ex2);
+      }
+    }
+  return makeexpr_bicall_1 (setpackname, type, ex);
+  }
 //}}}
 
 #define MAXSETLIT 400
@@ -1814,12 +1812,8 @@ Type *target;
                 ex = makeexpr_rel(EK_NE, makeexpr_bin(EK_BAND, tp_integer, ex, ex2),
                                          makeexpr_long(0));
                 if (*name_SETBITS ||
-                    ((ex4->kind == EK_CONST) ? ((unsigned long)ex4->val.i >= setbits)
-                                             : !(0 <= smin && smax < setbits))) {
-                    ex = makeexpr_and(makeexpr_range(enum_to_int(ex4),
-                                                     makeexpr_long(0),
-                                                     makeexpr_setbits(), 0),
-                                      ex);
+                    ((ex4->kind == EK_CONST) ? ((unsigned long)ex4->val.i >= setbits) : !(0 <= smin && smax < setbits))) {
+                    ex = makeexpr_and(makeexpr_range(enum_to_int(ex4), makeexpr_long(0), makeexpr_setbits(), 0), ex);
                 } else
                     freeexpr(ex4);
                 ex = makeexpr_comma(ex3, ex);
@@ -2085,7 +2079,7 @@ Expr *pc_typename()
 //{{{
 Expr *pc_factor()
 {
-  Expr* ex;
+  Expr* ex = NULL;
   char* cp;
   Strlist *sl;
   int i;

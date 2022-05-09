@@ -1553,31 +1553,31 @@ int need;
 }
 //}}}
 //{{{
-Static Expr *parse_constructor(type, var)
-Type *type;
-Expr *var;
-{
-    Meaning *mp;
-    Expr *expr = NULL;
-    int savewith = withlevel;
+Static Expr* parse_constructor (Type* type, Expr* var) {
 
-    if (curtok == TOK_COMMA) {
-  curtokmeaning = mp;
-  withrecordtype(type, makeexpr_hat(copyexpr(var), 0));
-  gettok();
-  if (wexpecttok(TOK_IDENT)) {
+  Meaning* mp = NULL;
+  Expr* expr = NULL;
+  int savewith = withlevel;
+
+  if (curtok == TOK_COMMA) {
+    curtokmeaning = mp;
+    withrecordtype (type, makeexpr_hat(copyexpr(var), 0));
+    gettok();
+    if (wexpecttok (TOK_IDENT)) {
       mp = curtokmeaning;
       if (mp && mp->kind == MK_FUNCTION && curtokint >= savewith) {
-    expr = p_expr(tp_void);
-      } else
-    warning(format_s("No constructor/destructor named %s [334]",
-         curtokbuf));
-  }
-  withlevel = savewith;
-  freeexpr(withexprs[withlevel]);
+        expr = p_expr (tp_void);
+        } 
+      else
+        warning (format_s ("No constructor/destructor named %s [334]", curtokbuf));
+      }
+
+    withlevel = savewith;
+    freeexpr (withexprs[withlevel]);
     }
-    return expr;
-}
+
+  return expr;
+  }
 //}}}
 //{{{
 Static char *choose_free_func(ex)

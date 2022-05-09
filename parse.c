@@ -2390,7 +2390,6 @@ Expr *ex, *ex2;
 }
 //}}}
 //}}}
-
 //{{{  Data flow analysis
 #define MAX_PROP_CHECKS  32
 //{{{  static vars
@@ -3728,408 +3727,409 @@ Stmt **spp, *thereturn;
 }
 //}}}
 //}}}
-
+//{{{  checks
 //{{{
 /* Convert comma expressions into multiple statements */
+Static int checkcomma_expr (Stmt **spp, Expr **exp) {
 
-Static int checkcomma_expr (spp, exp)
-Stmt **spp;
-Expr **exp;
-{
-    Stmt *sp;
-    Expr *ex = *exp;
-    int i, res;
+  Stmt *sp;
+  Expr *ex = *exp;
+  int i, res;
 
-    switch (ex->kind) {
+  switch (ex->kind) {
+    //{{{
+    case EK_COMMA:
+      if (spp) {
+        res = checkcomma_expr(spp, &ex->args[ex->nargs-1]);
+        for (i = ex->nargs-1; --i >= 0; ) {
+          sp = makestmt(SK_ASSIGN);
+          sp->exp1 = ex->args[i];
+          sp->next = *spp;
+          sp->quietelim = (*spp)->quietelim;
+          *spp = sp;
+          res = checkcomma_expr(spp, &ex->args[i]);
+          }
+        *exp = ex->args[ex->nargs-1];
+        }
+      return 1;
+    //}}}
+    //{{{
+    case EK_COND:
+      if (isescape(ex->args[1]) && spp && !isescape(ex->args[2])) {
+        swapexprs(ex->args[1], ex->args[2]);
+        ex->args[0] = makeexpr_not(ex->args[0]);
+        }
 
-        case EK_COMMA:
-            if (spp) {
-                res = checkcomma_expr(spp, &ex->args[ex->nargs-1]);
-                for (i = ex->nargs-1; --i >= 0; ) {
-                    sp = makestmt(SK_ASSIGN);
-                    sp->exp1 = ex->args[i];
-                    sp->next = *spp;
-        sp->quietelim = (*spp)->quietelim;
-                    *spp = sp;
-                    res = checkcomma_expr(spp, &ex->args[i]);
-                }
-                *exp = ex->args[ex->nargs-1];
+      if (isescape(ex->args[2])) {
+        if (spp) {
+          res = checkcomma_expr(spp, &ex->args[1]);
+          if (ex->args[0]->kind == EK_ASSIGN) {
+            sp = makestmt(SK_ASSIGN);
+            sp->exp1 = copyexpr(ex->args[0]);
+            sp->next = makestmt(SK_IF);
+            sp->next->next = *spp;
+            *spp = sp;
+            res = checkcomma_expr(spp, &sp->exp1);
+            ex->args[0] = grabarg(ex->args[0], 0);
+            sp = sp->next;
             }
-            return 1;
-
-        case EK_COND:
-            if (isescape(ex->args[1]) && spp &&
-                !isescape(ex->args[2])) {
-                swapexprs(ex->args[1], ex->args[2]);
-                ex->args[0] = makeexpr_not(ex->args[0]);
+          else {
+            sp = makestmt(SK_IF);
+            sp->next = *spp;
+            *spp = sp;
             }
-            if (isescape(ex->args[2])) {
-                if (spp) {
-                    res = checkcomma_expr(spp, &ex->args[1]);
-                    if (ex->args[0]->kind == EK_ASSIGN) {
-                        sp = makestmt(SK_ASSIGN);
-                        sp->exp1 = copyexpr(ex->args[0]);
-                        sp->next = makestmt(SK_IF);
-                        sp->next->next = *spp;
-                        *spp = sp;
-                        res = checkcomma_expr(spp, &sp->exp1);
-                        ex->args[0] = grabarg(ex->args[0], 0);
-                        sp = sp->next;
-                    } else {
-                        sp = makestmt(SK_IF);
-                        sp->next = *spp;
-                        *spp = sp;
-                    }
-                    sp->exp1 = makeexpr_not(ex->args[0]);
-                    sp->stm1 = makestmt(SK_ASSIGN);
-                    sp->stm1->exp1 = eatcasts(ex->args[2]);
-                    res = checkcomma_expr(&sp->stm1, &ex->args[2]);
-                    res = checkcomma_expr(spp, &sp->exp1);
-                    *exp = ex->args[1];
-                }
-                return 1;
-            }
-            return checkcomma_expr(spp, &ex->args[0]);
 
-        case EK_AND:
-        case EK_OR:
-            return checkcomma_expr(spp, &ex->args[0]);
+          sp->exp1 = makeexpr_not(ex->args[0]);
+          sp->stm1 = makestmt(SK_ASSIGN);
+          sp->stm1->exp1 = eatcasts(ex->args[2]);
 
-  default:
+          res = checkcomma_expr(&sp->stm1, &ex->args[2]);
+          res = checkcomma_expr(spp, &sp->exp1);
+          *exp = ex->args[1];
+          }
+        return 1;
+        }
+
+      return checkcomma_expr(spp, &ex->args[0]);
+    //}}}
+
+    case EK_AND:
+    case EK_OR:
+      return checkcomma_expr(spp, &ex->args[0]);
+
+    default:
       res = 0;
       for (i = ex->nargs; --i >= 0; ) {
-    res += checkcomma_expr(spp, &ex->args[i]);
-      }
+        res += checkcomma_expr(spp, &ex->args[i]);
+        }
       return res;
-
     }
-}
+
+  }
 //}}}
 //{{{
-Static void checkcommas (spp)
-Stmt **spp;
-{
-    Stmt *sp;
-    int res;
+Static void checkcommas (Stmt **spp) {
 
-    while ((sp = *spp)) {
-        checkcommas(&sp->stm1);
-        checkcommas(&sp->stm2);
-        switch (sp->kind) {
+  Stmt *sp;
+  int res;
 
-            case SK_ASSIGN:
-            case SK_IF:
-            case SK_CASE:
-            case SK_RETURN:
-                if (sp->exp1)
-                    res = checkcomma_expr(spp, &sp->exp1);
-                break;
+  while ((sp = *spp)) {
+    checkcommas(&sp->stm1);
+    checkcommas(&sp->stm2);
 
-            case SK_WHILE:
-                /* handle the argument */
-                break;
+    switch (sp->kind) {
+      case SK_ASSIGN:
+      case SK_IF:
+      case SK_CASE:
+      case SK_RETURN:
+        if (sp->exp1)
+          res = checkcomma_expr(spp, &sp->exp1);
+        break;
 
-            case SK_REPEAT:
-                /* handle the argument */
-                break;
+      case SK_WHILE:
+        /* handle the argument */
+        break;
 
-            case SK_FOR:
-    if (sp->exp1)
-        res = checkcomma_expr(spp, &sp->exp1);
-                /* handle the other arguments */
-                break;
+      case SK_REPEAT:
+        /* handle the argument */
+        break;
+
+      case SK_FOR:
+        if (sp->exp1)
+           res = checkcomma_expr(spp, &sp->exp1);
+            /* handle the other arguments */
+        break;
 
       default:
-    break;
-        }
-        spp = &sp->next;
+        break;
+      }
+
+    spp = &sp->next;
     }
-}
+  }
 //}}}
 //{{{
-Static int checkvarchangeable (ex, mp)
-Expr *ex;
-Meaning *mp;
-{
-    switch (ex->kind) {
+Static int checkvarchangeable (Expr *ex, Meaning *mp) {
 
-        case EK_VAR:
-            return (mp == (Meaning *)ex->val.i);
+  switch (ex->kind) {
+    case EK_VAR:
+      return (mp == (Meaning *)ex->val.i);
 
-        case EK_DOT:
-        case EK_INDEX:
-            return checkvarchangeable(ex->args[0], mp);
+    case EK_DOT:
+    case EK_INDEX:
+      return checkvarchangeable(ex->args[0], mp);
 
-  default:
+    default:
       return 0;
     }
-}
+  }
 //}}}
 //{{{
-int checkvarchangedexpr (ex, mp, addrokay)
-Expr *ex;
-Meaning *mp;
-int addrokay;
-{
-    int i;
-    Meaning *mp3;
-    unsigned int safemask = 0;
+int checkvarchangedexpr (Expr *ex, Meaning *mp, int addrokay) {
 
-    switch (ex->kind) {
+  int i;
+  Meaning *mp3;
+  unsigned int safemask = 0;
 
-        case EK_FUNCTION:
-        case EK_SPCALL:
-            if (ex->kind == EK_FUNCTION) {
-                i = 0;
-                mp3 = ((Meaning *)ex->val.i)->type->fbase;
-            } else {
-                i = 1;
-                if (ex->args[0]->val.type->kind != TK_PROCPTR)
-                    return 1;
-                mp3 = ex->args[0]->val.type->basetype->fbase;
-            }
-            for ( ; i < ex->nargs && i < 16; i++) {
-                if (!mp3) {
-                    intwarning("checkvarchangedexpr", "Too many arguments for EK_FUNCTION [266]");
-                    break;
-                }
-                if (mp3->kind == MK_PARAM &&
-                    (mp3->type->kind == TK_ARRAY ||
-                     mp3->type->kind == TK_STRING ||
-                     mp3->type->kind == TK_SET))
-                    safemask |= 1<<i;
-    if (mp3->isref && checkvarchangeable(ex->args[i], mp))
+  switch (ex->kind) {
+    case EK_FUNCTION:
+    //{{{
+    case EK_SPCALL:
+      if (ex->kind == EK_FUNCTION) {
+        i = 0;
+        mp3 = ((Meaning *)ex->val.i)->type->fbase;
+        }
+      else {
+        i = 1;
+        if (ex->args[0]->val.type->kind != TK_PROCPTR)
+          return 1;
+        mp3 = ex->args[0]->val.type->basetype->fbase;
+        }
+
+      for ( ; i < ex->nargs && i < 16; i++) {
+        if (!mp3) {
+          intwarning("checkvarchangedexpr", "Too many arguments for EK_FUNCTION [266]");
+          break;
+          }
+
+        if (mp3->kind == MK_PARAM &&
+            (mp3->type->kind == TK_ARRAY ||
+             mp3->type->kind == TK_STRING ||
+             mp3->type->kind == TK_SET))
+          safemask |= 1<<i;
+        if (mp3->isref && checkvarchangeable(ex->args[i], mp))
+          return 1;
+        if (mp3->kind == MK_VARPARAM && mp3->type == tp_strptr && mp3->anyvarflag)
+          i++;
+
+        mp3 = mp3->xnext;
+        }
+
+      if (mp3)
+        intwarning("checkvarchangedexpr", "Too few arguments for EK_FUNCTION [267]");
+
+      break;
+    //}}}
+    //{{{
+    case EK_VAR:
+      if (mp == (Meaning *)ex->val.i) {
+        if ((mp->type->kind == TK_ARRAY ||
+             mp->type->kind == TK_STRING ||
+             mp->type->kind == TK_SET) &&
+             ex->val.type->kind == TK_POINTER && !addrokay)
+          return 1;   /* must be an implicit & */
+          }
+        break;
+    //}}}
+    case EK_ADDR:
+    case EK_ASSIGN:
+    case EK_POSTINC:
+    //{{{
+    case EK_POSTDEC:
+      if (checkvarchangeable(ex->args[0], mp))
         return 1;
-                if (mp3->kind == MK_VARPARAM &&
-                    mp3->type == tp_strptr && mp3->anyvarflag)
-                    i++;
-                mp3 = mp3->xnext;
-            }
-            if (mp3)
-                intwarning("checkvarchangedexpr", "Too few arguments for EK_FUNCTION [267]");
-            break;
+      break;
+    //}}}
+    //{{{
+    case EK_BICALL:
+      if (structuredfunc(ex) && checkvarchangeable(ex->args[0], mp))
+        return 1;
 
-        case EK_VAR:
-            if (mp == (Meaning *)ex->val.i) {
-                if ((mp->type->kind == TK_ARRAY ||
-                     mp->type->kind == TK_STRING ||
-                     mp->type->kind == TK_SET) &&
-                    ex->val.type->kind == TK_POINTER && !addrokay)
-                    return 1;   /* must be an implicit & */
-            }
-            break;
-
-        case EK_ADDR:
-        case EK_ASSIGN:
-        case EK_POSTINC:
-        case EK_POSTDEC:
-            if (checkvarchangeable(ex->args[0], mp))
-                return 1;
-            break;
-
-        case EK_BICALL:
-            if (structuredfunc(ex) && checkvarchangeable(ex->args[0], mp))
-                return 1;
-            safemask = safemask_bicall(ex->val.s);
-            break;
-            /* In case calls to these functions were lazy and passed
-               the array rather than its (implicit) address.  Other
-               BICALLs had better be careful about their arguments. */
-
-        case EK_PLUS:
-            if (addrokay)         /* to keep from being scared by pointer */
-                safemask = ~0;    /*  arithmetic on string being passed */
-            break;                /*  to functions. */
-
-  default:
+      safemask = safemask_bicall(ex->val.s);
+      break;
+        /* In case calls to these functions were lazy and passed
+           the array rather than its (implicit) address.  Other
+           BICALLs had better be careful about their arguments. */
+    //}}}
+    //{{{
+    case EK_PLUS:
+      if (addrokay)         /* to keep from being scared by pointer */
+        safemask = ~0;    /*  arithmetic on string being passed */
+      break;                /*  to functions. */
+    //}}}
+    default:
       break;
     }
-    for (i = 0; i < ex->nargs; i++) {
-        if (checkvarchangedexpr(ex->args[i], mp, safemask&1))
-            return 1;
-        safemask >>= 1;
+
+  for (i = 0; i < ex->nargs; i++) {
+    if (checkvarchangedexpr(ex->args[i], mp, safemask&1))
+      return 1;
+    safemask >>= 1;
     }
-    return 0;
-}
-//}}}
-//{{{
-int checkvarchanged (sp, mp)
-Stmt *sp;
-Meaning *mp;
-{
-    if (mp->constqual)
+
   return 0;
-    if (mp->varstructflag || !mp->ctx || mp->ctx->kind != MK_FUNCTION ||
-        mp->volatilequal || alwayscopyvalues)
-        return 1;
-    while (sp) {
-        if (/* sp->kind == SK_GOTO || */
-      sp->kind == SK_LABEL ||
-            checkvarchanged(sp->stm1, mp) ||
-            checkvarchanged(sp->stm2, mp) ||
-            (sp->exp1 && checkvarchangedexpr(sp->exp1, mp, 1)) ||
-            (sp->exp2 && checkvarchangedexpr(sp->exp2, mp, 1)) ||
-            (sp->exp3 && checkvarchangedexpr(sp->exp3, mp, 1)))
-            return 1;
-        sp = sp->next;
-    }
-    return 0;
-}
+  }
 //}}}
 //{{{
-int checkexprchanged (sp, ex)
-Stmt *sp;
-Expr *ex;
-{
-    Meaning *mp;
-    int i;
+int checkvarchanged (Stmt *sp, Meaning *mp) {
 
-    for (i = 0; i < ex->nargs; i++) {
-        if (checkexprchanged(sp, ex->args[i]))
-            return 1;
+  if (mp->constqual)
+    return 0;
+
+  if (mp->varstructflag || !mp->ctx || mp->ctx->kind != MK_FUNCTION ||
+      mp->volatilequal || alwayscopyvalues)
+    return 1;
+
+  while (sp) {
+    if (/* sp->kind == SK_GOTO || */
+        sp->kind == SK_LABEL ||
+        checkvarchanged(sp->stm1, mp) ||
+        checkvarchanged(sp->stm2, mp) ||
+        (sp->exp1 && checkvarchangedexpr(sp->exp1, mp, 1)) ||
+        (sp->exp2 && checkvarchangedexpr(sp->exp2, mp, 1)) ||
+        (sp->exp3 && checkvarchangedexpr(sp->exp3, mp, 1)))
+      return 1;
+    sp = sp->next;
     }
-    switch (ex->kind) {
 
-        case EK_VAR:
-            mp = (Meaning *)ex->val.i;
-            if (mp->kind == MK_CONST)
-                return 0;
-            else
-                return checkvarchanged(sp, mp);
+  return 0;
+  }
+//}}}
+//{{{
+int checkexprchanged (Stmt *sp, Expr *ex) {
 
-        case EK_HAT:
-        case EK_INDEX:
-        case EK_SPCALL:
-            return 1;
+  Meaning *mp;
+  int i;
+  for (i = 0; i < ex->nargs; i++) {
+    if (checkexprchanged(sp, ex->args[i]))
+      return 1;
+    }
 
-        case EK_FUNCTION:
-        case EK_BICALL:
-            return !nosideeffects_func(ex);
+  switch (ex->kind) {
+    case EK_VAR:
+      mp = (Meaning *)ex->val.i;
+      if (mp->kind == MK_CONST)
+        return 0;
+      else
+        return checkvarchanged(sp, mp);
 
-  default:
+    case EK_HAT:
+    case EK_INDEX:
+    case EK_SPCALL:
+      return 1;
+
+    case EK_FUNCTION:
+    case EK_BICALL:
+      return !nosideeffects_func(ex);
+
+    default:
       return 0;
     }
-}
+  }
 //}}}
 
-//{{{  Check if a variable always occurs with a certain offset added, e.g. "i+1"
-Static int theoffset, numoffsets, numzerooffsets;
 #define BadOffset  (-999)
+Static int theoffset, numoffsets, numzerooffsets;
 //{{{
-void checkvaroffsetexpr (ex, mp, myoffset)
-Expr *ex;
-Meaning *mp;
-int myoffset;
-{
-    int i, nextoffset = 0;
-    Expr *ex2;
+void checkvaroffsetexpr (Expr *ex, Meaning *mp, int myoffset) {
+// Check if a variable always occurs with a certain offset added, e.g. "i+1"
 
-    if (!ex)
-  return;
-    switch (ex->kind) {
+  int i, nextoffset = 0;
+  Expr *ex2;
 
-      case EK_VAR:
-  if (ex->val.i == (long)mp) {
-      if (myoffset == 0)
-    numzerooffsets++;
-      else if (numoffsets == 0 || myoffset == theoffset) {
-    theoffset = myoffset;
-    numoffsets++;
-      } else
-    theoffset = BadOffset;
-  }
-  break;
+  if (!ex)
+    return;
 
-      case EK_PLUS:
-  ex2 = ex->args[ex->nargs-1];
-  if (ex2->kind == EK_CONST &&
-      ex2->val.type->kind == TK_INTEGER) {
-      nextoffset = ex2->val.i;
-  }
-  break;
+  switch (ex->kind) {
+    //{{{
+    case EK_VAR:
+      if (ex->val.i == (long)mp) {
+        if (myoffset == 0)
+          numzerooffsets++;
+        else if (numoffsets == 0 || myoffset == theoffset) {
+          theoffset = myoffset;
+          numoffsets++;
+          }
+        else
+          theoffset = BadOffset;
+        }
+      break;
+    //}}}
+    //{{{
+    case EK_PLUS:
+      ex2 = ex->args[ex->nargs-1];
+      if (ex2->kind == EK_CONST && ex2->val.type->kind == TK_INTEGER) {
+        nextoffset = ex2->val.i;
+        }
+      break;
+    //}}}
 
-      case EK_HAT:
-      case EK_POSTINC:
-      case EK_POSTDEC:
-  nextoffset = BadOffset;
-  break;
+    case EK_HAT:
+    case EK_POSTINC:
+    case EK_POSTDEC:
+      nextoffset = BadOffset;
+      break;
 
-      case EK_ASSIGN:
-  checkvaroffsetexpr(ex->args[0], mp, BadOffset);
-  checkvaroffsetexpr(ex->args[1], mp, 0);
-  return;
+    case EK_ASSIGN:
+      checkvaroffsetexpr (ex->args[0], mp, BadOffset);
+      checkvaroffsetexpr (ex->args[1], mp, 0);
+      return;
 
-      default:
-  break;
+    default:
+      break;
     }
-    i = ex->nargs;
-    while (--i >= 0)
-  checkvaroffsetexpr(ex->args[i], mp, nextoffset);
-}
+
+  i = ex->nargs;
+  while (--i >= 0)
+    checkvaroffsetexpr (ex->args[i], mp, nextoffset);
+  }
 //}}}
 //{{{
-void checkvaroffsetstmt (sp, mp)
-Stmt *sp;
-Meaning *mp;
-{
-    while (sp) {
-  checkvaroffsetstmt(sp->stm1, mp);
-  checkvaroffsetstmt(sp->stm1, mp);
-  checkvaroffsetexpr(sp->exp1, mp, 0);
-  checkvaroffsetexpr(sp->exp2, mp, 0);
-  checkvaroffsetexpr(sp->exp3, mp, 0);
-  sp = sp->next;
+void checkvaroffsetstmt (Stmt *sp, Meaning *mp) {
+
+  while (sp) {
+    checkvaroffsetstmt(sp->stm1, mp);
+    checkvaroffsetstmt(sp->stm1, mp);
+    checkvaroffsetexpr(sp->exp1, mp, 0);
+    checkvaroffsetexpr(sp->exp2, mp, 0);
+    checkvaroffsetexpr(sp->exp3, mp, 0);
+    sp = sp->next;
     }
-}
+  }
 //}}}
 //{{{
-int checkvaroffset (sp, mp)
-Stmt *sp;
-Meaning *mp;
-{
-    if (mp->varstructflag || !mp->ctx || mp->ctx->kind != MK_FUNCTION)
-  return 0;
-    numoffsets = 0;
-    numzerooffsets = 0;
-    checkvaroffsetstmt(sp, mp);
-    if (numoffsets == 0 || theoffset == BadOffset ||
-  numoffsets <= numzerooffsets * 3)
-  return 0;
-    else
-  return theoffset;
-}
-//}}}
-//}}}
+int checkvaroffset (Stmt *sp, Meaning *mp) {
 
-//{{{
-Expr* initfilevar (ex)
-Expr *ex;
-{
-    Expr *ex2;
-    Meaning *mp;
-    char *name;
+  if (mp->varstructflag || !mp->ctx || mp->ctx->kind != MK_FUNCTION)
+    return 0;
 
-    if (ex->val.type->kind == TK_BIGFILE) {
-  ex2 = copyexpr(ex);
-  if (ex->kind == EK_VAR &&
-      (mp = (Meaning *)ex->val.i)->kind == MK_VAR &&
-      mp->ctx->kind != MK_FUNCTION &&
-      !is_std_file(ex) &&
-      literalfilesflag > 0 &&
-      (literalfilesflag == 1 ||
-       strlist_cifind(literalfiles, mp->name)))
-      name = mp->name;
+  numoffsets = 0;
+  numzerooffsets = 0;
+  checkvaroffsetstmt (sp, mp);
+
+  if (numoffsets == 0 || theoffset == BadOffset || numoffsets <= numzerooffsets * 3)
+    return 0;
   else
+    return theoffset;
+  }
+//}}}
+//}}}
+
+//{{{
+Expr* initfilevar (Expr *ex) {
+
+  Expr *ex2;
+  Meaning *mp;
+  char *name;
+
+  if (ex->val.type->kind == TK_BIGFILE) {
+    ex2 = copyexpr (ex);
+    if (ex->kind == EK_VAR &&
+        (mp = (Meaning *)ex->val.i)->kind == MK_VAR &&
+        mp->ctx->kind != MK_FUNCTION &&
+        !is_std_file(ex) &&
+        literalfilesflag > 0 &&
+        (literalfilesflag == 1 || strlist_cifind (literalfiles, mp->name)))
+      name = mp->name;
+    else
       name = "";
-  return makeexpr_comma(makeexpr_assign(filebasename(ex),
-                makeexpr_nil()),
-            makeexpr_assign(makeexpr_dotq(ex2, "name",
-                  tp_str255),
-                makeexpr_string(name)));
-    } else {
-  return makeexpr_assign(ex, makeexpr_nil());
+    return makeexpr_comma (makeexpr_assign (filebasename (ex), makeexpr_nil()),
+                           makeexpr_assign (makeexpr_dotq (ex2, "name", tp_str255),
+                           makeexpr_string (name)));
     }
-}
+  else
+    return makeexpr_assign(ex, makeexpr_nil());
+  }
 //}}}
 //{{{
 void initfilevars (mp, sppp, exbase)
@@ -4184,179 +4184,188 @@ Static Stmt* findinittab[FINDINITMAX];
 Static int findinitstep[FINDINITMAX];
 Static int findinitokay;
 //{{{
-Static void findinitsexpr (ex)
-Expr *ex;
-{
-    int i;
+Static void findinitsexpr (Expr *ex) {
 
-    for (i = 0; i < ex->nargs; i++)
-  findinitsexpr(ex->args[i]);
-    if (ex->kind == EK_VAR && ((Meaning *)ex->val.i)->kind == MK_VAR)
-  ((Meaning *)ex->val.i)->fakeparam = 1;
-}
-//}}}
-//{{{
-Static int findinitscheckexpr (ex, mp)
-Expr *ex;
-Meaning *mp;
-{
-    int i;
+  int i;
+  for (i = 0; i < ex->nargs; i++)
+    findinitsexpr(ex->args[i]);
 
-    if (ex->kind == EK_VAR && (Meaning *)ex->val.i == mp)
-  return 1;
-    for (i = 0; i < ex->nargs; i++) {
-  if (findinitscheckexpr(ex->args[i], mp))
-      return 1;
-    }
-    return 0;
-}
-//}}}
-//{{{
-Static int findinitscheckstmt (sp, mp)
-Stmt *sp;
-Meaning *mp;
-{
-    while (sp) {
-  if (sp->exp1 && findinitscheckexpr(sp->exp1, mp))
-      return 1;
-  if (sp->exp2 && findinitscheckexpr(sp->exp2, mp))
-      return 1;
-  if (sp->exp3 && findinitscheckexpr(sp->exp3, mp))
-      return 1;
-  if (sp->stm1 && findinitscheckstmt(sp->stm1, mp))
-      return 1;
-  if (sp->stm2 && findinitscheckstmt(sp->stm2, mp))
-      return 1;
-  sp = sp->next;
-    }
-    return 0;
-}
-//}}}
-//{{{
-Static int anygotos (sp)
-Stmt *sp;
-{
-    while (sp) {
-  if (sp->kind == SK_GOTO)
-      return 1;
-  if (anygotos(sp->stm1) || anygotos(sp->stm2))
-      return 1;
-  sp = sp->next;
-    }
-    return 0;
-}
-
-//}}}
-//{{{
-Static void findinits (sp, depth, okay)
-Stmt *sp;
-int depth, okay;
-{
-    Meaning *mp;
-    Expr *ex;
-    Stmt *sprev = NULL;
-    int i, sofar = 1;
-
-    if (depth == FINDINITMAX)
-  findinitokay = 0;
-    while (sp) {
-  if (!findinitokay)
-      return;
-  findinittab[depth] = sp;
-  findinitstep[depth] = 0;
-  sofar--;
-  switch (sp->kind) {
-
-    case SK_ASSIGN:
-    case SK_FOR:
-      if (sp->exp1 && sp->exp1->kind == EK_ASSIGN &&
-    sp->exp1->args[0]->kind == EK_VAR &&
-    (sp->kind == SK_ASSIGN || useinits > 2)) {
-    mp = (Meaning *)sp->exp1->args[0]->val.i;
-    findinitsexpr(sp->exp1->args[1]);
-    if (mp->kind == MK_VAR && mp->ctx == curctx &&
-        !mp->fakeparam && !mp->varstructflag && !mp->constdefn &&
-        !mp->isforward && !mp->isfunction) {
-        for (i = 0; i < depth; i++) {
-      if (findinitscheckstmt(findinittab[i]->next, mp))
-          break;
-      if (findinitstep[i] == 0 &&
-          findinitscheckstmt(findinittab[i]->stm2, mp))
-          break;
-        }
-        if (i == depth) {
-      mp->fakeparam = 1;
-      if (depth == 0 && sp->kind == SK_ASSIGN &&
-          sprev && !mp->wasdeclared &&
-          (isconstantexpr(sp->exp1->args[1]) ||
-           (sp->exp1->args[1]->kind == EK_VAR &&
-            sofar >= 0 && mp->type->kind != TK_RECORD &&
-            ((Meaning *)sp->exp1->args[1]->val.i)->kind == MK_PARAM)) &&
-          (useinits < 3 || tinyexpr(sp->exp1->args[1]))) {
-          mp->constdefn = sp->exp1->args[1];
-          sprev->next = sp->next;
-          sp = sprev;
-          sofar++;
-      } else if (!okay || useinits < 2 ||
-           (useinits < 3 &&
-            (sofar < 0 || depth > 0 ||
-             mp->ctx->kind == MK_MODULE ||
-             mp->ctx->varstructflag))) {
-          mp->wasdeclared = 0;
-      } else {
-          mp->wasdeclared = 1;
-          sp->doinit = 1;
-          sofar++;
-      }
-        } else if (useinits >= 4 && !anygotos(sp)) {
-      ex = sp->exp1->args[0];
-      flowrecord = 0;
-      for ( ; i < depth; i++) {
-          if (checkelims(findinittab[i]->next, ex, 0, 0))
-        break;
-          if (findinitstep[i] == 0 &&
-        checkelims(findinittab[i]->stm2, ex, 0, 0))
-        break;
-          if (findinitstep[i] == 1 &&
-        checkelims(findinittab[i]->stm1, ex, 0, 0))
-        break;
-      }
-      if (i == depth) {
-          if (!okay) {
-        mp->wasdeclared = 0;
-          } else {
-        sp->doinit = 1;
-        mp->fakeparam = 1;
-        mp->wasdeclared = 1;
-        findinits(sp->next, depth, 1);
-        mp->fakeparam = 0;
-        return;
-          }
-      }
-        }
-    }
-      }
-      break;
-
-    case SK_HEADER:
-      sofar++;
-      break;
-
-    default:
-      break;
-
+  if (ex->kind == EK_VAR && ((Meaning *)ex->val.i)->kind == MK_VAR)
+    ((Meaning *)ex->val.i)->fakeparam = 1;
   }
-  if (sp->exp1) findinitsexpr(sp->exp1);
-  if (sp->exp2) findinitsexpr(sp->exp2);
-  if (sp->exp3) findinitsexpr(sp->exp3);
-  findinits(sp->stm1, depth+1, (sp->kind != SK_CASELABEL));
-  findinitstep[depth] = 1;
-  findinits(sp->stm2, depth+1, 1);
-  sprev = sp;
-  sp = sp->next;
-    }
-}
+//}}}
+//{{{
+Static int findinitscheckexpr (Expr *ex, Meaning *mp) {
 
+  if (ex->kind == EK_VAR && (Meaning *)ex->val.i == mp)
+    return 1;
+
+  int i;
+  for (i = 0; i < ex->nargs; i++) {
+    if (findinitscheckexpr(ex->args[i], mp))
+      return 1;
+    }
+
+  return 0;
+  }
+//}}}
+//{{{
+Static int findinitscheckstmt (Stmt *sp, Meaning *mp) {
+
+  while (sp) {
+    if (sp->exp1 && findinitscheckexpr(sp->exp1, mp))
+      return 1;
+    if (sp->exp2 && findinitscheckexpr(sp->exp2, mp))
+      return 1;
+    if (sp->exp3 && findinitscheckexpr(sp->exp3, mp))
+      return 1;
+    if (sp->stm1 && findinitscheckstmt(sp->stm1, mp))
+      return 1;
+    if (sp->stm2 && findinitscheckstmt(sp->stm2, mp))
+      return 1;
+    sp = sp->next;
+    }
+
+  return 0;
+  }
+//}}}
+//{{{
+Static int anygotos (Stmt *sp) {
+
+  while (sp) {
+    if (sp->kind == SK_GOTO)
+      return 1;
+
+    if (anygotos(sp->stm1) || anygotos(sp->stm2))
+      return 1;
+
+    sp = sp->next;
+    }
+
+  return 0;
+  }
+//}}}
+//{{{
+Static void findinits (Stmt *sp, int depth, int okay) {
+
+  Meaning *mp;
+  Expr *ex;
+  Stmt *sprev = NULL;
+  int i, sofar = 1;
+
+  if (depth == FINDINITMAX)
+    findinitokay = 0;
+
+  while (sp) {
+    if (!findinitokay)
+      return;
+
+    findinittab[depth] = sp;
+    findinitstep[depth] = 0;
+    sofar--;
+
+    switch (sp->kind) {
+      case SK_ASSIGN:
+      //{{{
+      case SK_FOR:
+        if (sp->exp1 && sp->exp1->kind == EK_ASSIGN &&
+            sp->exp1->args[0]->kind == EK_VAR &&
+            (sp->kind == SK_ASSIGN || useinits > 2)) {
+          mp = (Meaning*)sp->exp1->args[0]->val.i;
+
+          findinitsexpr (sp->exp1->args[1]);
+          if (mp->kind == MK_VAR && mp->ctx == curctx &&
+              !mp->fakeparam && !mp->varstructflag && !mp->constdefn &&
+              !mp->isforward && !mp->isfunction) {
+            for (i = 0; i < depth; i++) {
+              if (findinitscheckstmt(findinittab[i]->next, mp))
+                break;
+              if (findinitstep[i] == 0 && findinitscheckstmt(findinittab[i]->stm2, mp))
+                break;
+              }
+
+            if (i == depth) {
+              mp->fakeparam = 1;
+              if (depth == 0 && sp->kind == SK_ASSIGN &&
+                  sprev && !mp->wasdeclared &&
+                  (isconstantexpr(sp->exp1->args[1]) ||
+                  (sp->exp1->args[1]->kind == EK_VAR &&
+                  sofar >= 0 && mp->type->kind != TK_RECORD &&
+                  ((Meaning *)sp->exp1->args[1]->val.i)->kind == MK_PARAM)) &&
+                (useinits < 3 || tinyexpr(sp->exp1->args[1]))) {
+                mp->constdefn = sp->exp1->args[1];
+                sprev->next = sp->next;
+                sp = sprev;
+                sofar++;
+                }
+              else if (!okay || useinits < 2 ||
+                       (useinits < 3 && (sofar < 0 || depth > 0 ||
+                       mp->ctx->kind == MK_MODULE || mp->ctx->varstructflag))) {
+                mp->wasdeclared = 0;
+                }
+              else {
+                mp->wasdeclared = 1;
+                sp->doinit = 1;
+                sofar++;
+                }
+              }
+
+            else if (useinits >= 4 && !anygotos(sp)) {
+              ex = sp->exp1->args[0];
+              flowrecord = 0;
+              for ( ; i < depth; i++) {
+                if (checkelims(findinittab[i]->next, ex, 0, 0))
+                  break;
+                if (findinitstep[i] == 0 && checkelims(findinittab[i]->stm2, ex, 0, 0))
+                  break;
+                if (findinitstep[i] == 1 && checkelims(findinittab[i]->stm1, ex, 0, 0))
+                  break;
+                }
+
+              if (i == depth) {
+                if (!okay) {
+                  mp->wasdeclared = 0;
+                  }
+                else {
+                  sp->doinit = 1;
+                  mp->fakeparam = 1;
+                  mp->wasdeclared = 1;
+                  findinits(sp->next, depth, 1);
+                  mp->fakeparam = 0;
+                  return;
+                  }
+                }
+              }
+            }
+          }
+        break;
+      //}}}
+      //{{{
+      case SK_HEADER:
+        sofar++;
+        break;
+      //}}}
+      //{{{
+      default:
+        break;
+      //}}}
+      }
+
+    if (sp->exp1)
+      findinitsexpr(sp->exp1);
+    if (sp->exp2)
+      findinitsexpr(sp->exp2);
+    if (sp->exp3)
+      findinitsexpr(sp->exp3);
+
+    findinits(sp->stm1, depth+1, (sp->kind != SK_CASELABEL));
+    findinitstep[depth] = 1;
+    findinits(sp->stm2, depth+1, 1);
+
+    sprev = sp;
+    sp = sp->next;
+    }
+  }
 //}}}
 //{{{
 Static Stmt* p_body() {
@@ -4520,9 +4529,8 @@ Static Stmt* p_body() {
 
 #define checkWord()  if (anywords) output(" "); anywords = 1
 //{{{
-Static void out_function (func)
-Meaning *func;
-{
+Static void out_function (Meaning *func) {
+
   Meaning *mp;
   Symbol *sym;
   int opts, anywords, spacing, saveindent;
@@ -4683,131 +4691,131 @@ Static void scanfwdparams (Meaning *mp) {
     sym->flags |= FWDPARAM;
     mp = mp->xnext;
     }
-}
+  }
 //}}}
 //{{{
-Static void out_include (name, quoted)
-char *name;
-int quoted;
-{
+Static void out_include (char *name, int quoted) {
+
   if (*name == '"' || *name == '<')
     output (format_s ("#include %s\n", name));
-  else if (quoted)
+   else if (quoted)
     output (format_s ("#include \"%s\"\n", name));
   else
     output (format_s ("#include <%s>\n", name));
-}
+  }
 //}}}
 //{{{
-Static void cleanheadername (dest, name)
-char *dest, *name;
-{
-    char *cp;
-    int len;
+Static void cleanheadername (char *dest, char *name) {
 
-    if (*name == '<' || *name == '"')
-  name++;
-    cp = my_strrchr(name, '/');
-    if (cp)
-  cp++;
-    else
-  cp = name;
-    strcpy(dest, cp);
-    len = strlen(dest);
-    if (dest[len-1] == '>' || dest[len-1] == '"')
-  dest[len-1] = 0;
-}
+  if (*name == '<' || *name == '"')
+    name++;
+
+  char* cp = my_strrchr(name, '/');
+  if (cp)
+    cp++;
+  else
+    cp = name;
+
+  strcpy (dest, cp);
+
+  int len = strlen(dest);
+  if (dest[len-1] == '>' || dest[len-1] == '"')
+    dest[len-1] = 0;
+  }
 //}}}
 //{{{
-Static int tryimport (sym, fname, ext, need)
-Symbol *sym;
-char *fname, *ext;
-int need;
-{
-    int found = 0;
-    Meaning *savectx, *savectxlast;
+Static int tryimport (Symbol *sym, char *fname, char *ext, int need) {
 
-    savectx = curctx;
-    savectxlast = curctxlast;
-    curctx = nullctx;
-    curctxlast = curctx->cbase;
-    while (curctxlast && curctxlast->cnext)
-        curctxlast = curctxlast->cnext;
-    if (p_search(fname, ext, need)) {
-        curtokmeaning = sym->mbase;
-        while (curtokmeaning && !curtokmeaning->isactive)
-            curtokmeaning = curtokmeaning->snext;
-        if (curtokmeaning)
-            found = 1;
+  int found = 0;
+  Meaning *savectx, *savectxlast;
+
+  savectx = curctx;
+  savectxlast = curctxlast;
+  curctx = nullctx;
+
+  curctxlast = curctx->cbase;
+  while (curctxlast && curctxlast->cnext)
+    curctxlast = curctxlast->cnext;
+
+  if (p_search(fname, ext, need)) {
+    curtokmeaning = sym->mbase;
+    while (curtokmeaning && !curtokmeaning->isactive)
+      curtokmeaning = curtokmeaning->snext;
+    if (curtokmeaning)
+      found = 1;
     }
-    curctx = savectx;
-    curctxlast = savectxlast;
-    return found;
-}
+
+  curctx = savectx;
+  curctxlast = savectxlast;
+  return found;
+  }
 //}}}
 //{{{
-void do_include (blkind)
-Token blkind;
-{
-    FILE *oldfile = outf;
-    int savelnum = outf_lnum;
-    char fname[256];
+void do_include (Token blkind) {
 
-    outsection(majorspace);
-    flushcomments(NULL, -1, -1);
-    strcpy(fname, format_s(includeoutfnfmt, curtokbuf));
-    if (!strcmp(fname, codefname)) {
-        warning("Include file name conflict! [272]");
-        badinclude();
-        return;
+  int savelnum = outf_lnum;
+
+  outsection (majorspace);
+  flushcomments (NULL, -1, -1);
+
+  char fname[256];
+  strcpy (fname, format_s (includeoutfnfmt, curtokbuf));
+  if (!strcmp (fname, codefname)) {
+    warning ("Include file name conflict! [272]");
+    badinclude();
+    return;
     }
-    flush_outfilebuf();
-    outf = fopen(fname, "w");
-    if (!outf) {
-        outf = oldfile;
-        perror(fname);
-        badinclude();
-        return;
-    }
-    outf_lnum = 1;
-    if (nobanner)
-      output("\n");
-    else
-      output(format_ss("\n/* Include file %s from %s */\n\n", fname, codefname));
-    if (blkind == TOK_END)
-        gettok();
-    else
-        curtok = blkind;
-    p_block(blockkind);
-    if (nobanner)
-      output("\n");
-    else
-      output("\n\n/* End. */\n\n");
-    flush_outfilebuf();
-    fclose(outf);
+  flush_outfilebuf();
+
+  FILE* oldfile = fopen (fname, "w");
+  if (!outf) {
     outf = oldfile;
-    outf_lnum = savelnum;
-    if (curtok != TOK_EOF) {
-        warning("Junk at end of include file ignored [273]");
+    perror (fname);
+    badinclude();
+    return;
     }
-    outsection(majorspace);
-    if (*includefnfmt)
-      out_include(format_s(includefnfmt, fname), 1);
-    else
-      out_include(fname, 1);
-    outsection(majorspace);
-    pop_input();
-    getaline();
+
+  outf_lnum = 1;
+  if (nobanner)
+    output ("\n");
+  else
+    output (format_ss("\n/* Include file %s from %s */\n\n", fname, codefname));
+  if (blkind == TOK_END)
     gettok();
-}
+  else
+    curtok = blkind;
+
+  p_block (blockkind);
+  if (nobanner)
+    output ("\n");
+  else
+    output ("\n\n/* End. */\n\n");
+  flush_outfilebuf();
+  fclose (outf);
+
+  outf = oldfile;
+  outf_lnum = savelnum;
+  if (curtok != TOK_EOF) {
+    warning("Junk at end of include file ignored [273]");
+   }
+  outsection (majorspace);
+  if (*includefnfmt)
+    out_include (format_s(includefnfmt, fname), 1);
+  else
+    out_include (fname, 1);
+  outsection (majorspace);
+
+  pop_input();
+  getaline();
+  gettok();
+  }
 //}}}
 
 //{{{
 Static void skipunitheader() {
 
-  if (curtok == TOK_LPAR || curtok == TOK_LBR) {
+  if (curtok == TOK_LPAR || curtok == TOK_LBR)
     skipparens();
-    }
   }
 //}}}
 //{{{
@@ -4831,9 +4839,6 @@ Static void skiptomodule() {
 //{{{
 Static void p_moduleinit (Meaning* mod) {
 
-  Stmt *sp;
-  Strlist *sl;
-
   if (curtok != TOK_BEGIN && curtok != TOK_END) {
     wexpecttok (TOK_END);
     skiptotoken2 (TOK_BEGIN, TOK_END);
@@ -4841,7 +4846,8 @@ Static void p_moduleinit (Meaning* mod) {
 
   if (curtok == TOK_BEGIN || initialcalls) {
     echoprocname (mod);
-    sp = p_body();
+
+    Stmt* sp = p_body();
     strlist_mix (&mod->comments, curcomments);
     curcomments = NULL;
 
@@ -4860,7 +4866,7 @@ Static void p_moduleinit (Meaning* mod) {
     free_stmt (sp);
 
     /* The following must come after out_block! */
-    sl = strlist_append (&initialcalls, format_s("%s()", format_s (name_UNITINIT, mod->name)));
+    Strlist* sl = strlist_append (&initialcalls, format_s("%s()", format_s (name_UNITINIT, mod->name)));
     sl->value = 1;
     }
   else
@@ -5009,9 +5015,11 @@ Static int p_module (int ignoreit, int isdefn) {
     checkmodulewords();
     while (curtok == TOK_IMPORT || curtok == TOK_FROM)
       p_import (0);
+
     checkmodulewords();
     if (curtok == TOK_EXPORT)
       gettok();
+
     checkmodulewords();
     while (curtok == TOK_IMPORT || curtok == TOK_FROM)
       p_import (0);
@@ -5026,6 +5034,7 @@ Static int p_module (int ignoreit, int isdefn) {
     p_block (TOK_EXPORT);
     flushcomments (NULL, -1, -1);
     setup_module (mod->sym->name, 1);
+
     outsection (majorspace);
     if (usevextern)
       output ("#undef vextern\n");
@@ -5192,7 +5201,8 @@ Static void p_function (int isfunc) {
     skiptotoken (TOK_IDENT);
 
   if (curtokmeaning && curtokmeaning->kind == MK_TYPE &&
-      curtokmeaning->type->kind == TK_RECORD && curtokmeaning->type->issigned) {
+      curtokmeaning->type->kind == TK_RECORD &&
+      curtokmeaning->type->issigned) {
     //{{{  mk_type
     Meaning *cls, *mp;
     cls = curtokmeaning;
@@ -5220,7 +5230,8 @@ Static void p_function (int isfunc) {
     type = func->type;
     }
     //}}}
-  else if (curtokmeaning && curtokmeaning->ctx == curctx && curtokmeaning->kind == MK_FUNCTION) {
+  else if (curtokmeaning && curtokmeaning->ctx == curctx &&
+           curtokmeaning->kind == MK_FUNCTION) {
     //{{{  mk_function
     func = curtokmeaning;
     if (!func->isforward || func->val.i)
@@ -5260,6 +5271,7 @@ Static void p_function (int isfunc) {
     wneedtok (TOK_SEMI);
     }
     //}}}
+
   if (blockkind == TOK_IMPORT) {
     //{{{  import
     strlist_empty (&curcomments);
@@ -5561,7 +5573,8 @@ int p_search (char* fname, char* ext, int need) {
   savecopysource = copysource;
   copysource = 0;
 
-  outerimportmark = numimports;   /*obsolete*/
+  // obsolete
+  outerimportmark = numimports;
   importmark = push_imports();
 
   clearprogress();

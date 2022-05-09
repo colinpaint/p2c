@@ -43,7 +43,7 @@ void setup_dir()
 
 #define _setup(a,b)
 //{{{
-void setup_module (char *name, int defn) {
+void setup_module (char* name, int defn) {
 
   if (!strcicmp(name, "SYSTEM"))
     decl_builtins();
@@ -52,19 +52,19 @@ void setup_module (char *name, int defn) {
 
 void fix_parameters() {}
 //{{{
-Stmt* fix_statement (Stmt *sp) {
+Stmt* fix_statement (Stmt* sp) {
 
   return sp;
   }
 //}}}
 //{{{
-Expr* fix_expression (Expr *ex, int env) {
+Expr* fix_expression (Expr* ex, int env) {
 
   return ex;
   }
 //}}}
 //{{{
-Expr* fix_bicall (Expr *ex, int env) {
+Expr* fix_bicall (Expr* ex, int env) {
 
   return NULL;
   }
@@ -74,7 +74,7 @@ Expr* fix_bicall (Expr *ex, int env) {
 // This function returns nonzero if the built-in function "name"
 //  should be written "if (f(x))" rather than "if (f(x) != 0)" when used as a boolean
 //  The call does *not* necessarily have //   to return a 1-or-0 value.
-int boolean_bicall (char *name) {
+int boolean_bicall (char* name) {
 
   return (!strcmp(name, "strcmp") ||
           !strcmp(name, "strncmp") ||
@@ -89,7 +89,7 @@ int boolean_bicall (char *name) {
 //  if bit 1<<i of the return value of this function is set, and
 //  the i'th parameter is a pointer to an object, then the function
 //  guarantees not to change that object.
-unsigned int safemask_bicall (char *name) {
+unsigned int safemask_bicall (char* name) {
 
   Symbol*sp = findsymbol_opt(name);
   if (sp) {
@@ -103,7 +103,7 @@ unsigned int safemask_bicall (char *name) {
     return 1;
   if (!strcmp (name, "memcpy") || !strcmp(name, "memmove"))
     return 2;
-  if (!strcmp (name, "memcmp")) 
+  if (!strcmp (name, "memcmp"))
     return 3;
   if (!strcmp (name, "sprintf") || !strcmp(name, "fprintf"))
     return ~1;
@@ -116,7 +116,7 @@ unsigned int safemask_bicall (char *name) {
 //{{{
 // The function "name" has side effects that could affect other variables
 //   in the program besides those that are explicitly mentioned.
-int sideeffects_bicall (char *name) {
+int sideeffects_bicall (char* name) {
 
   return 0;
   }

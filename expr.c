@@ -374,10 +374,9 @@ long *smin, *smax;
 //}}}
 
 //{{{
-void freeexpr (ex)
-register Expr *ex;
-{
-  register int i;
+void freeexpr (Expr *ex) {
+
+  int i;
   if (ex) {
     for (i = 0; i < ex->nargs; i++)
       freeexpr (ex->args[i]);
@@ -401,23 +400,20 @@ register Expr *ex;
 
     FREE(ex);
     }
-}
+  }
 //}}}
 //{{{
-Expr* makeexpr (kind, n)
-enum exprkind kind;
-int n;
-{
-    Expr *ex;
+Expr* makeexpr (enum exprkind kind, int n) {
 
-    ex = ALLOCV(sizeof(Expr) + (n-1)*sizeof(Expr *), Expr, exprs);
-    ex->val.i = 0;
-    ex->val.s = NULL;
-    ex->kind = kind;
-    ex->nargs = n;
-    return ex;
-}
+  Expr *ex;
 
+  ex = ALLOCV(sizeof(Expr) + (n-1)*sizeof(Expr *), Expr, exprs);
+  ex->val.i = 0;
+  ex->val.s = NULL;
+  ex->kind = kind;
+  ex->nargs = n;
+  return ex;
+  }
 //}}}
 //{{{
 Expr* makeexpr_un (kind, type, arg1)
@@ -2065,7 +2061,7 @@ enum exprkind kind;
 
 int chararith = 0;
 //{{{
-Expr* makeexpr_plus(a, b)
+Expr* makeexpr_plus (a, b)
 Expr *a, *b;
 {
     int i, j, k, castdouble = 0;
@@ -2186,7 +2182,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_minus(a, b)
+Expr* makeexpr_minus (a, b)
 Expr *a, *b;
 {
     int okneg;
@@ -2204,7 +2200,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_inc(a, b)
+Expr* makeexpr_inc (a, b)
 Expr *a, *b;
 {
     Type *type;
@@ -2219,7 +2215,7 @@ Expr *a, *b;
 //}}}
 //{{{
 /* Apply the distributive law for a sum of products */
-Expr* distribute_plus(ex)
+Expr* distribute_plus (ex)
 Expr *ex;
 {
     int i, j, icom;
@@ -2303,7 +2299,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* makeexpr_times(a, b)
+Expr* makeexpr_times (a, b)
 Expr *a, *b;
 {
     int i, n, castdouble = 0;
@@ -2377,7 +2373,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_sqr(ex, cube)
+Expr* makeexpr_sqr (ex, cube)
 Expr *ex;
 int cube;
 {
@@ -2401,7 +2397,7 @@ int cube;
 }
 //}}}
 //{{{
-Expr* makeexpr_divide(a, b)
+Expr* makeexpr_divide (a, b)
 Expr *a, *b;
 {
     Expr *ex;
@@ -2444,7 +2440,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-int gcd(a, b)
+int gcd (a, b)
 int a, b;
 {
     if (a < 0) a = -a;
@@ -2471,7 +2467,7 @@ int mask;
 }
 //}}}
 //{{{
-int possiblesigns(ex)
+int possiblesigns (ex)
 Expr *ex;
 {
     Value val;
@@ -2556,7 +2552,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* dodivmod(funcname, ekind, a, b)
+Expr* dodivmod (funcname, ekind, a, b)
 char *funcname;
 enum exprkind ekind;
 Expr *a, *b;
@@ -2599,7 +2595,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_div(a, b)
+Expr* makeexpr_div (a, b)
 Expr *a, *b;
 {
     Meaning *mp;
@@ -2670,7 +2666,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_mod(a, b)
+Expr* makeexpr_mod (a, b)
 Expr *a, *b;
 {
     Meaning *mp;
@@ -2704,7 +2700,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_rem(a, b)
+Expr* makeexpr_rem (a, b)
 Expr *a, *b;
 {
     if (!(possiblesigns(a) & 1) && !(possiblesigns(b) & 1))
@@ -2717,7 +2713,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-int expr_not_cost(a)
+int expr_not_cost (a)
 Expr *a;
 {
     int i, c;
@@ -2757,7 +2753,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr* makeexpr_not(a)
+Expr* makeexpr_not (a)
 Expr *a;
 {
     Expr *ex;
@@ -2829,7 +2825,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Type* mixsets(ep1, ep2)
+Type* mixsets (ep1, ep2)
 Expr **ep1, **ep2;
 {
     Expr *ex1 = *ep1, *ex2 = *ep2;
@@ -2875,7 +2871,7 @@ Expr **ep1, **ep2;
 }
 //}}}
 //{{{
-Meaning *istempprocptr(ex)
+Meaning *istempprocptr (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -2903,7 +2899,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* makeexpr_stringify(ex)
+Expr* makeexpr_stringify (ex)
 Expr *ex;
 {
     ex = makeexpr_stringcast(ex);
@@ -2913,7 +2909,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* makeexpr_rel(rel, a, b)
+Expr* makeexpr_rel (rel, a, b)
 enum exprkind rel;
 Expr *a, *b;
 {
@@ -3156,7 +3152,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_and(a, b)
+Expr* makeexpr_and (a, b)
 Expr *a, *b;
 {
     Expr *ex, **exp, *low;
@@ -3198,7 +3194,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_or(a, b)
+Expr* makeexpr_or (a, b)
 Expr *a, *b;
 {
     Expr *ex, **exp, *low;
@@ -3241,7 +3237,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_range(ex, exlow, exhigh, higheq)
+Expr* makeexpr_range (ex, exlow, exhigh, higheq)
 Expr *ex, *exlow, *exhigh;
 int higheq;
 {
@@ -3258,7 +3254,7 @@ int higheq;
 }
 //}}}
 //{{{
-Expr* makeexpr_cond(c, a, b)
+Expr* makeexpr_cond (c, a, b)
 Expr *c, *a, *b;
 {
     Expr *ex;
@@ -3273,7 +3269,7 @@ Expr *c, *a, *b;
 }
 //}}}
 //{{{
-int expr_is_lvalue(ex)
+int expr_is_lvalue (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -3306,7 +3302,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int expr_has_address(ex)
+int expr_has_address (ex)
 Expr *ex;
 {
     if (ex->kind == EK_DOT &&
@@ -3316,7 +3312,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* checknil(ex)
+Expr* checknil (ex)
 Expr *ex;
 {
     if (nilcheck == 1) {
@@ -3332,7 +3328,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int checkvarinlists(yes, no, def, mp)
+int checkvarinlists (yes, no, def, mp)
 Strlist *yes, *no;
 int def;
 Meaning *mp;
@@ -3364,7 +3360,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-void requirefilebuffer(ex)
+void requirefilebuffer (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -3391,7 +3387,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* makeexpr_hat(a, check)
+Expr* makeexpr_hat (a, check)
 Expr *a;
 int check;
 {
@@ -3476,7 +3472,7 @@ int check;
 }
 //}}}
 //{{{
-Expr* un_sign_extend(a)
+Expr* un_sign_extend (a)
 Expr *a;
 {
     if (a->kind == EK_BICALL &&
@@ -3487,7 +3483,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr* makeexpr_addr(a)
+Expr* makeexpr_addr (a)
 Expr *a;
 {
     Expr *ex;
@@ -3569,7 +3565,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr* makeexpr_addrstr(a)
+Expr* makeexpr_addrstr (a)
 Expr *a;
 {
     if (debug>2) { fprintf(outf,"makeexpr_addrstr("); dumpexpr(a); fprintf(outf,")\n"); }
@@ -3579,7 +3575,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr* makeexpr_addrf(a)
+Expr* makeexpr_addrf (a)
 Expr *a;
 {
     Meaning *mp, *tvar;
@@ -3605,7 +3601,7 @@ Expr *a;
 }
 //}}}
 //{{{
-Expr* makeexpr_index(a, b, offset)
+Expr* makeexpr_index (a, b, offset)
 Expr *a, *b, *offset;
 {
     Type *indextype, *btype;
@@ -3629,7 +3625,7 @@ Expr *a, *b, *offset;
 }
 //}}}
 //{{{
-Expr* makeexpr_type(type)
+Expr* makeexpr_type (type)
 Type *type;
 {
     Expr *ex;
@@ -3640,7 +3636,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr* makeexpr_sizeof(ex, incskipped)
+Expr* makeexpr_sizeof (ex, incskipped)
 Expr *ex;
 int incskipped;
 {
@@ -3710,7 +3706,7 @@ int incskipped;
 /* Compute a measure of how fast or slow the expression is likely to be.
    0 is a constant, 1 is a variable, extra points added per "operation". */
 
-int exprspeed(ex)
+int exprspeed (ex)
 Expr *ex;
 {
     Meaning *mp, *mp2;
@@ -3789,7 +3785,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int noargdependencies(ex, vars)
+int noargdependencies (ex, vars)
 Expr *ex;
 int vars;
 {
@@ -3803,7 +3799,7 @@ int vars;
 }
 //}}}
 //{{{
-int nodependencies(ex, vars)
+int nodependencies (ex, vars)
 Expr *ex;
 int vars;   /* 1 if explicit dependencies on vars count as dependencies */
 {           /* 2 if global but not local vars count as dependencies */
@@ -3849,7 +3845,7 @@ int vars;   /* 1 if explicit dependencies on vars count as dependencies */
 }
 //}}}
 //{{{
-int exprdependsvar(ex, mp)
+int exprdependsvar (ex, mp)
 Expr *ex;
 Meaning *mp;
 {
@@ -3890,7 +3886,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-int exprdepends(ex, ex2)
+int exprdepends (ex, ex2)
 Expr *ex, *ex2;     /* Expression ex somehow depends on value of ex2 */
 {
     switch (ex2->kind) {
@@ -3912,7 +3908,7 @@ Expr *ex, *ex2;     /* Expression ex somehow depends on value of ex2 */
 }
 //}}}
 //{{{
-int nosideeffects_func(ex)
+int nosideeffects_func (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -3935,7 +3931,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int deterministic_func(ex)
+int deterministic_func (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -3958,7 +3954,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int noargsideeffects(ex, mode)
+int noargsideeffects (ex, mode)
 Expr *ex;
 int mode;
 {
@@ -3974,7 +3970,7 @@ int mode;
 //{{{
 /* mode=0: liberal about bicall's: safe unless sideeffects_bicall() */
 /* mode=1: conservative about bicall's: must be explicitly NOSIDEEFF */
-int nosideeffects(ex, mode)
+int nosideeffects (ex, mode)
 Expr *ex;
 int mode;
 {
@@ -4005,7 +4001,7 @@ int mode;
 }
 //}}}
 //{{{
-int exproccurs(ex, ex2)
+int exproccurs (ex, ex2)
 Expr *ex, *ex2;
 {
     int i, count = 0;
@@ -4019,7 +4015,7 @@ Expr *ex, *ex2;
 }
 //}}}
 //{{{
-Expr *singlevar(ex)
+Expr *singlevar (ex)
 Expr *ex;
 {
     if (debug>2) { fprintf(outf,"singlevar("); dumpexpr(ex); fprintf(outf,")\n"); }
@@ -4050,7 +4046,7 @@ Expr *ex;
 /* Is "ex" a function which takes a return buffer pointer as its
    first argument, and returns a copy of that pointer? */
 
-int structuredfunc(ex)
+int structuredfunc (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -4076,7 +4072,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int strlapfunc(ex)
+int strlapfunc (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -4100,7 +4096,7 @@ Expr *ex;
 //}}}
 
 //{{{
-Meaning* istempvar(ex)
+Meaning* istempvar (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -4117,7 +4113,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Meaning* totempvar(ex)
+Meaning* totempvar (ex)
 Expr *ex;
 {
     while (structuredfunc(ex))
@@ -4126,7 +4122,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Meaning* isretvar(ex)
+Meaning* isretvar (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -4149,7 +4145,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* bumpstring(ex, index, offset)
+Expr* bumpstring (ex, index, offset)
 Expr *ex, *index;
 int offset;
 {
@@ -4167,7 +4163,7 @@ int offset;
 }
 //}}}
 //{{{
-long po2m1(n)
+long po2m1 (n)
 int n;
 {
     if (n == 32)
@@ -4179,7 +4175,7 @@ int n;
 }
 //}}}
 //{{{
-int isarithkind(kind)
+int isarithkind (kind)
 enum exprkind kind;
 {
     return (kind == EK_EQ || kind == EK_LT || kind == EK_GT ||
@@ -4193,7 +4189,7 @@ enum exprkind kind;
 }
 //}}}
 //{{{
-Expr* makeexpr_assign(a, b)
+Expr* makeexpr_assign (a, b)
 Expr *a, *b;
 {
     int i, j;
@@ -4556,7 +4552,7 @@ Expr *a, *b;
 }
 //}}}
 //{{{
-Expr* makeexpr_comma(a, b)
+Expr* makeexpr_comma (a, b)
 Expr *a, *b;
 {
     Type *type;
@@ -4573,7 +4569,7 @@ Expr *a, *b;
 //}}}
 
 //{{{
-int strmax(ex)
+int strmax (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -4614,7 +4610,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-int strhasnull(val)
+int strhasnull (val)
 Value val;
 {
     int i;
@@ -4627,7 +4623,7 @@ Value val;
 }
 //}}}
 //{{{
-int istempsprintf(ex)
+int istempsprintf (ex)
 Expr *ex;
 {
     return (ex->kind == EK_BICALL && !strcmp(ex->val.s, "sprintf") &&
@@ -4639,7 +4635,7 @@ Expr *ex;
 //}}}
 
 //{{{
-Expr* makeexpr_sprintfify(ex)
+Expr* makeexpr_sprintfify (ex)
 Expr *ex;
 {
     Meaning *tvar;
@@ -4707,7 +4703,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* makeexpr_unsprintfify(ex)
+Expr* makeexpr_unsprintfify (ex)
 Expr *ex;
 {
     char stringbuf[500];
@@ -4744,7 +4740,7 @@ Expr *ex;
 //{{{
 /* Returns >= 0 iff unsprintfify would return a string constant */
 
-int sprintflength(ex, allownulls)
+int sprintflength (ex, allownulls)
 Expr *ex;
 int allownulls;
 {
@@ -4773,7 +4769,7 @@ int allownulls;
 }
 //}}}
 //{{{
-Expr* makeexpr_concat(a, b, usesprintf)
+Expr* makeexpr_concat (a, b, usesprintf)
 Expr *a, *b;
 int usesprintf;
 {
@@ -4884,7 +4880,7 @@ int usesprintf;
 }
 //}}}
 //{{{
-Expr* cleansprintf(ex)
+Expr* cleansprintf (ex)
 Expr *ex;
 {
     int fidx, i, j, k, len, changed = 0;
@@ -4945,7 +4941,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* makeexpr_substring(vex, ex, exi, exj)
+Expr* makeexpr_substring (vex, ex, exi, exj)
 Expr *vex, *ex, *exi, *exj;
 {
     exi = makeexpr_unlongcast(exi);
@@ -4960,7 +4956,7 @@ Expr *vex, *ex, *exi, *exj;
 
 //}}}
 //{{{
-Expr* makeexpr_dot(ex, mp)
+Expr* makeexpr_dot (ex, mp)
 Expr *ex;
 Meaning *mp;
 {
@@ -5006,7 +5002,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Expr* makeexpr_dotq(ex, name, type)
+Expr* makeexpr_dotq (ex, name, type)
 Expr *ex;
 char *name;
 Type *type;
@@ -5017,7 +5013,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr* strmax_func(ex)
+Expr* strmax_func (ex)
 Expr *ex;
 {
     Meaning *mp;
@@ -5070,7 +5066,7 @@ Expr* makeexpr_nil()
 
 //}}}
 //{{{
-Expr* makeexpr_ctx(ctx)
+Expr* makeexpr_ctx (ctx)
 Meaning *ctx;
 {
     Expr *ex;
@@ -5082,7 +5078,7 @@ Meaning *ctx;
 }
 //}}}
 //{{{
-Expr* force_signed(ex)
+Expr* force_signed (ex)
 Expr *ex;
 {
     Type *tp;
@@ -5102,7 +5098,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr* force_unsigned(ex)
+Expr* force_unsigned (ex)
 Expr *ex;
 {
     Type *tp;
@@ -5124,7 +5120,7 @@ Expr *ex;
 
 #define CHECKSIZE(size) (((size) > 0 && (size)%charsize == 0) ? (size)/charsize : 0)
 //{{{
-long type_sizeof(type, pasc)
+long type_sizeof (type, pasc)
 Type *type;
 int pasc;
 {
@@ -5209,7 +5205,7 @@ int pasc;
 }
 //}}}
 //{{{
-Static Value eval_expr_either(ex, pasc)
+Static Value eval_expr_either (ex, pasc)
 Expr *ex;
 int pasc;
 {
@@ -5406,14 +5402,14 @@ int pasc;
 }
 //}}}
 //{{{
-Value eval_expr(ex)
+Value eval_expr (ex)
 Expr *ex;
 {
     return eval_expr_either(ex, 0);
 }
 //}}}
 //{{{
-Value eval_expr_consts(ex)
+Value eval_expr_consts (ex)
 Expr *ex;
 {
     Value val;
@@ -5426,14 +5422,14 @@ Expr *ex;
 }
 //}}}
 //{{{
-Value eval_expr_pasc(ex)
+Value eval_expr_pasc (ex)
 Expr *ex;
 {
     return eval_expr_either(ex, 1);
 }
 //}}}
 //{{{
-int expr_is_const(ex)
+int expr_is_const (ex)
 Expr *ex;
 {
     int i;
