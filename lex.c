@@ -23,7 +23,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 /* Define LEXDEBUG for a token trace */
 #define LEXDEBUG
 #define EOFMARK 1
-
+//{{{  static vars
 Static char dollar_flag, lex_initialized;
 Static int if_flag, if_skip;
 Static int commenting_flag;
@@ -35,6 +35,7 @@ Static Strlist *instrlist;
 Static char inbuf[300];
 Static char *oldinfname, *oldctxname;
 Static Strlist *endnotelist;
+//}}}
 
 #define INP_FILE     0
 #define INP_INCFILE  1
@@ -63,257 +64,264 @@ Static struct inprec {
 //}}}
 
 //{{{
-char* fixpascalname (name)
-char *name;
-{
-    char *cp, *cp2;
+char* fixpascalname (char* name) {
 
-    if (pascalsignif > 0) {
-        name = format_ds("%.*s", pascalsignif, name);
-        if (!pascalcasesens)
-            upc(name);
-  else if (pascalcasesens == 3)
-      lwc(name);
-    } else if (!pascalcasesens)
-        name = strupper(name);
+  char *cp, *cp2;
+
+  if (pascalsignif > 0) {
+    name = format_ds ("%.*s", pascalsignif, name);
+    if (!pascalcasesens)
+       upc (name);
     else if (pascalcasesens == 3)
-  name = strlower(name);
-    if (ignorenonalpha) {
-  for (cp = cp2 = name; *cp; cp++)
-      if (isalnum(*cp))
+      lwc (name);
+    } 
+  else if (!pascalcasesens)
+    name = strupper (name);
+  else if (pascalcasesens == 3)
+    name = strlower (name);
+
+  if (ignorenonalpha) {
+    for (cp = cp2 = name; *cp; cp++)
+      if (isalnum (*cp))
     *cp2++ = *cp;
     }
-    return name;
-}
-//}}}
-//{{{
-Static void makekeyword (name)
-char *name;
-{
-    Symbol *sym;
 
-    if (*name) {
-        sym = findsymbol(name);
-        sym->flags |= AVOIDNAME;
-    }
-}
+  return name;
+  }
 //}}}
 //{{{
-Static void makeglobword (name)
-char *name;
-{
-    Symbol *sym;
+Static void makekeyword (char *name) {
 
-    if (*name) {
-        sym = findsymbol(name);
-        sym->flags |= AVOIDGLOB;
+  Symbol* sym;
+  if (*name) {
+    sym = findsymbol (name);
+    sym->flags |= AVOIDNAME;
     }
-}
+  }
 //}}}
 //{{{
-Static void makekeywords()
-{
-    makekeyword("auto");
-    makekeyword("break");
-    makekeyword("char");
-    makekeyword("continue");
-    makekeyword("default");
-    makekeyword("defined");   /* is this one really necessary? */
-    makekeyword("double");
-    makekeyword("enum");
-    makekeyword("extern");
-    makekeyword("float");
-    makekeyword("int");
-    makekeyword("long");
-    makekeyword("noalias");
-    makekeyword("register");
-    makekeyword("return");
-    makekeyword("short");
-    makekeyword("signed");
-    makekeyword("sizeof");
-    makekeyword("static");
-    makekeyword("struct");
-    makekeyword("switch");
-    makekeyword("typedef");
-    makekeyword("union");
-    makekeyword("unsigned");
-    makekeyword("void");
-    makekeyword("volatile");
-    makekeyword("asm");
-    makekeyword("fortran");
-    makekeyword("entry");
-    makekeyword("pascal");
-    if (cplus != 0) {
-  makekeyword("catch");
-        makekeyword("class");
-        makekeyword("delete");
-        makekeyword("friend");
-        makekeyword("inline");
-        makekeyword("new");
-        makekeyword("operator");
-        makekeyword("overload");
-        makekeyword("private");
-        makekeyword("protected");
-        makekeyword("public");
-        makekeyword("template");
-        makekeyword("this");
-        makekeyword("throw");
-        makekeyword("try");
-        makekeyword("virtual");
-    }
-    makekeyword(name_UCHAR);
-    makekeyword(name_SCHAR);    /* any others? */
-    makekeyword(name_BOOLEAN);
-    makekeyword(name_PROCEDURE);
-    makekeyword(name_ESCAPE);
-    makekeyword(name_ESCIO);
-    makekeyword(name_CHKIO);
-    makekeyword(name_SETIO);
-    makeglobword("main");
-    makeglobword("vextern");     /* used in generated .h files */
-    makeglobword("argc");
-    makeglobword("argv");
-    makekeyword("TRY");
-    makekeyword("RECOVER");
-    makekeyword("RECOVER2");
-    makekeyword("ENDTRY");
-}
-//}}}
-//{{{
-Static Symbol* Pkeyword (name, tok)
-char *name;
-Token tok;
-{
-    Symbol *sp = NULL;
+Static void makeglobword (char *name) {
 
-    if (pascalcasesens != 2) {
-  sp = findsymbol(strlower(name));
-  sp->kwtok = tok;
+  Symbol* sym;
+  if (*name) {
+    sym = findsymbol (name);
+    sym->flags |= AVOIDGLOB;
     }
-    if (pascalcasesens != 3) {
-  sp = findsymbol(strupper(name));
-  sp->kwtok = tok;
-    }
-    return sp;
-}
+  }
 //}}}
 //{{{
-Static Symbol* Pkeywordposs (name, tok)
-char *name;
-Token tok;
-{
-    Symbol *sp = NULL;
+Static void makekeywords() {
 
-    if (pascalcasesens != 2) {
-  sp = findsymbol(strlower(name));
-  sp->kwtok = tok;
-  sp->flags |= KWPOSS;
+  makekeyword("auto");
+  makekeyword("break");
+  makekeyword("char");
+  makekeyword("continue");
+  makekeyword("default");
+  makekeyword("defined");   /* is this one really necessary? */
+  makekeyword("double");
+  makekeyword("enum");
+  makekeyword("extern");
+  makekeyword("float");
+  makekeyword("int");
+  makekeyword("long");
+  makekeyword("noalias");
+  makekeyword("register");
+  makekeyword("return");
+  makekeyword("short");
+  makekeyword("signed");
+  makekeyword("sizeof");
+  makekeyword("static");
+  makekeyword("struct");
+  makekeyword("switch");
+  makekeyword("typedef");
+  makekeyword("union");
+  makekeyword("unsigned");
+  makekeyword("void");
+  makekeyword("volatile");
+  makekeyword("asm");
+  makekeyword("fortran");
+  makekeyword("entry");
+  makekeyword("pascal");
+
+  if (cplus != 0) {
+    makekeyword("catch");
+    makekeyword("class");
+    makekeyword("delete");
+    makekeyword("friend");
+    makekeyword("inline");
+    makekeyword("new");
+    makekeyword("operator");
+    makekeyword("overload");
+    makekeyword("private");
+    makekeyword("protected");
+    makekeyword("public");
+    makekeyword("template");
+    makekeyword("this");
+    makekeyword("throw");
+    makekeyword("try");
+    makekeyword("virtual");
     }
-    if (pascalcasesens != 3) {
-  sp = findsymbol(strupper(name));
-  sp->kwtok = tok;
-  sp->flags |= KWPOSS;
-    }
-    return sp;
-}
+
+  makekeyword(name_UCHAR);
+  makekeyword(name_SCHAR);    /* any others? */
+  makekeyword(name_BOOLEAN);
+  makekeyword(name_PROCEDURE);
+  makekeyword(name_ESCAPE);
+  makekeyword(name_ESCIO);
+  makekeyword(name_CHKIO);
+  makekeyword(name_SETIO);
+  makeglobword("main");
+  makeglobword("vextern");     /* used in generated .h files */
+  makeglobword("argc");
+  makeglobword("argv");
+  makekeyword("TRY");
+  makekeyword("RECOVER");
+  makekeyword("RECOVER2");
+  makekeyword("ENDTRY");
+  }
 //}}}
 //{{{
-Static void makePascalwords()
-{
-    if (which_lang == LANG_TIP)
-  Pkeyword("ACCESS", TOK_ACCESS);
-    Pkeyword("AND", TOK_AND);
-    Pkeyword("ARRAY", TOK_ARRAY);
-    Pkeywordposs("ANYVAR", TOK_ANYVAR);
-    Pkeywordposs("ABSOLUTE", TOK_ABSOLUTE);
-    Pkeyword("BEGIN", TOK_BEGIN);
-    Pkeywordposs("BY", TOK_BY);
-    Pkeyword("CASE", TOK_CASE);
-    if (which_lang == LANG_TIP)
-  Pkeyword("COMMON", TOK_COMMON);
-    Pkeyword("CONST", TOK_CONST);
-    Pkeywordposs("CONSTRUCTOR", TOK_CONSTRUCTOR);
-    Pkeywordposs("DESTRUCTOR", TOK_DESTRUCTOR);
-    Pkeyword("DIV", TOK_DIV);
-    Pkeywordposs("DEFINITION", TOK_DEFINITION);
-    Pkeyword("DO", TOK_DO);
-    Pkeyword("DOWNTO", TOK_DOWNTO);
-    Pkeyword("ELSE", TOK_ELSE);
-    Pkeywordposs("ELSIF", TOK_ELSIF);
-    Pkeyword("END", TOK_END);
-    Pkeywordposs("EXPORT", TOK_EXPORT);
-    Pkeyword("FILE", TOK_FILE);
-    Pkeyword("FOR", TOK_FOR);
-    Pkeywordposs("FROM", TOK_FROM);
-    Pkeyword("FUNCTION", TOK_FUNCTION);
-    Pkeyword("GOTO", TOK_GOTO);
-    Pkeyword("IF", TOK_IF);
-    Pkeywordposs("IMPLEMENT", TOK_IMPLEMENT);
-    Pkeywordposs("IMPLEMENTATION", TOK_IMPLEMENT);
-    Pkeywordposs("IMPORT", TOK_IMPORT);
-    Pkeyword("IN", TOK_IN);
-    Pkeywordposs("INHERITED", TOK_INHERITED);
-    Pkeywordposs("INLINE", TOK_INLINE);
-    Pkeywordposs("INTERFACE", TOK_EXPORT);
-    Pkeywordposs("INTERRUPT", TOK_INTERRUPT);
-    Pkeyword("LABEL", TOK_LABEL);
-    Pkeywordposs("LOOP", TOK_LOOP);
-    Pkeyword("MOD", TOK_MOD);
-    Pkeywordposs("MODULE", TOK_MODULE);
-    Pkeyword("NIL", TOK_NIL);
-    Pkeyword("NOT", TOK_NOT);
-    Pkeywordposs("OBJECT", TOK_OBJECT);
-    Pkeyword("OF", TOK_OF);
-    Pkeyword("OR", TOK_OR);
-    Pkeywordposs("ORIGIN", TOK_ORIGIN);
-    Pkeywordposs("OTHERWISE", TOK_OTHERWISE);
-    Pkeywordposs("OVERLAY", TOK_SEGMENT);
-    Pkeywordposs("OVERRIDE", TOK_OVERRIDE);
-    Pkeyword("PACKED", TOK_PACKED);
-    Pkeywordposs("POINTER", TOK_POINTER);
-    Pkeywordposs("PRIVATE", TOK_PRIVATE);
-    Pkeyword("PROCEDURE", TOK_PROCEDURE);
-    Pkeyword("PROGRAM", TOK_PROGRAM);
-    Pkeywordposs("QUALIFIED", TOK_QUALIFIED);
-    Pkeywordposs("RANDOM", TOK_RANDOM);
-    Pkeyword("RECORD", TOK_RECORD);
-    Pkeywordposs("RECOVER", TOK_RECOVER);
-    Pkeywordposs("REM", TOK_REM);
-    Pkeyword("REPEAT", TOK_REPEAT);
-    Pkeywordposs("RETURN", TOK_RETURN);
-    if (which_lang == LANG_UCSD)
-  Pkeyword("SEGMENT", TOK_SEGMENT);
-    else
-  Pkeywordposs("SEGMENT", TOK_SEGMENT);
-    Pkeyword("SET", TOK_SET);
-    Pkeywordposs("SHL", TOK_SHL);
-    Pkeywordposs("SHR", TOK_SHR);
-    Pkeyword("THEN", TOK_THEN);
-    Pkeyword("TO", TOK_TO);
-    Pkeywordposs("TRY", TOK_TRY);
-    Pkeyword("TYPE", TOK_TYPE);
-    Pkeyword("UNTIL", TOK_UNTIL);
-    Pkeywordposs("USES", TOK_IMPORT);
-    Pkeywordposs("UNIT", TOK_MODULE);
-    if (which_lang == LANG_VAX)
-  Pkeyword("VALUE", TOK_VALUE);
-    else
-  Pkeywordposs("VALUE", TOK_VALUE);
-    Pkeyword("VAR", TOK_VAR);
-    Pkeywordposs("VARYING", TOK_VARYING);
-    Pkeywordposs("VIRTUAL", TOK_VIRTUAL);
-    Pkeyword("WHILE", TOK_WHILE);
-    Pkeyword("WITH", TOK_WITH);
-    Pkeywordposs("XOR", TOK_XOR);
-    Pkeyword("__MODULE", TOK_MODULE);
-    Pkeyword("__IMPORT", TOK_IMPORT);
-    Pkeyword("__EXPORT", TOK_EXPORT);
-    Pkeyword("__IMPLEMENT", TOK_IMPLEMENT);
-}
+Static Symbol* Pkeyword (char *name, Token tok) {
+
+  Symbol* sp = NULL;
+
+  if (pascalcasesens != 2) {
+    sp = findsymbol (strlower (name));
+    sp->kwtok = tok;
+    }
+
+  if (pascalcasesens != 3) {
+    sp = findsymbol (strupper (name));
+    sp->kwtok = tok;
+    }
+
+  return sp;
+  }
+//}}}
+//{{{
+Static Symbol* Pkeywordposs (char *name, Token tok) {
+
+  Symbol* sp = NULL;
+
+  if (pascalcasesens != 2) {
+    sp = findsymbol(strlower(name));
+    sp->kwtok = tok;
+    sp->flags |= KWPOSS;
+    }
+
+  if (pascalcasesens != 3) {
+    sp = findsymbol(strupper(name));
+    sp->kwtok = tok;
+    sp->flags |= KWPOSS;
+    }
+
+  return sp;
+  }
+//}}}
+//{{{
+Static void makePascalwords() {
+
+  if (which_lang == LANG_TIP)
+    Pkeyword("ACCESS", TOK_ACCESS);
+
+  Pkeyword("AND", TOK_AND);
+  Pkeyword("ARRAY", TOK_ARRAY);
+  Pkeywordposs("ANYVAR", TOK_ANYVAR);
+  Pkeywordposs("ABSOLUTE", TOK_ABSOLUTE);
+  Pkeyword("BEGIN", TOK_BEGIN);
+  Pkeywordposs("BY", TOK_BY);
+  Pkeyword("CASE", TOK_CASE);
+
+  if (which_lang == LANG_TIP)
+    Pkeyword("COMMON", TOK_COMMON);
+
+  Pkeyword("CONST", TOK_CONST);
+  Pkeywordposs("CONSTRUCTOR", TOK_CONSTRUCTOR);
+  Pkeywordposs("DESTRUCTOR", TOK_DESTRUCTOR);
+  Pkeyword("DIV", TOK_DIV);
+  Pkeywordposs("DEFINITION", TOK_DEFINITION);
+  Pkeyword("DO", TOK_DO);
+  Pkeyword("DOWNTO", TOK_DOWNTO);
+  Pkeyword("ELSE", TOK_ELSE);
+  Pkeywordposs("ELSIF", TOK_ELSIF);
+  Pkeyword("END", TOK_END);
+  Pkeywordposs("EXPORT", TOK_EXPORT);
+  Pkeyword("FILE", TOK_FILE);
+  Pkeyword("FOR", TOK_FOR);
+  Pkeywordposs("FROM", TOK_FROM);
+  Pkeyword("FUNCTION", TOK_FUNCTION);
+  Pkeyword("GOTO", TOK_GOTO);
+  Pkeyword("IF", TOK_IF);
+  Pkeywordposs("IMPLEMENT", TOK_IMPLEMENT);
+  Pkeywordposs("IMPLEMENTATION", TOK_IMPLEMENT);
+  Pkeywordposs("IMPORT", TOK_IMPORT);
+  Pkeyword("IN", TOK_IN);
+  Pkeywordposs("INHERITED", TOK_INHERITED);
+  Pkeywordposs("INLINE", TOK_INLINE);
+  Pkeywordposs("INTERFACE", TOK_EXPORT);
+  Pkeywordposs("INTERRUPT", TOK_INTERRUPT);
+  Pkeyword("LABEL", TOK_LABEL);
+  Pkeywordposs("LOOP", TOK_LOOP);
+  Pkeyword("MOD", TOK_MOD);
+  Pkeywordposs("MODULE", TOK_MODULE);
+  Pkeyword("NIL", TOK_NIL);
+  Pkeyword("NOT", TOK_NOT);
+  Pkeywordposs("OBJECT", TOK_OBJECT);
+  Pkeyword("OF", TOK_OF);
+  Pkeyword("OR", TOK_OR);
+  Pkeywordposs("ORIGIN", TOK_ORIGIN);
+  Pkeywordposs("OTHERWISE", TOK_OTHERWISE);
+  Pkeywordposs("OVERLAY", TOK_SEGMENT);
+  Pkeywordposs("OVERRIDE", TOK_OVERRIDE);
+  Pkeyword("PACKED", TOK_PACKED);
+  Pkeywordposs("POINTER", TOK_POINTER);
+  Pkeywordposs("PRIVATE", TOK_PRIVATE);
+  Pkeyword("PROCEDURE", TOK_PROCEDURE);
+  Pkeyword("PROGRAM", TOK_PROGRAM);
+  Pkeywordposs("QUALIFIED", TOK_QUALIFIED);
+  Pkeywordposs("RANDOM", TOK_RANDOM);
+  Pkeyword("RECORD", TOK_RECORD);
+  Pkeywordposs("RECOVER", TOK_RECOVER);
+  Pkeywordposs("REM", TOK_REM);
+  Pkeyword("REPEAT", TOK_REPEAT);
+  Pkeywordposs("RETURN", TOK_RETURN);
+
+  if (which_lang == LANG_UCSD)
+    Pkeyword("SEGMENT", TOK_SEGMENT);
+  else
+    Pkeywordposs("SEGMENT", TOK_SEGMENT);
+
+  Pkeyword("SET", TOK_SET);
+  Pkeywordposs("SHL", TOK_SHL);
+  Pkeywordposs("SHR", TOK_SHR);
+  Pkeyword("THEN", TOK_THEN);
+  Pkeyword("TO", TOK_TO);
+  Pkeywordposs("TRY", TOK_TRY);
+  Pkeyword("TYPE", TOK_TYPE);
+  Pkeyword("UNTIL", TOK_UNTIL);
+  Pkeywordposs("USES", TOK_IMPORT);
+  Pkeywordposs("UNIT", TOK_MODULE);
+
+  if (which_lang == LANG_VAX)
+    Pkeyword("VALUE", TOK_VALUE);
+  else
+    Pkeywordposs("VALUE", TOK_VALUE);
+
+  Pkeyword("VAR", TOK_VAR);
+  Pkeywordposs("VARYING", TOK_VARYING);
+  Pkeywordposs("VIRTUAL", TOK_VIRTUAL);
+  Pkeyword("WHILE", TOK_WHILE);
+  Pkeyword("WITH", TOK_WITH);
+  Pkeywordposs("XOR", TOK_XOR);
+  Pkeyword("__MODULE", TOK_MODULE);
+  Pkeyword("__IMPORT", TOK_IMPORT);
+  Pkeyword("__EXPORT", TOK_EXPORT);
+  Pkeyword("__IMPLEMENT", TOK_IMPLEMENT);
+  }
 //}}}
 
 //{{{
-Static void deterministic (char *name) {
+Static void deterministic (char* name) {
 
   Symbol *sym;
   if (*name) {
@@ -323,7 +331,7 @@ Static void deterministic (char *name) {
   }
 //}}}
 //{{{
-Static void nosideeff (char *name) {
+Static void nosideeff (char* name) {
 
   Symbol *sym;
   if (*name) {
@@ -397,22 +405,29 @@ void init_lex() {
   inputkind = INP_FILE;
   inf_lnum = 0;
   inf_ltotal = 0;
+
   *inbuf = 0;
   inbufptr = inbuf;
+
   keepingstrlist = NULL;
   tempoptionlist = NULL;
+
   switch_strpos = 0;
   dollar_flag = 0;
+
   if_flag = 0;
   if_skip = 0;
+
   commenting_flag = 0;
   skipflag = 0;
   inbufindent = 0;
   modulenotation = 1;
   notephase = 0;
   endnotelist = NULL;
+
   for (i = 0; i < SYMHASHSIZE; i++)
     symtab[i] = 0;
+
   C_lex = 0;
   lex_initialized = 0;
   }
@@ -421,10 +436,10 @@ void init_lex() {
 void setup_lex() {
 
   lex_initialized = 1;
-  if (!strcmp(language, "MODCAL"))
-      sysprog_flag = 2;
+  if (!strcmp (language, "MODCAL"))
+    sysprog_flag = 2;
   else
-      sysprog_flag = 0;
+    sysprog_flag = 0;
 
   if (shortcircuit < 0)
     partial_eval_flag = (which_lang == LANG_TURBO ||
@@ -456,33 +471,33 @@ void setup_lex() {
   }
 //}}}
 //{{{
-int checkeatnote (char *msg) {
+int checkeatnote (char* msg) {
 
   Strlist *lp;
   char *cp;
   int len;
 
   for (lp = eatnotes; lp; lp = lp->next) {
-    if (!strcmp(lp->s, "1")) {
-      echoword("[*]", 0);
+    if (!strcmp (lp->s, "1")) {
+      echoword ("[*]", 0);
       return 1;
       }
 
-    if (!strcmp(lp->s, "0"))
+    if (!strcmp (lp->s, "0"))
       return 0;
 
-    len = strlen(lp->s);
+    len = strlen (lp->s);
     cp = msg;
-    while (*cp && (*cp != lp->s[0] || strncmp(cp, lp->s, len)))
+    while (*cp && (*cp != lp->s[0] || strncmp (cp, lp->s, len)))
       cp++;
 
     if (*cp) {
       cp = lp->s;
       if (*cp != '[')
-        cp = format_s("[%s", cp);
-      if (cp[strlen(cp)-1] != ']')
-        cp = format_s("%s]", cp);
-      echoword(cp, 0);
+        cp = format_s ("[%s", cp);
+      if (cp[strlen (cp)-1] != ']')
+        cp = format_s ("%s]", cp);
+      echoword (cp, 0);
       return 1;
       }
     }
@@ -495,7 +510,7 @@ void beginerror() {
 
   end_source();
   if (showprogress) {
-    fprintf(stderr, "\r%60s\r", "");
+    fprintf (stderr, "\r%60s\r", "");
     clearprogress();
     }
   else
@@ -507,14 +522,14 @@ void counterror() {
 
   if (maxerrors > 0) {
     if (--maxerrors == 0) {
-      fprintf(outf, "\n/* Translation aborted: Too many errors. */\n");
-      fprintf(outf,   "-------------------------------------------\n");
+      fprintf (outf, "\n/* Translation aborted: Too many errors. */\n");
+      fprintf (outf,   "-------------------------------------------\n");
 
       if (outf != stdout)
-        printf("Translation aborted: Too many errors.\n");
+        printf ("Translation aborted: Too many errors.\n");
 
       if (verbose)
-        fprintf(logfile, "Translation aborted: Too many errors.\n");
+        fprintf (logfile, "Translation aborted: Too many errors.\n");
 
       closelogfile();
       exit_failure();
@@ -523,7 +538,7 @@ void counterror() {
   }
 //}}}
 //{{{
-void error (char *msg) {
+void error (char* msg) {
 
   flushcomments (NULL, -1, -1);
   beginerror();
@@ -547,12 +562,12 @@ void error (char *msg) {
   }
 //}}}
 //{{{
-void interror (char* proc, char *msg) {
+void interror (char* proc, char* msg) {
   error (format_ss ("Internal error in %s: %s", proc, msg));
   }
 //}}}
 //{{{
-void warning (char *msg) {
+void warning (char* msg) {
 
   if (checkeatnote (msg)) {
     if (verbose)
@@ -584,7 +599,7 @@ void intwarning (char* proc, char* msg) {
   }
 //}}}
 //{{{
-void note (char *msg) {
+void note (char* msg) {
 
   if (blockkind == TOK_IMPORT || checkeatnote (msg)) {
     if (verbose)
@@ -598,7 +613,7 @@ void note (char *msg) {
   }
 //}}}
 //{{{
-void endnote (char *msg) {
+void endnote (char* msg) {
 
   if (blockkind == TOK_IMPORT || checkeatnote (msg)) {
     if (verbose)
@@ -668,7 +683,7 @@ char* tok_name (Token tok) {
   }
 //}}}
 //{{{
-void expected (char *msg) {
+void expected (char* msg) {
   error(format_ss("Expected %s, found %s", msg, tok_name(curtok)));
   }
 //}}}
@@ -706,7 +721,7 @@ int wexpecttok (Token tok) {
 //{{{
 int wneedtok (Token tok) {
 
-  if (wexpecttok(tok)) {
+  if (wexpecttok (tok)) {
     gettok();
     return 1;
     }
@@ -1720,7 +1735,7 @@ int lnum;
             !strcmp (sym->name, "VAL") ||
             !strcmp (sym->name, "BLOCKREAD") ||
             !strcmp (sym->name, "BLOCKWRITE"))
-            sym = findsymbol(format_s("%s_TURBO", sym->name));
+            sym = findsymbol (format_s ("%s_TURBO", sym->name));
         else
           break;
         }
@@ -1736,7 +1751,7 @@ int lnum;
     }
 
   if (curtok != TOK_EOF)
-    warning (format_s("Junk (%s) at end of macro definition [233]", tok_name(curtok)));
+    warning (format_s ("Junk (%s) at end of macro definition [233]", tok_name(curtok)));
 
   pop_input();
 
@@ -1751,18 +1766,18 @@ void check_unused_macros()
 
   if (warnmacros) {
     for (sl = varmacros; sl; sl = sl->next)
-      warning(format_s("VarMacro %s was never used [234]", sl->s));
+      warning (format_s ("VarMacro %s was never used [234]", sl->s));
     for (sl = constmacros; sl; sl = sl->next)
-      warning(format_s("ConstMacro %s was never used [234]", sl->s));
+      warning (format_s ("ConstMacro %s was never used [234]", sl->s));
     for (sl = fieldmacros; sl; sl = sl->next)
-      warning(format_s("FieldMacro %s was never used [234]", sl->s));
+      warning (format_s ("FieldMacro %s was never used [234]", sl->s));
     for (sl = funcmacros; sl; sl = sl->next)
-      warning(format_s("FuncMacro %s was never used [234]", sl->s));
+      warning (format_s ("FuncMacro %s was never used [234]", sl->s));
     }
 }
 //}}}
 
-#define skipspc(cp) while (isspace(*cp)) cp++
+#define skipspc(cp) while (isspace (*cp)) cp++
 //{{{
 Static int parsecomment (int p2c_only, int starparen) {
 
@@ -1778,8 +1793,8 @@ Static int parsecomment (int p2c_only, int starparen) {
   if (if_flag)
     return 0;
   if (!p2c_only) {
-    if (!strncmp(inbufptr, noskipcomment, strlen(noskipcomment)) && *noskipcomment) {
-      inbufptr += strlen(noskipcomment);
+    if (!strncmp (inbufptr, noskipcomment, strlen (noskipcomment)) && *noskipcomment) {
+      inbufptr += strlen (noskipcomment);
       if (skipflag < 0) {
         if (skipflag < -1) {
           skipflag++;
@@ -1818,7 +1833,7 @@ Static int parsecomment (int p2c_only, int starparen) {
 
   if (!p2c_only) {
     //{{{  not p2c_only
-    if (!strncmp(inbufptr, "DUMP-SYMBOLS", 12) && closing == inbufptr + 12) {
+    if (!strncmp (inbufptr, "DUMP-SYMBOLS", 12) && closing == inbufptr + 12) {
         //{{{
         wrapup();
         inbufptr = after;
@@ -1826,26 +1841,26 @@ Static int parsecomment (int p2c_only, int starparen) {
         }
         //}}}
 
-    if (!strncmp(inbufptr, fixedcomment, strlen(fixedcomment)) &&
-        *fixedcomment && inbufptr + strlen(fixedcomment) == closing) {
+    if (!strncmp (inbufptr, fixedcomment, strlen (fixedcomment)) &&
+        *fixedcomment && inbufptr + strlen (fixedcomment) == closing) {
       //{{{
       fixedflag++;
       inbufptr = after;
       return 1;
       }
       //}}}
-    if (!strncmp(inbufptr, permanentcomment, strlen(permanentcomment)) &&
+    if (!strncmp (inbufptr, permanentcomment, strlen (permanentcomment)) &&
         *permanentcomment &&
-        inbufptr + strlen(permanentcomment) == closing) {
+        inbufptr + strlen (permanentcomment) == closing) {
       //{{{
       permflag = 1;
       inbufptr = after;
       return 1;
       }
       //}}}
-    if (!strncmp(inbufptr, interfacecomment, strlen(interfacecomment)) &&
+    if (!strncmp (inbufptr, interfacecomment, strlen (interfacecomment)) &&
         *interfacecomment &&
-        inbufptr + strlen(interfacecomment) == closing) {
+        inbufptr + strlen (interfacecomment) == closing) {
       //{{{
       inbufptr = after;
       curtok = TOK_INTFONLY;
@@ -1854,7 +1869,7 @@ Static int parsecomment (int p2c_only, int starparen) {
       //}}}
     if (!strncmp(inbufptr, skipcomment, strlen(skipcomment)) &&
         *skipcomment &&
-        inbufptr + strlen(skipcomment) == closing) {
+        inbufptr + strlen (skipcomment) == closing) {
       //{{{
       inbufptr = after;
       skipflag--;
@@ -1868,9 +1883,9 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 1;
       }
       //}}}
-    if (!strncmp(inbufptr, signedcomment, strlen(signedcomment)) &&
+    if (!strncmp(inbufptr, signedcomment, strlen (signedcomment)) &&
          *signedcomment && !p2c_only &&
-         inbufptr + strlen(signedcomment) == closing) {
+         inbufptr + strlen (signedcomment) == closing) {
       //{{{
       inbufptr = after;
       gettok();
@@ -1884,9 +1899,9 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 2;
       }
       //}}}
-    if (!strncmp(inbufptr, unsignedcomment, strlen(unsignedcomment)) &&
+    if (!strncmp (inbufptr, unsignedcomment, strlen (unsignedcomment)) &&
          *unsignedcomment && !p2c_only &&
-         inbufptr + strlen(unsignedcomment) == closing) {
+         inbufptr + strlen (unsignedcomment) == closing) {
       //{{{
       inbufptr = after;
       gettok();
@@ -1910,8 +1925,8 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 2;
       }
       //}}}
-    if (!strncmp(inbufptr, tagcomment, strlen(tagcomment)) &&
-        *tagcomment && inbufptr + strlen(tagcomment) == closing) {
+    if (!strncmp(inbufptr, tagcomment, strlen (tagcomment)) &&
+        *tagcomment && inbufptr + strlen (tagcomment) == closing) {
       //{{{
       taggedflag++;
       inbufptr = after;
@@ -1920,7 +1935,7 @@ Static int parsecomment (int p2c_only, int starparen) {
       //}}}
     if (*inbufptr == '$') {
       //{{{
-      i = turbo_directive(closing, after);
+      i = turbo_directive (closing, after);
       if (i)
         return i;
       }
@@ -2248,7 +2263,7 @@ Static int parsecomment (int p2c_only, int starparen) {
         cp2 = format_ds ("%.*s", (int)(cp2-cp), cp);
         if (tp_integer != NULL) {
           defmacro (cp2, rctable[i].def, NULL, 0);
-          } 
+          }
         else {
           sp = strlist_append (&addmacros, cp2);
           sp->value = rctable[i].def;
@@ -2301,7 +2316,7 @@ Static int parsecomment (int p2c_only, int starparen) {
               if (cp != closing)
                 return 0;
               strlist_remove((Strlist **)rctable[i].ptr, namebuf);
-              } 
+              }
             else {
               if (!isspace(*cp) && *cp != '=')
                 return 0;
@@ -2329,7 +2344,7 @@ Static int parsecomment (int p2c_only, int starparen) {
 
                 cp++;
                 skipspc(cp);
-                } 
+                }
               else {
                 while (*cp && cp != closing && !isspace(*cp))
                   *cp2++ = *cp++;
@@ -3417,9 +3432,9 @@ int peeknextword (char *word) {
           return;
           }
 
-        switch (commenting_flag ? 0 : parsecomment(0, 0)) {
+        switch (commenting_flag ? 0 : parsecomment (0, 0)) {
           case 0:
-            comment(0);
+            comment (0);
             break;
           case 2:
             return;

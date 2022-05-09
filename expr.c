@@ -1431,29 +1431,28 @@ Type *type;
 }
 //}}}
 //{{{
-Expr* makeexpr_charcast (ex)
-Expr *ex;
-{
-    Meaning *mp;
+Expr* makeexpr_charcast (Expr *ex) {
 
-    if (ex->kind == EK_CONST && ex->val.type->kind == TK_STRING &&
-        ex->val.i == 1) {
-        ex->val.type = tp_char;
-        ex->val.i = ex->val.s[0] & 0xff;
-        ex->val.s = NULL;
+  Meaning *mp;
+
+  if (ex->kind == EK_CONST && ex->val.type->kind == TK_STRING && ex->val.i == 1) {
+    ex->val.type = tp_char;
+    ex->val.i = ex->val.s[0] & 0xff;
+    ex->val.s = NULL;
     }
-    if (ex->kind == EK_VAR &&
-  (mp = (Meaning *)ex->val.i)->kind == MK_CONST &&
-  mp->val.type &&
-  mp->val.type->kind == TK_STRING &&
-  mp->val.i == 1) {
-      ex->kind = EK_CONST;
-      ex->val.type = tp_char;
-      ex->val.i = mp->val.s[0] & 0xff;
-      ex->val.s = NULL;
+
+  if (ex->kind == EK_VAR &&
+      (mp = (Meaning *)ex->val.i)->kind == MK_CONST &&
+      mp->val.type &&
+      mp->val.type->kind == TK_STRING && mp->val.i == 1) {
+    ex->kind = EK_CONST;
+    ex->val.type = tp_char;
+    ex->val.i = mp->val.s[0] & 0xff;
+    ex->val.s = NULL;
     }
-    return ex;
-}
+
+  return ex;
+  }
 //}}}
 //{{{
 Expr* makeexpr_stringcast (ex)

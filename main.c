@@ -1398,14 +1398,20 @@ int main (int argc, char** argv) {
   handle_nameof();
   setup_complete = 1;
 
-  // not sure what this does
+  // save quietmode, not sure why
   savequiet = quietmode;
   quietmode = 1;
+
+  // load system.imp
   for (sl = librfiles; sl; sl = sl->next)
     if (strlist_find (librfiles, sl->s) == sl)
-      (void)p_search (format_none(sl->s), "pas", 0);
+      p_search (format_none(sl->s), "pas", 0);
+  
+  // load something ???
   for (i = 0; i < numsearch; i++)
-   (void)p_search (format_none (searchlist[i]), "pas", 1);
+    p_search (format_none (searchlist[i]), "pas", 1);
+  
+  // unsave quietmode
   quietmode = savequiet;
 
   p_program();
