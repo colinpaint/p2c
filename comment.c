@@ -285,21 +285,21 @@ void addnote (char *msg, long serial) {
         printf("\"%s\", line %d: %s\n", infname, inf_lnum, msg);
       } 
     else if (outf != stdout)
-      printf("\"%s\", line %d,%d: %s\n", infname, inf_lnum, outf_lnum, msg);
+      printf ("\"%s\", line %d,%d: %s\n", infname, inf_lnum, outf_lnum, msg);
     }
 
   if (verbose)
-    fprintf(logfile, "%s:%d:%d: %s\n", infname, inf_lnum, outf_lnum, msg);
+    fprintf (logfile, "%s:%d:%d: %s\n", infname, inf_lnum, outf_lnum, msg);
 
   if (notephase == 2 || regression)
     prefix = format_s("\004 p2c: %s:", infname);
   else
-    prefix = format_sd("\004 p2c: %s, line %d:", infname, inf_lnum);
+    prefix = format_sd ("\004 p2c: %s, line %d:", infname, inf_lnum);
 
-  len1 = strlen(prefix);
-  len2 = strlen(msg) + 2;
+  len1 = strlen (prefix);
+  len2 = strlen (msg) + 2;
   if (len1 + len2 < linewidth-4) {
-    msg = format_ss("%s %s ", prefix, msg);
+    msg = format_ss ("%s %s ", prefix, msg);
     } 
   else {
     extra = xextra = 0;
@@ -311,12 +311,12 @@ void addnote (char *msg, long serial) {
       extra++;
       }
 
-    prefix = format_sds("%s %.*s", prefix, xextra, msg);
+    prefix = format_sds ("%s %.*s", prefix, xextra, msg);
     msg += extra;
-    sl = strlist_append(pbase, prefix);
+    sl = strlist_append (pbase, prefix);
     sl->value = serial;
-    setcommentkind(sl, CMT_POST);
-    msg = format_s("\003 * %s ", msg);
+    setcommentkind (sl, CMT_POST);
+    msg = format_s ("\003 * %s ", msg);
     }
 
   sl = strlist_append(pbase, msg);
