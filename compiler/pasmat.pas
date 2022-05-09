@@ -175,7 +175,6 @@ type
 {>>>}
 {<<<}
 var
-  cmdLine: packed array [1..255] of char;
   cmdLineLen: Integer;
 
   Source: Text; {input file}
@@ -281,6 +280,10 @@ var
   StringTop: Integer; {last character in string table}
 {>>>}
 
+var
+  cmdLine: packed array [1..10] of char;
+  {procedure P_getcmdline (var line : array [low..high : integer] of char; var len : integer); external;
+  }
   {<<<  utils}
   {<<<}
   procedure ClearBreaks;
@@ -1853,9 +1856,26 @@ var
   {>>>}
   {>>>}
 
-  procedure ExprList (BreakAt: Integer); forward;
+  procedure Expression; forward;
   procedure ScanType; forward;
   procedure Statement; forward;
+  {<<<}
+  procedure ExprList (BreakAt: Integer);
+  { scan a list of expressions }
+
+    begin
+      while Sym in ExprBegSys + [Comma] do
+        begin
+        if Sym in ExprBegSys then
+          Expression;
+        if (Sym = Comma) or (Sym = Colon) then
+          begin
+          NextSym;
+          SetSymbolBreak (BreakAt);
+          end;
+        end;
+    end;
+  {>>>}
   {<<<}
   procedure Variable;
   {scan off a variable, doesn't check much}
@@ -1967,23 +1987,6 @@ var
     end;
   {>>>}
 
-  {<<<}
-  procedure ExprList (BreakAt: Integer);
-  { scan a list of expressions }
-
-    begin
-      while Sym in ExprBegSys + [Comma] do
-        begin
-        if Sym in ExprBegSys then
-          Expression;
-        if (Sym = Comma) or (Sym = Colon) then
-          begin
-          NextSym;
-          SetSymbolBreak (BreakAt);
-          end;
-        end;
-    end;
-  {>>>}
   {<<<}
   procedure ConstList;
   { scan a list of constants, as for case labels }
@@ -2521,6 +2524,11 @@ var
     {<<<}
     procedure DoCase;
     { case_statement }
+    var
+      CaseStart: ColLog; {start of case}
+      Successful: Boolean; {bunching successful}
+      LabStart, LabEnd: Integer; {label list lines}
+
       {<<<}
       procedure FudgeSymbol (WordLen: Integer; {length of word provided}
                             Word: WordType {word to substitute} );
@@ -2540,65 +2548,60 @@ var
         end;
       {>>>}
 
-      var
-        CaseStart: ColLog; {start of case}
-        Successful: Boolean; {bunching successful}
-        LabStart, LabEnd: Integer; {label list lines}
+    begin
+      ResetCharCount;
+      FormatLine (Indent);
+      NextSym;
 
-      begin
-        ResetCharCount;
-        FormatLine (Indent);
-        NextSym;
+      if WriteCol < ThreeFourthLine then
+        IndentPlus (WriteCol - Indent + 1)
+      else
+        IndentPlus (ContinueSpaces);
+      Expression;
+      CheckSym (OfSy);
+      Undent;
 
-        if WriteCol < ThreeFourthLine then
-          IndentPlus (WriteCol - Indent + 1)
-        else
-          IndentPlus (ContinueSpaces);
-        Expression;
-        CheckSym (OfSy);
-        Undent;
-
-        IndentPlus (TabSpaces);
-        StatIndent := Indent;
-        while not (Sym in [EndSy, OtherwiseSy, ElseSy]) do
+      IndentPlus (TabSpaces);
+      StatIndent := Indent;
+      while not (Sym in [EndSy, OtherwiseSy, ElseSy]) do
+        begin
+        if Sym in Constants then
           begin
-          if Sym in Constants then
-            begin
-            FormatLine (Indent);
-            LabStart := CurrentLine;
-            ConstList;
-            CheckSym(Colon);
-            LabEnd := CurrentLine;
-            IndentPlus (TabSpaces);
-            LogSymbolStart (CaseStart);
-            Statement;
-            if Bunching and (LabStart = LabEnd) then
-              Bunch (CaseStart, Successful);
-            Undent;
-            StatIndent := Indent;
-            end; {if sym in constants}
-
-          if Sym = Semicolon then
-            NextSym;
-          Check (Constants + [EndSy, Semicolon, OtherwiseSy, ElseSy]);
-          end; {while}
-
-        if (Sym = OtherwiseSy) or (Sym = ElseSy) then
-          begin
-          if OtherwiseKluge then
-            FudgeSymbol (9, 'otherwise');
-          NextOnNewline (0, TabSpaces);
+          FormatLine (Indent);
+          LabStart := CurrentLine;
+          ConstList;
+          CheckSym(Colon);
+          LabEnd := CurrentLine;
+          IndentPlus (TabSpaces);
           LogSymbolStart (CaseStart);
-          StatList;
-          if Bunching then
+          Statement;
+          if Bunching and (LabStart = LabEnd) then
             Bunch (CaseStart, Successful);
           Undent;
-          end;
+          StatIndent := Indent;
+          end; {if sym in constants}
 
-        FormatLine (Indent);
-        CheckSym (EndSy);
+        if Sym = Semicolon then
+          NextSym;
+        Check (Constants + [EndSy, Semicolon, OtherwiseSy, ElseSy]);
+        end; {while}
+
+      if (Sym = OtherwiseSy) or (Sym = ElseSy) then
+        begin
+        if OtherwiseKluge then
+          FudgeSymbol (9, 'otherwise');
+        NextOnNewline (0, TabSpaces);
+        LogSymbolStart (CaseStart);
+        StatList;
+        if Bunching then
+          Bunch (CaseStart, Successful);
         Undent;
-      end;
+        end;
+
+      FormatLine (Indent);
+      CheckSym (EndSy);
+      Undent;
+    end;
     {>>>}
     {<<<}
     procedure DoRepeat;
@@ -2733,114 +2736,114 @@ var
       reserved word array for length keyed search}
 
     begin
-      ResLen[2].LowIndex := 1;            
+      ResLen[2].LowIndex := 1;
       ResLen[2].HiIndex := 6;
-      ResLen[3].LowIndex := 7;            
+      ResLen[3].LowIndex := 7;
       ResLen[3].HiIndex := 16;
-      ResLen[4].LowIndex := 17;           
+      ResLen[4].LowIndex := 17;
       ResLen[4].HiIndex := 24;
-      ResLen[5].LowIndex := 25;           
+      ResLen[5].LowIndex := 25;
       ResLen[5].HiIndex := 30;
-      ResLen[6].LowIndex := 31;           
+      ResLen[6].LowIndex := 31;
       ResLen[6].HiIndex := 38;
-      ResLen[7].LowIndex := 39;           
+      ResLen[7].LowIndex := 39;
       ResLen[7].HiIndex := 41;
-      ResLen[8].LowIndex := 41;           
+      ResLen[8].LowIndex := 41;
       ResLen[8].HiIndex := 43;
-      ResLen[9].LowIndex := 44;           
+      ResLen[9].LowIndex := 44;
       ResLen[9].HiIndex := 46;
 
-      ResvWrd[1] := 'do       ';          
+      ResvWrd[1] := 'do       ';
       ResSymbol[1] := DoSy;
-      ResvWrd[2] := 'if       ';        
+      ResvWrd[2] := 'if       ';
       ResSymbol[2] := IfSy;
-      ResvWrd[3] := 'in       ';        
+      ResvWrd[3] := 'in       ';
       ResSymbol[3] := InSy;
-      ResvWrd[4] := 'of       ';       
+      ResvWrd[4] := 'of       ';
       ResSymbol[4] := OfSy;
-      ResvWrd[5] := 'or       ';        
+      ResvWrd[5] := 'or       ';
       ResSymbol[5] := OrSy;
-      ResvWrd[6] := 'to       ';        
+      ResvWrd[6] := 'to       ';
       ResSymbol[6] := ToSy;
-      ResvWrd[7] := 'and      ';       
+      ResvWrd[7] := 'and      ';
       ResSymbol[7] := AndSy;
-      ResvWrd[8] := 'div      ';       
+      ResvWrd[8] := 'div      ';
       ResSymbol[8] := DivSy;
-      ResvWrd[9] := 'end      ';        
+      ResvWrd[9] := 'end      ';
       ResSymbol[9] := EndSy;
-      ResvWrd[10] := 'for      ';      
+      ResvWrd[10] := 'for      ';
       ResSymbol[10] := ForSy;
-      ResvWrd[11] := 'mod      ';     
+      ResvWrd[11] := 'mod      ';
       ResSymbol[11] := ModSy;
-      ResvWrd[12] := 'nil      ';       
+      ResvWrd[12] := 'nil      ';
       ResSymbol[12] := NilSy;
-      ResvWrd[13] := 'not      ';        
+      ResvWrd[13] := 'not      ';
       ResSymbol[13] := NotSy;
-      ResvWrd[14] := 'set      ';       
+      ResvWrd[14] := 'set      ';
       ResSymbol[14] := SetSy;
-      ResvWrd[15] := 'var      ';     
+      ResvWrd[15] := 'var      ';
       ResSymbol[15] := VarSy;
-      ResvWrd[16] := 'use      ';       
+      ResvWrd[16] := 'use      ';
       ResSymbol[16] := UseSy;
-      ResvWrd[17] := 'case     ';         
+      ResvWrd[17] := 'case     ';
       ResSymbol[17] := CaseSy;
-      ResvWrd[18] := 'else     ';         
+      ResvWrd[18] := 'else     ';
       ResSymbol[18] := ElseSy;
-      ResvWrd[19] := 'file     ';        
+      ResvWrd[19] := 'file     ';
       ResSymbol[19] := FileSy;
-      ResvWrd[20] := 'goto     ';        
+      ResvWrd[20] := 'goto     ';
       ResSymbol[20] := GotoSy;
-      ResvWrd[21] := 'then     ';      
+      ResvWrd[21] := 'then     ';
       ResSymbol[21] := ThenSy;
-      ResvWrd[22] := 'type     ';      
+      ResvWrd[22] := 'type     ';
       ResSymbol[22] := TypeSy;
-      ResvWrd[23] := 'univ     ';      
+      ResvWrd[23] := 'univ     ';
       ResSymbol[23] := UnivSy;
-      ResvWrd[24] := 'with     ';       
+      ResvWrd[24] := 'with     ';
       ResSymbol[24] := WithSy;
-      ResvWrd[25] := 'array    ';        
+      ResvWrd[25] := 'array    ';
       ResSymbol[25] := ArraySy;
-      ResvWrd[26] := 'begin    ';       
+      ResvWrd[26] := 'begin    ';
       ResSymbol[26] := BeginSy;
-      ResvWrd[27] := 'const    ';      
+      ResvWrd[27] := 'const    ';
       ResSymbol[27] := ConstSy;
-      ResvWrd[28] := 'label    ';      
+      ResvWrd[28] := 'label    ';
       ResSymbol[28] := LabelSy;
-      ResvWrd[29] := 'until    ';      
+      ResvWrd[29] := 'until    ';
       ResSymbol[29] := UntilSy;
-      ResvWrd[30] := 'while    ';     
+      ResvWrd[30] := 'while    ';
       ResSymbol[30] := WhileSy;
-      ResvWrd[31] := 'downto   ';        
+      ResvWrd[31] := 'downto   ';
       ResSymbol[31] := DowntoSy;
-      ResvWrd[32] := 'origin   ';       
+      ResvWrd[32] := 'origin   ';
       ResSymbol[32] := OriginSy;
-      ResvWrd[33] := 'packed   ';     
+      ResvWrd[33] := 'packed   ';
       ResSymbol[33] := PackedSy;
-      ResvWrd[34] := 'record   ';       
+      ResvWrd[34] := 'record   ';
       ResSymbol[34] := RecordSy;
-      ResvWrd[35] := 'repeat   ';        
+      ResvWrd[35] := 'repeat   ';
       ResSymbol[35] := RepeatSy;
-      ResvWrd[36] := 'string   ';       
+      ResvWrd[36] := 'string   ';
       ResSymbol[36] := StringSy;
-      ResvWrd[37] := 'define   ';     
+      ResvWrd[37] := 'define   ';
       ResSymbol[37] := DefineSy;
-      ResvWrd[38] := 'shared   ';      
+      ResvWrd[38] := 'shared   ';
       ResSymbol[38] := SharedSy;
-      ResvWrd[39] := 'fortran  ';      
+      ResvWrd[39] := 'fortran  ';
       ResSymbol[39] := FortranSy;
-      ResvWrd[40] := 'forward  ';      
+      ResvWrd[40] := 'forward  ';
       ResSymbol[40] := ForwardSy;
-      ResvWrd[41] := 'program  ';      
+      ResvWrd[41] := 'program  ';
       ResSymbol[41] := ProgramSy;
-      ResvWrd[42] := 'external ';        
+      ResvWrd[42] := 'external ';
       ResSymbol[42] := ExternSy;
-      ResvWrd[43] := 'function ';       
+      ResvWrd[43] := 'function ';
       ResSymbol[43] := FunctionSy;
-      ResvWrd[44] := 'otherwise';       
+      ResvWrd[44] := 'otherwise';
       ResSymbol[44] := OtherwiseSy;
-      ResvWrd[45] := 'procedure';       
+      ResvWrd[45] := 'procedure';
       ResSymbol[45] := ProcedureSy;
-      ResvWrd[46] := 'nonpascal';        
+      ResvWrd[46] := 'nonpascal';
       ResSymbol[46] := NonpascalSy;
     end;
     {>>>}
@@ -3248,7 +3251,10 @@ var
   {>>>}
 
 begin
-  P_getcmdline (cmdLine, cmdLineLen);
+  {P_getcmdline (cmdLine, cmdLineLen);
+  }
+  cmdLine := 'test.pas  ';
+  cmdLineLen := 0;
   Writeln ('PASMAT p2c - cmdLine - ', cmdLine: cmdLineLen);
 
   Initialize;

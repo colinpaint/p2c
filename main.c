@@ -703,36 +703,36 @@ int outmem() {
 char* meaningkindname (enum meaningkind kind) {
 
   if ((unsigned int)kind < (unsigned int)MK_LAST)
-    return meaningkindnames[(int) kind];
+    return meaningkindnames[(int)kind];
   else
-    return format_d("<meaning %d>", (int) kind);
+    return format_d ("<meaning %d>", (int)kind);
   }
 //}}}
 //{{{
 char* typekindname (enum typekind kind) {
 
   if ((unsigned int)kind < (unsigned int)TK_LAST)
-    return typekindnames[(int) kind];
+    return typekindnames[(int)kind];
   else
-    return format_d("<type %d>", (int) kind);
+    return format_d ("<type %d>", (int)kind);
   }
 //}}}
 //{{{
 char* exprkindname (enum exprkind kind) {
 
   if ((unsigned int)kind < (unsigned int)EK_LAST)
-    return exprkindnames[(int) kind];
+    return exprkindnames[(int)kind];
   else
-    return format_d("<expr %d>", (int) kind);
+    return format_d ("<expr %d>", (int)kind);
 }
 //}}}
 //{{{
 char* stmtkindname (enum stmtkind kind) {
 
   if ((unsigned int)kind < (unsigned int)SK_LAST)
-    return stmtkindnames[(int) kind];
+    return stmtkindnames[(int)kind];
   else
-    return format_d("<stmt %d>", (int) kind);
+    return format_d ("<stmt %d>", (int)kind);
   }
 //}}}
 
@@ -781,6 +781,7 @@ void dumpmeaning (Meaning *mp) {
            (long)mp->ctx, (long)mp->cbase, (long)mp->cnext, (long)mp->type);
   if (mp->type && !mp->type->dumped)
     dumptype (mp->type);
+
   mp->dumped = 1;
   }
 //}}}
@@ -799,6 +800,7 @@ void dumpsymtable (Symbol *sym) {
         dumpmeaning (mp);
       fprintf (outf, "\n");
       }
+
     dumpsymtable (sym->right);
     }
   }
@@ -884,7 +886,7 @@ void dumptypename (Type *tp, int waddr) {
       case TK_SMALLARRAY:
         fprintf (outf, "Sm");
       //}}}
-        /* fall through */
+      /* fall through */
       //{{{
       case TK_ARRAY:
         fprintf (outf, "Ar");
@@ -917,7 +919,7 @@ void dumptypename (Type *tp, int waddr) {
       case TK_SMALLSET:
         fprintf (outf, "Sm");
       //}}}
-        /* fall through */
+      /* fall through */
       //{{{
       case TK_SET:
         fprintf (outf, "Set{");
@@ -974,8 +976,10 @@ void dumptypename (Type *tp, int waddr) {
 
     if (tp->kind != TK_ARRAY && tp->kind != TK_SMALLARRAY && (tp->smin || tp->smax)) {
       fprintf (outf, "{");
+
       dumpexpr (tp->smin);
       fprintf (outf, "..");
+
       dumpexpr (tp->smax);
       fprintf (outf, "}");
       }
@@ -992,9 +996,8 @@ void dumptypename_file (FILE *f, Type *tp) {
   }
 //}}}
 //{{{
-void dumpexpr (ex)
-Expr *ex;
-{
+void dumpexpr (Expr *ex ) {
+
   int i;
   Type *type;
   char *name;
@@ -1087,7 +1090,7 @@ Expr *ex;
       fprintf (outf, "...");
     fprintf (outf, ")");
     }
-}
+  }
 //}}}
 //{{{
 void dumpexpr_file (FILE *f, Expr *ex) {
@@ -1406,11 +1409,11 @@ int main (int argc, char** argv) {
   for (sl = librfiles; sl; sl = sl->next)
     if (strlist_find (librfiles, sl->s) == sl)
       p_search (format_none(sl->s), "pas", 0);
-  
+
   // load something ???
   for (i = 0; i < numsearch; i++)
     p_search (format_none (searchlist[i]), "pas", 1);
-  
+
   // unsave quietmode
   quietmode = savequiet;
 
