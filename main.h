@@ -59,7 +59,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #include <malloc.h>
   #include <memory.h>
 
-  #define PP(x)  () 
+  #define PP(x)  ()
   #define PV()   ()
 
   #define Anyptr char

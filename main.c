@@ -149,15 +149,13 @@ Static void initrc() {
   }
 //}}}
 //{{{
-Static int readrc (rcname, need)
-char *rcname;
-int need;
-  {
-  FILE *rc;
+Static int readrc (char* rcname, int need) {
+
+  FILE* rc;
   char buf[500], *cp, *cp2;
   long val = 0;
   int i;
-  Strlist *sl;
+  Strlist* sl;
 
   printf ("reading resource from %s\n", rcname);
 
@@ -702,58 +700,45 @@ int outmem() {
 //}}}
 
 //{{{
-char* meaningkindname (kind)
-enum meaningkind kind;
-{
-  #ifdef HASDUMPS
-    if ((unsigned int)kind < (unsigned int)MK_LAST)
-      return meaningkindnames[(int) kind];
-    else
-  #endif /*HASDUMPS*/
-      return format_d("<meaning %d>", (int) kind);
+char* meaningkindname (enum meaningkind kind) {
+
+  if ((unsigned int)kind < (unsigned int)MK_LAST)
+    return meaningkindnames[(int) kind];
+  else
+    return format_d("<meaning %d>", (int) kind);
   }
 //}}}
 //{{{
-char* typekindname (kind)
-enum typekind kind;
-{
-  #ifdef HASDUMPS
-    if ((unsigned int)kind < (unsigned int)TK_LAST)
-      return typekindnames[(int) kind];
-    else
-  #endif /*HASDUMPS*/
+char* typekindname (enum typekind kind) {
+
+  if ((unsigned int)kind < (unsigned int)TK_LAST)
+    return typekindnames[(int) kind];
+  else
     return format_d("<type %d>", (int) kind);
-}
+  }
 //}}}
 //{{{
-char* exprkindname (kind)
-enum exprkind kind;
-{
-  #ifdef HASDUMPS
-    if ((unsigned int)kind < (unsigned int)EK_LAST)
-        return exprkindnames[(int) kind];
-    else
-  #endif /*HASDUMPS*/
+char* exprkindname (enum exprkind kind) {
+
+  if ((unsigned int)kind < (unsigned int)EK_LAST)
+    return exprkindnames[(int) kind];
+  else
     return format_d("<expr %d>", (int) kind);
 }
 //}}}
 //{{{
-char* stmtkindname (kind)
-enum stmtkind kind;
-{
-  #ifdef HASDUMPS
-    if ((unsigned int)kind < (unsigned int)SK_LAST)
-        return stmtkindnames[(int) kind];
-    else
-  #endif /*HASDUMPS*/
+char* stmtkindname (enum stmtkind kind) {
+
+  if ((unsigned int)kind < (unsigned int)SK_LAST)
+    return stmtkindnames[(int) kind];
+  else
     return format_d("<stmt %d>", (int) kind);
-}
+  }
 //}}}
 
 //{{{
-void dumptype (tp)
-Type *tp;
-  {
+void dumptype (Type *tp) {
+
   if (!tp) {
     fprintf (outf, "<NULL>\n");
     return;
@@ -766,23 +751,19 @@ Type *tp;
 
   fprintf (outf, "      Type %lx, kind=%s", (long)tp, typekindname(tp->kind));
 
-  #ifdef HASDUMPS
-    fprintf (outf, ", meaning=%lx, basetype=%lx, indextype=%lx\n",
-             (long)tp->meaning, (long)tp->basetype, (long)tp->indextype);
-    tp->dumped = 1;
-    if (tp->basetype)
-      dumptype (tp->basetype);
-    if (tp->indextype)
-      dumptype (tp->indextype);
-  #else
-    fprintf (outf, "\n");
-  #endif /*HASDUMPS*/
+  fprintf (outf, ", meaning=%lx, basetype=%lx, indextype=%lx\n",
+           (long)tp->meaning, (long)tp->basetype, (long)tp->indextype);
+
+  tp->dumped = 1;
+  if (tp->basetype)
+    dumptype (tp->basetype);
+  if (tp->indextype)
+    dumptype (tp->indextype);
   }
 //}}}
 //{{{
-void dumpmeaning (mp)
-Meaning *mp;
-{
+void dumpmeaning (Meaning *mp) {
+
   if (!mp) {
     fprintf (outf, "<NULL>\n");
     return;
@@ -796,29 +777,21 @@ Meaning *mp;
   fprintf (outf, "   Meaning %lx, name=%s, kind=%s",
            (long)mp, ((mp->name) ? mp->name : "<null>"), meaningkindname(mp->kind));
 
-  #ifdef HASDUMPS
-    fprintf (outf, ", ctx=%lx, cbase=%lx, cnext=%lx, type=%lx\n",
-             (long)mp->ctx, (long)mp->cbase, (long)mp->cnext, (long)mp->type);
-    if (mp->type && !mp->type->dumped)
-      dumptype (mp->type);
-    mp->dumped = 1;
-  #else
-    fprintf (outf, "\n");
-  #endif
-}
+  fprintf (outf, ", ctx=%lx, cbase=%lx, cnext=%lx, type=%lx\n",
+           (long)mp->ctx, (long)mp->cbase, (long)mp->cnext, (long)mp->type);
+  if (mp->type && !mp->type->dumped)
+    dumptype (mp->type);
+  mp->dumped = 1;
+  }
 //}}}
 //{{{
-void dumpsymtable (sym)
-Symbol *sym;
-{
+void dumpsymtable (Symbol *sym) {
+
   Meaning *mp;
 
   if (sym) {
     dumpsymtable(sym->left);
-    #ifdef HASDUMPS
-      if ((sym->mbase && !sym->mbase->dumped) || (sym->fbase && !sym->fbase->dumped))
-    #endif
-      {
+    if ((sym->mbase && !sym->mbase->dumped) || (sym->fbase && !sym->fbase->dumped)) {
       fprintf (outf, "Symbol %s:\n", sym->name);
       for (mp = sym->mbase; mp; mp = mp->snext)
         dumpmeaning (mp);
@@ -826,15 +799,13 @@ Symbol *sym;
         dumpmeaning (mp);
       fprintf (outf, "\n");
       }
-  dumpsymtable (sym->right);
+    dumpsymtable (sym->right);
+    }
   }
-}
 //}}}
 //{{{
-void dumptypename (tp, waddr)
-Type *tp;
-int waddr;
-{
+void dumptypename (Type *tp, int waddr) {
+
   if (!tp) {
     fprintf(outf, "<NULL>");
     return;
@@ -1009,18 +980,16 @@ int waddr;
       fprintf (outf, "}");
       }
     }
-}
+  }
 //}}}
 //{{{
-void dumptypename_file (f, tp)
-FILE *f;
-Type *tp;
-{
+void dumptypename_file (FILE *f, Type *tp) {
+
   FILE *save = outf;
   outf = f;
   dumptypename (tp, 1);
   outf = save;
-}
+  }
 //}}}
 //{{{
 void dumpexpr (ex)
@@ -1053,7 +1022,6 @@ Expr *ex;
     name += 3;
   fprintf (outf, "%s", name);
 
-#ifdef HASDUMPS
   type = ex->val.type;
   fprintf (outf, "/");
   dumptypename (type, 1);
@@ -1119,26 +1087,20 @@ Expr *ex;
       fprintf (outf, "...");
     fprintf (outf, ")");
     }
-#endif
 }
 //}}}
 //{{{
-void dumpexpr_file (f, ex)
-FILE *f;
-Expr *ex;
-{
+void dumpexpr_file (FILE *f, Expr *ex) {
+
   FILE *save = outf;
   outf = f;
   dumpexpr (ex);
   outf = save;
-}
+  }
 //}}}
 //{{{
-void innerdumpstmt (sp, indent)
-Stmt *sp;
-int indent;
-{
-#ifdef HASDUMPS
+void innerdumpstmt (Stmt *sp, int indent) {
+
   if (!sp) {
     fprintf (outf, "<NULL>\n");
     return;
@@ -1181,23 +1143,18 @@ int indent;
       fprintf (outf, "next=");
       }
     }
-#endif
-}
+  }
 //}}}
 //{{{
-void dumpstmt (sp, indent)
-Stmt *sp;
-int indent;
-{
+void dumpstmt (Stmt *sp, int indent) {
+
   fprintf (outf, "%*s", indent, "");
   innerdumpstmt (sp, indent);
-}
+  }
 //}}}
 //{{{
-void dumpstmt_file (f, sp)
-FILE *f;
-Stmt *sp;
-{
+void dumpstmt_file (FILE *f, Stmt *sp) {
+
   FILE *save = outf;
   Stmt *savenext = NULL;
   outf = f;
@@ -1252,10 +1209,11 @@ int main (int argc, char** argv) {
   while ((i < argc) && (argv[i][0] == '-'))
     i++;
   if (i < argc) {
-    // use first non '-' argv as infname, pascal file to be translated
+    //{{{  use first non '-' argv as infname, pascal file to be translated
     strcpy (infname, argv[i]);
-    printf ("pascal file - %s\n", infname);
+    printf ("using pascal file %s\n", infname);
     }
+    //}}}
 
   readrc ("p2crc", 1);
 
@@ -1274,7 +1232,7 @@ int main (int argc, char** argv) {
   partialdump = 1;
   numsearch = 0;
 
-  // over complicated argv parser
+  //{{{  over complicated argv parser
   argc--;
   argv++;
   while (argc > 0) {
@@ -1340,6 +1298,7 @@ int main (int argc, char** argv) {
     argc--;
     argv++;
     }
+  //}}}
 
   if (requested_module && !*codefname)
     strcpy (codefname, format_ss (modulefnfmt, infname, requested_module));

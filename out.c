@@ -34,15 +34,14 @@ typedef struct S_paren {
     #define USETIME 0
   #endif
 #endif
-//}}}
-//{{{
+
 #if USETIME
   #include <sys/time.h>
 #else
   #include <time.h>
 #endif
 //}}}
-
+//{{{  defines, vars
 //{{{
 /* Output control characters:
 
@@ -99,241 +98,234 @@ Static int embeddedcode;
 Static int showingsourcecode = 0;
 
 #define BIGBADNESS  (1e20)
+//}}}
 
 //{{{
-void setup_out()
-{
-    end_source();
-    if (!nobanner)
-  if (slashslash)
+void setup_out() {
+
+  end_source();
+  if (!nobanner)
+    if (slashslash)
       fprintf(outf, "// From input file \"%s\"\n", infname);
-  else
+    else
       fprintf(outf, "/* From input file \"%s\" */\n", infname);
-    outf_lnum++;
-    hdrlnum = 1;
-    outindent = 0;
-    deltaindent = 0;
-    thisindent = 0;
-    thisfutureindent = -1;
-    sectionsize = 2;
-    blanklines = 0;
-    dontbreaklines = 0;
-    embeddedcode = 0;
-    outputmode = 0;
-    suppressnewline = 0;
-    eatblanks = 0;
-    outbufsize = 1000;
-    outbuf = ALLOC(outbufsize, char, misc);
-    outbufpos = 0;
-    outbufcount = 0;
-    outfilebufsize = 10;
-    outfilebuf = ALLOC(outfilebufsize, char, misc);
-    outfilebufptr = outfilebuf;
-    outfilebufend = outfilebuf + outfilebufsize/2;
-    srand(17);
-}
-//}}}
-//{{{
-int grow_outfilebuf()
-{
-    int pos = outfilebufptr - outfilebuf;
-    outfilebufsize *= 2;
-    outfilebuf = REALLOC(outfilebuf, outfilebufsize, char);
-    outfilebufptr = outfilebuf + pos;
-    outfilebufend = outfilebuf + outfilebufsize/2;
-    return 1;
-}
-//}}}
-//{{{
-void flush_outfilebuf()
-{
-    if (outfilebufptr > outfilebuf) {
-  *outfilebufptr = 0;
-  replacestrings(outfilebuf, replaceafter);
-  fputs(outfilebuf, outf);
+
+  outf_lnum++;
+  hdrlnum = 1;
+  outindent = 0;
+  deltaindent = 0;
+  thisindent = 0;
+  thisfutureindent = -1;
+  sectionsize = 2;
+  blanklines = 0;
+  dontbreaklines = 0;
+  embeddedcode = 0;
+  outputmode = 0;
+  suppressnewline = 0;
+  eatblanks = 0;
+  outbufsize = 1000;
+  outbuf = ALLOC(outbufsize, char, misc);
+  outbufpos = 0;
+  outbufcount = 0;
+  outfilebufsize = 10;
+  outfilebuf = ALLOC(outfilebufsize, char, misc);
   outfilebufptr = outfilebuf;
+  outfilebufend = outfilebuf + outfilebufsize/2;
+  srand (17);
+  }
+//}}}
+//{{{
+int grow_outfilebuf() {
+
+  int pos = outfilebufptr - outfilebuf;
+  outfilebufsize *= 2;
+  outfilebuf = REALLOC(outfilebuf, outfilebufsize, char);
+  outfilebufptr = outfilebuf + pos;
+  outfilebufend = outfilebuf + outfilebufsize/2;
+
+  return 1;
+  }
+//}}}
+//{{{
+void flush_outfilebuf() {
+
+  if (outfilebufptr > outfilebuf) {
+    *outfilebufptr = 0;
+    replacestrings (outfilebuf, replaceafter);
+    fputs (outfilebuf, outf);
+    outfilebufptr = outfilebuf;
     }
-}
+  }
 //}}}
+#define putc_outf(ch) ( (outfilebufptr == outfilebufend) ? grow_outfilebuf() : 0, *outfilebufptr++ = (ch) )
 //{{{
-#define putc_outf(ch) ( \
-  (outfilebufptr == outfilebufend) ? grow_outfilebuf() : 0, \
-  *outfilebufptr++ = (ch) \
-  )
-//}}}
-//{{{
-void puts_outf (s)
-char *s;
-{
-    int len = strlen(s);
-    if (len > 0) {
-  while (outfilebufptr + len > outfilebufend)
+void puts_outf (char *s) {
+
+  int len = strlen(s);
+  if (len > 0) {
+    while (outfilebufptr + len > outfilebufend)
       grow_outfilebuf();
-  strcpy(outfilebufptr, s);
-  outfilebufptr += len;
-  if (outfilebufptr[-1] == '\n')
+
+    strcpy (outfilebufptr, s);
+
+    outfilebufptr += len;
+    if (outfilebufptr[-1] == '\n')
       flush_outfilebuf();
     }
-}
+  }
 //}}}
 //{{{
-void select_outfile (fp)
-FILE *fp;
-{
-    flush_outfilebuf();
-    if (outf == codef) {
-        codesectsize = sectionsize;
-  codelnum = outf_lnum;
-    } else {
-        hdrsectsize = sectionsize;
-  hdrlnum = outf_lnum;
-    }
-    outf = fp;
-    if (outf == codef) {
-        sectionsize = codesectsize;
-  outf_lnum = codelnum;
-    } else {
-        sectionsize = hdrsectsize;
-  outf_lnum = hdrlnum;
-    }
-}
-//}}}
-//{{{
-void start_source()
-{
-    if (!showingsourcecode) {
-  puts_outf("\n#ifdef Pascal\n");
-  showingsourcecode = 1;
-    }
-}
-//}}}
-//{{{
-void end_source()
-{
-    if (showingsourcecode) {
-  puts_outf("#endif /*Pascal*/\n\n");
-  showingsourcecode = 0;
-    }
-}
-//}}}
-//{{{
-int line_start()
-{
-    return (outbufcount == 0);
-}
+void select_outfile (FILE *fp) {
 
+  flush_outfilebuf();
+  if (outf == codef) {
+    codesectsize = sectionsize;
+    codelnum = outf_lnum;
+    } 
+  else {
+    hdrsectsize = sectionsize;
+    hdrlnum = outf_lnum;
+    }
+
+  outf = fp;
+  if (outf == codef) {
+    sectionsize = codesectsize;
+    outf_lnum = codelnum;
+    } 
+  else {
+    sectionsize = hdrsectsize;
+    outf_lnum = hdrlnum;
+    }
+  }
+//}}}
+
+//{{{
+void start_source() {
+
+  if (!showingsourcecode) {
+    puts_outf ("\n#ifdef Pascal\n");
+    showingsourcecode = 1;
+    }
+  }
 //}}}
 //{{{
-int cur_column()
-{
-    if (outbufpos == 0)
-  return outindent;
-    else
-  return thisindent + outbufcount;
-}
+void end_source() {
+
+  if (showingsourcecode) {
+    puts_outf ("#endif /*Pascal*/\n\n");
+    showingsourcecode = 0;
+    }
+  }
+//}}}
+
+//{{{
+int line_start() {
+  return (outbufcount == 0);
+  }
 //}}}
 //{{{
-int lookback (n)
-int n;
-{
-    if (n <= 0 || n > outbufpos)
-  return 0;
-    else
-  return outbuf[outbufpos - n];
-}
-//}}}
-//{{{
-int lookback_prn (n)
-int n;
-{
-    for (;;) {
-  if (n <= 0 || n > outbufpos)
-      return 0;
-  else if (outbuf[outbufpos - n] >= ' ')
-      return outbuf[outbufpos - n];
+int cur_column() {
+
+  if (outbufpos == 0)
+    return outindent;
   else
+    return thisindent + outbufcount;
+  }
+//}}}
+
+//{{{
+int lookback (int n) {
+
+  if (n <= 0 || n > outbufpos)
+    return 0;
+  else
+    return outbuf[outbufpos - n];
+  }
+//}}}
+//{{{
+int lookback_prn (int n) {
+
+  for (;;) {
+    if (n <= 0 || n > outbufpos)
+      return 0;
+    else if (outbuf[outbufpos - n] >= ' ')
+      return outbuf[outbufpos - n];
+    else
       n++;
     }
-}
+  }
 //}}}
+
 //{{{
 /* Combine two indentation adjustments */
-int adddeltas (d1, d2)
-int d1, d2;
-{
-    if (d2 >= 1000)
-  return d2;
-    else
-  return d1 + d2;
-}
+int adddeltas (int d1, int d2) {
+
+  if (d2 >= 1000)
+    return d2;
+  else
+    return d1 + d2;
+  }
 //}}}
 //{{{
 /* Apply an indentation delta */
-int applydelta (i, d)
-int i, d;
-{
-    if (d >= 1000)
-  return d - 1000;
-    else
-  return i + d;
-}
+int applydelta (int i, int d) {
+
+  if (d >= 1000)
+    return d - 1000;
+  else
+    return i + d;
+  }
 //}}}
+
 //{{{
 /* Adjust the current indentation by delta */
-void moreindent (delta)
-int delta;
-{
-    outindent = applydelta(outindent, delta);
-}
+void moreindent (int delta) {
+  outindent = applydelta(outindent, delta);
+  }
 //}}}
 //{{{
 /* Adjust indentation for just this line */
-void singleindent (delta)
-int delta;
-{
-    deltaindent = adddeltas(deltaindent, delta);
-}
+void singleindent (int delta) {
+  deltaindent = adddeltas(deltaindent, delta);
+  }
 //}}}
 //{{{
 /* Predict indentation for next line */
-void futureindent (num)
-int num;
-{
-    thisfutureindent = applydelta(applydelta(outindent, deltaindent), num);
-}
+void futureindent (int num) {
+  thisfutureindent = applydelta(applydelta(outindent, deltaindent), num);
+  }
+//}}}
+
+//{{{
+int parsedelta (char *cp, int def) {
+
+  if (!cp || !*cp)
+    return def;
+  if ((*cp == '+' || *cp == '-') && isdigit(cp[1]))
+    return atoi(cp);
+  if (*cp == '*' && isdigit(cp[1]))
+    return 2000 + atoi(cp+1);
+  else
+    return 1000 + atoi(cp);
+  }
 //}}}
 //{{{
-int parsedelta (cp, def)
-char *cp;
-int def;
-{
-    if (!cp || !*cp)
-  return def;
-    if ((*cp == '+' || *cp == '-') && isdigit(cp[1]))
-  return atoi(cp);
-    if (*cp == '*' && isdigit(cp[1]))
-  return 2000 + atoi(cp+1);
-    else
-  return 1000 + atoi(cp);
-}
-//}}}
-//{{{
-Static void leading_tab (col)
-int col;
-{
-    if (col > maxlinewidth)
-  return;    /* something wrong happened! */
-    if (phystabsize > 0) {
-  while (col >= phystabsize) {
+Static void leading_tab (int col) {
+
+  if (col > maxlinewidth)
+    return;    /* something wrong happened! */
+  if (phystabsize > 0) {
+    while (col >= phystabsize) {
       putc_outf('\t');
       col -= phystabsize;
+      }
+    }
+
+  while (col > 0) {
+    putc_outf(' ');
+    col--;
+    }
   }
-    }
-    while (col > 0) {
-  putc_outf(' ');
-  col--;
-    }
-}
 //}}}
 //{{{
 void eatblanklines() {
@@ -341,11 +333,9 @@ void eatblanklines() {
   }
 //}}}
 //{{{
-Static void flush_outbuf (numbreaks, breakpos, breakindent,
-       numedits, editpos, editold, editnew)
-int numbreaks, *breakpos, *breakindent, numedits, *editpos;
-char *editold, *editnew;
-{
+Static void flush_outbuf (int numbreaks, int *breakpos, int *breakindent, int numedits, int *editpos,
+                          char *editold, char *editnew) {
+
   unsigned char ch, ch2;
   char *cp;
   int i, j, linelen = 0, spaces, hashline;
@@ -446,7 +436,7 @@ char *editold, *editnew;
     }
 
   outf_lnum++;
-}
+  }
 //}}}
 
 #define ISQUOTE(ch)  ((ch)=='"' || (ch)=='\'')
@@ -454,30 +444,28 @@ char *editold, *editnew;
 #define ISCLOSEP(ch) ((ch)==')' || (ch)==']' || (ch)=='\004')
 #define ISBREAK(ch)  ((ch)=='\001' || (ch)=='\002' || (ch)=='\006' || (ch)=='\011' || (ch)=='\017')
 //{{{
-Static int readquotes (posp, err)
-int *posp, err;
-{
-    int pos;
-    char quote;
+Static int readquotes (int *posp, int err) {
 
-    pos = *posp;
-    quote = outbuf[pos++];
-    while (pos < outbufpos && outbuf[pos] != quote) {
-  if (outbuf[pos] == '\\')
+  int pos = *posp;
+  char quote = outbuf[pos++];
+  while (pos < outbufpos && outbuf[pos] != quote) {
+    if (outbuf[pos] == '\\')
       pos++;
-  pos++;
+    pos++;
     }
-    if (pos >= outbufpos) {
-  if (err && breakerrorflag) {
-      intwarning("output", "Mismatched quotes [248]");
+
+  if (pos >= outbufpos) {
+    if (err && breakerrorflag) {
+      intwarning ("output", "Mismatched quotes [248]");
       breakerrorflag = 0;
-  }
-  return 0;
-    } else {
-  *posp = pos;
-  return 1;
+      }
+    return 0;
+    } 
+  else {
+    *posp = pos;
+    return 1;
     }
-}
+  }
 //}}}
 
 Static int maxdepth;
