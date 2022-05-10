@@ -207,14 +207,14 @@ typedef enum E_token {
 
 //{{{
 typedef struct S_strlist {
-  struct S_strlist *next;
+  struct S_strlist* next;
   long value;
   char s[1];
   } Strlist;
 //}}}
 //{{{
 typedef struct S_value {
-  struct S_type *type;
+  struct S_type* type;
   long i;
   char *s;
   } Value;
@@ -1759,8 +1759,10 @@ extern Expr *new_array_size;
 #include "p2c.proto"
 
 // Our library omits declarations for these functions!
-int link           PP( (char *, char *) );
-int unlink         PP( (char *) );
+#ifdef _linux_
+  int link           PP( (char *, char *) );
+  int unlink         PP( (char *) );
+#endif
 
 #define minspcthresh  ((minspacingthresh >= 0) ? minspacingthresh : minspacing)
 

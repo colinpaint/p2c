@@ -1084,9 +1084,9 @@ void getaline()
             if (instrlist) {
                 strcpy(inbuf, instrlist->s);
                 if (instrlist->value)
-                    inf_lnum = instrlist->value;
+                  inf_lnum = instrlist->value;
                 else
-                    inf_lnum++;
+                  inf_lnum++;
                 instrlist = instrlist->next;
             } else
                 strcpy(inbuf, "\001");

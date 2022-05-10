@@ -3294,7 +3294,7 @@ Meaning *tname;
 {
     Meaning *firstm, *lastm, *veryfirstm, *dtype, *mp;
     Symbol *sym;
-    Type *type, *tp2;
+    Type *type = NULL, *tp2;
     long li1, li2;
     int aligned, constflag, volatileflag;
     short saveskipind;

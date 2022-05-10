@@ -407,7 +407,7 @@ Expr* makeexpr (enum exprkind kind, int n) {
 
   Expr *ex;
 
-  ex = ALLOCV(sizeof(Expr) + (n-1)*sizeof(Expr *), Expr, exprs);
+  ex = ALLOCV(sizeof(Expr) + (n-1) * sizeof(Expr*), Expr, exprs);
   ex->val.i = 0;
   ex->val.s = NULL;
   ex->kind = kind;
@@ -1398,7 +1398,7 @@ Type *type;
   smax = smax - smin + 1;
   if (a->val.type->kind == TK_CHAR) {
       val.s = &c;
-      c = val.i;
+      c = (char)val.i;
       val.i = 1;
   }
   if (val.i > smax) {
@@ -1457,7 +1457,7 @@ Expr *ex;
     char ch;
 
     if (ex->kind == EK_CONST && ord_type(ex->val.type)->kind == TK_CHAR) {
-        ch = ex->val.i;
+        ch = (char)ex->val.i;
         freeexpr(ex);
         ex = makeexpr_lstring(&ch, 1);
     }

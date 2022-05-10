@@ -79,15 +79,6 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   #define ISBOGUS(p) 0
 #endif
 //}}}
-//{{{
-#ifndef __STDC__
-  #ifdef NO_GETENV
-    #define getenv(x) NULL
-  #else
-    extern char *getenv PP((char *));
-  #endif
-#endif
-//}}}
 
 Static Strlist* tweaksymbols;
 Static Strlist* synonyms;
@@ -101,7 +92,7 @@ Static void initrc() {
     switch (rctable[i].kind) {
       case 'S':
       case 'B':
-        *((short *)rctable[i].ptr) = rctable[i] .def;
+        *((short *)rctable[i].ptr) = rctable[i].def;
         break;
 
       case 'I':

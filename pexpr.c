@@ -27,7 +27,7 @@ Type *target;
 {
     Expr *ex2, *ex3;
     Type *tp, *tp2;
-    Meaning *mp, *tvar;
+    Meaning *mp = NULL, *tvar;
     int hassl;
 
     for (;;) {
@@ -1145,7 +1145,7 @@ Type *target;
 {
     Expr *ex, *ex2;
     Type *type;
-    Meaning *mp, *mp2;
+    Meaning *mp, *mp2 = NULL;
 
     switch (curtok) {
 
@@ -1743,163 +1743,174 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_rexpr(target)
-Type *target;
-{
-    Expr *ex, *ex2, *ex3, *ex4;
-    Type *type;
-    Meaning *tvar;
-    long mask, smin, smax;
-    int i, j;
+Expr* p_rexpr (Type* target) {
 
-    if (curtok == TOK_NOT && lowpreclogicals) {
-  gettok();
-  ex = p_rexpr(target);
-  if (ord_type(ex->val.type)->kind == TK_INTEGER)
+  Expr *ex, *ex2, *ex3, *ex4;
+  Type* type;
+  Meaning* tvar;
+  long mask, smin, smax;
+  int i, j;
+
+  if (curtok == TOK_NOT && lowpreclogicals) {
+    gettok();
+    ex = p_rexpr(target);
+    if (ord_type(ex->val.type)->kind == TK_INTEGER)
       return makeexpr_un(EK_BNOT, tp_integer, ex);
-  else
+    else
       return makeexpr_not(ex);
     }
-    ex = p_sexpr(target);
-    switch (curtok) {
 
-        case TOK_EQ:
-            gettok();
-            return makeexpr_rel(EK_EQ, ex, p_sexpr(ex->val.type));
+  ex = p_sexpr(target);
+  switch (curtok) {
+    //{{{
+    case TOK_EQ:
+      gettok();
+      return makeexpr_rel(EK_EQ, ex, p_sexpr(ex->val.type));
+    //}}}
+    //{{{
+    case TOK_NE:
+      gettok();
+      return makeexpr_rel(EK_NE, ex, p_sexpr(ex->val.type));
+    //}}}
+    //{{{
+    case TOK_LT:
+      gettok();
+      return makeexpr_rel(EK_LT, ex, p_sexpr(ex->val.type));
+    //}}}
+    //{{{
+    case TOK_GT:
+      gettok();
+      return makeexpr_rel(EK_GT, ex, p_sexpr(ex->val.type));
+    //}}}
+    //{{{
+    case TOK_LE:
+      gettok();
+      return makeexpr_rel(EK_LE, ex, p_sexpr(ex->val.type));
+    //}}}
+    //{{{
+    case TOK_GE:
+      gettok();
+      return makeexpr_rel(EK_GE, ex, p_sexpr(ex->val.type));
+    //}}}
+    //{{{
+    case TOK_IN:
+      gettok();
 
-        case TOK_NE:
-            gettok();
-            return makeexpr_rel(EK_NE, ex, p_sexpr(ex->val.type));
+      ex2 = p_sexpr (tp_smallset);
+      ex = gentle_cast (ex, ex2->val.type->indextype);
 
-        case TOK_LT:
-            gettok();
-            return makeexpr_rel(EK_LT, ex, p_sexpr(ex->val.type));
+      if (ex2->val.type->kind == TK_SMALLSET) {
+        //{{{  smallset
+        if (!ord_range(ex->val.type, &smin, &smax)) {
+          smin = -1;
+          smax = setbits;
+          }
+        if (!nosideeffects(ex, 0)) {
+          tvar = makestmttempvar(ex->val.type, name_TEMP);
+          ex3 = makeexpr_assign(makeexpr_var(tvar), ex);
+          ex = makeexpr_var(tvar);
+          } 
+        else
+          ex3 = NULL;
 
-        case TOK_GT:
-            gettok();
-            return makeexpr_rel(EK_GT, ex, p_sexpr(ex->val.type));
+        ex4 = copyexpr (ex);
+        if (ex->kind == EK_CONST && smallsetconst)
+          ex = makesmallsetconst (1L<<ex->val.i, ex2->val.type);
+        else
+          ex = makeexpr_bin (EK_LSH, ex2->val.type, makeexpr_longcast(makeexpr_long(1), 1), enum_to_int(ex));
+        ex = makeexpr_rel (EK_NE, makeexpr_bin(EK_BAND, tp_integer, ex, ex2), makeexpr_long(0));
+        if (*name_SETBITS ||
+            ((ex4->kind == EK_CONST) ? (ex4->val.i >= setbits) : !(0 <= smin && smax < setbits))) {
+          ex = makeexpr_and (makeexpr_range (enum_to_int (ex4), makeexpr_long (0), makeexpr_setbits(), 0), ex);
+          } 
+        else
+          freeexpr (ex4);
+        ex = makeexpr_comma (ex3, ex);
+        return ex;
+        }
+        //}}}
+      else {
+        //{{{  not smallset
+        ex3 = ex2;
+        while (ex3->kind == EK_BICALL &&
+               (!strcmp(ex3->val.s, setaddname) || !strcmp(ex3->val.s, setaddrangename)))
+          ex3 = ex3->args[0];
+        if (ex3->kind == EK_BICALL && !strcmp(ex3->val.s, setexpandname) &&
+            (tvar = istempvar (ex3->args[0])) != NULL &&
+            isconstexpr (ex3->args[1], &mask)) {
+          canceltempvar (tvar);
+          if (!nosideeffects (ex, 0)) {
+            tvar = makestmttempvar (ex->val.type, name_TEMP);
+            ex3 = makeexpr_assign (makeexpr_var(tvar), ex);
+            ex = makeexpr_var (tvar);
+            } 
+          else
+            ex3 = NULL;
 
-        case TOK_LE:
-            gettok();
-            return makeexpr_rel(EK_LE, ex, p_sexpr(ex->val.type));
-
-        case TOK_GE:
-            gettok();
-            return makeexpr_rel(EK_GE, ex, p_sexpr(ex->val.type));
-
-        case TOK_IN:
-            gettok();
-            ex2 = p_sexpr(tp_smallset);
-            ex = gentle_cast(ex, ex2->val.type->indextype);
-            if (ex2->val.type->kind == TK_SMALLSET) {
-                if (!ord_range(ex->val.type, &smin, &smax)) {
-                    smin = -1;
-                    smax = setbits;
+          type = ord_type (ex2->val.type->indextype);
+          ex4 = NULL;
+          i = 0;
+          while (i < setbits) {
+            if (mask & (1L<<i++)) {
+              if (i+1 < setbits && (mask & (2L<<i))) {
+                for (j = i; j < setbits && (mask & (1L<<j)); j++) ;
+                ex4 = makeexpr_or (ex4,
+                                   makeexpr_range (copyexpr(ex),
+                                   makeexpr_val (make_ord(type, i-1)),
+                                   makeexpr_val (make_ord(type, j-1)), 1));
+                i = j;
                 }
-                if (!nosideeffects(ex, 0)) {
-                    tvar = makestmttempvar(ex->val.type, name_TEMP);
-                    ex3 = makeexpr_assign(makeexpr_var(tvar), ex);
-                    ex = makeexpr_var(tvar);
-                } else
-                    ex3 = NULL;
-                ex4 = copyexpr(ex);
-                if (ex->kind == EK_CONST && smallsetconst)
-                    ex = makesmallsetconst(1L<<ex->val.i, ex2->val.type);
-                else
-                    ex = makeexpr_bin(EK_LSH, ex2->val.type,
-                                      makeexpr_longcast(makeexpr_long(1), 1),
-                                      enum_to_int(ex));
-                ex = makeexpr_rel(EK_NE, makeexpr_bin(EK_BAND, tp_integer, ex, ex2),
-                                         makeexpr_long(0));
-                if (*name_SETBITS ||
-                    ((ex4->kind == EK_CONST) ? ((unsigned long)ex4->val.i >= setbits) : !(0 <= smin && smax < setbits))) {
-                    ex = makeexpr_and(makeexpr_range(enum_to_int(ex4), makeexpr_long(0), makeexpr_setbits(), 0), ex);
-                } else
-                    freeexpr(ex4);
-                ex = makeexpr_comma(ex3, ex);
-                return ex;
-            } else {
-                ex3 = ex2;
-                while (ex3->kind == EK_BICALL &&
-                       (!strcmp(ex3->val.s, setaddname) ||
-                        !strcmp(ex3->val.s, setaddrangename)))
-                    ex3 = ex3->args[0];
-                if (ex3->kind == EK_BICALL && !strcmp(ex3->val.s, setexpandname) &&
-                    (tvar = istempvar(ex3->args[0])) != NULL &&
-                    isconstexpr(ex3->args[1], &mask)) {
-                    canceltempvar(tvar);
-                    if (!nosideeffects(ex, 0)) {
-                        tvar = makestmttempvar(ex->val.type, name_TEMP);
-                        ex3 = makeexpr_assign(makeexpr_var(tvar), ex);
-                        ex = makeexpr_var(tvar);
-                    } else
-                        ex3 = NULL;
-                    type = ord_type(ex2->val.type->indextype);
-                    ex4 = NULL;
-                    i = 0;
-                    while (i < setbits) {
-                        if (mask & (1L<<i++)) {
-                            if (i+1 < setbits && (mask & (2L<<i))) {
-                                for (j = i; j < setbits && (mask & (1L<<j)); j++) ;
-                                ex4 = makeexpr_or(ex4,
-                                        makeexpr_range(copyexpr(ex),
-                                                       makeexpr_val(make_ord(type, i-1)),
-                                                       makeexpr_val(make_ord(type, j-1)), 1));
-                                i = j;
-                            } else {
-                                ex4 = makeexpr_or(ex4,
-                                        makeexpr_rel(EK_EQ, copyexpr(ex),
-                                                            makeexpr_val(make_ord(type, i-1))));
-                            }
-                        }
-                    }
-                    mask = 0;
-                    for (;;) {
-                        if (!strcmp(ex2->val.s, setaddrangename)) {
-                            if (checkconst(ex2->args[1], 'a') &&
-                                checkconst(ex2->args[2], 'z')) {
-                                mask |= 0x1;
-                            } else if (checkconst(ex2->args[1], 'A') &&
-                                       checkconst(ex2->args[2], 'Z')) {
-                                mask |= 0x2;
-                            } else if (checkconst(ex2->args[1], '0') &&
-                                       checkconst(ex2->args[2], '9')) {
-                                mask |= 0x4;
-                            } else {
-                                ex4 = makeexpr_or(ex4,
-                                        makeexpr_range(copyexpr(ex), ex2->args[1], ex2->args[2], 1));
-                            }
-                        } else if (!strcmp(ex2->val.s, setaddname)) {
-                            ex4 = makeexpr_or(ex4,
-                                    makeexpr_rel(EK_EQ, copyexpr(ex), ex2->args[1]));
-                        } else
-                            break;
-                        ex2 = ex2->args[0];
-                    }
-                    /* do these now so that EK_OR optimizations will work: */
-                    if (mask & 0x1)
-                        ex4 = makeexpr_or(ex4, makeexpr_range(copyexpr(ex),
-                                                              makeexpr_char('a'),
-                                                              makeexpr_char('z'), 1));
-                    if (mask & 0x2)
-                        ex4 = makeexpr_or(ex4, makeexpr_range(copyexpr(ex),
-                                                              makeexpr_char('A'),
-                                                              makeexpr_char('Z'), 1));
-                    if (mask & 0x4)
-                        ex4 = makeexpr_or(ex4, makeexpr_range(copyexpr(ex),
-                                                              makeexpr_char('0'),
-                                                              makeexpr_char('9'), 1));
-                    freeexpr(ex);
-                    return makeexpr_comma(ex3, ex4);
+              else {
+                ex4 = makeexpr_or (ex4, makeexpr_rel (EK_EQ, copyexpr(ex), makeexpr_val (make_ord(type, i-1))));
                 }
-                return makeexpr_bicall_2(setinname, tp_boolean,
-                                         makeexpr_arglong(ex, 0), ex2);
+              }
             }
 
-  default:
+          mask = 0;
+          for (;;) {
+            if (!strcmp(ex2->val.s, setaddrangename)) {
+              if (checkconst(ex2->args[1], 'a') && checkconst(ex2->args[2], 'z')) {
+                mask |= 0x1;
+                } 
+              else if (checkconst(ex2->args[1], 'A') && checkconst(ex2->args[2], 'Z')) {
+                mask |= 0x2;
+                } 
+              else if (checkconst(ex2->args[1], '0') && checkconst(ex2->args[2], '9')) {
+                mask |= 0x4;
+                } 
+              else {
+                ex4 = makeexpr_or(ex4, makeexpr_range(copyexpr(ex), ex2->args[1], ex2->args[2], 1));
+                }
+              } 
+            else if (!strcmp(ex2->val.s, setaddname)) {
+              ex4 = makeexpr_or(ex4, makeexpr_rel(EK_EQ, copyexpr(ex), ex2->args[1]));
+              } 
+            else
+              break;
+            ex2 = ex2->args[0];
+            }
+
+        // do these now so that EK_OR optimizations will work: 
+        if (mask & 0x1)
+          ex4 = makeexpr_or (ex4, makeexpr_range (copyexpr (ex), makeexpr_char ('a'), makeexpr_char ('z'), 1));
+        if (mask & 0x2)
+          ex4 = makeexpr_or (ex4, makeexpr_range (copyexpr (ex), makeexpr_char ('A'), makeexpr_char ('Z'), 1));
+        if (mask & 0x4)
+          ex4 = makeexpr_or (ex4, makeexpr_range (copyexpr (ex), makeexpr_char ('0'), makeexpr_char ('9'), 1));
+        freeexpr (ex);
+        return makeexpr_comma (ex3, ex4);
+        }
+        //}}}
+
+      return makeexpr_bicall_2 (setinname, tp_boolean, makeexpr_arglong (ex, 0), ex2);
+      }
+    //}}}
+    //{{{
+    default:
       return ex;
+    //}}}
     }
-}
+  }
 //}}}
 //{{{
 Expr *p_andexpr(target)
@@ -3186,7 +3197,7 @@ int prec;
     switch (ex->kind) {
 
         case EK_VAR:
-            mp = (Meaning *)ex->val.i;
+            mp = (Meaning*)ex->val.i;
             if (mp->warnifused)
                 note(format_s("Reference to %s [283]", mp->name));
             out_var(mp, prec);
@@ -3202,7 +3213,7 @@ int prec;
             break;
 
         case EK_CTX:
-            out_ctx((Meaning *)ex->val.i, 1);
+            out_ctx((Meaning*)ex->val.i, 1);
             break;
 
         case EK_CONST:
@@ -3235,24 +3246,21 @@ int prec;
                 } else
                     j = 1;
                 if (ex2->kind == EK_VAR) {
-                    mp = (Meaning *)ex2->val.i;
-                    if (mp->kind == MK_CONST &&
-      mp->val.type &&
+                    mp = (Meaning*)ex2->val.i;
+                    if (mp->kind == MK_CONST && mp->val.type &&
                         (mp->val.type->kind == TK_RECORD ||
                          mp->val.type->kind == TK_ARRAY)) {
                         if (foldconsts != 1)
-                            note(format_s("Expanding constant %s into another constant [284]",
-                                          mp->name));
+                            note(format_s("Expanding constant %s into another constant [284]", mp->name));
                         ex2 = (Expr *)mp->val.i;
                     }
                 }
                 while (--j >= 0) {
                     if (ex3) {
-                        if (ex3->kind == EK_STRUCTCONST ||
-                            ex2->kind == EK_STRUCTCONST)
-                            output(",\n");
+                        if (ex3->kind == EK_STRUCTCONST || ex2->kind == EK_STRUCTCONST)
+                            output (",\n");
                         else if (spacecommas)
-                            output(",\001 ");
+                            output (",\001 ");
       else
           output(",\001");
                     }
