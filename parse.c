@@ -71,7 +71,7 @@ void echoword (char *name, int comma) {
       }
     echo_first = 0;
     fprintf(f, "%s", name);
-    echo_pos += strlen (name);
+    echo_pos += (int)strlen (name);
     fflush(f);
   #endif
   }
@@ -142,7 +142,7 @@ void need_forward_decl (Meaning *func) {
     }
   }
 //}}}
-//{{{  staement utils
+//{{{  statement utils
 //{{{
 void free_stmt (Stmt *sp) {
 
@@ -157,6 +157,7 @@ void free_stmt (Stmt *sp) {
     }
   }
 //}}}
+
 //{{{
 Stmt* makestmt (enum stmtkind kind) {
 
@@ -220,6 +221,7 @@ Stmt* makestmt_seq (Stmt* s1, Stmt* s2) {
   return s1;
   }
 //}}}
+
 //{{{
 Stmt* copystmt (Stmt *sp) {
 
@@ -247,6 +249,7 @@ void nukestmt (Stmt* sp) {
     }
   }
 //}}}
+
 //{{{
 void splicestmt (Stmt* sp, Stmt* spnew) {
 
@@ -263,6 +266,7 @@ void splicestmt (Stmt* sp, Stmt* spnew) {
     nukestmt(sp);
   }
 //}}}
+
 //{{{
 int stmtcount (Stmt *sp) {
 
@@ -278,9 +282,8 @@ int stmtcount (Stmt *sp) {
 //}}}
 
 //{{{
-Stmt* close_files_to_ctx (ctx)
-Meaning *ctx;
-{
+Stmt* close_files_to_ctx (Meaning *ctx) {
+
   Meaning *ctx2, *mp;
   Stmt *splist = NULL, *sp;
 
@@ -298,14 +301,13 @@ Meaning *ctx;
     }
 
   return splist;
-}
+  }
 //}}}
 //{{{
-void withrecordtype (tp, ex)
-Type *tp;
-Expr *ex;
-{
+void withrecordtype (Type *tp, Expr *ex) {
+
   Type* tp2 = tp;
+
   do {
     if (withlevel >= MAXWITHS-1)
       error("Too many nested WITHs");
@@ -321,12 +323,11 @@ Expr *ex;
     withexprs[i] = ex;
     tp2 = tp2->basetype;
     } while (tp2);
-}
+  }
 //}}}
 //{{{
-int simplewith (ex)
-Expr *ex;
-{
+int simplewith (Expr *ex) {
+
   switch (ex->kind) {
     case EK_VAR:
     case EK_CONST:
@@ -336,21 +337,18 @@ Expr *ex;
      default:
       return 0;
     }
+  }
+//}}}
+//{{{
+int simplefor (Stmt *sp, Expr *ex) {
+  return (exprspeed (sp->exp2) <= 3 && 
+          !checkexprchanged (sp->stm1, sp->exp2) && 
+          !exproccurs (sp->exp2, ex));
 }
 //}}}
 //{{{
-int simplefor (sp, ex)
-Stmt *sp;
-Expr *ex;
-{
-  return (exprspeed(sp->exp2) <= 3 && !checkexprchanged(sp->stm1, sp->exp2) && !exproccurs(sp->exp2, ex));
-}
-//}}}
-//{{{
-int tryfuncmacro (exp, mp)
-Expr **exp;
-Meaning *mp;
-{
+int tryfuncmacro (Expr **exp, Meaning *mp) {
+
   char* name;
   Strlist* lp;
   Expr* ex = *exp, *ex2;
@@ -372,20 +370,9 @@ Meaning *mp;
     freeexpr(ex);
     return 1;
     }
-  return 0;
-}
-//}}}
 
-//{{{
-#define addstmt(kind) \
-  *spp = sp = makestmt(kind),   \
-  spp = &(sp->next)
-//}}}
-//{{{
-#define newstmt(kind) \
-  addstmt(kind),   \
-  steal_comments(firstserial, sp->serial, sflags & SF_FIRST),   \
-  sflags &= ~SF_FIRST
+  return 0;
+  }
 //}}}
 
 Static int memberfuncwithlevel;
@@ -394,6 +381,18 @@ Static int memberfuncwithlevel;
 #define SF_SAVESER 0x2
 #define SF_FIRST   0x4
 #define SF_IF    0x8
+
+//{{{
+#define addstmt(kind) \
+  *spp = sp = makestmt (kind),   \
+  spp = &(sp->next)
+//}}}
+//{{{
+#define newstmt(kind) \
+  addstmt (kind),   \
+  steal_comments (firstserial, sp->serial, sflags & SF_FIRST),   \
+  sflags &= ~SF_FIRST
+//}}}
 //}}}
 //{{{
 Static Stmt* p_stmt (Stmt *slist, int sflags) {
@@ -769,7 +768,7 @@ again:
           }
         else if (tp == tp_integer &&
                  (checkconst(sp->exp2, LONG_MAX) ||
-                 (sp->exp2->kind == EK_VAR && sp->exp2->val.i == (long)mp_maxint))) {
+                 (sp->exp2->kind == EK_VAR && sp->exp2->val.i == (int64_t)mp_maxint))) {
           swexpr = ep;
           tvar = makestmttempvar (tp_unsigned, name_TEMP);
           ep = makeexpr_var (tvar);
@@ -1330,14 +1329,11 @@ int opts;
 //}}}
 
 #define outspnl(spflag) output((spflag) ? " " : "\n")
-//{{{
 Meaning* outcontext;
-
-Static void outnl(serial)
-int serial;
-{
-    outtrailcomment(curcomments, serial, commentindent);
-}
+//{{{
+Static void outnl (int serial) {
+  outtrailcomment (curcomments, serial, commentindent);
+  }
 //}}}
 //{{{
 Static void out_block (Stmt *spbase, int opts, int serial) {
@@ -2108,65 +2104,59 @@ Meaning *mp;
     return sp;
 }
 //}}}
-//{{{
-/* Do various simple (sometimes necessary) massages on the statements */
+
 Static Stmt bogusreturn = { SK_RETURN, NULL, NULL, NULL, NULL, NULL, NULL };
+//{{{
+Static int isescape (Expr *ex) {
 
+  if (ex->kind == EK_BICALL && (!strcmp(ex->val.s, name_ESCAPE) ||
+                                !strcmp(ex->val.s, name_ESCIO) ||
+                                !strcmp(ex->val.s, name_ESCIO2) ||
+                                !strcmp(ex->val.s, name_OUTMEM) ||
+                                !strcmp(ex->val.s, name_CASECHECK) ||
+                                !strcmp(ex->val.s, name_NILCHECK) ||
+                                !strcmp(ex->val.s, "_exit") ||
+                                !strcmp(ex->val.s, "exit")))
+    return 1;
 
+  if (ex->kind == EK_CAST)
+    return isescape(ex->args[0]);
 
-Static int isescape(ex)
-Expr *ex;
-{
-    if (ex->kind == EK_BICALL && (!strcmp(ex->val.s, name_ESCAPE) ||
-                                  !strcmp(ex->val.s, name_ESCIO) ||
-                                  !strcmp(ex->val.s, name_ESCIO2) ||
-          !strcmp(ex->val.s, name_OUTMEM) ||
-          !strcmp(ex->val.s, name_CASECHECK) ||
-          !strcmp(ex->val.s, name_NILCHECK) ||
-                                  !strcmp(ex->val.s, "_exit") ||
-                                  !strcmp(ex->val.s, "exit")))
-        return 1;
-    if (ex->kind == EK_CAST)
-        return isescape(ex->args[0]);
-    return 0;
-}
+  return 0;
+  }
 //}}}
 //{{{
+Static int deadendblock (Stmt *sp, int breaks) {
 /* check if a block can never exit by falling off the end */
-Static int deadendblock (sp, breaks)
-Stmt *sp;
-int breaks;
-{
-    if (!sp)
-        return 0;
-    while (sp->next)
-        sp = sp->next;
-    return (sp->kind == SK_RETURN ||
-            sp->kind == SK_CASECHECK ||
-            ((sp->kind == SK_GOTO || sp->kind == SK_BREAK ||
-        sp->kind == SK_CONTINUE) && breaks) ||
-            (sp->kind == SK_IF && deadendblock(sp->stm1, breaks) &&
-                                  deadendblock(sp->stm2, breaks)) ||
-            (sp->kind == SK_ASSIGN && isescape(sp->exp1)));
-}
 
-//}}}
-//{{{
-int expr_is_bool (ex, want)
-Expr *ex;
-int want;
-{
-    long val;
-
-    if (ex->val.type == tp_boolean && isconstexpr(ex, &val))
-        return (val == want);
+  if (!sp)
     return 0;
-}
+
+  while (sp->next)
+    sp = sp->next;
+
+  return (sp->kind == SK_RETURN ||
+          sp->kind == SK_CASECHECK ||
+          ((sp->kind == SK_GOTO || sp->kind == SK_BREAK ||
+          sp->kind == SK_CONTINUE) && breaks) ||
+          (sp->kind == SK_IF && deadendblock(sp->stm1, breaks) && deadendblock(sp->stm2, breaks)) || 
+          (sp->kind == SK_ASSIGN && isescape(sp->exp1)));
+  }
 //}}}
 //{{{
+int expr_is_bool (Expr *ex, int want) {
+
+  long val;
+  if (ex->val.type == tp_boolean && isconstexpr(ex, &val))
+    return (val == want);
+
+  return 0;
+  }
+//}}}
+//{{{
+int implies (Expr *c1, Expr *c2, int not1, int not2) {
 /* Returns 1 if c1 implies c2, 0 otherwise */
 /* If not1 is true, then checks if (!c1) implies c2; similarly for not2 */
-
 /* Identities used:
         c1 -> (c2a && c2b)      <=>     (c1 -> c2a) && (c1 -> c2b)
         c1 -> (c2a || c2b)      <=>     (c1 -> c2a) || (c1 -> c2b)
@@ -2179,149 +2169,158 @@ int want;
 */
 /* This could be smarter about, e.g., (a>5) -> (a>0) */
 
-int implies (c1, c2, not1, not2)
-Expr *c1, *c2;
-int not1, not2;
-{
-    Expr *ex;
-    int i;
+  Expr *ex;
+  int i;
 
-    if (c1->kind == EK_EQ && c1->args[0]->val.type == tp_boolean) {
-        if (checkconst(c1->args[0], 1)) {     /* things like "flag = true" */
-            return implies(c1->args[1], c2, not1, not2);
-        } else if (checkconst(c1->args[1], 1)) {
-            return implies(c1->args[0], c2, not1, not2);
-        } else if (checkconst(c1->args[0], 0)) {
-            return implies(c1->args[1], c2, !not1, not2);
-        } else if (checkconst(c1->args[1], 0)) {
-            return implies(c1->args[0], c2, !not1, not2);
-        }
+  if (c1->kind == EK_EQ && c1->args[0]->val.type == tp_boolean) {
+    if (checkconst(c1->args[0], 1)) {     /* things like "flag = true" */
+        return implies(c1->args[1], c2, not1, not2);
+    } else if (checkconst(c1->args[1], 1)) {
+        return implies(c1->args[0], c2, not1, not2);
+    } else if (checkconst(c1->args[0], 0)) {
+        return implies(c1->args[1], c2, !not1, not2);
+    } else if (checkconst(c1->args[1], 0)) {
+        return implies(c1->args[0], c2, !not1, not2);
     }
-    if (c2->kind == EK_EQ && c2->args[0]->val.type == tp_boolean) {
-        if (checkconst(c2->args[0], 1)) {
-            return implies(c1, c2->args[1], not1, not2);
-        } else if (checkconst(c2->args[1], 1)) {
-            return implies(c1, c2->args[0], not1, not2);
-        } else if (checkconst(c2->args[0], 0)) {
-            return implies(c1, c2->args[1], not1, !not2);
-        } else if (checkconst(c2->args[1], 0)) {
-            return implies(c1, c2->args[0], not1, !not2);
-        }
+  }
+
+  if (c2->kind == EK_EQ && c2->args[0]->val.type == tp_boolean) {
+    if (checkconst(c2->args[0], 1)) {
+        return implies(c1, c2->args[1], not1, not2);
+    } else if (checkconst(c2->args[1], 1)) {
+        return implies(c1, c2->args[0], not1, not2);
+    } else if (checkconst(c2->args[0], 0)) {
+        return implies(c1, c2->args[1], not1, !not2);
+    } else if (checkconst(c2->args[1], 0)) {
+        return implies(c1, c2->args[0], not1, !not2);
     }
-    switch (c2->kind) {
+  }
+  switch (c2->kind) {
+    //{{{
+    case EK_AND:
+        if (not2)               /* c1 -> (!c2a || !c2b) */
+            return (implies(c1, c2->args[0], not1, 1) ||
+                    implies(c1, c2->args[1], not1, 1));
+        else                    /* c1 -> (c2a && c2b) */
+            return (implies(c1, c2->args[0], not1, 0) &&
+                    implies(c1, c2->args[1], not1, 0));
+    //}}}
+    //{{{
+    case EK_OR:
+        if (not2)               /* c1 -> (!c2a && !c2b) */
+            return (implies(c1, c2->args[0], not1, 1) &&
+                    implies(c1, c2->args[1], not1, 1));
+        else                    /* c1 -> (c2a || c2b) */
+            return (implies(c1, c2->args[0], not1, 0) ||
+                    implies(c1, c2->args[1], not1, 0));
+    //}}}
+    //{{{
+    case EK_NOT:                /* c1 -> (!c2) */
+        return (implies(c1, c2->args[0], not1, !not2));
 
-        case EK_AND:
-            if (not2)               /* c1 -> (!c2a || !c2b) */
-                return (implies(c1, c2->args[0], not1, 1) ||
-                        implies(c1, c2->args[1], not1, 1));
-            else                    /* c1 -> (c2a && c2b) */
-                return (implies(c1, c2->args[0], not1, 0) &&
-                        implies(c1, c2->args[1], not1, 0));
-
-        case EK_OR:
-            if (not2)               /* c1 -> (!c2a && !c2b) */
-                return (implies(c1, c2->args[0], not1, 1) &&
-                        implies(c1, c2->args[1], not1, 1));
-            else                    /* c1 -> (c2a || c2b) */
-                return (implies(c1, c2->args[0], not1, 0) ||
-                        implies(c1, c2->args[1], not1, 0));
-
-        case EK_NOT:                /* c1 -> (!c2) */
-            return (implies(c1, c2->args[0], not1, !not2));
-
-        case EK_CONST:
-            if ((c2->val.i != 0) != not2)  /* c1 -> true */
-                return 1;
-            break;
-
-  default:
-      break;
+    //}}}
+    //{{{
+    case EK_CONST:
+        if ((c2->val.i != 0) != not2)  /* c1 -> true */
+            return 1;
+        break;
+    //}}}
+    //{{{
+    default:
+        break;
+    //}}}
     }
-    switch (c1->kind) {
 
-        case EK_AND:
-            if (not1)               /* (!c1a || !c1b) -> c2 */
-                return (implies(c1->args[0], c2, 1, not2) &&
-                        implies(c1->args[1], c2, 1, not2));
-            else                    /* (c1a && c1b) -> c2 */
-                return (implies(c1->args[0], c2, 0, not2) ||
-                        implies(c1->args[1], c2, 0, not2));
-
-        case EK_OR:
-            if (not1)               /* (!c1a && !c1b) -> c2 */
-                return (implies(c1->args[0], c2, 1, not2) ||
-                        implies(c1->args[1], c2, 1, not2));
-            else                    /* (c1a || c1b) -> c2 */
-                return (implies(c1->args[0], c2, 0, not2) &&
-                        implies(c1->args[1], c2, 0, not2));
-
-        case EK_NOT:                /* (!c1) -> c2 */
-            return (implies(c1->args[0], c2, !not1, not2));
-
-        case EK_CONST:
-            if ((c1->val.i != 0) == not1)  /*  false -> c2 */
-                return 1;
-            break;
-
-        case EK_EQ:                 /* (a=b) -> c2 */
-        case EK_ASSIGN:             /* (a:=b) -> c2 */
-        case EK_NE:                 /* (a<>b) -> c2 */
-            if ((c1->kind == EK_NE) == not1) {
-                if (c1->args[0]->kind == EK_VAR) {
-                    ex = replaceexprexpr(copyexpr(c2), c1->args[0], c1->args[1], 1);
-                    i = expr_is_bool(ex, !not2);
-                    freeexpr(ex);
-                    if (i)
-                        return 1;
-                }
-                if (c1->args[1]->kind == EK_VAR) {
-                    ex = replaceexprexpr(copyexpr(c2), c1->args[1], c1->args[0], 1);
-                    i = expr_is_bool(ex, !not2);
-                    freeexpr(ex);
-                    if (i)
-                        return 1;
-                }
+  switch (c1->kind) {
+    //{{{
+    case EK_AND:
+        if (not1)               /* (!c1a || !c1b) -> c2 */
+            return (implies(c1->args[0], c2, 1, not2) &&
+                    implies(c1->args[1], c2, 1, not2));
+        else                    /* (c1a && c1b) -> c2 */
+            return (implies(c1->args[0], c2, 0, not2) ||
+                    implies(c1->args[1], c2, 0, not2));
+    //}}}
+    //{{{
+    case EK_OR:
+        if (not1)               /* (!c1a && !c1b) -> c2 */
+            return (implies(c1->args[0], c2, 1, not2) ||
+                    implies(c1->args[1], c2, 1, not2));
+        else                    /* (c1a || c1b) -> c2 */
+            return (implies(c1->args[0], c2, 0, not2) &&
+                    implies(c1->args[1], c2, 0, not2));
+    //}}}
+    //{{{
+    case EK_NOT:                /* (!c1) -> c2 */
+        return (implies(c1->args[0], c2, !not1, not2));
+    //}}}
+    //{{{
+    case EK_CONST:
+        if ((c1->val.i != 0) == not1)  /*  false -> c2 */
+            return 1;
+        break;
+    //}}}
+    case EK_EQ:                 /* (a=b) -> c2 */
+    case EK_ASSIGN:             /* (a:=b) -> c2 */
+    //{{{
+    case EK_NE:                 /* (a<>b) -> c2 */
+        if ((c1->kind == EK_NE) == not1) {
+            if (c1->args[0]->kind == EK_VAR) {
+                ex = replaceexprexpr(copyexpr(c2), c1->args[0], c1->args[1], 1);
+                i = expr_is_bool(ex, !not2);
+                freeexpr(ex);
+                if (i)
+                    return 1;
             }
-            break;
+            if (c1->args[1]->kind == EK_VAR) {
+                ex = replaceexprexpr(copyexpr(c2), c1->args[1], c1->args[0], 1);
+                i = expr_is_bool(ex, !not2);
+                freeexpr(ex);
+                if (i)
+                    return 1;
+            }
+        }
+        break;
+    //}}}
+    //{{{
+    default:
+        break;
+    //}}}
+    }
 
-  default:
-      break;
+  if (not1 == not2 && exprequiv(c1, c2)) {    /* c1 -> c1 */
+    return 1;
     }
-    if (not1 == not2 && exprequiv(c1, c2)) {    /* c1 -> c1 */
-        return 1;
-    }
-    return 0;
-}
+
+  return 0;
+  }
 //}}}
 //{{{
-void infiniteloop (sp)
-Stmt *sp;
-{
-    switch (infloopstyle) {
+void infiniteloop (Stmt *sp) {
 
-        case 1:      /* write "for (;;) ..." */
-            sp->kind = SK_FOR;
-            freeexpr(sp->exp1);
-            sp->exp1 = NULL;
-            break;
+  switch (infloopstyle) {
+    case 1:  /* write "for (;;) ..." */
+      sp->kind = SK_FOR;
+      freeexpr (sp->exp1);
+      sp->exp1 = NULL;
+      break;
 
-        case 2:      /* write "while (1) ..." */
-            sp->kind = SK_WHILE;
-            freeexpr(sp->exp1);
-            sp->exp1 = makeexpr_val(make_ord(tp_boolean, 1));
-            break;
+    case 2:  /* write "while (1) ..." */
+      sp->kind = SK_WHILE;
+      freeexpr (sp->exp1);
+      sp->exp1 = makeexpr_val(make_ord(tp_boolean, 1));
+      break;
 
-        case 3:      /* write "do ... while (1)" */
-            sp->kind = SK_REPEAT;
-            freeexpr(sp->exp1);
-            sp->exp1 = makeexpr_val(make_ord(tp_boolean, 1));
-            break;
+    case 3:  /* write "do ... while (1)" */
+      sp->kind = SK_REPEAT;
+      freeexpr (sp->exp1);
+      sp->exp1 = makeexpr_val(make_ord(tp_boolean, 1));
+      break;
 
-        default:     /* leave it alone */
-            break;
-
+    default: /* leave it alone */
+      break;
     }
-}
+  }
 //}}}
 
 //{{{  print utils
@@ -4052,7 +4051,7 @@ void checkvaroffsetexpr (Expr *ex, Meaning *mp, int myoffset) {
   switch (ex->kind) {
     //{{{
     case EK_VAR:
-      if (ex->val.i == (long)mp) {
+      if (ex->val.i == (int64_t)mp) {
         if (myoffset == 0)
           numzerooffsets++;
         else if (numoffsets == 0 || myoffset == theoffset) {
@@ -4728,7 +4727,7 @@ Static void cleanheadername (char *dest, char *name) {
 
   strcpy (dest, cp);
 
-  int len = strlen(dest);
+  int len = (int)strlen (dest);
   if (dest[len-1] == '>' || dest[len-1] == '"')
     dest[len-1] = 0;
   }
@@ -5642,7 +5641,7 @@ int p_search (char* fname, char* ext, int need) {
     setup_module (mod->sym->name, 0);
 
     if (mypermflag) {
-      strlist_add (&permimports, mod->sym->name)->value = (long)mod;
+      strlist_add (&permimports, mod->sym->name)->value = (int64_t)mod;
       perm_import (mod);
       }
 

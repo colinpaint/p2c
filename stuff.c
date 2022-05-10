@@ -288,8 +288,8 @@ Static void cvcase (char *buf, int flags) {
     }
   if ((flags & FF_UNDER) && *buf) {
     for (cp = buf + 1; *cp; cp++) {
-      if (isupper(*cp) && islower(cp[-1])) {
-        for (i = strlen(cp); i >= 0; i--)
+      if (isupper (*cp) && islower (cp[-1])) {
+        for (i = (int)strlen (cp); i >= 0; i--)
           cp[i+1] = cp[i];
         *cp++ = '_';
         }
@@ -299,20 +299,20 @@ Static void cvcase (char *buf, int flags) {
   if (flags & FF_UCASE) {
     if (flags & FF_LCASE) {
       for (cp = buf; *cp; cp++) {
-        if (cp == buf || !isalpha(cp[-1]))
-          *cp = toupper(*cp);
+        if (cp == buf || !isalpha (cp[-1]))
+          *cp = toupper (*cp);
         else
-          *cp = tolower(*cp);
+          *cp = tolower (*cp);
         }
       } else
         upc(buf);
     }
   else if (flags & FF_LCASE)
-    lwc(buf);
+    lwc (buf);
 
   if (flags & FF_REMUNDER) {
     for (cp = cp2 = buf; *cp; cp++) {
-      if (isalnum(*cp))
+      if (isalnum (*cp))
         *cp2++ = *cp;
       }
     if (cp2 > buf)
