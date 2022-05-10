@@ -1809,7 +1809,7 @@ Expr* p_rexpr (Type* target) {
           tvar = makestmttempvar(ex->val.type, name_TEMP);
           ex3 = makeexpr_assign(makeexpr_var(tvar), ex);
           ex = makeexpr_var(tvar);
-          } 
+          }
         else
           ex3 = NULL;
 
@@ -1822,7 +1822,7 @@ Expr* p_rexpr (Type* target) {
         if (*name_SETBITS ||
             ((ex4->kind == EK_CONST) ? (ex4->val.i >= setbits) : !(0 <= smin && smax < setbits))) {
           ex = makeexpr_and (makeexpr_range (enum_to_int (ex4), makeexpr_long (0), makeexpr_setbits(), 0), ex);
-          } 
+          }
         else
           freeexpr (ex4);
         ex = makeexpr_comma (ex3, ex);
@@ -1843,7 +1843,7 @@ Expr* p_rexpr (Type* target) {
             tvar = makestmttempvar (ex->val.type, name_TEMP);
             ex3 = makeexpr_assign (makeexpr_var(tvar), ex);
             ex = makeexpr_var (tvar);
-            } 
+            }
           else
             ex3 = NULL;
 
@@ -1871,26 +1871,26 @@ Expr* p_rexpr (Type* target) {
             if (!strcmp(ex2->val.s, setaddrangename)) {
               if (checkconst(ex2->args[1], 'a') && checkconst(ex2->args[2], 'z')) {
                 mask |= 0x1;
-                } 
+                }
               else if (checkconst(ex2->args[1], 'A') && checkconst(ex2->args[2], 'Z')) {
                 mask |= 0x2;
-                } 
+                }
               else if (checkconst(ex2->args[1], '0') && checkconst(ex2->args[2], '9')) {
                 mask |= 0x4;
-                } 
+                }
               else {
                 ex4 = makeexpr_or(ex4, makeexpr_range(copyexpr(ex), ex2->args[1], ex2->args[2], 1));
                 }
-              } 
+              }
             else if (!strcmp(ex2->val.s, setaddname)) {
               ex4 = makeexpr_or(ex4, makeexpr_rel(EK_EQ, copyexpr(ex), ex2->args[1]));
-              } 
+              }
             else
               break;
             ex2 = ex2->args[0];
             }
 
-        // do these now so that EK_OR optimizations will work: 
+        // do these now so that EK_OR optimizations will work:
         if (mask & 0x1)
           ex4 = makeexpr_or (ex4, makeexpr_range (copyexpr (ex), makeexpr_char ('a'), makeexpr_char ('z'), 1));
         if (mask & 0x2)
@@ -3163,123 +3163,133 @@ int lev;
 }
 //}}}
 //{{{
-void out_field(mp)
-Meaning *mp;
-{
-    Meaning *variants[50];
-    short unions[51];
+void out_field (Meaning *mp) {
 
-    if (!scanfield(variants, unions, 0, mp->rectype->fbase, mp))
-        intwarning("out_field", "field name not in tree [309]");
-    else if (mp->warnifused) {
-        if (mp->rectype->meaning)
-            note(format_ss("Reference to field %s of record %s [282]",
-                           mp->name, mp->rectype->meaning->name));
-        else
-            note(format_s("Reference to field %s [282]", mp->name));
+  Meaning *variants[50];
+  short unions[51];
+
+  if (!scanfield (variants, unions, 0, mp->rectype->fbase, mp))
+      intwarning ("out_field", "field name not in tree [309]");
+  else if (mp->warnifused) {
+    if (mp->rectype->meaning)
+      note (format_ss ("Reference to field %s of record %s [282]", mp->name, mp->rectype->meaning->name));
+    else
+      note (format_s ("Reference to field %s [282]", mp->name));
     }
-}
+  }
 //}}}
 //{{{
-Static void wrexpr(ex, prec)
-Expr *ex;
-int prec;
-{
-    short parens = 0;
-    int subprec, i, j, minusflag, breakflag = 0;
-    int saveindent;
-    Expr *ex2, *ex3;
-    char *cp;
-    Meaning *mp;
-    Symbol *sp;
+Static void wrexpr (Expr *ex, int prec) {
 
-    if (debug>2) { fprintf(outf,"wrexpr{"); dumpexpr(ex); fprintf(outf,", %d}\n", prec); }
-    switch (ex->kind) {
+  short parens = 0;
+  int subprec, i, j, minusflag, breakflag = 0;
+  int saveindent;
+  Expr *ex2, *ex3;
+  char *cp;
+  Meaning *mp;
+  Symbol *sp;
 
-        case EK_VAR:
-            mp = (Meaning*)ex->val.i;
-            if (mp->warnifused)
-                note(format_s("Reference to %s [283]", mp->name));
-            out_var(mp, prec);
-            break;
+  if (debug > 2) {
+    //{{{  debug
+    fprintf (outf,"wrexpr{");
+    dumpexpr(ex);
+    fprintf (outf,", %d}\n", prec);
+    }
+    //}}}
 
-        case EK_NAME:
-            output(ex->val.s);
-            break;
-
-        case EK_MACARG:
-            output("<meef>");
-            intwarning("wrexpr", "Stray EK_MACARG encountered [310]");
-            break;
-
-        case EK_CTX:
-            out_ctx((Meaning*)ex->val.i, 1);
-            break;
-
-        case EK_CONST:
-            if (ex->nargs > 0)
-                cp = value_name(ex->val, ex->args[0]->val.s, 0);
-            else
-                cp = value_name(ex->val, NULL, 0);
-            if (*cp == '-')
-                setprec(14);
-            output(cp);
-            break;
-
-        case EK_LONGCONST:
-            if (ex->nargs > 0)
-                cp = value_name(ex->val, ex->args[0]->val.s, 1);
-            else
-                cp = value_name(ex->val, NULL, 1);
-            if (*cp == '-')
-                setprec(14);
-            output(cp);
-            break;
-
-        case EK_STRUCTCONST:
-            ex3 = NULL;
-            for (i = 0; i < ex->nargs; i++) {
-                ex2 = ex->args[i];
-                if (ex2->kind == EK_STRUCTOF) {
-                    j = ex2->val.i;
-                    ex2 = ex2->args[0];
-                } else
-                    j = 1;
-                if (ex2->kind == EK_VAR) {
-                    mp = (Meaning*)ex2->val.i;
-                    if (mp->kind == MK_CONST && mp->val.type &&
-                        (mp->val.type->kind == TK_RECORD ||
-                         mp->val.type->kind == TK_ARRAY)) {
-                        if (foldconsts != 1)
-                            note(format_s("Expanding constant %s into another constant [284]", mp->name));
-                        ex2 = (Expr *)mp->val.i;
-                    }
-                }
-                while (--j >= 0) {
-                    if (ex3) {
-                        if (ex3->kind == EK_STRUCTCONST || ex2->kind == EK_STRUCTCONST)
-                            output (",\n");
-                        else if (spacecommas)
-                            output (",\001 ");
-      else
-          output(",\001");
-                    }
-                    if (ex2->kind == EK_STRUCTCONST) {
-                        output("{ \005");
-      saveindent = outindent;
-      moreindent(extrainitindent);
-                        out_expr(ex2);
-                        outindent = saveindent;
-                        output(" }");
-                    } else
-                        out_expr(ex2);
-                    ex3 = ex2;
+  switch (ex->kind) {
+    //{{{
+    case EK_VAR:
+        mp = (Meaning*)ex->val.i;
+        if (mp->warnifused)
+          note(format_s("Reference to %s [283]", mp->name));
+        out_var (mp, prec);
+        break;
+    //}}}
+    //{{{
+    case EK_NAME:
+        output (ex->val.s);
+        break;
+    //}}}
+    //{{{
+    case EK_MACARG:
+        output ("<meef>");
+        intwarning ("wrexpr", "Stray EK_MACARG encountered [310]");
+        break;
+    //}}}
+    //{{{
+    case EK_CTX:
+        out_ctx((Meaning*)ex->val.i, 1);
+        break;
+    //}}}
+    //{{{
+    case EK_CONST:
+        if (ex->nargs > 0)
+            cp = value_name(ex->val, ex->args[0]->val.s, 0);
+        else
+            cp = value_name(ex->val, NULL, 0);
+        if (*cp == '-')
+            setprec(14);
+        output(cp);
+        break;
+    //}}}
+    //{{{
+    case EK_LONGCONST:
+        if (ex->nargs > 0)
+            cp = value_name(ex->val, ex->args[0]->val.s, 1);
+        else
+            cp = value_name(ex->val, NULL, 1);
+        if (*cp == '-')
+            setprec(14);
+        output(cp);
+        break;
+    //}}}
+    //{{{
+    case EK_STRUCTCONST:
+        ex3 = NULL;
+        for (i = 0; i < ex->nargs; i++) {
+            ex2 = ex->args[i];
+            if (ex2->kind == EK_STRUCTOF) {
+                j = ex2->val.i;
+                ex2 = ex2->args[0];
+            } else
+                j = 1;
+            if (ex2->kind == EK_VAR) {
+                mp = (Meaning*)ex2->val.i;
+                if (mp->kind == MK_CONST && mp->val.type &&
+                    (mp->val.type->kind == TK_RECORD ||
+                     mp->val.type->kind == TK_ARRAY)) {
+                    if (foldconsts != 1)
+                        note(format_s("Expanding constant %s into another constant [284]", mp->name));
+                    ex2 = (Expr *)mp->val.i;
                 }
             }
-            break;
-
-        case EK_FUNCTION:
-            mp = (Meaning *)ex->val.i;
+            while (--j >= 0) {
+                if (ex3) {
+                    if (ex3->kind == EK_STRUCTCONST || ex2->kind == EK_STRUCTCONST)
+                        output (",\n");
+                    else if (spacecommas)
+                        output (",\001 ");
+        else
+        output(",\001");
+                }
+                if (ex2->kind == EK_STRUCTCONST) {
+                    output("{ \005");
+         saveindent = outindent;
+         moreindent(extrainitindent);
+                    out_expr(ex2);
+                    outindent = saveindent;
+                    output(" }");
+                } else
+                    out_expr(ex2);
+                ex3 = ex2;
+            }
+        }
+        break;
+    //}}}
+    //{{{
+    case EK_FUNCTION:
+      mp = (Meaning *)ex->val.i;
       sp = findsymbol_opt(mp->name);
       if ((sp && (sp->flags & WARNLIBR)) || mp->warnifused)
                 note(format_s("Called procedure %s [285]", mp->name));
@@ -3312,624 +3322,681 @@ int prec;
         else
       output(",\002");
     if (curctx->ctx->kind == MK_FUNCTION &&
-        !curctx->ctx->varstructflag && mp->ctx != curctx)
-        note(format_ss("Discovered too late that %s needs a %s [340]",
-           curctx->name,
-           format_s(name_LINK, curctx->ctx->name)));
-                out_ctx(mp->ctx, 1);
-            }
-            output(")");
-            break;
-
-        case EK_BICALL:
-            cp = ex->val.s;
-            while (*cp == '*')
-                cp++;
-      sp = findsymbol_opt(cp);
-      if (sp && (sp->flags & WARNLIBR))
-                note(format_s("Called library procedure %s [286]", cp));
-            output(cp);
-      if (spacefuncs)
-    output(" ");
-            output("(\002");
-      j = sp ? (sp->flags & FUNCBREAK) : 0;
-      if (j == FALLBREAK)
-    output("\007");
-            for (i = 0; i < ex->nargs; i++) {
-    if ((j == FSPCARG1 && i == 1) ||
-        (j == FSPCARG2 && i == 2) ||
-        (j == FSPCARG3 && i == 3))
-        if (spacecommas)
-      output(",\011 ");
-        else
-      output(",\011");
-                else if (i > 0)
-        if (spacecommas)
-      output(",\002 ");
-        else
-      output(",\002");
-                out_expr(ex->args[i]);
-            }
-            output(")");
-            break;
-
-        case EK_SPCALL:
-            setprec(16);
-            if (starfunctions && !ex->val.i) {
-                output("(\002*");
-                wrexpr(ex->args[0], 13);
-                output(")");
-            } else
-                wrexpr(ex->args[0], subprec-1);
-      if (spacefuncs)
-    output(" ");
-            output("(\002");
-            for (i = 1; i < ex->nargs; i++) {
-                if (i > 1)
-        if (spacecommas)
-      output(",\002 ");
-        else
-      output(",\002");
-                out_expr(ex->args[i]);
-            }
-            output(")");
-            break;
-
-  case EK_NEW:
-      setprec(16);
-      output("new ");
-      if (ex->nargs >= 2 &&
-    (ex->args[1]->kind != EK_NAME || *ex->args[1]->val.s))
-    new_array_size = ex->args[1];
-      out_expr(ex->args[0]);
-      new_array_size = NULL;
-#if 0
-      if (ex->nargs >= 2 &&
-    (ex->args[1]->kind != EK_NAME || *ex->args[1]->val.s)) {
-    output("[");
-    out_expr(ex->args[1]);
-    output("]");
-      }
-#endif
-      break;
-
-  case EK_DELETE:
-      setprec(16);
-      output("delete ");
-      if (ex->nargs >= 2) {
-    output("[");
-    out_expr(ex->args[1]);
-    output("] ");
-      }
-      out_expr(ex->args[0]);
-      break;
-
-        case EK_INDEX:
-            setprec(16);
-            wrexpr(ex->args[0], subprec-1);
-      if (lookback(1) == ']')
-    output("\001");
-            output("[");
-      if (ex->args[1]->kind == EK_PLUS && ex->args[1]->nargs == 2 &&
-    ex->args[1]->args[0]->kind == EK_VAR &&
-    (ex->args[1]->args[1]->kind == EK_CONST ||
-     ex->args[1]->args[1]->kind == EK_LONGCONST) &&
-    ex->args[1]->args[1]->val.type->kind == TK_INTEGER) {
-    out_expr(ex->args[1]->args[0]);
-    if (ex->args[1]->args[1]->val.i >= 0)
-        output("+");
-    output(format_d("%d", ex->args[1]->args[1]->val.i));
-      } else
-    out_expr(ex->args[1]);
-            output("]");
-            break;
-
-        case EK_DOT:
-            setprec2(16);
-      checkbreak(breakbeforedot);
-            if (ex->args[0]->kind == EK_HAT) {
-                wrexpr(ex->args[0]->args[0], subprec-1);
-                outop2("->");
-            } else if (ex->args[0]->kind == EK_CTX) {
-                out_ctx((Meaning *)ex->args[0]->val.i, 0);
-            } else {
-                wrexpr(ex->args[0], subprec-1);
-                outop2(".");
-            }
-            if (ex->val.i)
-                out_field((Meaning *)ex->val.i);
-            else
-                output(ex->val.s);
-            break;
-
-        case EK_POSTINC:
-      if (prec == 0 && !postincrement) {
-    setprec(14);
-    output("++");
-    EXTRASPACE();
-    wrexpr(ex->args[0], subprec);
-      } else {
-    setprec(15);
-    wrexpr(ex->args[0], subprec);
-    EXTRASPACE();
-    output("++");
-      }
-            break;
-
-        case EK_POSTDEC:
-      if (prec == 0 && !postincrement) {
-    setprec(14);
-    output("--");
-    EXTRASPACE();
-    wrexpr(ex->args[0], subprec);
-      } else {
-    setprec(15);
-    wrexpr(ex->args[0], subprec);
-    EXTRASPACE();
-    output("--");
-      }
-            break;
-
-        case EK_HAT:
-            setprec(14);
-      if (lookback_prn(1) == '/')
-    output(" ");
-            output("*");
-            EXTRASPACE();
-            wrexpr(ex->args[0], subprec-1);
-            break;
-
-        case EK_ADDR:
-            setprec(14);
-      if (lookback_prn(1) == '&')
-    output(" ");
-            output("&");
-            EXTRASPACE();
-            wrexpr(ex->args[0], subprec-1);
-            break;
-
-        case EK_NEG:
-            setprec(14);
-            output("-");
-            EXTRASPACE();
-            if (ex->args[0]->kind == EK_TIMES)
-                wrexpr(ex->args[0], 12);
-            else
-                wrexpr(ex->args[0], subprec-1);
-            break;
-
-        case EK_NOT:
-            setprec(14);
-            output("!");
-            EXTRASPACE();
-            wrexpr(ex->args[0], subprec-1);
-            break;
-
-        case EK_BNOT:
-            setprec(14);
-            output("~");
-            EXTRASPACE();
-            wrexpr(ex->args[0], subprec-1);
-            break;
-
-        case EK_CAST:
-        case EK_ACTCAST:
-            if (similartypes(ex->val.type, ex->args[0]->val.type)) {
-                wrexpr(ex->args[0], prec);
-            } else if (ord_type(ex->args[0]->val.type)->kind == TK_ENUM &&
-                       ex->val.type == tp_int && !useenum) {
-                wrexpr(ex->args[0], prec);
-            } else if (callcasts &&
-           onewordtype(ex->val.type, ODECL_ARRAYPTRS)) {
-    out_type(ex->val.type, 0);
-    if (spacefuncs)
-        output(" ");
-    output("(\002");
-    out_expr(ex->args[0]);
-    output(")");
-      } else {
-                setprec2(14);
-                output("(");
-                out_type(ex->val.type, ODECL_ARRAYPTRS);
-                output(")\002");
-                EXTRASPACE();
-                if (extraparens != 0)
-                    wrexpr(ex->args[0], 15);
-                else
-                    wrexpr(ex->args[0], subprec-1);
-            }
-            break;
-
-        case EK_LITCAST:
-      if (callcasts &&
-    ((ex->args[0]->kind == EK_TYPENAME &&
-      onewordtype(ex->args[0]->val.type, 0)) ||
-     (ex->args[0]->kind == EK_NAME &&
-      onewordstring(ex->args[0]->val.s)))) {
-    out_expr(ex->args[0]);
-    output("(\002");
-    out_expr(ex->args[1]);
-    output(")");
-      } else {
-    setprec2(14);
-    output("(");
-    out_expr(ex->args[0]);
-    output(")\002");
-    EXTRASPACE();
-    if (extraparens != 0)
-        wrexpr(ex->args[1], 15);
-    else
-        wrexpr(ex->args[1], subprec-1);
-      }
-            break;
-
-        case EK_SIZEOF:
-            setprec(14);
-            output("sizeof");
-      if (spacefuncs)
-    output(" ");
-      output("(");
-      out_expr(ex->args[0]);
-            output(")");
-            break;
-
-  case EK_TYPENAME:
-      out_type(ex->val.type, 0);
-      break;
-
-        case EK_TIMES:
-      setprec2(13);
-      checkbreak(breakbeforearith);
-            ex2 = copyexpr(ex);
-            if (expr_looks_neg(ex2->args[ex2->nargs-1])) {
-                ex2->args[0] = makeexpr_neg(ex2->args[0]);
-                ex2->args[ex2->nargs-1] = makeexpr_neg(ex2->args[ex2->nargs-1]);
-            }
-            wrexpr(ex2->args[0], incompat(ex2, 0, subprec-1));
-            for (i = 1; i < ex2->nargs; i++) {
-                outop("*");
-                wrexpr(ex2->args[i], incompat(ex2, i, subprec));
-            }
-            freeexpr(ex2);
-            break;
-
-        case EK_DIV:
-        case EK_DIVIDE:
-            setprec2(13);
-      checkbreak(breakbeforearith);
-      wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
-            outop("/");
-            wrexpr(ex->args[1], incompat(ex, 1, subprec));
-            break;
-
-        case EK_MOD:
-            setprec2(13);
-      checkbreak(breakbeforearith);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
-            outop("%");
-            wrexpr(ex->args[1], incompat(ex, 1, subprec));
-            break;
-
-        case EK_PLUS:
-            setprec2(12);
-      checkbreak(breakbeforearith);
-            ex2 = copyexpr(ex);
-            minusflag = 0;
-            if (expr_looks_neg(ex2->args[0])) {
-                j = 1;
-                while (j < ex2->nargs && expr_looks_neg(ex2->args[j])) j++;
-                if (j < ex2->nargs)
-                    swapexprs(ex2->args[0], ex2->args[j]);
-            } else if (ex2->val.i && ex2->nargs == 2) {   /* this was originally "a-b" */
-                if (isliteralconst(ex2->args[1], NULL) != 2) {
-                    if (expr_neg_cost(ex2->args[1]) <= 0) {
-                        minusflag = 1;
-                    } else if (expr_neg_cost(ex2->args[0]) <= 0) {
-                        swapexprs(ex2->args[0], ex2->args[1]);
-                        if (isliteralconst(ex2->args[0], NULL) != 2)
-                            minusflag = 1;
-                    }
-                }
-            }
-            wrexpr(ex2->args[0], incompat(ex, 0, subprec));
-            for (i = 1; i < ex2->nargs; i++) {
-                if (expr_looks_neg(ex2->args[i]) || minusflag) {
-                    outop("-");
-                    ex2->args[i] = makeexpr_neg(ex2->args[i]);
-                } else
-                    outop("+");
-                wrexpr(ex2->args[i], incompat(ex, i, subprec));
-            }
-            freeexpr(ex2);
-            break;
-
-        case EK_LSH:
-            setprec3(11);
-      checkbreak(breakbeforearith);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop("<<");
-            wrexpr(ex->args[1], incompat(ex, 1, subprec));
-            break;
-
-        case EK_RSH:
-            setprec3(11);
-      checkbreak(breakbeforearith);
-      wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop(">>");
-            wrexpr(ex->args[1], incompat(ex, 1, subprec));
-            break;
-
-        case EK_LT:
-            setprec2(10);
-      checkbreak(breakbeforerel);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop("<");
-            wrexpr(ex->args[1], incompat(ex, 0, subprec));
-            break;
-
-        case EK_GT:
-            setprec2(10);
-      checkbreak(breakbeforerel);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop(">");
-            wrexpr(ex->args[1], incompat(ex, 0, subprec));
-            break;
-
-        case EK_LE:
-            setprec2(10);
-      checkbreak(breakbeforerel);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop("<=");
-            wrexpr(ex->args[1], incompat(ex, 0, subprec));
-            break;
-
-        case EK_GE:
-            setprec2(10);
-      checkbreak(breakbeforerel);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop(">=");
-            wrexpr(ex->args[1], incompat(ex, 0, subprec));
-            break;
-
-        case EK_EQ:
-            setprec2(9);
-      checkbreak(breakbeforerel);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop("==");
-            wrexpr(ex->args[1], incompat(ex, 0, subprec));
-            break;
-
-        case EK_NE:
-            setprec2(9);
-      checkbreak(breakbeforerel);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec));
-            outop("!=");
-            wrexpr(ex->args[1], incompat(ex, 0, subprec));
-            break;
-
-        case EK_BAND:
-            setprec3(8);
-      if (ex->val.type == tp_boolean)
-    checkbreak(breakbeforelog);
-      else
-    checkbreak(breakbeforearith);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
-      outop("&");
-            wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
-            break;
-
-        case EK_BXOR:
-            setprec3(7);
-      checkbreak(breakbeforearith);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
-            outop("^");
-            wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
-            break;
-
-        case EK_BOR:
-            setprec3(6);
-      if (ex->val.type == tp_boolean)
-    checkbreak(breakbeforelog);
-      else
-    checkbreak(breakbeforearith);
-            wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
-      outop("|");
-            wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
-            break;
-
-        case EK_AND:
-            setprec3(5);
-      checkbreak(breakbeforelog);
-      wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
-            outop("&&");
-      wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
-            break;
-
-        case EK_OR:
-            setprec3(4);
-      checkbreak(breakbeforelog);
-      wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
-            outop("||");
-      wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
-            break;
-
-        case EK_COND:
-            setprec3(3);
-      i = 0;
-      for (;;) {
-    i++;
-    if (extraparens != 0)
-        wrexpr(ex->args[0], 15);
-    else
-        wrexpr(ex->args[0], subprec);
-    NICESPACE();
-    output("\002?");
-    NICESPACE();
-    out_expr(ex->args[1]);
-    if (ex->args[2]->kind == EK_COND) {
-        NICESPACE();
-        output("\002:");
-        NICESPACE();
-        ex = ex->args[2];
-    } else {
-        NICESPACE();
-        output((i == 1) ? "\017:" : "\002:");
-        NICESPACE();
-        wrexpr(ex->args[2], subprec-1);
+    !curctx->ctx->varstructflag && mp->ctx != curctx)
+    note(format_ss("Discovered too late that %s needs a %s [340]",
+       curctx->name,
+       format_s(name_LINK, curctx->ctx->name)));
+            out_ctx(mp->ctx, 1);
+        }
+        output(")");
         break;
-    }
-      }
-            break;
+    //}}}
+    //{{{
+    case EK_BICALL:
+        cp = ex->val.s;
+        while (*cp == '*')
+            cp++;
+        sp = findsymbol_opt(cp);
+        if (sp && (sp->flags & WARNLIBR))
+                  note(format_s("Called library procedure %s [286]", cp));
+              output(cp);
+        if (spacefuncs)
+      output(" ");
+              output("(\002");
+        j = sp ? (sp->flags & FUNCBREAK) : 0;
+        if (j == FALLBREAK)
+      output("\007");
+              for (i = 0; i < ex->nargs; i++) {
+      if ((j == FSPCARG1 && i == 1) ||
+          (j == FSPCARG2 && i == 2) ||
+          (j == FSPCARG3 && i == 3))
+          if (spacecommas)
+        output(",\011 ");
+          else
+        output(",\011");
+                  else if (i > 0)
+          if (spacecommas)
+        output(",\002 ");
+          else
+        output(",\002");
+                  out_expr(ex->args[i]);
+        }
+        output(")");
+        break;
+    //}}}
+    //{{{
+    case EK_SPCALL:
+        setprec(16);
+        if (starfunctions && !ex->val.i) {
+            output("(\002*");
+            wrexpr(ex->args[0], 13);
+            output(")");
+        } else
+            wrexpr(ex->args[0], subprec-1);
+          if (spacefuncs)
+        output(" ");
+                output("(\002");
+                for (i = 1; i < ex->nargs; i++) {
+                    if (i > 1)
+            if (spacecommas)
+          output(",\002 ");
+            else
+          output(",\002");
+                    out_expr(ex->args[i]);
+        }
+        output(")");
+        break;
+    //}}}
+    //{{{
+    case EK_NEW:
+        setprec(16);
+        output("new ");
+        if (ex->nargs >= 2 &&
+      (ex->args[1]->kind != EK_NAME || *ex->args[1]->val.s))
+      new_array_size = ex->args[1];
+        out_expr(ex->args[0]);
+        new_array_size = NULL;
+      #if 0
+        if (ex->nargs >= 2 &&
+      (ex->args[1]->kind != EK_NAME || *ex->args[1]->val.s)) {
+      output("[");
+      out_expr(ex->args[1]);
+      output("]");
+        }
+      #endif
+        break;
+    //}}}
+    //{{{
+    case EK_DELETE:
+        setprec(16);
+        output("delete ");
+        if (ex->nargs >= 2) {
+      output("[");
+      out_expr(ex->args[1]);
+      output("] ");
+        }
+        out_expr(ex->args[0]);
+        break;
 
-        case EK_ASSIGN:
-            if (ex->args[1]->kind == EK_PLUS &&
-                exprsame(ex->args[1]->args[0], ex->args[0], 2) &&
-                ex->args[1]->args[1]->kind == EK_CONST &&
-                ex->args[1]->args[1]->val.type->kind == TK_INTEGER &&
-                abs(ex->args[1]->args[1]->val.i) == 1) {
-    if (prec == 0 && postincrement) {
-        setprec(15);
-        wrexpr(ex->args[0], subprec);
-        EXTRASPACE();
-        if (ex->args[1]->args[1]->val.i == 1)
+          case EK_INDEX:
+              setprec(16);
+              wrexpr(ex->args[0], subprec-1);
+        if (lookback(1) == ']')
+      output("\001");
+              output("[");
+        if (ex->args[1]->kind == EK_PLUS && ex->args[1]->nargs == 2 &&
+      ex->args[1]->args[0]->kind == EK_VAR &&
+      (ex->args[1]->args[1]->kind == EK_CONST ||
+       ex->args[1]->args[1]->kind == EK_LONGCONST) &&
+      ex->args[1]->args[1]->val.type->kind == TK_INTEGER) {
+      out_expr(ex->args[1]->args[0]);
+      if (ex->args[1]->args[1]->val.i >= 0)
+          output("+");
+      output(format_d("%d", ex->args[1]->args[1]->val.i));
+        } else
+      out_expr(ex->args[1]);
+              output("]");
+              break;
+    //}}}
+    //{{{
+    case EK_DOT:
+              setprec2(16);
+        checkbreak(breakbeforedot);
+              if (ex->args[0]->kind == EK_HAT) {
+                  wrexpr(ex->args[0]->args[0], subprec-1);
+                  outop2("->");
+              } else if (ex->args[0]->kind == EK_CTX) {
+                  out_ctx((Meaning *)ex->args[0]->val.i, 0);
+              } else {
+                  wrexpr(ex->args[0], subprec-1);
+                  outop2(".");
+              }
+              if (ex->val.i)
+                  out_field((Meaning *)ex->val.i);
+              else
+                  output(ex->val.s);
+              break;
+    //}}}
+    //{{{
+    case EK_POSTINC:
+        if (prec == 0 && !postincrement) {
+      setprec(14);
       output("++");
-        else
+      EXTRASPACE();
+      wrexpr(ex->args[0], subprec);
+        } else {
+      setprec(15);
+      wrexpr(ex->args[0], subprec);
+      EXTRASPACE();
+      output("++");
+        }
+              break;
+
+          case EK_POSTDEC:
+        if (prec == 0 && !postincrement) {
+      setprec(14);
       output("--");
-    } else {
+      EXTRASPACE();
+      wrexpr(ex->args[0], subprec);
+        } else {
+      setprec(15);
+      wrexpr(ex->args[0], subprec);
+      EXTRASPACE();
+      output("--");
+        }
+              break;
+    //}}}
+    //{{{
+    case EK_HAT:
+              setprec(14);
+        if (lookback_prn(1) == '/')
+      output(" ");
+              output("*");
+              EXTRASPACE();
+              wrexpr(ex->args[0], subprec-1);
+              break;
+    //}}}
+    //{{{
+    case EK_ADDR:
+              setprec(14);
+        if (lookback_prn(1) == '&')
+      output(" ");
+              output("&");
+              EXTRASPACE();
+              wrexpr(ex->args[0], subprec-1);
+              break;
+    //}}}
+    //{{{
+    case EK_NEG:
         setprec(14);
-        if (ex->args[1]->args[1]->val.i == 1)
-      output("++");
+        output("-");
+        EXTRASPACE();
+        if (ex->args[0]->kind == EK_TIMES)
+            wrexpr(ex->args[0], 12);
         else
-      output("--");
+            wrexpr(ex->args[0], subprec-1);
+        break;
+    //}}}
+    //{{{
+    case EK_NOT:
+        setprec(14);
+        output("!");
         EXTRASPACE();
         wrexpr(ex->args[0], subprec-1);
-    }
-            } else {
-                setprec2(2);
-    checkbreak(breakbeforeassign);
-                wrexpr(ex->args[0], subprec);
-                ex2 = copyexpr(ex->args[1]);
-                j = -1;
-                switch (ex2->kind) {
+        break;
+    //}}}
+    //{{{
+    case EK_BNOT:
+        setprec(14);
+        output("~");
+        EXTRASPACE();
+        wrexpr(ex->args[0], subprec-1);
+        break;
+    //}}}
+    case EK_CAST:
+    //{{{
+    case EK_ACTCAST:
+             if (similartypes(ex->val.type, ex->args[0]->val.type)) {
+                 wrexpr(ex->args[0], prec);
+             } else if (ord_type(ex->args[0]->val.type)->kind == TK_ENUM &&
+                        ex->val.type == tp_int && !useenum) {
+                 wrexpr(ex->args[0], prec);
+             } else if (callcasts &&
+            onewordtype(ex->val.type, ODECL_ARRAYPTRS)) {
+     out_type(ex->val.type, 0);
+     if (spacefuncs)
+         output(" ");
+     output("(\002");
+     out_expr(ex->args[0]);
+     output(")");
+       } else {
+                 setprec2(14);
+                 output("(");
+                 out_type(ex->val.type, ODECL_ARRAYPTRS);
+                 output(")\002");
+                 EXTRASPACE();
+                 if (extraparens != 0)
+                     wrexpr(ex->args[0], 15);
+                 else
+                     wrexpr(ex->args[0], subprec-1);
+             }
+             break;
+    //}}}
+    //{{{
+    case EK_LITCAST:
+        if (callcasts &&
+      ((ex->args[0]->kind == EK_TYPENAME &&
+        onewordtype(ex->args[0]->val.type, 0)) ||
+       (ex->args[0]->kind == EK_NAME &&
+        onewordstring(ex->args[0]->val.s)))) {
+      out_expr(ex->args[0]);
+      output("(\002");
+      out_expr(ex->args[1]);
+      output(")");
+        } else {
+      setprec2(14);
+      output("(");
+      out_expr(ex->args[0]);
+      output(")\002");
+      EXTRASPACE();
+      if (extraparens != 0)
+          wrexpr(ex->args[1], 15);
+      else
+          wrexpr(ex->args[1], subprec-1);
+        }
+              break;
+    //}}}
+    //{{{
+    case EK_SIZEOF:
+              setprec(14);
+              output("sizeof");
+        if (spacefuncs)
+      output(" ");
+        output("(");
+        out_expr(ex->args[0]);
+              output(")");
+              break;
+    //}}}
+    //{{{
+    case EK_TYPENAME:
+        out_type(ex->val.type, 0);
+        break;
 
-                    case EK_PLUS:
-                    case EK_TIMES:
-                    case EK_BAND:
-                    case EK_BOR:
-                    case EK_BXOR:
-                        for (i = 0; i < ex2->nargs; i++) {
-                            if (exprsame(ex->args[0], ex2->args[i], 2)) {
-                                j = i;
-                                break;
-                            }
-                            if (ex2->val.type->kind == TK_REAL)
-                                break;   /* non-commutative */
-                        }
-                        break;
+          case EK_TIMES:
+        setprec2(13);
+        checkbreak(breakbeforearith);
+              ex2 = copyexpr(ex);
+              if (expr_looks_neg(ex2->args[ex2->nargs-1])) {
+                  ex2->args[0] = makeexpr_neg(ex2->args[0]);
+                  ex2->args[ex2->nargs-1] = makeexpr_neg(ex2->args[ex2->nargs-1]);
+              }
+              wrexpr(ex2->args[0], incompat(ex2, 0, subprec-1));
+              for (i = 1; i < ex2->nargs; i++) {
+                  outop("*");
+                  wrexpr(ex2->args[i], incompat(ex2, i, subprec));
+              }
+              freeexpr(ex2);
+              break;
 
-                    case EK_DIVIDE:
-                    case EK_DIV:
-                    case EK_MOD:
-                    case EK_LSH:
-                    case EK_RSH:
-                        if (exprsame(ex->args[0], ex2->args[0], 2))
-                            j = 0;
-                        break;
-
-        default:
-      break;
+          case EK_DIV:
+          case EK_DIVIDE:
+              setprec2(13);
+        checkbreak(breakbeforearith);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
+              outop("/");
+              wrexpr(ex->args[1], incompat(ex, 1, subprec));
+              break;
+    //}}}
+    //{{{
+    case EK_MOD:
+        setprec2(13);
+        checkbreak(breakbeforearith);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
+        outop("%");
+        wrexpr(ex->args[1], incompat(ex, 1, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_PLUS:
+        setprec2(12);
+        checkbreak(breakbeforearith);
+        ex2 = copyexpr(ex);
+        minusflag = 0;
+        if (expr_looks_neg(ex2->args[0])) {
+            j = 1;
+            while (j < ex2->nargs && expr_looks_neg(ex2->args[j])) j++;
+            if (j < ex2->nargs)
+                swapexprs(ex2->args[0], ex2->args[j]);
+        } else if (ex2->val.i && ex2->nargs == 2) {   /* this was originally "a-b" */
+            if (isliteralconst(ex2->args[1], NULL) != 2) {
+                if (expr_neg_cost(ex2->args[1]) <= 0) {
+                    minusflag = 1;
+                } else if (expr_neg_cost(ex2->args[0]) <= 0) {
+                    swapexprs(ex2->args[0], ex2->args[1]);
+                    if (isliteralconst(ex2->args[0], NULL) != 2)
+                        minusflag = 1;
                 }
-                if (j >= 0) {
-                    if (ex2->nargs == 2)
-                        ex2 = grabarg(ex2, 1-j);
-                    else
-                        delfreearg(&ex2, j);
-                    switch (ex->args[1]->kind) {
-
-                        case EK_PLUS:
-                            if (expr_looks_neg(ex2)) {
-                                outop("-=");
-                                ex2 = makeexpr_neg(ex2);
-                            } else
-                                outop("+=");
-                            break;
-
-                        case EK_TIMES:
-                            outop("*=");
-                            break;
-
-                        case EK_DIVIDE:
-                        case EK_DIV:
-                            outop("/=");
-                            break;
-
-                        case EK_MOD:
-                            outop("%=");
-                            break;
-
-                        case EK_LSH:
-                            outop("<<=");
-                            break;
-
-                        case EK_RSH:
-                            outop(">>=");
-                            break;
-
-                        case EK_BAND:
-                            outop("&=");
-                            break;
-
-                        case EK_BOR:
-                            outop("|=");
-                            break;
-
-                        case EK_BXOR:
-                            outop("^=");
-                            break;
-
-      default:
+            }
+        }
+        wrexpr(ex2->args[0], incompat(ex, 0, subprec));
+        for (i = 1; i < ex2->nargs; i++) {
+            if (expr_looks_neg(ex2->args[i]) || minusflag) {
+                outop("-");
+                ex2->args[i] = makeexpr_neg(ex2->args[i]);
+            } else
+                outop("+");
+            wrexpr(ex2->args[i], incompat(ex, i, subprec));
+        }
+        freeexpr(ex2);
+        break;
+    //}}}
+    //{{{
+    case EK_LSH:
+        setprec3(11);
+        checkbreak(breakbeforearith);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop("<<");
+        wrexpr(ex->args[1], incompat(ex, 1, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_RSH:
+        setprec3(11);
+        checkbreak(breakbeforearith);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop(">>");
+        wrexpr(ex->args[1], incompat(ex, 1, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_LT:
+        setprec2(10);
+        checkbreak(breakbeforerel);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop("<");
+        wrexpr(ex->args[1], incompat(ex, 0, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_GT:
+        setprec2(10);
+        checkbreak(breakbeforerel);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop(">");
+        wrexpr(ex->args[1], incompat(ex, 0, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_LE:
+        setprec2(10);
+        checkbreak(breakbeforerel);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop("<=");
+        wrexpr(ex->args[1], incompat(ex, 0, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_GE:
+        setprec2(10);
+        checkbreak(breakbeforerel);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop(">=");
+        wrexpr(ex->args[1], incompat(ex, 0, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_EQ:
+        setprec2(9);
+        checkbreak(breakbeforerel);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop("==");
+        wrexpr(ex->args[1], incompat(ex, 0, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_NE:
+        setprec2(9);
+        checkbreak(breakbeforerel);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec));
+        outop("!=");
+        wrexpr(ex->args[1], incompat(ex, 0, subprec));
+        break;
+    //}}}
+    //{{{
+    case EK_BAND:
+              setprec3(8);
+        if (ex->val.type == tp_boolean)
+      checkbreak(breakbeforelog);
+        else
+      checkbreak(breakbeforearith);
+              wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
+        outop("&");
+              wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
+              break;
+    //}}}
+    //{{{
+      case EK_BXOR:
+          setprec3(7);
+    checkbreak(breakbeforearith);
+          wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
+          outop("^");
+          wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
           break;
-                    }
-                } else {
-        output(" ");
-        outop3(breakbeforeassign, "=");
-        output(" ");
-                }
-                if (extraparens != 0 &&
-                    (ex2->kind == EK_EQ || ex2->kind == EK_NE ||
-                     ex2->kind == EK_GT || ex2->kind == EK_LT ||
-                     ex2->kind == EK_GE || ex2->kind == EK_LE ||
-                     ex2->kind == EK_AND || ex2->kind == EK_OR))
-                    wrexpr(ex2, 16);
-                else
-                    wrexpr(ex2, subprec-1);
-                freeexpr(ex2);
-            }
-            break;
+    //}}}
+    //{{{
+    case EK_BOR:
+              setprec3(6);
+        if (ex->val.type == tp_boolean)
+      checkbreak(breakbeforelog);
+        else
+      checkbreak(breakbeforearith);
+              wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
+        outop("|");
+              wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
+              break;
+    //}}}
+    //{{{
+    case EK_AND:
+        setprec3(5);
+    checkbreak(breakbeforelog);
+    wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
+        outop("&&");
+    wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
+        break;
+    //}}}
+    //{{{
+    case EK_OR:
+        setprec3(4);
+        checkbreak(breakbeforelog);
+        wrexpr(ex->args[0], incompat(ex, 0, subprec-1));
+        outop("||");
+        wrexpr(ex->args[1], incompat(ex, 1, subprec-1));
+        break;
+    //}}}
+    //{{{
+    case EK_COND:
+              setprec3(3);
+        i = 0;
+        for (;;) {
+      i++;
+      if (extraparens != 0)
+          wrexpr(ex->args[0], 15);
+      else
+          wrexpr(ex->args[0], subprec);
+      NICESPACE();
+      output("\002?");
+      NICESPACE();
+      out_expr(ex->args[1]);
+      if (ex->args[2]->kind == EK_COND) {
+          NICESPACE();
+          output("\002:");
+          NICESPACE();
+          ex = ex->args[2];
+      } else {
+          NICESPACE();
+          output((i == 1) ? "\017:" : "\002:");
+          NICESPACE();
+          wrexpr(ex->args[2], subprec-1);
+          break;
+      }
+        }
+              break;
+    //}}}
+    //{{{
+    case EK_ASSIGN:
+      if (ex->args[1]->kind == EK_PLUS &&
+          exprsame(ex->args[1]->args[0], ex->args[0], 2) &&
+          ex->args[1]->args[1]->kind == EK_CONST &&
+          ex->args[1]->args[1]->val.type->kind == TK_INTEGER &&
+          abs(ex->args[1]->args[1]->val.i) == 1) {
+        if (prec == 0 && postincrement) {
+          setprec(15);
+          wrexpr(ex->args[0], subprec);
+          EXTRASPACE();
+          if (ex->args[1]->args[1]->val.i == 1)
+            output("++");
+          else
+            output("--");
+          } 
+        else {
+          setprec(14);
+          if (ex->args[1]->args[1]->val.i == 1)
+            output("++");
+          else
+            output("--");
+          EXTRASPACE();
+          wrexpr(ex->args[0], subprec-1);
+          }
+        } 
+      else {
+        setprec2(2);
+        checkbreak(breakbeforeassign);
+        wrexpr(ex->args[0], subprec);
+        ex2 = copyexpr(ex->args[1]);
+        j = -1;
 
-        case EK_COMMA:
-            setprec3(1);
-            for (i = 0; i < ex->nargs-1; i++) {
-                wrexpr(ex->args[i], subprec);
-                output(",\002");
-    if (spacecommas)
-        NICESPACE();
-            }
-            wrexpr(ex->args[ex->nargs-1], subprec);
+        switch (ex2->kind) {
+          case EK_PLUS:
+          case EK_TIMES:
+          case EK_BAND:
+          case EK_BOR:
+          //{{{
+          case EK_BXOR:
+              for (i = 0; i < ex2->nargs; i++) {
+                  if (exprsame(ex->args[0], ex2->args[i], 2)) {
+                      j = i;
+                      break;
+                  }
+                  if (ex2->val.type->kind == TK_REAL)
+                      break;   /* non-commutative */
+              }
+              break;
+          //}}}
+          case EK_DIVIDE:
+          case EK_DIV:
+          case EK_MOD:
+          case EK_LSH:
+          //{{{
+          case EK_RSH:
+            if (exprsame(ex->args[0], ex2->args[0], 2))
+              j = 0;
             break;
+          //}}}
+          //{{{
+          default:
+            break;
+          //}}}
+          }
 
-        default:
-            intwarning("wrexpr", "bad ex->kind [311]");
+        if (j >= 0) {
+          if (ex2->nargs == 2)
+            ex2 = grabarg(ex2, 1-j);
+          else
+            delfreearg(&ex2, j);
+
+          switch (ex->args[1]->kind) {
+            //{{{
+            case EK_PLUS:
+                if (expr_looks_neg(ex2)) {
+                    outop("-=");
+                    ex2 = makeexpr_neg(ex2);
+                } else
+                    outop("+=");
+                break;
+            //}}}
+            //{{{
+            case EK_TIMES:
+                outop("*=");
+                break;
+            //}}}
+            case EK_DIVIDE:
+            //{{{
+            case EK_DIV:
+                outop("/=");
+                break;
+            //}}}
+            //{{{
+            case EK_MOD:
+                outop("%=");
+                break;
+
+            //}}}
+            //{{{
+            case EK_LSH:
+                outop("<<=");
+                break;
+            //}}}
+            //{{{
+            case EK_RSH:
+                outop(">>=");
+                break;
+            //}}}
+            //{{{
+            case EK_BAND:
+                outop("&=");
+                break;
+            //}}}
+            //{{{
+            case EK_BOR:
+                outop("|=");
+                break;
+            //}}}
+            //{{{
+            case EK_BXOR:
+                outop("^=");
+                break;
+            //}}}
+            //{{{
+            default:
+                break;
+            //}}}
+            }
+          } 
+        else {
+          output(" ");
+          outop3(breakbeforeassign, "=");
+          output(" ");
+          }
+                  if (extraparens != 0 &&
+                      (ex2->kind == EK_EQ || ex2->kind == EK_NE ||
+                       ex2->kind == EK_GT || ex2->kind == EK_LT ||
+                       ex2->kind == EK_GE || ex2->kind == EK_LE ||
+                       ex2->kind == EK_AND || ex2->kind == EK_OR))
+                      wrexpr(ex2, 16);
+                  else
+                      wrexpr(ex2, subprec-1);
+                  freeexpr(ex2);
+              }
+              break;
+    //}}}
+    //{{{
+    case EK_COMMA:
+       setprec3(1);
+       for (i = 0; i < ex->nargs-1; i++) {
+         wrexpr(ex->args[i], subprec);
+         output(",\002");
+
+        if (spacecommas)
+          NICESPACE();
+        }
+      wrexpr(ex->args[ex->nargs-1], subprec);
+      break;
+    //}}}
+    //{{{
+    default:
+      intwarning("wrexpr", "bad ex->kind [311]");
+    //}}}
     }
-    switch (parens) {
-      case 1:
-        output(")");
-  break;
-      case 2:
-  output("\004");
-  break;
+
+  switch (parens) {
+    case 1:
+      output(")");
+      break;
+    case 2:
+      output("\004");
+      break;
     }
-}
+  }
 //}}}
 
 //{{{
