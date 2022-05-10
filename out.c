@@ -1324,8 +1324,6 @@ Strlist* cmt;
       }
 
     if (*cmt->s == '\001') {
-      if (cmtdebug)
-        output(format_sd("[]  [%s:%d]", CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK));
       cp = cmt->s;
       if (cp[1] == '\014') {
         output("\f\n");
@@ -1336,8 +1334,6 @@ Strlist* cmt;
 
       for ( ; *cp; cp++) {
         output("\n");
-        if (cmtdebug && cp[1])
-          output("[]");
         }
 
       setcommentkind(cmt, CMT_DONE);
@@ -1394,17 +1390,15 @@ Strlist* cmt;
         outindent = 0;
         }
 
-      output(cp);
-      if (cmtdebug)
-        output(format_sd(" [%s:%d] ", CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK));
-      setcommentkind(cmt, CMT_DONE);
+      output (cp);
+      setcommentkind (cmt, CMT_DONE);
       cmt = cmt->next;
       if (!cmt || !commentvisible(cmt))
         break;
       cp = cmt->s;
       if (*cp != '\002' && *cp != '\003')
         break;
-      output("\n");
+      output ("\n");
       if (!embeddedcode) {
         outindent = (*cp == '\002') ? theindent : 0;
         deltaindent = 0;
@@ -1414,13 +1408,13 @@ Strlist* cmt;
     if (embeddedcode) {
       embeddedcode = 0;
       if (i) {   /* eat final blank line */
-        output("\n");
+        output ("\n");
         }
       }
     else {
       if (!slash)
-        output("*/");
-      output("\n");
+        output ("*/");
+      output ("\n");
       }
 
     outindent = saveindent;
@@ -1431,163 +1425,170 @@ Strlist* cmt;
     }
 //}}}
 //{{{
-void outcomment (cmt)
-Strlist *cmt;
-{
-    Strlist *savenext;
+void outcomment (Strlist *cmt) {
 
-    if (cmt) {
-  savenext = cmt->next;
-  cmt->next = NULL;
-  outcomments(cmt);
-  cmt->next = savenext;
+  Strlist *savenext;
+
+  if (cmt) {
+    savenext = cmt->next;
+    cmt->next = NULL;
+    outcomments (cmt);
+    cmt->next = savenext;
     }
-}
+  }
 //}}}
 //{{{
-void outtrailcomment (cmt, serial, indent)
-Strlist *cmt;
-int serial, indent;
-{
-    int savedelta = deltaindent;
+void outtrailcomment (Strlist *cmt, int serial, int indent) {
 
-#if 0
+  int savedelta = deltaindent;
+
+  #if 0
     suppressnewline = 1;
-    output("\n");
+    output ("\n");
     suppressnewline = 0;
-#endif
-    cmt = findcomment(cmt, CMT_TRAIL, serial);
-    if (commentvisible(cmt)) {
-  out_spaces(indent, commentoverindent, commentlen(cmt), 0);
-  outcomment(cmt);
-  deltaindent = savedelta;
-    } else
-  output("\n");
-}
-//}}}
-//{{{
-void flushcomments (cmt, kind, serial)
-Strlist **cmt;
-int kind, serial;
-{
-    Strlist *cmt2, *cmt3;
-    int saveindent, savesingle, saveeat;
+  #endif
 
-    if (!cmt)
-  cmt = &curcomments;
-    cmt2 = extractcomment(cmt, kind, serial);
-    saveindent = outindent;
-    savesingle = deltaindent;
-    moreindent(deltaindent);
-    deltaindent = 0;
-    saveeat = eatcomments;
-    if (eatcomments == 2)
-  eatcomments = 0;
-    cmt3 = cmt2;
-    while (cmt3)
-  cmt3 = outcomments(cmt3);
-    eatcomments = saveeat;
-    outindent = saveindent;
-    deltaindent = savesingle;
-    strlist_empty(&cmt2);
-}
-//}}}
-
-//{{{
-char* rawCstring (fmt, s, len, special)
-char *fmt;
-register char *s;
-int len, special;
-{
-    char buf[500];
-    register char *cp;
-    register unsigned char ch;
-
-    cp = buf;
-    while (--len >= 0) {
-        ch = *((unsigned char *) s);
-        s++;
-        if (ch == 0 && (len == 0 || !isdigit(*s))) {
-            *cp++ = '\\';
-            *cp++ = '0';
-        } else if (ch == '\n') {
-            *cp++ = '\\';
-            *cp++ = 'n';
-        } else if (ch == '\b') {
-            *cp++ = '\\';
-            *cp++ = 'b';
-        } else if (ch == '\t') {
-            *cp++ = '\\';
-            *cp++ = 't';
-        } else if (ch == '\f') {
-            *cp++ = '\\';
-            *cp++ = 'f';
-#if 0
-        } else if (ch == '\r') {
-            *cp++ = '\\';
-            *cp++ = 'r';
-#endif
-        } else if (ch < ' ' || ch >= 127) {
-            *cp++ = '\\';
-            *cp++ = '0' + (ch>>6);
-            *cp++ = '0' + ((ch>>3) & 7);
-            *cp++ = '0' + (ch & 7);
-        } else if (ch == special) {
-            switch (ch) {
-                case '%':
-                    *cp++ = ch;
-                    *cp++ = ch;
-                    break;
-            }
-        } else {
-            if (ch == '"' || ch == '\\')
-                *cp++ = '\\';
-            *cp++ = ch;
-        }
+  cmt = findcomment (cmt, CMT_TRAIL, serial);
+  if (commentvisible (cmt)) {
+    out_spaces (indent, commentoverindent, commentlen(cmt), 0);
+    outcomment (cmt);
+    deltaindent = savedelta;
     }
-    *cp = 0;
-    return format_s(fmt, buf);
-}
+  else
+    output("\n");
+  }
 //}}}
 //{{{
-char* makeCstring (s, len)
-register char *s;
-int len;
-{
-    return rawCstring("\"%s\"", s, len, 0);
-}
-//}}}
-//{{{
-char* makeCchar (ich)
-int ich;
-{
-    char buf[500];
-    register char *cp;
-    register unsigned char ch = (ich & 0xff);
+void flushcomments (Strlist **cmt, int kind, int serial) {
 
-    if (ich < 0 || ich > 255 || (ich == 0 && !nullcharconst))
-        return format_d("%d", ich);
-    cp = buf;
-    if (ch == 0) {
+  Strlist *cmt2, *cmt3;
+  int saveindent, savesingle, saveeat;
+
+  if (!cmt)
+    cmt = &curcomments;
+
+  cmt2 = extractcomment (cmt, kind, serial);
+
+  saveindent = outindent;
+  savesingle = deltaindent;
+  moreindent (deltaindent);
+  deltaindent = 0;
+
+  saveeat = eatcomments;
+  if (eatcomments == 2)
+    eatcomments = 0;
+
+  cmt3 = cmt2;
+  while (cmt3)
+    cmt3 = outcomments(cmt3);
+
+  eatcomments = saveeat;
+  outindent = saveindent;
+  deltaindent = savesingle;
+  strlist_empty (&cmt2);
+  }
+//}}}
+
+//{{{
+char* rawCstring (char *fmt, char *s, int len, int special) {
+
+  char buf[500];
+  char *cp;
+  unsigned char ch;
+
+  cp = buf;
+  while (--len >= 0) {
+    ch = *((unsigned char *) s);
+    s++;
+
+    if (ch == 0 && (len == 0 || !isdigit(*s))) {
+      *cp++ = '\\';
+      *cp++ = '0';
+      }
+    else if (ch == '\n') {
+      *cp++ = '\\';
+      *cp++ = 'n';
+      }
+    else if (ch == '\b') {
+      *cp++ = '\\';
+      *cp++ = 'b';
+      }
+    else if (ch == '\t') {
+      *cp++ = '\\';
+      *cp++ = 't';
+       }
+   else if (ch == '\f') {
+      *cp++ = '\\';
+      *cp++ = 'f';
+      }
+    #if 0
+      else if (ch == '\r') {
         *cp++ = '\\';
-        *cp++ = '0';
-    } else if (ch == '\n') {
+        *cp++ = 'r';
+        }
+    #endif
+    else if (ch < ' ' || ch >= 127) {
+      *cp++ = '\\';
+      *cp++ = '0' + (ch>>6);
+      *cp++ = '0' + ((ch>>3) & 7);
+      *cp++ = '0' + (ch & 7);
+      }
+
+    else if (ch == special) {
+      switch (ch) {
+        case '%':
+          *cp++ = ch;
+          *cp++ = ch;
+          break;
+          }
+      }
+    else {
+      if (ch == '"' || ch == '\\')
         *cp++ = '\\';
-        *cp++ = 'n';
-    } else if (ch == '\b') {
-        *cp++ = '\\';
-        *cp++ = 'b';
-    } else if (ch == '\t') {
-        *cp++ = '\\';
-        *cp++ = 't';
-    } else if (ch == '\f') {
-        *cp++ = '\\';
-        *cp++ = 'f';
-#if 0
+      *cp++ = ch;
+      }
+    }
+
+  *cp = 0;
+  return format_s(fmt, buf);
+  }
+//}}}
+//{{{
+char* makeCstring (char *s, int len) {
+
+  return rawCstring ("\"%s\"", s, len, 0);
+  }
+//}}}
+//{{{
+char* makeCchar (int ich) {
+
+  char buf[500];
+  register char *cp;
+  register unsigned char ch = (ich & 0xff);
+
+  if (ich < 0 || ich > 255 || (ich == 0 && !nullcharconst))
+      return format_d("%d", ich);
+  cp = buf;
+  if (ch == 0) {
+      *cp++ = '\\';
+      *cp++ = '0';
+  } else if (ch == '\n') {
+      *cp++ = '\\';
+      *cp++ = 'n';
+  } else if (ch == '\b') {
+      *cp++ = '\\';
+      *cp++ = 'b';
+  } else if (ch == '\t') {
+      *cp++ = '\\';
+      *cp++ = 't';
+  } else if (ch == '\f') {
+      *cp++ = '\\';
+      *cp++ = 'f';
+  #if 0
     } else if (ch == '\r') {
         *cp++ = '\\';
         *cp++ = 'r';
-#endif
+  #endif
     } else if (ch < ' ' || ch >= 127) {
         *cp++ = '\\';
         *cp++ = '0' + (ch>>6);
@@ -1598,7 +1599,8 @@ int ich;
             *cp++ = '\\';
         *cp++ = ch;
     }
-    *cp = 0;
-    return format_s("'%s'", buf);
-}
+
+  *cp = 0;
+  return format_s("'%s'", buf);
+  }
 //}}}
