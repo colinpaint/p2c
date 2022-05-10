@@ -10,27 +10,11 @@ extern void     showinitfile       PV();
 extern void     usage              PV();
 extern int      main               PP( (int argc, char **argv) );
 extern void     exit_failure       PV();
-extern int      outmem             PV();
 extern int      ISBOGUS            PP( (char *p) );
 extern char    *meaningkindname    PP( (enum meaningkind kind) );
 extern char    *typekindname       PP( (enum typekind kind) );
 extern char    *exprkindname       PP( (enum exprkind kind) );
 extern char    *stmtkindname       PP( (enum stmtkind kind) );
-extern void     dumptype           PP( (Type *tp) );
-extern void     dumpmeaning        PP( (Meaning *mp) );
-extern void     dumpsymtable       PP( (Symbol *sym) );
-extern void     dumptypename       PP( (Type *tp, int waddr) );
-extern void     dumptypename_file  PP( (FILE *f, Type *tp) );
-extern void     dumpexpr           PP( (Expr *ex) );
-extern void     dumpexpr_file      PP( (FILE *f, Expr *ex) );
-extern void     innerdumpstmt      PP( (Stmt *sp, int indent) );
-extern void     dumpstmt           PP( (Stmt *sp, int indent) );
-extern void     dumpstmt_file      PP( (FILE *f, Stmt *sp) );
-extern void     wrapup             PV();
-extern void     mem_summary        PV();
-extern anyptr   test_malloc        PP( (int size, int *total, int *final) );
-extern void     test_free          PP( (anyptr p) );
-extern anyptr   test_realloc       PP( (anyptr p, int size) );
 
 /* Declarations from stuff.c */
 extern void     debughook          PV();

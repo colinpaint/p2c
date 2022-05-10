@@ -218,11 +218,6 @@ Expr *p_index(Expr *ex, Expr *ex2) {
       ord_range_expr (ex->val.type->indextype, &ex3, NULL);
       if (ex3->kind == EK_VAR)
         var_reference ((Meaning *)ex3->val.i);
-      if (debug > 2) {
-        fprintf (outf, "ord_range_expr returns ");
-        dumpexpr(ex3);
-        fprintf (outf, "\n");
-        }
       return makeexpr_index (ex, ex2, copyexpr(ex3));
       }
     }
@@ -288,14 +283,14 @@ Static void bindnames (Expr* ex) {
   Meaning *mp;
 
   if (ex->kind == EK_NAME) {
-    sp = findsymbol_opt(fixpascalname(ex->val.s));
+    sp = findsymbol_opt (fixpascalname(ex->val.s));
     if (sp) {
       mp = sp->mbase;
       while (mp && !mp->isactive)
         mp = mp->snext;
-      if (mp && !strcmp(mp->name, ex->val.s)) {
+      if (mp && !strcmp (mp->name, ex->val.s)) {
         ex->kind = EK_VAR;
-        ex->val.i = (long long)mp;
+        ex->val.i = (int64_t)mp;
         ex->val.type = mp->type;
         }
       }
@@ -321,10 +316,6 @@ void var_reference (Meaning *mp) {
        (mp->kind == MK_CONST &&
         (mp->type->kind == TK_ARRAY ||
          mp->type->kind == TK_RECORD)))) {
-
-    if (debug > 1) {
-      fprintf (outf, "varstruct'ing %s\n", mp->name);
-      }
 
     if (!mp->varstructflag) {
       mp->varstructflag = 1;
@@ -1049,7 +1040,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-Expr *p_funccall(mp)
+Expr *p_funccall (mp)
 Meaning *mp;
 {
     Meaning *mp2, *tvar;
@@ -1057,8 +1048,8 @@ Meaning *mp;
     int firstarg = 0;
 
     func_reference(mp);
-    ex = makeexpr(EK_FUNCTION, 0);
-    ex->val.i = (long)mp;
+    ex = makeexpr (EK_FUNCTION, 0);
+    ex->val.i = (int64_t)mp;
     ex->val.type = mp->type->basetype;
     mp2 = mp->type->fbase;
     if (mp2 && mp2->isreturn) {    /* pointer to buffer for return value */
@@ -2540,7 +2531,6 @@ int env;
 
     if (!ex)
         return NULL;
-    if (debug>4) {fprintf(outf, "fixexpr("); dumpexpr(ex); fprintf(outf, ")\n");}
     switch (ex->kind) {
 
         case EK_BICALL:
@@ -2940,11 +2930,6 @@ int env;
                 ex->args[i] = fixexpr(ex->args[i], ENV_EXPR);
             break;
     }
-    if (debug>4) {
-      fprintf(outf, "fixexpr returns ");
-      dumpexpr(ex);
-      fprintf(outf, "\n");
-      }
 
     ex = flow_fixexpr (ex, fixexpr_stmt, env);
     return fix_expression(ex, env);
@@ -3217,14 +3202,6 @@ Static void wrexpr (Expr *ex, int prec) {
   char *cp;
   Meaning *mp;
   Symbol *sp;
-
-  if (debug > 2) {
-    //{{{  debug
-    fprintf (outf,"wrexpr{");
-    dumpexpr(ex);
-    fprintf (outf,", %d}\n", prec);
-    }
-    //}}}
 
   switch (ex->kind) {
     //{{{

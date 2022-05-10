@@ -281,7 +281,7 @@ Static int readrc (char* rcname, int need) {
                       cp = NULL;
                     }
                   if (cp)
-                    sl->value = (long)stralloc (cp);
+                    sl->value = (int64_t)stralloc (cp);
                   }
                  break;
 
@@ -295,7 +295,7 @@ Static int readrc (char* rcname, int need) {
                    sl = strlist_append (&synonyms, cp);
                    cp = my_strtok (NULL, " =\r\t\n");
                    if (cp && *cp != '#')
-                     sl->value = (long)stralloc (cp);
+                     sl->value = (int64_t)stralloc (cp);
                    }
                  break;
                }
@@ -599,6 +599,7 @@ Static void postrc() {
   fix_parameters();
   }
 //}}}
+
 //{{{
 Static void openlogfile() {
 
@@ -645,6 +646,7 @@ void closelogfile() {
     }
   }
 //}}}
+
 //{{{
 void showinitfile() {
 
@@ -667,7 +669,7 @@ void showinitfile() {
 //}}}
 //{{{
 void usage() {
-  fprintf(stderr, "usage: p2c [-q -t -x -e -d -v -check] file\n");
+  fprintf(stderr, "usage: p2c [-q -t -x -e -v -check] file\n");
   exit_failure();
   }
 //}}}
@@ -716,451 +718,6 @@ char* stmtkindname (enum stmtkind kind) {
 //}}}
 
 //{{{
-void dumptype (Type *tp) {
-
-  if (!tp) {
-    fprintf (outf, "<NULL>\n");
-    return;
-    }
-
-  if (ISBOGUS (tp)) {
-    fprintf (outf, "0x%lX\n", (long)tp);
-    return;
-    }
-
-  fprintf (outf, "      Type %lx, kind=%s", (long)tp, typekindname(tp->kind));
-
-  fprintf (outf, ", meaning=%lx, basetype=%lx, indextype=%lx\n",
-           (long)tp->meaning, (long)tp->basetype, (long)tp->indextype);
-
-  tp->dumped = 1;
-  if (tp->basetype)
-    dumptype (tp->basetype);
-  if (tp->indextype)
-    dumptype (tp->indextype);
-  }
-//}}}
-//{{{
-void dumpmeaning (Meaning *mp) {
-
-  if (!mp) {
-    fprintf (outf, "<NULL>\n");
-    return;
-    }
-
-  if (ISBOGUS(mp)) {
-    fprintf (outf, "0x%lX\n", (long)mp);
-    return;
-    }
-
-  fprintf (outf, "   Meaning %lx, name=%s, kind=%s",
-           (long)mp, ((mp->name) ? mp->name : "<null>"), meaningkindname(mp->kind));
-
-  fprintf (outf, ", ctx=%lx, cbase=%lx, cnext=%lx, type=%lx\n",
-           (long)mp->ctx, (long)mp->cbase, (long)mp->cnext, (long)mp->type);
-  if (mp->type && !mp->type->dumped)
-    dumptype (mp->type);
-
-  mp->dumped = 1;
-  }
-//}}}
-//{{{
-void dumpsymtable (Symbol *sym) {
-
-  Meaning *mp;
-
-  if (sym) {
-    dumpsymtable(sym->left);
-    if ((sym->mbase && !sym->mbase->dumped) || (sym->fbase && !sym->fbase->dumped)) {
-      fprintf (outf, "Symbol %s:\n", sym->name);
-      for (mp = sym->mbase; mp; mp = mp->snext)
-        dumpmeaning (mp);
-      for (mp = sym->fbase; mp; mp = mp->snext)
-        dumpmeaning (mp);
-      fprintf (outf, "\n");
-      }
-
-    dumpsymtable (sym->right);
-    }
-  }
-//}}}
-//{{{
-void dumptypename (Type *tp, int waddr) {
-
-  if (!tp) {
-    fprintf(outf, "<NULL>");
-    return;
-    }
-
-  if (ISBOGUS(tp)) {
-    fprintf(outf, "0x%lX", (long)tp);
-    return;
-    }
-
-  if (tp == tp_int)             fprintf (outf, "I");
-  else if (tp == tp_sint)       fprintf (outf, "SI");
-  else if (tp == tp_uint)       fprintf (outf, "UI");
-  else if (tp == tp_integer)    fprintf (outf, "L");
-  else if (tp == tp_unsigned)   fprintf (outf, "UL");
-  else if (tp == tp_char)       fprintf (outf, "C");
-  else if (tp == tp_schar)      fprintf (outf, "UC");
-  else if (tp == tp_uchar)      fprintf (outf, "SC");
-  else if (tp == tp_boolean)    fprintf (outf, "B");
-  else if (tp == tp_longreal)   fprintf (outf, "R");
-  else if (tp == tp_real)       fprintf (outf, "F");
-  else if (tp == tp_anyptr)     fprintf (outf, "A");
-  else if (tp == tp_void)       fprintf (outf, "V");
-  else if (tp == tp_text)       fprintf (outf, "T");
-  else if (tp == tp_bigtext)    fprintf (outf, "BT");
-  else if (tp == tp_sshort)     fprintf (outf, "SS");
-  else if (tp == tp_ushort)     fprintf (outf, "US");
-  else if (tp == tp_abyte)      fprintf (outf, "AB");
-  else if (tp == tp_sbyte)      fprintf (outf, "SB");
-  else if (tp == tp_ubyte)      fprintf (outf, "UB");
-  else if (tp == tp_str255)     fprintf (outf, "S");
-  else if (tp == tp_strptr)     fprintf (outf, "SP");
-  else if (tp == tp_charptr)    fprintf (outf, "CP");
-  else if (tp == tp_smallset)   fprintf (outf, "SMS");
-  else if (tp == tp_proc)       fprintf (outf, "PR");
-  else if (tp == tp_jmp_buf)    fprintf (outf, "JB");
-  else {
-    if (tp->meaning && !ISBOGUS(tp->meaning) &&
-        tp->meaning->name && !ISBOGUS(tp->meaning->name) && tp->meaning->name[0]) {
-      fprintf (outf, "%s", tp->meaning->name);
-      if (tp->dumped)
-        return;
-      fprintf (outf, "=");
-      waddr = 1;
-      }
-
-    if (waddr) {
-      fprintf (outf, "%lX", (long)tp);
-      if (tp->dumped)
-        return;
-      fprintf (outf, ":");
-      tp->dumped = 1;
-      }
-
-    switch (tp->kind) {
-      //{{{
-      case TK_STRING:
-        fprintf (outf, "Str");
-        if (tp->structdefd)
-          fprintf (outf, "Conf");
-        break;
-      //}}}
-      //{{{
-      case TK_SUBR:
-        dumptypename (tp->basetype, 0);
-        break;
-      //}}}
-      //{{{
-      case TK_POINTER:
-        fprintf (outf, "^");
-        dumptypename (tp->basetype, 0);
-        break;
-      //}}}
-
-      //{{{
-      case TK_SMALLARRAY:
-        fprintf (outf, "Sm");
-      //}}}
-      /* fall through */
-      //{{{
-      case TK_ARRAY:
-        fprintf (outf, "Ar");
-        if (tp->structdefd)
-          fprintf (outf, "Conf");
-        fprintf (outf, "{");
-
-        dumptypename (tp->indextype, 0);
-        fprintf (outf, "}");
-        if (tp->smin) {
-          fprintf (outf, "Skip(");
-          dumpexpr (tp->smin);
-          fprintf (outf, ")");
-          }
-
-        if (tp->smax) {
-          fprintf (outf, "/");
-          if (!ISBOGUS(tp->smax))
-            dumptypename (tp->smax->val.type, 0);
-          fprintf (outf, "{%d%s}", tp->escale,
-          tp->issigned ? "S" : "U");
-          }
-
-        fprintf (outf, ":");
-        dumptypename (tp->basetype, 0);
-        break;
-      //}}}
-
-      //{{{
-      case TK_SMALLSET:
-        fprintf (outf, "Sm");
-      //}}}
-      /* fall through */
-      //{{{
-      case TK_SET:
-        fprintf (outf, "Set{");
-        dumptypename (tp->indextype, 0);
-        fprintf (outf, "}");
-        break;
-      //}}}
-
-      //{{{
-      case TK_FILE:
-        fprintf (outf, "File{");
-        dumptypename (tp->basetype, 0);
-        fprintf (outf, "}");
-        break;
-      //}}}
-      //{{{
-      case TK_BIGFILE:
-        fprintf (outf, "BigFile{");
-        dumptypename (tp->basetype, 0);
-        fprintf (outf, "}");
-        break;
-      //}}}
-      //{{{
-      case TK_FUNCTION:
-        fprintf (outf, "Func");
-        if (tp->issigned)
-          fprintf (outf, "Link");
-        fprintf (outf, "{");
-
-        dumptypename (tp->basetype, 0);
-        fprintf (outf, "}");
-        break;
-      //}}}
-
-      //{{{
-      case TK_CPROCPTR:
-        fprintf (outf, "C");
-      //}}}
-      /* fall through */
-      //{{{
-      case TK_PROCPTR:
-        fprintf (outf, "Proc%d{", tp->escale);
-        dumptypename (tp->basetype, 0);
-        fprintf (outf, "}");
-        break;
-      //}}}
-
-      //{{{
-      default:
-        fprintf (outf, "%s", typekindname(tp->kind));
-        break;
-      //}}}
-      }
-
-    if (tp->kind != TK_ARRAY && tp->kind != TK_SMALLARRAY && (tp->smin || tp->smax)) {
-      fprintf (outf, "{");
-
-      dumpexpr (tp->smin);
-      fprintf (outf, "..");
-
-      dumpexpr (tp->smax);
-      fprintf (outf, "}");
-      }
-    }
-  }
-//}}}
-//{{{
-void dumptypename_file (FILE *f, Type *tp) {
-
-  FILE *save = outf;
-  outf = f;
-  dumptypename (tp, 1);
-  outf = save;
-  }
-//}}}
-//{{{
-void dumpexpr (Expr *ex ) {
-
-  int i;
-  Type *type;
-  char *name;
-
-  if (!ex) {
-    fprintf (outf, "<NULL>");
-    return;
-    }
-  if (ISBOGUS(ex)) {
-    fprintf (outf, "0x%lX", (long)ex);
-    return;
-    }
-
-  if (ex->kind == EK_CONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-    fprintf (outf, "%lld", ex->val.i);
-    return;
-    }
-  if (ex->kind == EK_LONGCONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-    fprintf (outf, "%lldL", ex->val.i);
-    return;
-    }
-
-  name = exprkindname(ex->kind);
-  if (!strncmp (name, "EK_", 3))
-    name += 3;
-  fprintf (outf, "%s", name);
-
-  type = ex->val.type;
-  fprintf (outf, "/");
-  dumptypename (type, 1);
-  if (ex->val.i) {
-    switch (ex->kind) {
-          case EK_VAR:
-          case EK_FUNCTION:
-          case EK_CTX:
-            if (ISBOGUS(ex->val.i))
-              fprintf (outf, "[0x%llX]", ex->val.i);
-            else
-              fprintf (outf, "[\"%s\"]", ((Meaning *)ex->val.i)->name);
-            break;
-
-          default:
-            fprintf (outf, "[i=%lld]", ex->val.i);
-            break;
-      }
-    }
-
-  if (ISBOGUS(ex->val.s))
-    fprintf (outf, "[0x%lX]", (long)ex->val.s);
-  else if (ex->val.s) {
-    switch (ex->kind) {
-      case EK_BICALL:
-      case EK_NAME:
-      //{{{
-      case EK_DOT:
-        fprintf (outf, "[s=\"%s\"]", ex->val.s);
-        break;
-      //}}}
-      default:
-        switch (ex->val.type ? ex->val.type->kind : TK_VOID) {
-          //{{{
-          case TK_STRING:
-            fprintf (outf, "[s=%s]", makeCstring(ex->val.s, ex->val.i));
-            break;
-          //}}}
-          //{{{
-          case TK_REAL:
-            fprintf (outf, "[s=%s]", ex->val.s);
-            break;
-          //}}}
-          //{{{
-          default:
-            fprintf (outf, "[s=%lx]", (long)ex->val.s);
-          }
-          //}}}
-        break;
-      }
-    }
-
-  if (ex->nargs > 0) {
-    fprintf(outf, "(");
-    if (ex->nargs < 10) {
-      for (i = 0; i < ex->nargs; i++) {
-        if (i)
-          fprintf (outf, ", ");
-        dumpexpr (ex->args[i]);
-        }
-      }
-    else
-      fprintf (outf, "...");
-    fprintf (outf, ")");
-    }
-  }
-//}}}
-//{{{
-void dumpexpr_file (FILE *f, Expr *ex) {
-
-  FILE *save = outf;
-  outf = f;
-  dumpexpr (ex);
-  outf = save;
-  }
-//}}}
-//{{{
-void innerdumpstmt (Stmt *sp, int indent) {
-
-  if (!sp) {
-    fprintf (outf, "<NULL>\n");
-    return;
-    }
-
-  while (sp) {
-    if (ISBOGUS(sp)) {
-      fprintf (outf, "0x%lX\n", (long)sp);
-      return;
-      }
-    fprintf (outf, "%s", stmtkindname(sp->kind));
-    if (sp->exp1) {
-      fprintf (outf, ", exp1=");
-      dumpexpr (sp->exp1);
-      }
-    if (sp->exp2) {
-      fprintf (outf, ", exp2=");
-      dumpexpr (sp->exp2);
-      }
-    if (sp->exp3) {
-      fprintf (outf, ", exp3=");
-      dumpexpr (sp->exp3);
-      }
-
-    if (indent < 0)
-      break;
-    fprintf(outf, "\n");
-    if (sp->stm1) {
-      fprintf (outf, "%*sstm1=", indent, "");
-      innerdumpstmt (sp->stm1, indent+5);
-      }
-    if (sp->stm2) {
-      fprintf (outf, "%*sstm2=", indent, "");
-      innerdumpstmt (sp->stm2, indent+5);
-      }
-    sp = sp->next;
-    if (sp) {
-      if (indent > 5)
-        fprintf (outf, "%*s", indent-5, "");
-      fprintf (outf, "next=");
-      }
-    }
-  }
-//}}}
-//{{{
-void dumpstmt (Stmt *sp, int indent) {
-
-  fprintf (outf, "%*s", indent, "");
-  innerdumpstmt (sp, indent);
-  }
-//}}}
-//{{{
-void dumpstmt_file (FILE *f, Stmt *sp) {
-
-  FILE *save = outf;
-  Stmt *savenext = NULL;
-  outf = f;
-  if (sp) {
-    savenext = sp->next;
-    sp->next = NULL;
-    }
-
-  dumpstmt (sp, 5);
-  if (sp)
-    sp->next = savenext;
-  outf = save;
-}
-//}}}
-//{{{
-void wrapup() {
-
-  int i;
-  for (i = 0; i < SYMHASHSIZE; i++)
-    dumpsymtable (symtab[i]);
-  }
-//}}}
-
-//{{{
 int main (int argc, char** argv) {
 
   printf ("p2c commandLine parsed as");
@@ -1178,7 +735,6 @@ int main (int argc, char** argv) {
   int savequiet;
 
   init_stuff();
-  //showinitfile();
 
   initrc();
   setup_dir();
@@ -1193,7 +749,7 @@ int main (int argc, char** argv) {
   if (i < argc) {
     //{{{  use first non '-' argv as infname, pascal file to be translated
     strcpy (infname, argv[i]);
-    printf ("using pascal file %s\n", infname);
+    printf ("using pascal %s\n", infname);
     }
     //}}}
 
@@ -1248,14 +804,6 @@ int main (int argc, char** argv) {
           maxerrors = 0;
         else
           maxerrors = atoi (*argv + 2);
-        }
-
-      else if (argv[0][1] == 'd') {
-        nobuffer = 1;
-        if (strlen (*argv) == 2)
-          debug = 1;
-        else
-          debug = atoi (*argv + 2);
         }
 
       else if (argv[0][1] == 'V') {
@@ -1358,7 +906,7 @@ int main (int argc, char** argv) {
     if (sl->value) {
       if (!pascalcasesens)
         upc ((char *)sl->value);
-      strlist_append (&sp->symbolnames, "===")->value = (long)findsymbol((char *)sl->value);
+      strlist_append (&sp->symbolnames, "===")->value = (int64_t)findsymbol ((char*)sl->value);
       }
     else
       strlist_append (&sp->symbolnames, "===")->value = 0;

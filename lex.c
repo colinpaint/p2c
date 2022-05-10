@@ -1030,71 +1030,78 @@ Strlist *sl;
 //}}}
 
 //{{{
-void getaline()
-{
-    char *cp, *cp2;
+void getaline() {
 
-    switch (inputkind) {
+  char *cp, *cp2;
 
-        case INP_FILE:
-        case INP_INCFILE:
-            inf_lnum++;
+  switch (inputkind) {
+    case INP_FILE:
+    //{{{
+    case INP_INCFILE:
+      inf_lnum++;
       inf_ltotal++;
-            if (fgets(inbuf, 300, inf)) {
-                cp = inbuf + strlen(inbuf);
-                if (*inbuf && cp[-1] == '\n')
-                    cp[-1] = 0;
-    replacestrings(inbuf, replacebefore);
-    if (inbuf[0] == '#' && inbuf[1] == ' ' && isdigit(inbuf[2])) {
-        cp = inbuf + 2;    /* in case input text came */
-        inf_lnum = 0;      /*  from the C preprocessor */
-        while (isdigit(*cp))
-      inf_lnum = inf_lnum*10 + (*cp++) - '0';
-        inf_lnum--;
-        while (isspace(*cp)) cp++;
-        if (*cp == '"' && (cp2 = my_strchr(cp+1, '"')) != NULL) {
-      cp++;
-      infname = stralloc(cp);
-      infname[cp2 - cp] = 0;
-        }
-        getaline();
-        return;
-    }
-    if (copysource && *inbuf) {
-        start_source();
-        fprintf(outf, "%s\n", inbuf);
-    }
-                if (keepingstrlist) {
-                    strlist_append(keepingstrlist, inbuf)->value = inf_lnum;
-                }
-                if (showprogress && inf_lnum % showprogress == 0)
-                    progress();
-            } else {
-                if (showprogress)
-                    fprintf(stderr, "\n");
-                if (inputkind == INP_INCFILE) {
-                    pop_input();
-                    getaline();
-                } else
-                    strcpy(inbuf, "\001");
+      if (fgets(inbuf, 300, inf)) {
+        cp = inbuf + strlen(inbuf);
+        if (*inbuf && cp[-1] == '\n')
+          cp[-1] = 0;
+        replacestrings(inbuf, replacebefore);
+        if (inbuf[0] == '#' && inbuf[1] == ' ' && isdigit(inbuf[2])) {
+          cp = inbuf + 2;    /* in case input text came */
+          inf_lnum = 0;      /*  from the C preprocessor */
+          while (isdigit(*cp))
+            inf_lnum = inf_lnum*10 + (*cp++) - '0';
+          inf_lnum--;
+          while (isspace(*cp))
+            cp++;
+          if (*cp == '"' && (cp2 = my_strchr(cp+1, '"')) != NULL) {
+            cp++;
+            infname = stralloc(cp);
+            infname[cp2 - cp] = 0;
             }
-            break;
-
-        case INP_STRLIST:
-            if (instrlist) {
-                strcpy(inbuf, instrlist->s);
-                if (instrlist->value)
-                  inf_lnum = instrlist->value;
-                else
-                  inf_lnum++;
-                instrlist = instrlist->next;
-            } else
-                strcpy(inbuf, "\001");
-            break;
+          getaline();
+          return;
+          }
+        if (copysource && *inbuf) {
+          start_source();
+          fprintf(outf, "%s\n", inbuf);
+          }
+        if (keepingstrlist) {
+          strlist_append(keepingstrlist, inbuf)->value = inf_lnum;
+          }
+        if (showprogress && inf_lnum % showprogress == 0)
+          progress();
+        } 
+      else {
+        if (showprogress)
+          fprintf(stderr, "\n");
+        if (inputkind == INP_INCFILE) {
+          pop_input();
+          getaline();
+          } 
+        else
+          strcpy(inbuf, "\001");
+        }
+      break;
+    //}}}
+    //{{{
+    case INP_STRLIST:
+      if (instrlist) {
+        strcpy(inbuf, instrlist->s);
+        if (instrlist->value)
+          inf_lnum = instrlist->value;
+        else
+          inf_lnum++;
+        instrlist = instrlist->next;
+        } 
+      else
+         strcpy(inbuf, "\001");
+      break;
+    //}}}
     }
-    inbufptr = inbuf;
-    inbufindent = 0;
-}
+
+  inbufptr = inbuf;
+  inbufindent = 0;
+  }
 //}}}
 
 //{{{
@@ -1618,7 +1625,7 @@ void defMacro (char* name, long kind, char* fname, int lnum) {
       if (!needToken (TOK_EQ))
         break;
 
-      sl->value = (long)pc_expr();
+      sl->value = (int64_t)pc_expr();
       break;
     //}}}
     //{{{
@@ -1636,7 +1643,7 @@ void defMacro (char* name, long kind, char* fname, int lnum) {
       if (!needToken (TOK_EQ))
         break;
 
-      sl->value = (long)pc_expr();
+      sl->value = (int64_t)pc_expr();
       break;
     //}}}
     //{{{
@@ -1671,7 +1678,7 @@ void defMacro (char* name, long kind, char* fname, int lnum) {
         mp->constdefn = ex;
       else {
         sl = strlist_append (&fieldmacros, format_ss("%s.%s", sym->name, sym2->name));
-        sl->value = (long)ex;
+        sl->value = (int64_t)ex;
         }
 
       break;
@@ -1697,7 +1704,7 @@ void defMacro (char* name, long kind, char* fname, int lnum) {
             }
 
           sl2 = strlist_append (&funcmacroargs, curtoksym->name);
-          sl2->value = (long)curtoksym;
+          sl2->value = (int64_t)curtoksym;
           curtoksym->flags |= FMACREC;
 
           gettok();
@@ -1718,7 +1725,7 @@ void defMacro (char* name, long kind, char* fname, int lnum) {
           }
         else {
           sl = strlist_append (&funcmacros, sym->name);
-          sl->value = (long)ex;
+          sl->value = (int64_t)ex;
           }
 
         if (!strcmp (sym->name, "NEW") || !strcmp (sym->name, "DEC") ||
@@ -1740,7 +1747,7 @@ void defMacro (char* name, long kind, char* fname, int lnum) {
     }
 
   if (curtok != TOK_EOF)
-    warning (format_s ("Junk (%s) at end of macro definition [233]", tok_name(curtok)));
+    warning (format_s ("Junk (%s) at end of macro definition [233]", tok_name (curtok)));
 
   pop_input();
 
@@ -1825,7 +1832,6 @@ Static int parseComment (int p2c_only, int starparen) {
     //{{{  not p2c_only
     if (!strncmp (inbufptr, "DUMP-SYMBOLS", 12) && closing == inbufptr + 12) {
         //{{{
-        wrapup();
         inbufptr = after;
         return 1;
         }
@@ -2346,7 +2352,7 @@ Static int parseComment (int p2c_only, int starparen) {
               skipspc(cp);
               if (cp != closing)
                 return 0;
-              sp->value = (long)stralloc(namebuf);
+              sp->value = (int64_t)stralloc(namebuf);
               }
 
             inbufptr = after;
@@ -2396,7 +2402,7 @@ Static int parseComment (int p2c_only, int starparen) {
             if (!pascalcasesens)
               upc(namebuf);
             if (*namebuf)
-              strlist_append(&sym->symbolnames, "===")->value = (long)findsymbol(namebuf);
+              strlist_append(&sym->symbolnames, "===")->value = (int64_t)findsymbol(namebuf);
             else
               strlist_append(&sym->symbolnames, "===")->value=0;
             inbufptr = after;

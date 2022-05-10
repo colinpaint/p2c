@@ -21,6 +21,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 // _WIN32 is not __STDC__ not __GNUC__
 #define Static
 #include <stdio.h>
+#include <stdint.h>
 #include <ctype.h>
 
 //{{{  os options
@@ -208,14 +209,14 @@ typedef enum E_token {
 //{{{
 typedef struct S_strlist {
   struct S_strlist* next;
-  long long value;
+  int64_t value;
   char s[1];
   } Strlist;
 //}}}
 //{{{
 typedef struct S_value {
   struct S_type* type;
-  long long i;
+  int64_t i;
   char *s;
   } Value;
 //}}}

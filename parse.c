@@ -1351,13 +1351,6 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
   Strlist *curcmt, *cmt, *savecurcmt = curcomments;
   Strlist *trailcmt, *begincmt, *endcmt;
 
-  if (debug>1) {
-    //{{{  debug
-    fprintf (outf, "out_block of:\n");
-    dumpstmt (spbase,5);
-    }
-    //}}}
-
   if (opts & BR_FUNCTION) {
     //{{{  function
     if (outcontext && outcontext->comments) {
@@ -1490,20 +1483,6 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
       declspc = 0;
       }
     flushcomments (NULL, CMT_PRE, sp->serial);
-    if (cmtdebug)
-      output (format_d ("[%d] ", sp->serial));
-    if (flowdebug && (sp->trueprops | sp->falseprops)) {
-      //{{{  flowdebug
-      output("[");
-      for (i = 0; i < 32; i++) {
-        if (sp->trueprops & (1L << i))
-          output (format_d("!%d", i));
-        if (sp->falseprops & (1L << i))
-          output (format_d("~%d", i));
-        }
-      output("] ");
-      }
-      //}}}
 
     switch (sp->kind) {
       //{{{
@@ -1852,9 +1831,6 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
                  changecomments (curcomments, CMT_PRE, sp2->serial, CMT_PRE, sp2->stm1->serial);
                  changecomments (curcomments, CMT_POST, sp2->serial, CMT_PRE, sp2->stm1->serial);
                  }
-
-              if (cmtdebug)
-                 output(format_d("[%d] ", sp2->serial));
               }
             else {
               out_block(sp2, BR_ELSEPART|always, sp2->serial+1);
@@ -1931,12 +1907,6 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
       }
 
     flushcomments (NULL, -1, sp->serial);
-    if (debug > 1) {
-      //{{{  debug
-      fprintf (outf, "in out_block:\n");
-      dumpstmt (spbase,5);
-      }
-      //}}}
     sp = sp->next;
     }
 
@@ -1996,7 +1966,6 @@ int nearret;
     int spnearret, spnextreturn;
     int result = 0;
 
-    if (debug>2) { fprintf(outf, "checkreturns on:\n"); dumpstmt(*spp, 5); }
     while ((sp = *spp)) {
         spnextreturn = (sp->next &&
                         sp->next->kind == SK_RETURN && sp->next->exp1 &&
@@ -2386,7 +2355,6 @@ Expr *ex;
     char *cp, ch;
     int i, len;
 
-    if (debug>2) { fprintf(outf,"printnl_func("); dumpexpr(ex); fprintf(outf, ")\n"); }
     if (!strcmp(ex->val.s, "printf") ||
   !strcmp(ex->val.s, "puts") ||
   !strcmp(ex->val.s, "fputs")) {
@@ -2421,7 +2389,6 @@ Expr *ex;
 {
     Expr *fex;
 
-    if (debug>2) { fprintf(outf,"chg_printf("); dumpexpr(ex); fprintf(outf, ")\n"); }
     if (!strcmp(ex->val.s, "putchar")) {
   ex = makeexpr_sprintfify(grabarg(ex, 0));
   canceltempvar(istempvar(ex->args[0]));
@@ -2458,9 +2425,7 @@ Expr *ex, *ex2;
     int i;
 
     ex = chg_printf(ex);
-    if (debug>2) { fprintf(outf,"chg_printf returns "); dumpexpr(ex); fprintf(outf, "\n"); }
     ex2 = chg_printf(copyexpr(ex2));
-    if (debug>2) { fprintf(outf,"chg_printf returns "); dumpexpr(ex2);fprintf(outf, "\n"); }
     i = (!strcmp(ex->val.s, "printf")) ? 0 : 1;
     ex->args[i] = makeexpr_concat(ex->args[i], ex2->args[i], 0);
     for (i++; i < ex2->nargs; i++) {
@@ -3241,94 +3206,68 @@ int depth, last;
       break;
 
     }
-    if (flowdebug >= 2) {
-  fprintf(outf, "checkelims("); dumpstmt(sp,-1);
-  fprintf(outf, ") = %d\n", used);
-    }
     return used;
 }
 
 //}}}
 
-//{{{
-void flowblock (sp)
-Stmt *sp;
-{
-    long truep = 0, falsep = 0;
-    Expr *ex;
-    int i;
 
-    if (flowdebug) {
-  fprintf(outf, "Flow analysis for %s:\n",
-    ((Meaning *)sp->stm1->exp1->val.i)->name);
-    }
-    numpropchecks = 0;
-    globalprops = 0;
-    checkelimprops = 0;
-    flowbreaks = 1;
-    flowrecord = 1;
-    flowuseful = 0;
-    findpropchecks(sp);
-    if (numpropchecks)
-  checkprops(sp, &truep, &falsep);
-    for (i = 0; i < numpropchecks; i++) {
-  if ((checkelimprops & (1L << i)) &&
-      flowprops[i] != PROP_INVALID) {
-      long saveserial = curserial;
-      if (flowdebug)
-    fprintf(outf, "Checking for dead assignments: %d\n", i);
-      if (checkelims(sp, flowexprs[i], 0, 0) > 0) {
-    ex = flowexprs[i];
-    while (ex->kind == EK_DOT)
-        ex = ex->args[0];
-    warning(format_s("Variable %s may be used before it is set [337]",
-         (ex->kind == EK_NAME) ? ex->val.s
-         : ((Meaning *)ex->val.i)->name));
-      }
-      curserial = saveserial;
-  }
-    }
-    if (flowdebug) {
-  for (i = 0; i < numpropchecks; i++) {
-      fprintf(outf, "  Flow property %d, type ", i);
-      switch (flowprops[i]) {
-    case PROP_ZERO: fprintf(outf, "ZERO"); break;
-    case PROP_INVALID: fprintf(outf, "INVALID"); break;
-    default: fprintf(outf, "%d", flowprops[i]); break;
-      }
-      if (globalprops & (1L << i)) fprintf(outf, " (global)");
-      fprintf(outf, ", expr = ");
-      dumpexpr(flowexprs[i]);
-      fprintf(outf, "\n");
-  }
-  fprintf(outf, "Flow analysis done; useful = %d.\n", flowuseful);
-    }
-    if (!analyzeflow)
+//{{{
+void flowblock (Stmt *sp) {
+
+  long truep = 0, falsep = 0;
+  Expr *ex;
+  int i;
+
   numpropchecks = 0;
-}
-//}}}
-//{{{
-void eatstmt (spp)
-Stmt **spp;
-{
-    Stmt *sp = *spp;
+  globalprops = 0;
+  checkelimprops = 0;
+  flowbreaks = 1;
+  flowrecord = 1;
+  flowuseful = 0;
 
-    if (debug>2) { fprintf(outf, "eatstmt on:\n"); dumpstmt(sp, 5); }
-    *spp = sp->next;
-    sp->next = NULL;
-    free_stmt(sp);
-}
+  findpropchecks (sp);
+  if (numpropchecks)
+    checkprops (sp, &truep, &falsep);
+
+  for (i = 0; i < numpropchecks; i++) {
+    if ((checkelimprops & (1L << i)) && flowprops[i] != PROP_INVALID) {
+      long saveserial = curserial;
+      if (checkelims (sp, flowexprs[i], 0, 0) > 0) {
+        ex = flowexprs[i];
+        while (ex->kind == EK_DOT)
+          ex = ex->args[0];
+        warning (format_s ("Variable %s may be used before it is set [337]",
+                           (ex->kind == EK_NAME) ? ex->val.s : ((Meaning*)ex->val.i)->name));
+        }
+
+      curserial = saveserial;
+      }
+    }
+
+  if (!analyzeflow)
+    numpropchecks = 0;
+  }
 //}}}
 //{{{
-int haslabels (sp)
-Stmt *sp;
-{
-    if (!sp)
-        return 0;
-    if (haslabels(sp->stm1) || haslabels(sp->stm2))
-        return 1;
-    return (sp->kind == SK_LABEL);
-}
+void eatstmt (Stmt **spp) {
+
+  Stmt *sp = *spp;
+  *spp = sp->next;
+  sp->next = NULL;
+  free_stmt(sp);
+  }
+//}}}
+//{{{
+int haslabels (Stmt *sp) {
+
+  if (!sp)
+    return 0;
+  if (haslabels(sp->stm1) || haslabels(sp->stm2))
+    return 1;
+
+  return (sp->kind == SK_LABEL);
+  }
 //}}}
 
 //{{{
@@ -4562,16 +4501,12 @@ Static Stmt* p_body() {
     sp->exp1 = makeexpr_bicall_1("exit", tp_void, makeexpr_name("EXIT_SUCCESS", tp_integer));
     thereturn = NULL;
     }
-  if (debug>2) {
-    fprintf (outf, "calling fixblock/usecommas on:\n");
-    dumpstmt (spbase, 5);
-    }
 
   curserial = saveserial;
   sp = makestmt (SK_BODY);
   sp->stm1 = spbase;
   fixblock(&sp, thereturn);           /* finishing touches to statements and expressions */
-  if (analyzeflow || flowdebug) {
+  if (analyzeflow) {
     flowblock (sp);
     if (analyzeflow && flowuseful)
       fixblock (&sp, thereturn);
@@ -4595,11 +4530,6 @@ Static Stmt* p_body() {
       mp = mp->cnext;
       }
     findinits (spbase, 0, 1);
-    }
-
-  if (debug>1) {
-    fprintf (outf, "p_body returns:\n");
-    dumpstmt (spbase, 5);
     }
 
   notephase = 0;
@@ -5445,7 +5375,7 @@ Static void p_function (int isfunc) {
       sp = p_body();
       withlevel = savewithlevel;
       func->ctx->needvarstruct = 0;
-      func->val.i = (long)sp;
+      func->val.i = (int64_t)sp;
       strlist_mix(&func->comments, curcomments);
       curcomments = NULL;
       if (func->ctx->kind != MK_FUNCTION || !collectnest) {

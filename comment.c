@@ -431,7 +431,7 @@ Strlist* grabcomment (int kind) {
   grabbed_comment = 1;
 
   if (cmtdebug > 1)
-    fprintf (outf, "Grabbed comment [%lld] \"%s\"\n", cmt->value & CMT_MASK, cmt->s);
+    fprintf (outf, "Grabbed comment %ld %s \n", cmt->value & CMT_MASK, cmt->s);
   return cmt;
   }
 //}}}
@@ -466,7 +466,7 @@ Strlist* findcomment (Strlist *cmt, int kind, long stamp) {
     cmt = cmt->next;
 
   if (cmt && cmtdebug > 1)
-    fprintf(outf, "Found comment [%lld] \"%s\"\n",
+    fprintf(outf, "Found comment %ld %s\n",
 
   cmt->value & CMT_MASK, cmt->s);
   return cmt;
@@ -481,7 +481,7 @@ Strlist* extractcomment (Strlist **cmt, int kind, long stamp) {
   while ((sl = *cmt)) {
     if (matchcomment(sl, kind, stamp)) {
       if (cmtdebug > 1)
-        fprintf(outf, "Extracted comment [%lld] \"%s\"\n", sl->value & CMT_MASK, sl->s);
+        fprintf(outf, "Extracted comment %ld%s\n", sl->value & CMT_MASK, sl->s);
       *cmt = sl->next;
       *last = sl;
       last = &sl->next;
@@ -500,16 +500,13 @@ void changecomments (Strlist *cmt, int okind, long ostamp, int kind, long stamp)
   while (cmt) {
     if (matchcomment(cmt, okind, ostamp)) {
       if (cmtdebug > 1)
-        fprintf(outf, "Changed comment [%s:%lld] \"%s\" ",
-      CMT_NAMES[getcommentkind(cmt)],
-      cmt->value & CMT_MASK, cmt->s);
+        fprintf(outf, "Changed comment %s:%ld%s ", CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK, cmt->s);
       if (kind >= 0)
         setcommentkind(cmt, kind);
       if (stamp >= 0)
         cmt->value = (cmt->value & ~CMT_MASK) | stamp;
       if (cmtdebug > 1)
-        fprintf(outf, " to [%s:%lld]\n",
-      CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK);
+        fprintf(outf, " to %s:%ld\n", CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK);
       }
     cmt = cmt->next;
     }

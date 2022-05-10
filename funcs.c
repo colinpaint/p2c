@@ -173,7 +173,6 @@ char *name;
     int i, okay;
     Value val;
 
-    if (debug>2) { fprintf(outf,"convert_size("); dumpexpr(ex); fprintf(outf,")\n"); }
     while (type->kind == TK_ARRAY || type->kind == TK_STRING)
         type = type->basetype;
     if (type == tp_void)
@@ -1454,64 +1453,70 @@ Expr *ex;
                                            makeexpr_arglong(ex->args[2], 0)));
 }
 //}}}
-//{{{
-void parse_special_variant(tp, buf)
-Type *tp;
-char *buf;
-{
-    char *cp;
-    Expr *ex;
 
-    if (!tp)
-  intwarning("parse_special_variant", "tp == NULL");
-    if (!tp || tp->meaning == NULL) {
-  *buf = 0;
-  if (curtok == TOK_COMMA) {
-      skiptotoken(TOK_RPAR);
-  }
-  return;
+//{{{
+void parse_special_variant (Type *tp, char *buf) {
+
+  char *cp;
+  Expr *ex;
+
+  if (!tp)
+    intwarning("parse_special_variant", "tp == NULL");
+  if (!tp || tp->meaning == NULL) {
+    *buf = 0;
+    if (curtok == TOK_COMMA) {
+      skiptotoken (TOK_RPAR);
+      }
+    return;
     }
-    strcpy(buf, tp->meaning->name);
-    while (curtok == TOK_COMMA) {
-  gettok();
-  cp = buf + strlen(buf);
-  *cp++ = '.';
-  if (curtok == TOK_MINUS) {
+
+  strcpy(buf, tp->meaning->name);
+  while (curtok == TOK_COMMA) {
+    gettok();
+
+    cp = buf + strlen (buf);
+    *cp++ = '.';
+    if (curtok == TOK_MINUS) {
       *cp++ = '-';
       gettok();
-  }
-  if (curtok == TOK_INTLIT ||
-      curtok == TOK_HEXLIT ||
-      curtok == TOK_OCTLIT) {
-      sprintf(cp, "%ld", curtokint);
+      }
+
+    if (curtok == TOK_INTLIT ||
+        curtok == TOK_HEXLIT ||
+        curtok == TOK_OCTLIT) {
+      sprintf (cp, "%ld", curtokint);
       gettok();
-  } else if (curtok == TOK_HAT || curtok == TOK_STRLIT) {
-      ex = makeexpr_charcast(accumulate_strlit());
+      }
+    else if (curtok == TOK_HAT || curtok == TOK_STRLIT) {
+      ex = makeexpr_charcast (accumulate_strlit());
       if (ex->kind == EK_CONST) {
-    if (ex->val.i <= 32 || ex->val.i > 126 ||
-        ex->val.i == '\'' || ex->val.i == '\\' ||
-        ex->val.i == '=' || ex->val.i == '}')
-        sprintf(cp, "%lld", ex->val.i);
-    else
-        strcpy(cp, makeCchar(ex->val.i));
-      } else {
-    *buf = 0;
-    *cp = 0;
-      }
+        if (ex->val.i <= 32 || ex->val.i > 126 ||
+            ex->val.i == '\'' || ex->val.i == '\\' ||
+            ex->val.i == '=' || ex->val.i == '}')
+          sprintf (cp, "%ld", ex->val.i);
+        else
+          strcpy (cp, makeCchar(ex->val.i));
+        }
+      else {
+        *buf = 0;
+        *cp = 0;
+        }
       freeexpr(ex);
-  } else {
-      if (!wexpecttok(TOK_IDENT)) {
-    skiptotoken(TOK_RPAR);
-    return;
       }
+    else {
+      if (!wexpecttok(TOK_IDENT)) {
+        skiptotoken(TOK_RPAR);
+        return;
+        }
       if (curtokmeaning)
-    strcpy(cp, curtokmeaning->name);
+        strcpy (cp, curtokmeaning->name);
       else
-    strcpy(cp, curtokbuf);
+        strcpy (cp, curtokbuf);
+
       gettok();
-  }
+      }
     }
-}
+  }
 //}}}
 //{{{
 char *find_special_variant(buf, spname, splist, need)

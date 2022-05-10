@@ -79,26 +79,22 @@ char *name;
 }
 //}}}
 //{{{
-Static Meaning* makestandardmeaning (kind, name)
-enum meaningkind kind;
-char *name;
-{
-    Meaning *mp;
-    Symbol *sym;
+Static Meaning* makestandardmeaning (enum meaningkind kind, char *name) {
 
-    sym = findsymbol(fixpascalname(name));
-    for (mp = sym->mbase; mp && mp->ctx != curctx; mp = mp->snext) ;
-    if (!mp) {
-        mp = addmeaning(sym, kind);
-        strchange(&mp->name, name);
-        if (debug < 4)
-            mp->dumped = partialdump;     /* prevent irrelevant dumping */
-    } else {
-        mp->kind = kind;
-    }
-    mp->refcount = 1;
-    return mp;
-}
+  Symbol* sym = findsymbol (fixpascalname (name));
+
+  Meaning *mp;
+  for (mp = sym->mbase; mp && mp->ctx != curctx; mp = mp->snext) ;
+  if (!mp) {
+    mp = addmeaning (sym, kind);
+    strchange (&mp->name, name);
+    } 
+  else 
+    mp->kind = kind;
+  mp->refcount = 1;
+
+  return mp;
+  }
 //}}}
 //{{{
 Static Type* makestandardtype (kind, mp)
@@ -1467,15 +1463,6 @@ Type* findbasetype (type, flags)
 Type *type;
 int flags;
 {
-    if (debug>1) {
-  fprintf(outf, "findbasetype(");
-  dumptypename(type, 1);
-  fprintf(outf, ",%d) = ", flags);
-  type = findbasetype_(type, flags);
-  dumptypename(type, 1);
-  fprintf(outf, "\n");
-  return type;
-    }
     return findbasetype_(type, flags);
 }
 //}}}
@@ -1976,7 +1963,6 @@ Type *t1, *t2;
 int similartypes (t1, t2)
 Type *t1, *t2;
 {
-    if (debug > 3) { fprintf(outf, "similartypes("); dumptypename(t1,1); fprintf(outf, ","); dumptypename(t2,1); fprintf(outf, ") = %d\n", identicaltypes(t1, t2)); }
     if (identicaltypes(t1, t2))
   return 1;
     t1 = canonicaltype(t1);
@@ -2692,7 +2678,7 @@ Meaning *mp;
     if ((ex->kind == EK_NAME || ex->kind == EK_BICALL) &&
   !strcmp(ex->val.s, mp->name)) {
   ex->kind = EK_VAR;
-  ex->val.i = (long)mp;
+  ex->val.i = (int64_t)mp;
   ex->val.type = mp->type;
   return 1;
     }
@@ -4771,7 +4757,7 @@ ignorefield:
   }
     }
     val.type = type;
-    val.i = (long)cex;
+    val.i = (int64_t)cex;
     val.s = NULL;
     return makeexpr_val(val);
 }
@@ -4857,7 +4843,7 @@ int style;
     if (!needToken(style ? TOK_RPAR : TOK_RBR))
   skippasttoken2(TOK_RPAR, TOK_RBR);
     val.type = type;
-    val.i = (long)cex;
+    val.i = (int64_t)cex;
     val.s = NULL;
     return makeexpr_val(val);
 }
@@ -4906,7 +4892,7 @@ int style;
   val.type = type;
   if (type->kind == TK_RECORD || type->kind == TK_ARRAY ||
       type->kind == TK_SET)
-      val.i = (long)makeexpr_un(EK_STRUCTCONST, type, makeexpr_long(0));
+      val.i = (int64_t)makeexpr_un (EK_STRUCTCONST, type, makeexpr_long(0));
   else
       val.i = 0;
   val.s = NULL;
