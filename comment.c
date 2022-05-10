@@ -73,7 +73,7 @@ void steal_comments (long olds, long news, int always) {
     if ((cmt->value & CMT_MASK) == olds && getcommentkind(cmt) == CMT_POST) {
       if (!cmtfirst)
         cmtfirst = cmt;
-      } 
+      }
     else {
       cmtfirst = NULL;
       }
@@ -99,7 +99,7 @@ void steal_comments (long olds, long news, int always) {
           cmtfirst = cmtblank->next;
         else
           cmtfirst = cmtblank;
-        } 
+        }
       else if (commentafter == 1)
         cmtfirst = NULL;
       }
@@ -121,7 +121,7 @@ Strlist* fixbeginendcomment (Strlist *cmt) {
 
   if (!strcincmp(cp, "procedure ", 10)) {    /* remove "PROCEDURE" keyword */
     strcpy(cp, cp+10);
-    } 
+    }
   else if (!strcincmp(cp, "function ", 9)) {
     strcpy(cp, cp+9);
     }
@@ -198,12 +198,12 @@ void attach_comments (Stmt *sbase) {
         j++;
         if (j % 3 == 0)
           i++;
-        } 
+        }
       else if (commentafter == 0) {
         i++;
         if (i % 3 == 0)
           j++;
-        } 
+        }
       else {
         i++;
         j++;
@@ -283,7 +283,7 @@ void addnote (char *msg, long serial) {
         fprintf(stderr, "\"%s\", line %d: %s\n", infname, inf_lnum, msg);
       else
         printf("\"%s\", line %d: %s\n", infname, inf_lnum, msg);
-      } 
+      }
     else if (outf != stdout)
       printf ("\"%s\", line %d,%d: %s\n", infname, inf_lnum, outf_lnum, msg);
     }
@@ -300,7 +300,7 @@ void addnote (char *msg, long serial) {
   len2 = strlen (msg) + 2;
   if (len1 + len2 < linewidth-4) {
     msg = format_ss ("%s %s ", prefix, msg);
-    } 
+    }
   else {
     extra = xextra = 0;
     while (len2 - extra > linewidth-6) {
@@ -431,7 +431,7 @@ Strlist* grabcomment (int kind) {
   grabbed_comment = 1;
 
   if (cmtdebug > 1)
-    fprintf (outf, "Grabbed comment [%ld] \"%s\"\n", cmt->value & CMT_MASK, cmt->s);
+    fprintf (outf, "Grabbed comment [%lld] \"%s\"\n", cmt->value & CMT_MASK, cmt->s);
   return cmt;
   }
 //}}}
@@ -449,7 +449,7 @@ int matchcomment (Strlist *cmt, int kind, long stamp) {
     if (kind & CMT_NOT) {
       if (getcommentkind(cmt) == kind - CMT_NOT)
         return 0;
-      } 
+      }
     else {
       if (getcommentkind(cmt) != kind)
         return 0;
@@ -466,7 +466,7 @@ Strlist* findcomment (Strlist *cmt, int kind, long stamp) {
     cmt = cmt->next;
 
   if (cmt && cmtdebug > 1)
-    fprintf(outf, "Found comment [%ld] \"%s\"\n",
+    fprintf(outf, "Found comment [%lld] \"%s\"\n",
 
   cmt->value & CMT_MASK, cmt->s);
   return cmt;
@@ -481,11 +481,11 @@ Strlist* extractcomment (Strlist **cmt, int kind, long stamp) {
   while ((sl = *cmt)) {
     if (matchcomment(sl, kind, stamp)) {
       if (cmtdebug > 1)
-        fprintf(outf, "Extracted comment [%ld] \"%s\"\n", sl->value & CMT_MASK, sl->s);
+        fprintf(outf, "Extracted comment [%lld] \"%s\"\n", sl->value & CMT_MASK, sl->s);
       *cmt = sl->next;
       *last = sl;
       last = &sl->next;
-      } 
+      }
     else
       cmt = &sl->next;
     }
@@ -500,7 +500,7 @@ void changecomments (Strlist *cmt, int okind, long ostamp, int kind, long stamp)
   while (cmt) {
     if (matchcomment(cmt, okind, ostamp)) {
       if (cmtdebug > 1)
-        fprintf(outf, "Changed comment [%s:%ld] \"%s\" ",
+        fprintf(outf, "Changed comment [%s:%lld] \"%s\" ",
       CMT_NAMES[getcommentkind(cmt)],
       cmt->value & CMT_MASK, cmt->s);
       if (kind >= 0)
@@ -508,7 +508,7 @@ void changecomments (Strlist *cmt, int okind, long ostamp, int kind, long stamp)
       if (stamp >= 0)
         cmt->value = (cmt->value & ~CMT_MASK) | stamp;
       if (cmtdebug > 1)
-        fprintf(outf, " to [%s:%ld]\n",
+        fprintf(outf, " to [%s:%lld]\n",
       CMT_NAMES[getcommentkind(cmt)], cmt->value & CMT_MASK);
       }
     cmt = cmt->next;

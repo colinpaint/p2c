@@ -208,14 +208,14 @@ typedef enum E_token {
 //{{{
 typedef struct S_strlist {
   struct S_strlist* next;
-  long value;
+  long long value;
   char s[1];
   } Strlist;
 //}}}
 //{{{
 typedef struct S_value {
   struct S_type* type;
-  long i;
+  long long i;
   char *s;
   } Value;
 //}}}

@@ -26,20 +26,9 @@ typedef struct S_paren {
 //}}}
 #define PROTO_OUT_C
 #include "main.h"
-//{{{
-#ifndef USETIME
-  #if defined(BSD) || defined(hpux)
-    #define USETIME 1
-  #else
-    #define USETIME 0
-  #endif
-#endif
+#define USETIME
 
-#if USETIME
-  #include <sys/time.h>
-#else
-  #include <time.h>
-#endif
+#include <time.h>
 //}}}
 //{{{  defines, vars
 //{{{
@@ -181,7 +170,7 @@ void select_outfile (FILE *fp) {
   if (outf == codef) {
     codesectsize = sectionsize;
     codelnum = outf_lnum;
-    } 
+    }
   else {
     hdrsectsize = sectionsize;
     hdrlnum = outf_lnum;
@@ -191,7 +180,7 @@ void select_outfile (FILE *fp) {
   if (outf == codef) {
     sectionsize = codesectsize;
     outf_lnum = codelnum;
-    } 
+    }
   else {
     sectionsize = hdrsectsize;
     outf_lnum = hdrlnum;
@@ -460,7 +449,7 @@ Static int readquotes (int *posp, int err) {
       breakerrorflag = 0;
       }
     return 0;
-    } 
+    }
   else {
     *posp = pos;
     return 1;
@@ -1041,26 +1030,6 @@ char *cp;
 }
 //}}}
 //{{{
-long getcurtime()
-{
-#if USETIME
-    static unsigned long starttime = 0;
-    struct timeval t;
-    struct timezone tz;
-
-    gettimeofday(&t, &tz);
-    if (starttime == 0)
-  starttime = t.tv_sec;
-    t.tv_sec -= starttime;
-    return (t.tv_sec*1000 + t.tv_usec/1000);
-#else
-    static unsigned long starttime = 0;
-    if (!starttime) starttime = time(NULL);
-    return (time(NULL) - starttime) * 1000;
-#endif
-}
-//}}}
-//{{{
 void output (msg)
 register char *msg;
 {
@@ -1068,7 +1037,6 @@ register char *msg;
     double savelimit;
     int i, savemaxlw, maxdp;
     long alts;
-    long time0, time0a, time1;
 
     debughook();
 
@@ -1128,7 +1096,6 @@ register char *msg;
           numalts = 0;
           bestnumalts = 0;
           savemaxlw = maxlinewidth;
-          time0 = time0a = getcurtime();
 
           if (regression)
             srand(17);
@@ -1157,7 +1124,6 @@ register char *msg;
               else
                 break;
               }
-            time0a = getcurtime();
             }
             //}}}
 
@@ -1169,7 +1135,6 @@ register char *msg;
             trybreakline (0, 0, thisindent, 0.0, 0, NULL);
             }
 
-          time1 = getcurtime() - time0;
           alts = numalts;
           if (testinglinebreaker) {
             if (savelimit < 0 && testinglinebreaker > 1) {
@@ -1178,21 +1143,14 @@ register char *msg;
               bestnumalts = 0;
               trybreakline(0, 0, thisindent, 0.0, 0, NULL);
               }
-            fprintf(outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld in %.3f sec */\n", bestnumalts, bestbadness, alts, time1/1000.0);
+            fprintf(outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld */\n", bestnumalts, bestbadness, alts);
             }
 
           showbadlimit = savelimit;
           maxlinewidth = savemaxlw;
           flush_outbuf (bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
 
-          if (((USETIME && time1 > 1000) || alts >= maxalts) && !regression) {
-            sprintf (outbuf, "Line breaker spent %.1f", (time1 + time0 - time0a) / 1000.0);
-            if (time0 != time0a)
-              sprintf (outbuf + strlen(outbuf), "+%.2f", (time0a - time0) / 1000.0);
-            sprintf (outbuf + strlen(outbuf), " seconds, %ld tries on line %d [251]", alts, outf_lnum);
-            note (outbuf);
-            }
-          else if (verbose) {
+          if (verbose) {
             fprintf (logfile, "%s, %d/%d: Line breaker spent %ld tries\n", infname, inf_lnum, outf_lnum, alts);
             }
           if (testinglinebreaker)

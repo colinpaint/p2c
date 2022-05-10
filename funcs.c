@@ -1491,7 +1491,7 @@ char *buf;
     if (ex->val.i <= 32 || ex->val.i > 126 ||
         ex->val.i == '\'' || ex->val.i == '\\' ||
         ex->val.i == '=' || ex->val.i == '}')
-        sprintf(cp, "%ld", ex->val.i);
+        sprintf(cp, "%lld", ex->val.i);
     else
         strcpy(cp, makeCchar(ex->val.i));
       } else {

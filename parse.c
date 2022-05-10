@@ -1351,10 +1351,10 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
   Strlist *curcmt, *cmt, *savecurcmt = curcomments;
   Strlist *trailcmt, *begincmt, *endcmt;
 
-  if (debug>1) { 
+  if (debug>1) {
     //{{{  debug
-    fprintf (outf, "out_block of:\n"); 
-    dumpstmt (spbase,5); 
+    fprintf (outf, "out_block of:\n");
+    dumpstmt (spbase,5);
     }
     //}}}
 
@@ -1393,7 +1393,7 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
         commentlen (cmt), 0);
         output("\001");
         outcomment (cmt);
-        } 
+        }
       else
         trailcmt = cmt;
       }
@@ -1419,7 +1419,7 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
         trailcmt = begincmt;
         begincmt = NULL;
         istrail = 0;
-        } 
+        }
       else
         outspnl(i);
       }
@@ -1427,7 +1427,7 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
     if (line_start())
       singleindent(j);
     output("{");
-    } 
+    }
     //}}}
   else if (!sp) {
     if (!line_start())
@@ -1460,11 +1460,11 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
       singleindent (delta);
       out_spaces (commentoverindent, 1000, commentlen(trailcmt), 0);
       outcomment (trailcmt);
-      } 
+      }
     else /*if (commentlen(trailcmt) + cur_column() + 1 <= linewidth)*/ {
       out_spaces (istrail ? commentindent : bracecommentindent, commentoverindent, commentlen(trailcmt), delta);
       outcomment (trailcmt);
-      } 
+      }
     //else {
     //  output("\n");
     //  singleindent(delta);
@@ -1508,406 +1508,433 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
     switch (sp->kind) {
       //{{{
       case SK_HEADER:
-         ctx = (Meaning *)sp->exp1->val.i;
-         eatblanklines();
-         if (declarevars(ctx, 0) || (sp->next && sp->next->doinit)) {
-           if (minorspace < 0)
-             declspc = (cplus > 0) ? 0 : 1;
-           else
-             declspc = minorspace;
-           if (sp->next && !sp->next->doinit) {
-             outsection(declspc);
-             declspc = 0;
-             }
-           }
+        ctx = (Meaning *)sp->exp1->val.i;
+        eatblanklines();
+        if (declarevars(ctx, 0) || (sp->next && sp->next->doinit)) {
+          if (minorspace < 0)
+            declspc = (cplus > 0) ? 0 : 1;
+          else
+            declspc = minorspace;
+          if (sp->next && !sp->next->doinit) {
+            outsection(declspc);
+            declspc = 0;
+            }
+          }
 
-         flushcomments(NULL, CMT_NOT | CMT_ONEND, serial);
-         if (ctx->kind == MK_MODULE) {
-           if (ctx->anyvarflag) {
-             if (*name_MAIN) {
-               outsection(declspc);
-               declspc = 0;
-               output(format_s(name_MAIN, ""));
-               if (spacefuncs)
-                 output(" ");
-               output("(argc,");
-               if (spacecommas)
+        flushcomments(NULL, CMT_NOT | CMT_ONEND, serial);
+        if (ctx->kind == MK_MODULE) {
+          if (ctx->anyvarflag) {
+            if (*name_MAIN) {
+              outsection(declspc);
+              declspc = 0;
+              output(format_s(name_MAIN, ""));
+              if (spacefuncs)
                 output(" ");
-               output("argv);\n");
-               }
-             } 
-           else {
-             outsection(declspc);
-             declspc = 0;
-             output("static int _was_initialized = 0;\n");
-             output("if (_was_initialized++)\n");
-             singleindent(tabsize);
-             output("return;\n");
-             }
-           while (initialcalls) {
-             outsection(declspc);
-             declspc = 0;
-             output(initialcalls->s);
-             output(";\n");
-             strlist_remove(&initialcalls, initialcalls->s);
-             }
-           } 
-         else {
+              output("(argc,");
+              if (spacecommas)
+               output(" ");
+              output("argv);\n");
+              }
+            }
+          else {
+            outsection (declspc);
+            declspc = 0;
+            output ("static int _was_initialized = 0;\n");
+            output ("if (_was_initialized++)\n");
+            singleindent (tabsize);
+            output ("return;\n");
+            }
+          while (initialcalls) {
+            outsection (declspc);
+            declspc = 0;
+            output (initialcalls->s);
+            output (";\n");
+            strlist_remove (&initialcalls, initialcalls->s);
+            }
+          }
+        else {
           if (ctx->varstructflag && ctx->ctx->kind == MK_FUNCTION && ctx->ctx->varstructflag) {
             outsection(declspc);
             declspc = 0;
-            output(format_s(name_VARS, ctx->name));
-            output(".");
-            output(format_s(name_LINK, ctx->ctx->name));
-            output(" = ");
-            output(format_s(name_LINK, ctx->ctx->name));
-            output(";\n");
+            output (format_s(name_VARS, ctx->name));
+            output (".");
+            output (format_s(name_LINK, ctx->ctx->name));
+            output (" = ");
+            output (format_s(name_LINK, ctx->ctx->name));
+            output (";\n");
             }
 
-         for (mp = ctx->cbase; mp; mp = mp->cnext) {
-           if ((mp->kind == MK_VAR ||    /* these are variables with */
-                mp->kind == MK_VARREF) &&
-               ((mp->varstructflag &&      /* initializers which were moved */
-                 mp->cnext &&              /* into a varstruct, so they */
-                 mp->cnext->snext == mp && /* must be initialized now */
-                 mp->cnext->constdefn &&
-                 ctx->kind == MK_FUNCTION) ||
-                (mp->constdefn &&
-                 mp->type->kind == TK_ARRAY &&
-                 mp->constdefn->val.type->kind == TK_STRING &&
-                 !initpacstrings))) {
-             outsection(declspc);
-             declspc = 0;
-             if (mp->type->kind == TK_ARRAY) {
-               output("memcpy(");
-               out_var(mp, 2);
-               output(",\002");
-               if (spacecommas)
-                 output(" ");
-               if (mp->constdefn) {
-                 output(makeCstring(mp->constdefn->val.s, mp->constdefn->val.i));
-                 mp->constdefn = NULL;
-                 } 
-               else
-                 out_var(mp->cnext, 2);
-               output(",\002");
-               if (spacecommas)
-                   output(" ");
-               output("sizeof(");
-               out_type(mp->type, 0);
-               output("))");
-               } 
-             else {
-               out_var(mp, 2);
-               output(" = ");
-               out_var(mp->cnext, 2);
-               }
-             output(";\n");
-             }
-           }
-         }
-       break;
+          for (mp = ctx->cbase; mp; mp = mp->cnext) {
+            if ((mp->kind == MK_VAR || mp->kind == MK_VARREF) &&
+                ((mp->varstructflag &&      /* initializers which were moved */
+                  mp->cnext &&              /* into a varstruct, so they */
+                  mp->cnext->snext == mp && /* must be initialized now */
+                  mp->cnext->constdefn && ctx->kind == MK_FUNCTION) ||
+                 (mp->constdefn && mp->type->kind == TK_ARRAY &&
+                  mp->constdefn->val.type->kind == TK_STRING && !initpacstrings))) {
+              outsection (declspc);
+              declspc = 0;
+              if (mp->type->kind == TK_ARRAY) {
+                output ("memcpy(");
+                out_var (mp, 2);
+                output (",\002");
+                if (spacecommas)
+                  output (" ");
+                if (mp->constdefn) {
+                  output (makeCstring (mp->constdefn->val.s, mp->constdefn->val.i));
+                  mp->constdefn = NULL;
+                  }
+                else
+                  out_var (mp->cnext, 2);
+                output (",\002");
+                if (spacecommas)
+                  output (" ");
+                output ("sizeof(");
+                out_type (mp->type, 0);
+                output ("))");
+                }
+              else {
+                out_var (mp, 2);
+                output (" = ");
+                out_var (mp->cnext, 2);
+                }
+              output (";\n");
+              }
+            }
+          }
+        break;
       //}}}
       //{{{
       case SK_RETURN:
-                  output("return");
-      if (sp->exp1) {
+        output("return");
+        if (sp->exp1) {
           switch (returnparens) {
 
             case 0:
-        output(" ");
-        out_expr(sp->exp1);
-        break;
+             output(" ");
+             out_expr(sp->exp1);
+             break;
 
             case 1:
-        if (spaceexprs != 0)
-            output(" ");
-        out_expr_parens(sp->exp1);
-        break;
+              if (spaceexprs != 0)
+                output(" ");
+              out_expr_parens(sp->exp1);
+              break;
 
             default:
-        if (sp->exp1->kind == EK_VAR ||
-            sp->exp1->kind == EK_CONST ||
-            sp->exp1->kind == EK_LONGCONST ||
-            sp->exp1->kind == EK_BICALL ||
-            sp->exp1->kind == EK_NAME) {
-            output(" ");
-            out_expr(sp->exp1);
-        } else {
-            if (spaceexprs != 0)
-          output(" ");
-            out_expr_parens(sp->exp1);
-        }
-        break;
+              if (sp->exp1->kind == EK_VAR ||
+                  sp->exp1->kind == EK_CONST ||
+                  sp->exp1->kind == EK_LONGCONST ||
+                  sp->exp1->kind == EK_BICALL ||
+                  sp->exp1->kind == EK_NAME) {
+                output(" ");
+                out_expr(sp->exp1);
+                }
+              else {
+                if (spaceexprs != 0)
+                  output(" ");
+                out_expr_parens(sp->exp1);
+                }
+              break;
+            }
           }
-      }
-      output(";");
-      outnl(sp->serial);
-                  break;
 
-              case SK_ASSIGN:
-      if (sp->doinit) {
-          mp = (Meaning *)sp->exp1->args[0]->val.i;
-          mp->constdefn = sp->exp1->args[1];
-          declarevar(mp, VDECL_HEADER|VDECL_BODY);
-          mp->constdefn = NULL;
-          if (findcomment(curcomments, CMT_TRAIL, sp->serial)) {
         output(";");
         outnl(sp->serial);
-        flushcomments(&mp->comments, -1, -1);
-          } else {
-        declarevar(mp, VDECL_TRAILER);
+        break;
+
+      //}}}
+      //{{{
+      case SK_ASSIGN:
+        if (sp->doinit) {
+          mp = (Meaning*)sp->exp1->args[0]->val.i;
+          mp->constdefn = sp->exp1->args[1];
+          declarevar (mp, VDECL_HEADER|VDECL_BODY);
+          mp->constdefn = NULL;
+
+          if (findcomment (curcomments, CMT_TRAIL, sp->serial)) {
+            output (";");
+            outnl (sp->serial);
+            flushcomments (&mp->comments, -1, -1);
+            }
+          else
+            declarevar (mp, VDECL_TRAILER);
           }
-      } else {
-          out_expr_stmt(sp->exp1);
-          output(";");
-          outnl(sp->serial);
-      }
-                  break;
+        else {
+          out_expr_stmt (sp->exp1);
+          output (";");
+          outnl (sp->serial);
+          }
+
+        break;
       //}}}
       //{{{
       case SK_CASE:
-        output("switch (");
-        out_expr(sp->exp1);
-        output(")");
-        outspnl(braceline <= 0);
+        output ("switch (");
+        out_expr (sp->exp1);
+        output (")");
+        outspnl (braceline <= 0);
+
         if (line_start())
-            singleindent(openbraceindent);
-                    output("{");
-        outnl(sp->serial);
+          singleindent (openbraceindent);
+
+        output ("{");
+        outnl (sp->serial);
         saveindent2 = outindent;
-        moreindent(tabsize);
-        moreindent(switchindent);
-                    sp2 = sp->stm1;
-                    while (sp2 && sp2->kind == SK_CASELABEL) {
-                        outsection(casespacing);
-                        sp3 = sp2;
-            i = 0;
-            hascmt = (findcomment(curcomments, -1, sp2->serial) != NULL);
-            singleindent(caseindent);
-            flushcomments(NULL, CMT_PRE, sp2->serial);
-                        for (;;) {
-          if (i)
-              singleindent(caseindent);
+        moreindent (tabsize);
+        moreindent (switchindent);
+
+        sp2 = sp->stm1;
+        while (sp2 && sp2->kind == SK_CASELABEL) {
+          outsection(casespacing);
+          sp3 = sp2;
           i = 0;
-                            output("case ");
-                            out_expr(sp3->exp1);
-                            output(":\001");
-                            sp3 = sp3->stm1;
-                            if (!sp3 || sp3->kind != SK_CASELABEL)
-                                break;
-                            if (casetabs != 1000)
-                                out_spaces(casetabs, 0, 0, 0);
-                            else {
-                                output("\n");
+          hascmt = (findcomment(curcomments, -1, sp2->serial) != NULL);
+          singleindent(caseindent);
+          flushcomments(NULL, CMT_PRE, sp2->serial);
+          for (;;) {
+            if (i)
+              singleindent(caseindent);
+            i = 0;
+
+            output ("case ");
+            out_expr (sp3->exp1);
+            output (":\001");
+            sp3 = sp3->stm1;
+            if (!sp3 || sp3->kind != SK_CASELABEL)
+              break;
+            if (casetabs != 1000)
+              out_spaces (casetabs, 0, 0, 0);
+            else {
+              output ("\n");
               i = 1;
-          }
-                        }
-                        if (sp3)
-                            out_block(sp3, BR_NEVER|BR_CASE, sp2->serial);
-                        else {
-          outnl(sp2->serial);
-          if (!hascmt) {
-              if (slashslash)
-            output("// blank case\n");
-              else
-            output("/* blank case */\n");
-          }
+              }
             }
-                        output("break;\n");
-            flushcomments(NULL, -1, sp2->serial);
-                        sp2 = sp2->next;
-                    }
-                    if (sp2) {
-                        outsection(casespacing);
-            singleindent(caseindent);
-            flushcomments(NULL, CMT_PRE, sp2->serial);
-                        output("default:");
-                        out_block(sp2, BR_NEVER|BR_CASE, sp2->serial);
-                        output("break;\n");
-            flushcomments(NULL, -1, sp2->serial);
-                    }
-                    outindent = saveindent2;
+          if (sp3)
+            out_block (sp3, BR_NEVER|BR_CASE, sp2->serial);
+          else {
+            outnl (sp2->serial);
+            if (!hascmt) {
+              if (slashslash)
+                output ("// blank case\n");
+              else
+                output ("/* blank case */\n");
+              }
+            }
+
+          output ("break;\n");
+          flushcomments (NULL, -1, sp2->serial);
+          sp2 = sp2->next;
+          }
+
+        if (sp2) {
+          outsection (casespacing);
+          singleindent (caseindent);
+          flushcomments (NULL, CMT_PRE, sp2->serial);
+          output ("default:");
+          out_block (sp2, BR_NEVER|BR_CASE, sp2->serial);
+          output ("break;\n");
+          flushcomments (NULL, -1, sp2->serial);
+          }
+        outindent = saveindent2;
+
         if (line_start())
-            singleindent(closebraceindent);
-                    output("}");
-        curcmt = findcomment(curcomments, CMT_ONEND, sp->serial);
+          singleindent (closebraceindent);
+
+        output ("}");
+        curcmt = findcomment (curcomments, CMT_ONEND, sp->serial);
         if (curcmt)
-            outcomment(curcmt);
+          outcomment (curcmt);
         else
-            output("\n");
-                    break;
+          output ("\n");
+
+        break;
       //}}}
       //{{{
       case SK_CASECHECK:
-       output(name_CASECHECK);
-                   output("();   /* CASE value range error */\n");
-                   break;
+        output(name_CASECHECK);
+        output("();   /* CASE value range error */\n");
+        break;
+      //}}}
+      //{{{
+      case SK_FOR:
+        if (sp->doinit) {
+          mp = (Meaning *)sp->exp1->args[0]->val.i;
+          flushcomments(&mp->comments, CMT_PRE, -1);
+         }
 
-               case SK_FOR:
-       if (sp->doinit) {
-           mp = (Meaning *)sp->exp1->args[0]->val.i;
-           flushcomments(&mp->comments, CMT_PRE, -1);
-       }
        output("for (");
+
        if (for_allornone)
-           output("\007");
-                   if (sp->exp1 || sp->exp2 || sp->exp3 || spaceexprs > 0) {
+         output ("\007");
+         if (sp->exp1 || sp->exp2 || sp->exp3 || spaceexprs > 0) {
            if (sp->doinit) {
-         mp->constdefn = sp->exp1->args[1];
-         declarevar(mp, VDECL_HEADER|VDECL_BODY);
-         strlist_mix(&mp->comments, curcomments);
-         curcomments = mp->comments;
-         mp->comments = NULL;
-         mp->constdefn = NULL;
-           } else if (sp->exp1)
-         out_expr_top(sp->exp1);
+             mp->constdefn = sp->exp1->args[1];
+             declarevar (mp, VDECL_HEADER|VDECL_BODY);
+             strlist_mix (&mp->comments, curcomments);
+             curcomments = mp->comments;
+             mp->comments = NULL;
+             mp->constdefn = NULL;
+             }
+           else if (sp->exp1)
+             out_expr_top (sp->exp1);
            else if (spaceexprs > 0)
-         output(" ");
-           output(";\002 ");
-                       if (sp->exp2)
-                           out_expr(sp->exp2);
-                       output(";\002 ");
-                       if (sp->exp3)
-                           out_expr_top(sp->exp3);
-                   } else {
-                       output(";;");
-                   }
-                   output(")");
-                   out_block(sp->stm1, 0, sp->serial);
-                   break;
+             output(" ");
 
-               case SK_LABEL:
-                   if (!line_start())
-                       output("\n");
-       singleindent(labelindent);
-                   out_expr(sp->exp1);
-                   output(":");
-                   if (!sp->next)
-                       output(" ;");
-                   outnl(sp->serial);
-                   break;
+           output (";\002 ");
+           if (sp->exp2)
+             out_expr (sp->exp2);
+           output (";\002 ");
+           if (sp->exp3)
+             out_expr_top (sp->exp3);
+           }
+         else
+           output (";;");
 
-               case SK_GOTO:
-                   /* what about non-local goto's? */
-                   output("goto ");
-                   out_expr(sp->exp1);
-                   output(";");
-       outnl(sp->serial);
-                   break;
+        output (")");
+        out_block (sp->stm1, 0, sp->serial);
+        break;
+
+      //}}}
+      //{{{
+      case SK_LABEL:
+        if (!line_start())
+          output ("\n");
+
+        singleindent (labelindent);
+
+        out_expr (sp->exp1);
+        output (":");
+        if (!sp->next)
+          output (" ;");
+        outnl (sp->serial);
+
+        break;
+      //}}}
+      //{{{
+      case SK_GOTO:
+        /* what about non-local goto's? */
+        output ("goto ");
+        out_expr (sp->exp1);
+        output (";");
+        outnl (sp->serial);
+        break;
       //}}}
       //{{{
       case SK_IF:
-          sp2 = sp;
-          for (;;) {
-              output("if (");
-              out_expr_bool(sp2->exp1);
-              output(")");
-              if (sp2->stm2) {
-         cmt = extractcomment(&curcomments, CMT_ONELSE, sp->serial+1);
-                           i = (!cmt && sp2->stm2->kind == SK_IF &&
-              !sp2->stm2->next &&
-              ((sp2->stm2->exp2)
-               ? checkconst(sp2->stm2->exp2, 1)
-               : (elseif > 0)));
-         if (braceelse &&
-                               (usebraces(sp2->stm1, 0) ||
-                                usebraces(sp2->stm2, 0) || i))
-                               always = BR_ALWAYS;
-                           else
-                               always = 0;
-                           out_block(sp2->stm1, BR_THENPART|always, sp2->serial);
-         changecomments(curcomments, -1, sp2->serial+1,
-                  CMT_PRE, sp2->stm2->serial);
-         flushcomments(NULL, -1, sp2->serial);
-         strlist_mix(&cmt, curcomments);
-         curcomments = cmt;
-                           output("else");
-                           sp2 = sp2->stm2;
-                           if (i) {
-                               output(" ");
-             if (sp2->stm1) {
-           changecomments(curcomments,
-                    CMT_PRE, sp2->serial,
-                    CMT_PRE, sp2->stm1->serial);
-           changecomments(curcomments,
-                    CMT_POST, sp2->serial,
-                    CMT_PRE, sp2->stm1->serial);
-             }
-             if (cmtdebug)
-           output(format_d("[%d] ", sp2->serial));
-                           } else {
-                               out_block(sp2, BR_ELSEPART|always, sp2->serial+1);
-                               break;
-                           }
-                       } else {
-                           out_block(sp2->stm1, 0, sp2->serial);
-                           break;
-                       }
-                   }
-                   break;
+        sp2 = sp;
+
+        for (;;) {
+          output ("if (");
+          out_expr_bool (sp2->exp1);
+          output (")");
+
+          if (sp2->stm2) {
+            cmt = extractcomment(&curcomments, CMT_ONELSE, sp->serial+1);
+            i = (!cmt && sp2->stm2->kind == SK_IF && !sp2->stm2->next && ((sp2->stm2->exp2)
+                  ? checkconst(sp2->stm2->exp2, 1)
+                  : (elseif > 0)));
+            if (braceelse && (usebraces(sp2->stm1, 0) || usebraces(sp2->stm2, 0) || i))
+              always = BR_ALWAYS;
+            else
+              always = 0;
+            out_block(sp2->stm1, BR_THENPART|always, sp2->serial);
+
+            changecomments (curcomments, -1, sp2->serial+1, CMT_PRE, sp2->stm2->serial);
+            flushcomments(NULL, -1, sp2->serial);
+            strlist_mix(&cmt, curcomments);
+            curcomments = cmt;
+            output ("else");
+            sp2 = sp2->stm2;
+            if (i) {
+              output (" ");
+               if (sp2->stm1) {
+                 changecomments (curcomments, CMT_PRE, sp2->serial, CMT_PRE, sp2->stm1->serial);
+                 changecomments (curcomments, CMT_POST, sp2->serial, CMT_PRE, sp2->stm1->serial);
+                 }
+
+              if (cmtdebug)
+                 output(format_d("[%d] ", sp2->serial));
+              }
+            else {
+              out_block(sp2, BR_ELSEPART|always, sp2->serial+1);
+              break;
+              }
+            }
+          else {
+            out_block(sp2->stm1, 0, sp2->serial);
+            break;
+            }
+          }
+        break;
       //}}}
       //{{{
       case SK_REPEAT:
-          output("do");
-          out_block(sp->stm1, BR_ALWAYS|BR_REPEAT, sp->serial);
-          output("while (");
-          out_expr_bool(sp->exp1);
-          output(");");
-       cmt = findcomment(curcomments, CMT_ONEND, sp->serial);
-       if (commentvisible(cmt)) {
-           out_spaces(commentindent, commentoverindent,
-                commentlen(cmt), 0);
-           output("\001");
-           outcomment(cmt);
-       } else
-           output("\n");
-                   break;
+        output ("do");
+        out_block (sp->stm1, BR_ALWAYS|BR_REPEAT, sp->serial);
+        output ("while (");
+        out_expr_bool (sp->exp1);
+        output (");");
 
-               case SK_TRY:
-                   trynum = sp->exp1->val.i;
-                   output(format_d("TRY(try%d);", trynum));
-                   out_block(sp->stm1, BR_NEVER|BR_TRY, sp->serial);
-                   if (sp->exp2)
-                       output(format_ds("RECOVER2(try%d,%s);", trynum,
-                                        format_s(name_LABEL, format_d("try%d", trynum))));
-                   else
-                       output(format_d("RECOVER(try%d);", trynum));
-                   out_block(sp->stm2, BR_NEVER|BR_TRY, sp->serial);
-                   output(format_d("ENDTRY(try%d);\n", trynum));
-                   break;
+        cmt = findcomment (curcomments, CMT_ONEND, sp->serial);
+        if (commentvisible (cmt)) {
+          out_spaces (commentindent, commentoverindent, commentlen(cmt), 0);
+          output ("\001");
+          outcomment (cmt);
+          }
+        else
+          output ("\n");
+       break;
+      //}}}
+      //{{{
+      case SK_TRY:
+        trynum = (int)sp->exp1->val.i;
+        output (format_d ("TRY(try%d);", trynum));
+        out_block (sp->stm1, BR_NEVER|BR_TRY, sp->serial);
 
-               case SK_WHILE:
-                   output("while (");
-                   out_expr_bool(sp->exp1);
-                   output(")");
-                   out_block(sp->stm1, 0, sp->serial);
-                   break;
+        if (sp->exp2)
+          output (format_ds ("RECOVER2(try%d,%s);", trynum, format_s (name_LABEL, format_d ("try%d", trynum))));
+        else
+          output (format_d ("RECOVER(try%d);", trynum));
 
-               case SK_BREAK:
-                   output("break;");
-       outnl(sp->serial);
-                   break;
-
-               case SK_CONTINUE:
-                   output("continue;");
-       outnl(sp->serial);
-                   break;
+        out_block (sp->stm2, BR_NEVER|BR_TRY, sp->serial);
+        output (format_d ("ENDTRY(try%d);\n", trynum));
+        break;
+      //}}}
+      //{{{
+      case SK_WHILE:
+        output ("while (");
+        out_expr_bool (sp->exp1);
+        output (")");
+        out_block (sp->stm1, 0, sp->serial);
+        break;
+      //}}}
+      //{{{
+      case SK_BREAK:
+        output ("break;");
+        outnl (sp->serial);
+        break;
+      //}}}
+      //{{{
+      case SK_CONTINUE:
+        output ("continue;");
+        outnl (sp->serial);
+        break;
       //}}}
       //{{{
       default:
-        intwarning("out_block",
-        format_s("Misplaced statement kind %s [265]",
-        stmtkindname(sp->kind)));
-         break;
+        intwarning ("out_block",
+        format_s ("Misplaced statement kind %s [265]",
+        stmtkindname (sp->kind)));
+        break;
       //}}}
       }
 
     flushcomments (NULL, -1, sp->serial);
-    if (debug > 1) { 
+    if (debug > 1) {
       //{{{  debug
-      fprintf (outf, "in out_block:\n"); 
-      dumpstmt (spbase,5); 
+      fprintf (outf, "in out_block:\n");
+      dumpstmt (spbase,5);
       }
       //}}}
     sp = sp->next;
@@ -2365,13 +2392,13 @@ Expr *ex;
   !strcmp(ex->val.s, "fputs")) {
   if (ex->args[0]->kind != EK_CONST)
       return 0;
-  cp = ex->args[0]->val.s;
-  len = ex->args[0]->val.i;
+  cp = (char*)ex->args[0]->val.s;
+  len = (int)ex->args[0]->val.i;
     } else if (!strcmp(ex->val.s, "fprintf")) {
   if (ex->args[1]->kind != EK_CONST)
       return 0;
-  cp = ex->args[1]->val.s;
-  len = ex->args[1]->val.i;
+  cp = (char*)ex->args[1]->val.s;
+  len = (int)ex->args[1]->val.i;
     } else if (!strcmp(ex->val.s, "putchar") ||
          !strcmp(ex->val.s, "putc") ||
          !strcmp(ex->val.s, "fputc")) {
@@ -3713,7 +3740,7 @@ Stmt **spp, *thereturn;
             case SK_TRY:
                 save_tryblock = fixexpr_tryblock;
                 save_tryflag = fixexpr_tryflag;
-                fixexpr_tryblock = sp->exp1->val.i;
+                fixexpr_tryblock = (int)sp->exp1->val.i;
                 fixexpr_tryflag = 0;
                 fixblock(&sp->stm1, NULL);
                 if (fixexpr_tryflag)
@@ -4102,7 +4129,7 @@ void checkvaroffsetexpr (Expr *ex, Meaning *mp, int myoffset) {
     case EK_PLUS:
       ex2 = ex->args[ex->nargs-1];
       if (ex2->kind == EK_CONST && ex2->val.type->kind == TK_INTEGER) {
-        nextoffset = ex2->val.i;
+        nextoffset = (int)ex2->val.i;
         }
       break;
     //}}}

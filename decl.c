@@ -3408,8 +3408,8 @@ Meaning *tname;
       if (tagstructs > 0)
     makestructtag(type, firstm->name);
       decl_comments(lastm);
-      fielddecl(firstm, &type, &tp2, &li1, ispacked, &aligned);
-      dtype = validatedtype(dtype, type);
+      fielddecl (firstm, &type, &tp2, &li1, ispacked, &aligned);
+      dtype = validatedtype (dtype, type);
       for (;;) {
     firstm->type = tp2;
     firstm->dtype = dtype;
@@ -3447,8 +3447,7 @@ Meaning *tname;
             gettok();
       firstm->isforward = 1;
             firstm->val.type = type = p_type(firstm);
-            fielddecl(firstm, &firstm->val.type, &firstm->type, &firstm->val.i,
-                      ispacked, &aligned);
+            fielddecl (firstm, &firstm->val.type, &firstm->type, &firstm->val.i, ispacked, &aligned);
         } else {
       firstm = NULL;
   }

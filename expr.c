@@ -201,7 +201,7 @@ Type *type;
 
             case TK_REAL:
                 if (ord_type(val.type)->kind == TK_INTEGER) {
-                    sprintf(buf, "%ld.0", val.i);
+                    sprintf(buf, "%lld.0", val.i);
                     val.s = stralloc(buf);
                     val.type = tp_real;
                     return val;
@@ -4916,7 +4916,7 @@ Expr *ex;
                       !(isalpha(cp[i]) && cp[i] != 'l'); i++) {
                 if (cp[i] == '*') {
                     if (isliteralconst(ex->args[j], NULL) == 2) {
-                        sprintf(bp, "%ld", ex->args[j]->val.i);
+                        sprintf(bp, "%lld", ex->args[j]->val.i);
                         bp += strlen(bp);
                         delfreearg(&ex, j);
                         changed = 1;

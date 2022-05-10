@@ -92,20 +92,20 @@ Static void initrc() {
     switch (rctable[i].kind) {
       case 'S':
       case 'B':
-        *((short *)rctable[i].ptr) = rctable[i].def;
+        *((short*)rctable[i].ptr) = (short)rctable[i].def;
         break;
 
       case 'I':
       case 'D':
-        *((int *)rctable[i].ptr) = rctable[i].def;
+        *((int*)rctable[i].ptr) = rctable[i].def;
         break;
 
       case 'L':
-        *((long *)rctable[i].ptr) = rctable[i].def;
+        *((long*)rctable[i].ptr) = rctable[i].def;
         break;
 
       case 'R':
-        *((double *)rctable[i].ptr) = rctable[i].def/100.0;
+        *((double*)rctable[i].ptr) = rctable[i].def/100.0;
         break;
 
       case 'U':
@@ -178,7 +178,7 @@ Static int readrc (char* rcname, int need) {
         switch (rctable[i].kind) {
           //{{{
           case 'S':
-            *((short*)rctable[i].ptr) = val;
+            *((short*)rctable[i].ptr) = (short)val;
             break;
           //}}}
           //{{{
@@ -262,7 +262,7 @@ Static int readrc (char* rcname, int need) {
             if (cp)
               val = parse_breakstr(cp);
             if (val != -1)
-              *((short*)rctable[i].ptr) = val;
+              *((short*)rctable[i].ptr) = (short)val;
             break;
           //}}}
           //{{{
@@ -991,11 +991,11 @@ void dumpexpr (Expr *ex ) {
     }
 
   if (ex->kind == EK_CONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-    fprintf (outf, "%ld", ex->val.i);
+    fprintf (outf, "%lld", ex->val.i);
     return;
     }
   if (ex->kind == EK_LONGCONST && ex->val.type == tp_integer && ex->nargs == 0 && !ex->val.s) {
-    fprintf (outf, "%ldL", ex->val.i);
+    fprintf (outf, "%lldL", ex->val.i);
     return;
     }
 
@@ -1013,13 +1013,13 @@ void dumpexpr (Expr *ex ) {
           case EK_FUNCTION:
           case EK_CTX:
             if (ISBOGUS(ex->val.i))
-              fprintf (outf, "[0x%lX]", ex->val.i);
+              fprintf (outf, "[0x%llX]", ex->val.i);
             else
               fprintf (outf, "[\"%s\"]", ((Meaning *)ex->val.i)->name);
             break;
 
           default:
-            fprintf (outf, "[i=%ld]", ex->val.i);
+            fprintf (outf, "[i=%lld]", ex->val.i);
             break;
       }
     }

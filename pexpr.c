@@ -295,7 +295,7 @@ Static void bindnames (Expr* ex) {
         mp = mp->snext;
       if (mp && !strcmp(mp->name, ex->val.s)) {
         ex->kind = EK_VAR;
-        ex->val.i = (long)mp;
+        ex->val.i = (long long)mp;
         ex->val.type = mp->type;
         }
       }
@@ -522,173 +522,202 @@ Expr *packset (Expr* ex, Type* type) {
 
 #define MAXSETLIT 400
 //{{{
-Expr *p_setfactor(target, sure)
-Type *target;
-int sure;
-{
-    Expr *ex, *exmax = NULL, *ex2;
-    Expr *first[MAXSETLIT], *last[MAXSETLIT];
-    char doneflag[MAXSETLIT];
-    int i, j, num, donecount;
-    int isconst, guesstype;
-    long maxv, max2;
-    Value val;
-    Type *tp, *type;
-    Meaning *tvar;
+Expr *p_setfactor (Type *target, int sure) {
 
-    if (curtok == TOK_LBRACE)
-  gettok();
-    else if (!needToken(TOK_LBR))
-  return makeexpr_long(0);
-    if (curtok == TOK_RBR || curtok == TOK_RBRACE) {        /* empty set */
-        gettok();
-        val.type = tp_smallset;
-        val.i = 0;
-        val.s = NULL;
-        return makeexpr_val(val);
+  Expr *ex, *exmax = NULL, *ex2;
+  Expr *first[MAXSETLIT], *last[MAXSETLIT];
+  char doneflag[MAXSETLIT];
+  int i, j, num, donecount;
+  int isconst, guesstype;
+  long maxv, max2;
+  Value val;
+  Type *tp, *type;
+  Meaning *tvar;
+
+  if (curtok == TOK_LBRACE)
+    gettok();
+  else if (!needToken (TOK_LBR))
+     return makeexpr_long (0);
+
+  if (curtok == TOK_RBR || curtok == TOK_RBRACE) {
+    //{{{  empty set
+    gettok();
+    val.type = tp_smallset;
+    val.i = 0;
+    val.s = NULL;
+
+    return makeexpr_val (val);
     }
-    type = target;
-    guesstype = !sure;
-    maxv = -1;
-    isconst = 1;
-    num = 0;
-    for (;;) {
-        if (num >= MAXSETLIT) {
-            warning(format_d("Too many elements in set literal; max=%d [290]", MAXSETLIT));
-            ex = p_expr(type);
-            while (curtok != TOK_RBR && curtok != TOK_RBRACE) {
-                gettok();
-                ex = p_expr(type);
-            }
-            break;
+    //}}}
+
+  type = target;
+  guesstype = !sure;
+  maxv = -1;
+  isconst = 1;
+  num = 0;
+  for (;;) {
+    if (num >= MAXSETLIT) {
+      //{{{  too many elements
+      warning (format_d ("Too many elements in set literal; max=%d [290]", MAXSETLIT));
+      ex = p_expr (type);
+      while (curtok != TOK_RBR && curtok != TOK_RBRACE) {
+        gettok();
+        ex = p_expr (type);
         }
-        if (guesstype && num == 0) {
-            ex = p_ord_expr();
+      break;
+      }
+      //}}}
+    if (guesstype && num == 0) {
+      ex = p_ord_expr();
       type = ex->val.type;
-        } else {
-            ex = p_expr(type);
+      }
+    else
+      ex = p_expr (type);
+
+    first[num] = ex = gentle_cast (ex, type);
+    doneflag[num] = 0;
+    if (curtok == TOK_DOTS || curtok == TOK_COLON) {   /* UCSD? */
+      //{{{  dots, colon
+      val = eval_expr (ex);
+      if (val.type) {
+        if (val.i > maxv) {     /* In case of [127..0] */
+          maxv = val.i;
+          exmax = ex;
+          }
         }
-        first[num] = ex = gentle_cast(ex, type);
-        doneflag[num] = 0;
-        if (curtok == TOK_DOTS || curtok == TOK_COLON) {   /* UCSD? */
-            val = eval_expr(ex);
-            if (val.type) {
-    if (val.i > maxv) {     /* In case of [127..0] */
+      else
+        isconst = 0;
+
+      gettok();
+      last[num] = ex = gentle_cast (p_expr(type), type);
+      }
+      //}}}
+    else
+      last[num] = NULL;
+
+    val = eval_expr (ex);
+    if (val.type) {
+      if (val.i > maxv) {
         maxv = val.i;
         exmax = ex;
-    }
-      } else
-                isconst = 0;
-            gettok();
-            last[num] = ex = gentle_cast(p_expr(type), type);
-        } else {
-            last[num] = NULL;
         }
-        val = eval_expr(ex);
-        if (val.type) {
-            if (val.i > maxv) {
-                maxv = val.i;
-                exmax = ex;
-            }
-        } else {
-            isconst = 0;
-            maxv = LONG_MAX;
-        }
-        num++;
-        if (curtok == TOK_COMMA)
-            gettok();
-        else
-            break;
+      }
+    else {
+      isconst = 0;
+      maxv = LONG_MAX;
+      }
+    num++;
+
+    if (curtok == TOK_COMMA)
+      gettok();
+    else
+      break;
     }
-    if (curtok == TOK_RBRACE)
-  gettok();
-    else if (!needToken(TOK_RBR))
-  skippasttotoken(TOK_RBR, TOK_SEMI);
-    tp = first[0]->val.type;
-    if (guesstype) {      /* must determine type */
-        if (maxv == LONG_MAX) {
-      if (target && ord_range(target, NULL, &max2))
-    maxv = max2;
-            else if (ord_range(tp, NULL, &max2) && max2 < 1000000 &&
-         (max2 >= defaultsetsize || num == 1))
-                maxv = max2;
+
+  if (curtok == TOK_RBRACE)
+    gettok();
+  else if (!needToken (TOK_RBR))
+    skippasttotoken (TOK_RBR, TOK_SEMI);
+
+  tp = first[0]->val.type;
+  if (guesstype) {      /* must determine type */
+    //{{{  guesstype
+    if (maxv == LONG_MAX) {
+      if (target && ord_range (target, NULL, &max2))
+        maxv = max2;
+      else if (ord_range (tp, NULL, &max2) && max2 < 1000000 && (max2 >= defaultsetsize || num == 1))
+        maxv = max2;
       else
-    maxv = defaultsetsize-1;
-            exmax = makeexpr_long(maxv);
-        } else
-            exmax = copyexpr(exmax);
-        if (!ord_range(tp, NULL, &max2) || maxv != max2)
-            tp = makesubrangetype(tp, makeexpr_long(0), exmax);
-        type = makesettype(tp);
-    } else
-  type = makesettype(type);
-    donecount = 0;
-    if (smallsetconst > 0) {
-        val.i = 0;
-        for (i = 0; i < num; i++) {
-            if (first[i]->kind == EK_CONST && first[i]->val.i < setbits &&
-                (!last[i] || (last[i]->kind == EK_CONST &&
-                              last[i]->val.i >= 0 &&
-                              last[i]->val.i < setbits))) {
-                if (last[i]) {
-                    for (j = first[i]->val.i; j <= last[i]->val.i; j++)
-                        val.i |= 1L << j;
-                } else
-        val.i |= 1L << first[i]->val.i;
-                doneflag[i] = 1;
-                donecount++;
-            }
-        }
+        maxv = defaultsetsize-1;
+        exmax = makeexpr_long (maxv);
+      }
+    else
+      exmax = copyexpr (exmax);
+    if (!ord_range (tp, NULL, &max2) || maxv != max2)
+      tp = makesubrangetype (tp, makeexpr_long(0), exmax);
+    type = makesettype (tp);
     }
-    if (donecount) {
-        ex = makesmallsetconst(val.i, tp_smallset);
-    } else
-        ex = NULL;
-    if (type->kind == TK_SMALLSET) {
-        for (i = 0; i < num; i++) {
-            if (!doneflag[i]) {
-                ex2 = makeexpr_bin(EK_LSH, type,
-           makeexpr_longcast(makeexpr_long(1), 1),
-           enum_to_int(first[i]));
-                if (last[i]) {
-                    if (ord_range(type->indextype, NULL, &max2) && max2 == setbits-1)
-                        note("Range construction was implemented by a subtraction which may overflow [278]");
-                    ex2 = makeexpr_minus(makeexpr_bin(EK_LSH, type,
-                                                      makeexpr_longcast(makeexpr_long(1), 1),
-                                                      makeexpr_plus(enum_to_int(last[i]),
-                                                                    makeexpr_long(1))),
-                                         ex2);
-                }
-                if (ex)
-                    ex = makeexpr_bin(EK_BOR, type, makeexpr_longcast(ex, 1), ex2);
-                else
-                    ex = ex2;
-            }
+    //}}}
+  else
+    type = makesettype (type);
+
+  donecount = 0;
+  if (smallsetconst > 0) {
+    //{{{  smallset
+    val.i = 0;
+    for (i = 0; i < num; i++) {
+      if (first[i]->kind == EK_CONST && first[i]->val.i < setbits &&
+          (!last[i] || (last[i]->kind == EK_CONST &&
+           last[i]->val.i >= 0 &&
+           last[i]->val.i < setbits))) {
+        if (last[i]) {
+          for (j = first[i]->val.i; j <= last[i]->val.i; j++)
+            val.i |= 1L << j;
+          }
+        else
+          val.i |= 1L << first[i]->val.i;
+        doneflag[i] = 1;
+        donecount++;
         }
-    } else {
-        tvar = makestmttempvar(type, name_SET);
-        if (!ex) {
-            val.type = tp_smallset;
+      }
+    }
+    //}}}
+  if (donecount)
+    ex = makesmallsetconst (val.i, tp_smallset);
+  else
+    ex = NULL;
+
+  if (type->kind == TK_SMALLSET) {
+    //{{{  smallset
+    for (i = 0; i < num; i++) {
+      if (!doneflag[i]) {
+        ex2 = makeexpr_bin(EK_LSH, type,
+        makeexpr_longcast(makeexpr_long(1), 1),
+        enum_to_int(first[i]));
+        if (last[i]) {
+          if (ord_range(type->indextype, NULL, &max2) && max2 == setbits-1)
+            note("Range construction was implemented by a subtraction which may overflow [278]");
+          ex2 = makeexpr_minus (makeexpr_bin (EK_LSH, type,
+                                              makeexpr_longcast(makeexpr_long(1), 1),
+                                              makeexpr_plus(enum_to_int(last[i]),
+                                              makeexpr_long(1))),
+                                ex2);
+          }
+        if (ex)
+          ex = makeexpr_bin(EK_BOR, type, makeexpr_longcast(ex, 1), ex2);
+        else
+          ex = ex2;
+        }
+      }
+    }
+    //}}}
+  else {
+    //{{{  not smallset
+    tvar = makestmttempvar(type, name_SET);
+    if (!ex) {
+      val.type = tp_smallset;
       val.i = 0;
       val.s = NULL;
       ex = makeexpr_val(val);
-  }
-        ex = makeexpr_bicall_2(setexpandname, type,
-                               makeexpr_var(tvar), makeexpr_arglong(ex, 1));
-        for (i = 0; i < num; i++) {
-            if (!doneflag[i]) {
-                if (last[i])
-                    ex = makeexpr_bicall_3(setaddrangename, type,
-                                           ex, makeexpr_arglong(enum_to_int(first[i]), 0),
-                                               makeexpr_arglong(enum_to_int(last[i]), 0));
-                else
-                    ex = makeexpr_bicall_2(setaddname, type,
-                                           ex, makeexpr_arglong(enum_to_int(first[i]), 0));
-            }
+      }
+
+    ex = makeexpr_bicall_2 (setexpandname, type, makeexpr_var(tvar), makeexpr_arglong(ex, 1));
+    for (i = 0; i < num; i++) {
+      if (!doneflag[i]) {
+        if (last[i])
+          ex = makeexpr_bicall_3(setaddrangename, type,
+                                  ex, makeexpr_arglong(enum_to_int(first[i]), 0),
+                                  makeexpr_arglong(enum_to_int(last[i]), 0));
+        else
+          ex = makeexpr_bicall_2(setaddname, type,
+                                 ex, makeexpr_arglong(enum_to_int(first[i]), 0));
         }
+      }
     }
-    return ex;
-}
+    //}}}
+
+  return ex;
+  }
 //}}}
 //{{{
 Expr *p_funcarglist(ex, args, firstarg, ismacro)
@@ -1513,8 +1542,8 @@ Type *target;
   } else if (isliteralconst(ex, NULL) == 2 &&
        isliteralconst(ex2, NULL) == 2 &&
        ex2->val.i > 0) {
-      v = ex->val.i;
-      i = ex2->val.i;
+      v = (long)ex->val.i;
+      i = (int)ex2->val.i;
       while (--i > 0)
     v *= ex->val.i;
       freeexpr(ex);
@@ -2206,7 +2235,7 @@ Expr *pc_factor()
         ex->val.type = tp_integer;
         ex->val.i = 0;
         for (sl = funcmacroargs, i = 1; sl; sl = sl->next, i++) {
-          if (sl->value == (long)curtoksym) {
+          if (sl->value == (long long)curtoksym) {
             ex->val.i = i;
             break;
             }
@@ -3837,7 +3866,7 @@ Static void wrexpr (Expr *ex, int prec) {
             output("++");
           else
             output("--");
-          } 
+          }
         else {
           setprec(14);
           if (ex->args[1]->args[1]->val.i == 1)
@@ -3847,7 +3876,7 @@ Static void wrexpr (Expr *ex, int prec) {
           EXTRASPACE();
           wrexpr(ex->args[0], subprec-1);
           }
-        } 
+        }
       else {
         setprec2(2);
         checkbreak(breakbeforeassign);
@@ -3951,7 +3980,7 @@ Static void wrexpr (Expr *ex, int prec) {
                 break;
             //}}}
             }
-          } 
+          }
         else {
           output(" ");
           outop3(breakbeforeassign, "=");
