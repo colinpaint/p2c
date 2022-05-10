@@ -208,6 +208,7 @@ typedef enum E_token {
 //{{{
 typedef struct S_strlist {
   struct S_strlist *next;
+  //__int64 value;
   long value;
   char s[1];
   } Strlist;
@@ -215,6 +216,7 @@ typedef struct S_strlist {
 //{{{
 typedef struct S_value {
   struct S_type *type;
+  //__int64 i;
   long i;
   char *s;
   } Value;
@@ -1693,10 +1695,10 @@ extern char curtokbuf[256], curtokcase[256];
 extern char *inbufptr;
 extern int inbufindent;
 extern long curtokint;
-extern Symbol *curtoksym;
-extern Meaning *curtokmeaning;
-extern Strlist *curcomments;
-extern Strlist **keepingstrlist;
+extern Symbol* curtoksym;
+extern Meaning* curtokmeaning;
+extern Strlist* curcomments;
+extern Strlist** keepingstrlist;
 extern short ignore_directives, skipping_module;
 extern short C_lex;
 extern char sysprog_flag, partial_eval_flag, iocheck_flag;
@@ -1704,10 +1706,10 @@ extern char range_flag, ovflcheck_flag, stackcheck_flag;
 extern short switch_strpos;
 extern int fixedflag, taggedflag;
 extern int numimports;
-extern Strlist *tempoptionlist;
+extern Strlist* tempoptionlist;
 extern long curserial, serialcount;
 extern int notephase;
-extern Strlist *permimports;
+extern Strlist* permimports;
 extern int permflag;
 extern int nullbody;
 

@@ -682,22 +682,7 @@ char* tok_name (Token tok) {
 //}}}
 //{{{
 void expected (char* msg) {
-  error(format_ss("Expected %s, found %s", msg, tok_name(curtok)));
-  }
-//}}}
-//{{{
-void expecttok (Token tok) {
-
-  if (curtok != tok)
-    expected (tok_name(tok));
-  }
-//}}}
-//{{{
-void needtok (Token tok) {
-
-  if (curtok != tok)
-    expected(tok_name(tok));
-    gettok();
+  error (format_ss ("Expected %s, found %s", msg, tok_name(curtok)));
   }
 //}}}
 //{{{
@@ -708,16 +693,31 @@ int wexpected (char* msg) {
   }
 //}}}
 //{{{
+void expecttok (Token tok) {
+
+  if (curtok != tok)
+    expected (tok_name(tok));
+  }
+//}}}
+//{{{
 int wexpecttok (Token tok) {
 
   if (curtok != tok)
-    return wexpected(tok_name(tok));
+    return wexpected (tok_name(tok));
   else
     return 1;
   }
 //}}}
 //{{{
-int wneedtok (Token tok) {
+void needtok (Token tok) {
+
+  if (curtok != tok)
+    expected (tok_name(tok));
+    gettok();
+  }
+//}}}
+//{{{
+int needToken (Token tok) {
 
   if (wexpecttok (tok)) {
     gettok();
@@ -820,9 +820,10 @@ void skippasttoken (Token tok) {
 //{{{
 int skipopenparen() {
 
-  if (wneedtok(TOK_LPAR))
+  if (needToken (TOK_LPAR))
     return 1;
-  skiptotoken(TOK_SEMI);
+
+  skiptotoken (TOK_SEMI);
   return 0;
   }
 //}}}
@@ -832,10 +833,10 @@ int skipcloseparen() {
   if (curtok == TOK_COMMA)
     warning("Too many arguments for built-in routine [225]");
   else
-    if (wneedtok(TOK_RPAR))
+    if (needToken (TOK_RPAR))
       return 1;
 
-  skippasttotoken(TOK_RPAR, TOK_SEMI);
+  skippasttotoken (TOK_RPAR, TOK_SEMI);
   return 0;
   }
 //}}}
@@ -845,10 +846,10 @@ int skipcomma() {
   if (curtok == TOK_RPAR)
     warning("Too few arguments for built-in routine [226]");
   else
-    if (wneedtok(TOK_COMMA))
+    if (needToken (TOK_COMMA))
       return 1;
 
-  skippasttotoken(TOK_RPAR, TOK_SEMI);
+  skippasttotoken (TOK_RPAR, TOK_SEMI);
   return 0;
   }
 //}}}
@@ -1583,21 +1584,18 @@ char *closing, *after;
 
 extern Strlist* addmacros;
 //{{{
-void defmacro (name, kind, fname, lnum)
-char *name, *fname;
-long kind;
-int lnum;
-{
-  Strlist *defsl, *sl, *sl2;
+void defMacro (char* name, long kind, char* fname, int lnum) {
+
+  Strlist *sl2;
   Symbol *sym, *sym2;
   Meaning* mp;
   Expr* ex;
 
-  defsl = NULL;
-  sl = strlist_append (&defsl, name);
+  Strlist* defsl = NULL;
+  Strlist* sl = strlist_append (&defsl, name);
   C_lex++;
 
-  if (fname && !strcmp(fname, "<macro>") && curtok == TOK_IDENT)
+  if (fname && !strcmp (fname, "<macro>") && curtok == TOK_IDENT)
     fname = curtoksym->name;
   push_input_strlist (defsl, fname);
 
@@ -1610,15 +1608,14 @@ int lnum;
       if (!wexpecttok(TOK_IDENT))
         break;
 
-      for (mp = curtoksym->mbase; mp; mp = mp->snext) {
+      for (mp = curtoksym->mbase; mp; mp = mp->snext)
         if (mp->kind == MK_VAR)
           warning (format_s ("VarMacro must be defined before declaration of variable %s [231]", curtokcase));
-        }
 
       sl = strlist_append (&varmacros, curtoksym->name);
 
       gettok();
-      if (!wneedtok(TOK_EQ))
+      if (!needToken (TOK_EQ))
         break;
 
       sl->value = (long)pc_expr();
@@ -1629,15 +1626,14 @@ int lnum;
       if (!wexpecttok(TOK_IDENT))
         break;
 
-      for (mp = curtoksym->mbase; mp; mp = mp->snext) {
+      for (mp = curtoksym->mbase; mp; mp = mp->snext)
         if (mp->kind == MK_CONST)
           warning (format_s ("ConstMacro must be defined before declaration of variable %s [232]", curtokcase));
-        }
 
       sl = strlist_append (&constmacros, curtoksym->name);
       gettok();
 
-      if (!wneedtok(TOK_EQ))
+      if (!needToken (TOK_EQ))
         break;
 
       sl->value = (long)pc_expr();
@@ -1651,7 +1647,7 @@ int lnum;
       sym = curtoksym;
       gettok();
 
-      if (!wneedtok (TOK_DOT))
+      if (!needToken (TOK_DOT))
         break;
 
       if (!wexpecttok (TOK_IDENT))
@@ -1659,7 +1655,7 @@ int lnum;
 
       sym2 = curtoksym;
       gettok();
-      if (!wneedtok (TOK_EQ))
+      if (!needToken (TOK_EQ))
         break;
 
       funcmacroargs = NULL;
@@ -1667,16 +1663,14 @@ int lnum;
       ex = pc_expr();
       sym->flags &= ~FMACREC;
 
-      for (mp = sym2->fbase; mp; mp = mp->snext) {
+      for (mp = sym2->fbase; mp; mp = mp->snext)
         if (mp->rectype && mp->rectype->meaning && mp->rectype->meaning->sym == sym)
           break;
-        }
 
-      if (mp) {
+      if (mp)
         mp->constdefn = ex;
-        }
       else {
-        sl = strlist_append(&fieldmacros, format_ss("%s.%s", sym->name, sym2->name));
+        sl = strlist_append (&fieldmacros, format_ss("%s.%s", sym->name, sym2->name));
         sl->value = (long)ex;
         }
 
@@ -1689,8 +1683,8 @@ int lnum;
 
       sym = curtoksym;
       gettok();
-      funcmacroargs = NULL;
 
+      funcmacroargs = NULL;
       if (curtok == TOK_LPAR) {
         do {
           gettok();
@@ -1709,11 +1703,11 @@ int lnum;
           gettok();
           } while (curtok == TOK_COMMA);
 
-        if (!wneedtok (TOK_RPAR))
+        if (!needToken (TOK_RPAR))
           skippasttotoken (TOK_RPAR, TOK_EQ);
         }
 
-      if (!wneedtok (TOK_EQ))
+      if (!needToken (TOK_EQ))
         break;
 
       ex = pc_expr();
@@ -1727,13 +1721,10 @@ int lnum;
           sl->value = (long)ex;
           }
 
-        if (!strcmp (sym->name, "NEW") ||
-            !strcmp (sym->name, "DEC") ||
-            !strcmp (sym->name, "STR") ||
-            !strcmp (sym->name, "VAL") ||
-            !strcmp (sym->name, "BLOCKREAD") ||
-            !strcmp (sym->name, "BLOCKWRITE"))
-            sym = findsymbol (format_s ("%s_TURBO", sym->name));
+        if (!strcmp (sym->name, "NEW") || !strcmp (sym->name, "DEC") ||
+            !strcmp (sym->name, "STR") || !strcmp (sym->name, "VAL") ||
+            !strcmp (sym->name, "BLOCKREAD") || !strcmp (sym->name, "BLOCKWRITE"))
+          sym = findsymbol (format_s ("%s_TURBO", sym->name));
         else
           break;
         }
@@ -1755,7 +1746,7 @@ int lnum;
 
   C_lex--;
   strlist_empty (&defsl);
-}
+  }
 //}}}
 //{{{
 void check_unused_macros()
@@ -1777,26 +1768,27 @@ void check_unused_macros()
 
 #define skipspc(cp) while (isspace (*cp)) cp++
 //{{{
-Static int parsecomment (int p2c_only, int starparen) {
+Static int parseComment (int p2c_only, int starparen) {
 
-  char namebuf[302];
-  char *cp, *cp2 = namebuf, *closing, *after;
   char kind, chgmode, upcflag;
   long val, oldval, sign;
   double dval;
-  int i, tempopt, hassign;
+  int hassign;
   Strlist *sp;
   Symbol *sym;
 
+  char namebuf[302];
+  char *cp2 = namebuf;
+
   if (if_flag)
     return 0;
+
   if (!p2c_only) {
     if (!strncmp (inbufptr, noskipcomment, strlen (noskipcomment)) && *noskipcomment) {
       inbufptr += strlen (noskipcomment);
       if (skipflag < 0) {
-        if (skipflag < -1) {
+        if (skipflag < -1)
           skipflag++;
-          }
         else {
           curtok = TOK_ENDIF;
           skipflag = 1;
@@ -1810,15 +1802,15 @@ Static int parsecomment (int p2c_only, int starparen) {
       }
     }
 
-  closing = inbufptr;
+  char* closing = inbufptr;
   while (*closing && (starparen ? (closing[0] != '*' || closing[1] != ')') : (closing[0] != '}')))
     closing++;
 
   if (!*closing)
-     return 0;
+    return 0;
 
-  after = closing + (starparen ? 2 : 1);
-  cp = inbufptr;
+  char* after = closing + (starparen ? 2 : 1);
+  char* cp = inbufptr;
   while (cp < closing && (*cp != '#' || cp[1] != '#'))
     cp++;    /* Ignore comments */
 
@@ -1847,27 +1839,27 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 1;
       }
       //}}}
+
     if (!strncmp (inbufptr, permanentcomment, strlen (permanentcomment)) &&
-        *permanentcomment &&
-        inbufptr + strlen (permanentcomment) == closing) {
+        *permanentcomment && inbufptr + strlen (permanentcomment) == closing) {
       //{{{
       permflag = 1;
       inbufptr = after;
       return 1;
       }
       //}}}
+
     if (!strncmp (inbufptr, interfacecomment, strlen (interfacecomment)) &&
-        *interfacecomment &&
-        inbufptr + strlen (interfacecomment) == closing) {
+        *interfacecomment && inbufptr + strlen (interfacecomment) == closing) {
       //{{{
       inbufptr = after;
       curtok = TOK_INTFONLY;
       return 2;
       }
       //}}}
-    if (!strncmp(inbufptr, skipcomment, strlen(skipcomment)) &&
-        *skipcomment &&
-        inbufptr + strlen (skipcomment) == closing) {
+
+    if (!strncmp (inbufptr, skipcomment, strlen(skipcomment)) &&
+        *skipcomment && inbufptr + strlen (skipcomment) == closing) {
       //{{{
       inbufptr = after;
       skipflag--;
@@ -1881,9 +1873,9 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 1;
       }
       //}}}
-    if (!strncmp(inbufptr, signedcomment, strlen (signedcomment)) &&
-         *signedcomment && !p2c_only &&
-         inbufptr + strlen (signedcomment) == closing) {
+
+    if (!strncmp (inbufptr, signedcomment, strlen (signedcomment)) &&
+        *signedcomment && !p2c_only && inbufptr + strlen (signedcomment) == closing) {
       //{{{
       inbufptr = after;
       gettok();
@@ -1897,9 +1889,9 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 2;
       }
       //}}}
+
     if (!strncmp (inbufptr, unsignedcomment, strlen (unsignedcomment)) &&
-         *unsignedcomment && !p2c_only &&
-         inbufptr + strlen (unsignedcomment) == closing) {
+        *unsignedcomment && !p2c_only && inbufptr + strlen (unsignedcomment) == closing) {
       //{{{
       inbufptr = after;
       gettok();
@@ -1923,7 +1915,8 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 2;
       }
       //}}}
-    if (!strncmp(inbufptr, tagcomment, strlen (tagcomment)) &&
+
+    if (!strncmp (inbufptr, tagcomment, strlen (tagcomment)) &&
         *tagcomment && inbufptr + strlen (tagcomment) == closing) {
       //{{{
       taggedflag++;
@@ -1931,9 +1924,10 @@ Static int parsecomment (int p2c_only, int starparen) {
       return 1;
       }
       //}}}
+
     if (*inbufptr == '$') {
       //{{{
-      i = turbo_directive (closing, after);
+      int i = turbo_directive (closing, after);
       if (i)
         return i;
       }
@@ -1941,24 +1935,24 @@ Static int parsecomment (int p2c_only, int starparen) {
     }
     //}}}
 
-  tempopt = 0;
+  int tempopt = 0;
   cp = inbufptr;
   if (*cp == '*') {
     cp++;
     tempopt = 1;
     }
 
-  if (!isalpha(*cp))
+  if (!isalpha (*cp))
     return 0;
 
-  while ((isalnum(*cp) || *cp == '_') && cp2 < namebuf+300)
-    *cp2++ = toupper(*cp++);
+  while ((isalnum (*cp) || *cp == '_') && cp2 < namebuf+300)
+    *cp2++ = toupper (*cp++);
   if (cp[0] == '+' && cp[1] == '+' && cp == inbufptr+1 && toupper(cp[-1]) == 'C')
     *cp2++ = *cp++, *cp2++ = *cp++;
 
   *cp2 = 0;
-  i = numparams;
-  while (--i >= 0 && strcmp(rctable[i].name, namebuf)) ;
+  int i = numparams;
+  while (--i >= 0 && strcmp (rctable[i].name, namebuf)) ;
   if (i < 0)
     return 0;
   kind = rctable[i].kind;
@@ -1974,7 +1968,7 @@ Static int parsecomment (int p2c_only, int starparen) {
   if (cp == closing) {
     if (kind == 'S' || kind == 'I' || kind == 'D' || kind == 'L' ||
         kind == 'R' || kind == 'B' || kind == 'C' || kind == 'U') {
-      undooption(i, "");
+      undooption (i, "");
       inbufptr = after;
       return 1;
       }
@@ -2254,18 +2248,18 @@ Static int parsecomment (int p2c_only, int starparen) {
       if (!isalpha (*cp))
         return 0;
 
-      for (cp2 = cp; *cp2 && cp2 != closing; cp2++) ;
+      for (cp2 = cp; *cp2 && cp2 != closing; cp2++) {};
 
       if (cp2 > cp && cp2 == closing) {
         inbufptr = after;
         cp2 = format_ds ("%.*s", (int)(cp2-cp), cp);
-        if (tp_integer != NULL) {
-          defmacro (cp2, rctable[i].def, NULL, 0);
-          }
+        if (tp_integer != NULL)
+          defMacro (cp2, rctable[i].def, NULL, 0);
         else {
           sp = strlist_append (&addmacros, cp2);
           sp->value = rctable[i].def;
           }
+
         return 1;
         }
 
@@ -2421,26 +2415,25 @@ Static int parsecomment (int p2c_only, int starparen) {
 //}}}
 //{{{
 Static void comment (int starparen) {
-/* 0={ }, 1=(* *), 2=C comments, 3=" " */
+// 0={ }, 1=(* *), 2=C comments, 3=" "
 
   char ch;
-  int nestcount = 1, startlnum = inf_lnum, wasrel = 0, trailing;
+  int nestcount = 1, startlnum = inf_lnum, wasrel = 0;
   int i, cmtindent, cmtindent2, saveeat = eatcomments;
-  char *cp;
 
-  if (!strncmp(inbufptr, embedcomment, strlen(embedcomment)) && *embedcomment)
+  if (!strncmp (inbufptr, embedcomment, strlen(embedcomment)) && *embedcomment)
     eatcomments = 0;
 
-  cp = inbuf;
+  char* cp = inbuf;
   while (isspace(*cp))
     cp++;
 
-  trailing = (*cp != '{' && ((*cp != '(' && *cp != '/') || cp[1] != '*') && (*cp != '"' || starparen != 3));
+  int trailing = (*cp != '{' && ((*cp != '(' && *cp != '/') || cp[1] != '*') && (*cp != '"' || starparen != 3));
     cmtindent = inbufindent;
   cmtindent2 = cmtindent + 1 + (starparen != 0);
 
   cp = inbufptr;
-  while (isspace(*cp))
+  while (isspace (*cp))
     cmtindent2++, cp++;
 
   cp = curtokbuf;
@@ -2448,35 +2441,43 @@ Static void comment (int starparen) {
     ch = *inbufptr++;
     switch (ch) {
       //{{{
+      case '{':
+        if (nestedcomments == 1 && starparen < 2)
+          nestcount++;
+
+        break;
+      //}}}
+      //{{{
       case '}':
         if ((!starparen || nestedcomments == 0) && starparen < 2 && --nestcount <= 0) {
           *cp = 0;
+
           if (wasrel && !strcmp(curtokbuf, "\003"))
            *curtokbuf = '\002';
+
           if (!commenting_flag)
             commentline(trailing ? CMT_TRAIL : CMT_POST);
+
           eatcomments = saveeat;
           return;
           }
+
         break;
       //}}}
       //{{{
       case '"':
         if (starparen == 3) {
           *cp = 0;
-          if (wasrel && !strcmp(curtokbuf, "\003"))
+
+          if (wasrel && !strcmp (curtokbuf, "\003"))
             *curtokbuf = '\002';
+
           if (!commenting_flag)
-            commentline(trailing ? CMT_TRAIL : CMT_POST);
+            commentline (trailing ? CMT_TRAIL : CMT_POST);
+
           eatcomments = saveeat;
           return;
           }
-        break;
-      //}}}
-      //{{{
-      case '{':
-        if (nestedcomments == 1 && starparen < 2)
-          nestcount++;
         break;
       //}}}
       //{{{
@@ -2486,14 +2487,16 @@ Static void comment (int starparen) {
           inbufptr++;
           *cp = 0;
 
-          if (wasrel && !strcmp(curtokbuf, "\003"))
+          if (wasrel && !strcmp (curtokbuf, "\003"))
             *curtokbuf = '\002';
+
           if (!commenting_flag)
-            commentline(trailing ? CMT_TRAIL : CMT_POST);
+            commentline (trailing ? CMT_TRAIL : CMT_POST);
 
           eatcomments = saveeat;
           return;
           }
+
         break;
       //}}}
       //{{{
@@ -2503,15 +2506,17 @@ Static void comment (int starparen) {
           ch = *inbufptr++;
           nestcount++;
           }
+
         break;
       //}}}
       //{{{
       case 0:
         *cp = 0;
+
         if (commenting_flag)
-          saveinputcomment(inbufptr-1);
+          saveinputcomment (inbufptr-1);
         else
-          commentline(CMT_POST);
+          commentline (CMT_POST);
 
         trailing = 0;
         getaline();
@@ -2555,119 +2560,14 @@ Static void comment (int starparen) {
       //}}}
       //{{{
       case EOFMARK:
-        error(format_d("Runaway comment from line %d", startlnum));
+        error (format_d ("Runaway comment from line %d", startlnum));
         eatcomments = saveeat;
+
         return;     /* unnecessary */
       //}}}
       }
     *cp++ = ch;
     }
-  }
-//}}}
-
-//{{{
-char* getinlinepart() {
-
-  char *cp, *buf;
-
-  for (;;) {
-    if (isspace(*inbufptr)) {
-      inbufptr++;
-      }
-    else if (!*inbufptr) {
-      getaline();
-      }
-    else if (*inbufptr == '{') {
-      inbufptr++;
-      comment(0);
-      }
-    else if (*inbufptr == '(' && inbufptr[1] == '*') {
-      inbufptr += 2;
-      comment(1);
-      }
-    else
-      break;
-    }
-
-  cp = inbufptr;
-  while (isspace(*cp) || isalnum(*cp) ||
-         *cp == '_' || *cp == '$' ||
-         *cp == '+' || *cp == '-' ||
-         *cp == '<' || *cp == '>')
-      cp++;
-
-  if (cp == inbufptr)
-      return "";
-
-  while (isspace(cp[-1]))
-      cp--;
-
-  buf = format_s("%s", inbufptr);
-  buf[cp-inbufptr] = 0;     /* truncate the string */
-  inbufptr = cp;
-
-  return buf;
-}
-//}}}
-//{{{
-Static int getflag() {
-
-  int res = 1;
-
-  gettok();
-  if (curtok == TOK_IDENT) {
-    res = (strcmp(curtokbuf, "OFF") != 0);
-    gettok();
-    }
-
-  return res;
-  }
-//}}}
-//{{{
-char getchartok() {
-
-  if (!*inbufptr) {
-    warning("Unexpected end of line [236]");
-    return ' ';
-    }
-
-  if (isspace(*inbufptr)) {
-    warning("Whitespace not allowed here [237]");
-    return ' ';
-    }
-
-  return *inbufptr++;
-  }
-//}}}
-//{{{
-char* getparenstr (char *buf) {
-
-  int count = 0;
-  char *cp;
-
-  if (inbufptr < buf)    /* this will get most bad cases */
-    error("Can't handle a line break here");
-
-  while (isspace(*buf))
-    buf++;
-
-  cp = buf;
-  for (;;) {
-    if (!*cp)
-      error("Can't handle a line break here");
-    if (*cp == '(')
-      count++;
-    if (*cp == ')')
-      if (--count < 0)
-        break;
-    cp++;
-    }
-
-  inbufptr = cp + 1;
-  while (cp > buf && isspace(cp[-1]))
-    cp--;
-
-  return format_ds("%.*s", (int)(cp - buf), buf);
   }
 //}}}
 //{{{
@@ -2686,7 +2586,7 @@ void leadingcomments() {
         break;
 
       case '{':
-        if (!parsecomment(1, 0)) {
+        if (!parseComment (1, 0)) {
           inbufptr--;
           return;
           }
@@ -2695,7 +2595,7 @@ void leadingcomments() {
       case '(':
         if (*inbufptr == '*') {
           inbufptr++;
-          if (!parsecomment(1, 1)) {
+          if (!parseComment (1, 1)) {
             inbufptr -= 2;
             return;
             }
@@ -2708,6 +2608,110 @@ void leadingcomments() {
         return;
       }
     }
+  }
+//}}}
+
+//{{{
+char* getinlinepart() {
+
+  char *cp, *buf;
+
+  for (;;) {
+    if (isspace(*inbufptr)) {
+      inbufptr++;
+      }
+    else if (!*inbufptr) {
+      getaline();
+      }
+    else if (*inbufptr == '{') {
+      inbufptr++;
+      comment (0);
+      }
+    else if (*inbufptr == '(' && inbufptr[1] == '*') {
+      inbufptr += 2;
+      comment (1);
+      }
+    else
+      break;
+    }
+
+  cp = inbufptr;
+  while (isspace(*cp) || isalnum(*cp) ||
+         *cp == '_' || *cp == '$' || *cp == '+' || *cp == '-' || *cp == '<' || *cp == '>')
+    cp++;
+
+  if (cp == inbufptr)
+    return "";
+
+  while (isspace(cp[-1]))
+    cp--;
+
+  buf = format_s ("%s", inbufptr);
+  buf[cp-inbufptr] = 0;     /* truncate the string */
+  inbufptr = cp;
+
+  return buf;
+}
+//}}}
+//{{{
+Static int getflag() {
+
+  int res = 1;
+
+  gettok();
+  if (curtok == TOK_IDENT) {
+    res = (strcmp (curtokbuf, "OFF") != 0);
+    gettok();
+    }
+
+  return res;
+  }
+//}}}
+//{{{
+char getchartok() {
+
+  if (!*inbufptr) {
+    warning ("Unexpected end of line [236]");
+    return ' ';
+    }
+
+  if (isspace (*inbufptr)) {
+    warning ("Whitespace not allowed here [237]");
+    return ' ';
+    }
+
+  return *inbufptr++;
+  }
+//}}}
+//{{{
+char* getparenstr (char *buf) {
+
+  int count = 0;
+  char *cp;
+
+  if (inbufptr < buf)    /* this will get most bad cases */
+    error ("Can't handle a line break here");
+
+  while (isspace (*buf))
+    buf++;
+
+  cp = buf;
+  for (;;) {
+    if (!*cp)
+      error("Can't handle a line break here");
+    if (*cp == '(')
+      count++;
+    if (*cp == ')')
+      if (--count < 0)
+        break;
+    cp++;
+    }
+
+  inbufptr = cp + 1;
+  while (cp > buf && isspace (cp[-1]))
+    cp--;
+
+  return format_ds ("%.*s", (int)(cp - buf), buf);
   }
 //}}}
 //{{{
@@ -2825,11 +2829,11 @@ void begincommenting (char *cp) {
 void saveinputcomment (char *cp) {
 
   if (commenting_ptr)
-    sprintf(curtokbuf, "%.*s", (int)(cp - commenting_ptr), commenting_ptr);
+    sprintf (curtokbuf, "%.*s", (int)(cp - commenting_ptr), commenting_ptr);
   else
-    sprintf(curtokbuf, "\003%.*s", (int)(cp - inbuf), inbuf);
+    sprintf (curtokbuf, "\003%.*s", (int)(cp - inbuf), inbuf);
 
-  commentline(CMT_POST);
+  commentline (CMT_POST);
   commenting_ptr = NULL;
   }
 //}}}
@@ -2957,7 +2961,7 @@ void checkmodulewords() {
 //}}}
 
 //{{{
-Static void debugGettok() {
+Static void debugGetToken() {
 
   char ch;
   char* cp;
@@ -3064,7 +3068,7 @@ Static void debugGettok() {
               *cp++ = *inbufptr++;
             *cp = 0;
             curtok = TOK_HEXLIT;
-            curtokint = my_strtol(curtokbuf, NULL, 16);
+            curtokint = my_strtol (curtokbuf, NULL, 16);
             return;
             }
           }
@@ -3250,25 +3254,29 @@ Static void debugGettok() {
       //{{{
       case '"':
         if (C_lex) {
-            get_C_string(ch);
-            curtok = TOK_STRLIT;
-            return;
-        }
+          get_C_string(ch);
+          curtok = TOK_STRLIT;
+          return;
+          }
+
         if (which_lang == LANG_TIP) {
-            strcpy(curtokbuf, inbufptr);
-            cp = inbuf;
-            while (isspace(*cp))
-          cp++;
-            if (!commenting_flag)
-          commentline((*cp != '"') ? CMT_TRAIL : CMT_POST);
-            inbufptr += strlen(inbufptr);
-                        break;
-                    }
+          strcpy(curtokbuf, inbufptr);
+          cp = inbuf;
+          while (isspace(*cp))
+            cp++;
+          if (!commenting_flag)
+            commentline((*cp != '"') ? CMT_TRAIL : CMT_POST);
+
+          inbufptr += strlen(inbufptr);
+          break;
+          }
+
         if (which_lang == LANG_APOLLO) {
-            comment(3);
-            break;
-        }
-      goto stringLiteral;
+          comment(3);
+          break;
+          }
+
+        goto stringLiteral;
       //}}}
       //{{{
       case '#':
@@ -3415,30 +3423,40 @@ Static void debugGettok() {
       //{{{
       case '(':
         if (*inbufptr == '*' && !C_lex) {
-           inbufptr++;
+          inbufptr++;
 
-         switch (commenting_flag ? 0 : parsecomment(0, 1)) {
-             case 0:
-                             comment(1);
-           break;
-             case 2:
-           return;
-         }
-                     break;
-                 } else if (*inbufptr == '.') {
-                     curtok = TOK_LBR;
-                     inbufptr++;
-                 } else {
-       #if 0
-         if (!C_lex && peeknextchar() == ')') {
-       gettok();
-       gettok();
-       return;
-         }
-       #endif
-                     curtok = TOK_LPAR;
-                 }
-                 return;
+          switch (commenting_flag ? 0 : parseComment (0, 1)) {
+            case 0:
+              comment (1);
+              break;
+            case 2:
+              return;
+            }
+          break;
+          }
+
+        else if (*inbufptr == '.') {
+          curtok = TOK_LBR;
+          inbufptr++;
+          }
+
+        else {
+          #if 0
+            if (!C_lex && peeknextchar() == ')') {
+              gettok();
+              gettok();
+              return;
+              }
+          #endif
+          curtok = TOK_LPAR;
+          }
+
+        return;
+      //}}}
+      //{{{
+      case ')':
+        curtok = TOK_RPAR;
+        return;
       //}}}
       //{{{
       case '{':
@@ -3447,7 +3465,7 @@ Static void debugGettok() {
           return;
           }
 
-        switch (commenting_flag ? 0 : parsecomment (0, 0)) {
+        switch (commenting_flag ? 0 : parseComment (0, 0)) {
           case 0:
             comment (0);
             break;
@@ -3468,202 +3486,236 @@ Static void debugGettok() {
           skipflag = 0;
           }
         else
-          warning("Unmatched '}' in input file [244]");
+          warning ("Unmatched '}' in input file [244]");
 
         break;
       //}}}
       //{{{
-      case ')':
-          curtok = TOK_RPAR;
-          return;
-      //}}}
-      //{{{
       case '*':
         if (*inbufptr == (C_lex ? '/' : ')')) {
-            inbufptr++;
-            if (skipflag > 0) {
-          skipflag = 0;
-            } else
-          warning("Unmatched '*)' in input file [245]");
-            break;
-        } else if (*inbufptr == '*' && !C_lex) {
-            curtok = TOK_STARSTAR;
-            inbufptr++;
-        } else
-            curtok = TOK_STAR;
-                    return;
+          inbufptr++;
+          if (skipflag > 0) {
+            skipflag = 0;
+            }
+          else
+            warning ("Unmatched '*)' in input file [245]");
+          break;
+          }
 
-                case '+':
-                    if (C_lex && *inbufptr == '+') {
-                        curtok = TOK_PLPL;
-                        inbufptr++;
-                    } else
-                        curtok = TOK_PLUS;
-                    return;
+        else if (*inbufptr == '*' && !C_lex) {
+          curtok = TOK_STARSTAR;
+          inbufptr++;
+          }
 
-                case ',':
-                    curtok = TOK_COMMA;
-                    return;
+        else
+          curtok = TOK_STAR;
 
-                case '-':
-                    if (C_lex && *inbufptr == '-') {
-                        curtok = TOK_MIMI;
-                        inbufptr++;
-                    } else if (*inbufptr == '>') {
-                        curtok = TOK_ARROW;
-                        inbufptr++;
-                    } else
-                        curtok = TOK_MINUS;
-                    return;
+        return;
+      //}}}
+      //{{{
+      case '+':
+        if (C_lex && *inbufptr == '+') {
+          curtok = TOK_PLPL;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_PLUS;
+        return;
+      //}}}
+      //{{{
+      case ',':
+        curtok = TOK_COMMA;
+        return;
+      //}}}
+      //{{{
+      case '-':
+        if (C_lex && *inbufptr == '-') {
+          curtok = TOK_MIMI;
+          inbufptr++;
+          }
+        else if (*inbufptr == '>') {
+          curtok = TOK_ARROW;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_MINUS;
 
-                case '.':
-                    if (*inbufptr == '.') {
-                        curtok = TOK_DOTS;
-                        inbufptr++;
-                    } else if (*inbufptr == ')') {
-                        curtok = TOK_RBR;
-                        inbufptr++;
-                    } else
-                        curtok = TOK_DOT;
-                    return;
+        return;
+      //}}}
+      //{{{
+      case '.':
+        if (*inbufptr == '.') {
+          curtok = TOK_DOTS;
+          inbufptr++;
+          }
+        else if (*inbufptr == ')') {
+          curtok = TOK_RBR;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_DOT;
 
-                case '/':
+        return;
+      //}}}
+      //{{{
+      case '/':
         if (C_lex && *inbufptr == '*') {
-            inbufptr++;
-            comment(2);
-            break;
-        }
-                    curtok = TOK_SLASH;
-                    return;
+          inbufptr++;
+          comment(2);
+          break;
+          }
+
+         curtok = TOK_SLASH;
+         return;
       //}}}
       //{{{
       case ':':
-          if (*inbufptr == '=') {
-              curtok = TOK_ASSIGN;
-              inbufptr++;
-            } else if (*inbufptr == ':') {
-              curtok = TOK_COLONCOLON;
-              inbufptr++;
-          } else
-              curtok = TOK_COLON;
-          return;
+        if (*inbufptr == '=') {
+          curtok = TOK_ASSIGN;
+          inbufptr++;
+          }
+        else if (*inbufptr == ':') {
+          curtok = TOK_COLONCOLON;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_COLON;
+
+        return;
       //}}}
       //{{{
       case ';':
-          curtok = TOK_SEMI;
-          return;
+        curtok = TOK_SEMI;
+        return;
       //}}}
       //{{{
       case '<':
-          if (*inbufptr == '=') {
-              curtok = TOK_LE;
-              inbufptr++;
-          } else if (*inbufptr == '>') {
-              curtok = TOK_NE;
-              inbufptr++;
-          } else if (*inbufptr == '<') {
-              curtok = TOK_LTLT;
-              inbufptr++;
-          } else
-              curtok = TOK_LT;
-          return;
+        if (*inbufptr == '=') {
+          curtok = TOK_LE;
+          inbufptr++;
+          }
+        else if (*inbufptr == '>') {
+          curtok = TOK_NE;
+          inbufptr++;
+          }
+        else if (*inbufptr == '<') {
+          curtok = TOK_LTLT;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_LT;
+
+        return;
       //}}}
       //{{{
       case '>':
-          if (*inbufptr == '=') {
-              curtok = TOK_GE;
-              inbufptr++;
-          } else if (*inbufptr == '>') {
-              curtok = TOK_GTGT;
-              inbufptr++;
-          } else
-              curtok = TOK_GT;
-          return;
+        if (*inbufptr == '=') {
+          curtok = TOK_GE;
+          inbufptr++;
+          }
+        else if (*inbufptr == '>') {
+          curtok = TOK_GTGT;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_GT;
+
+        return;
       //}}}
       //{{{
       case '=':
         if (*inbufptr == '=') {
           curtok = TOK_EQEQ;
           inbufptr++;
-        } else
+          }
+        else
           curtok = TOK_EQ;
+
         return;
       //}}}
       //{{{
       case '[':
-          curtok = TOK_LBR;
-          return;
+        curtok = TOK_LBR;
+        return;
       //}}}
       //{{{
       case ']':
-          curtok = TOK_RBR;
-          return;
+        curtok = TOK_RBR;
+        return;
       //}}}
       //{{{
       case '^':
-          curtok = TOK_HAT;
-          return;
+        curtok = TOK_HAT;
+        return;
       //}}}
       //{{{
       case '&':
-          if (*inbufptr == '&') {
-              curtok = TOK_ANDAND;
-              inbufptr++;
-          } else
-              curtok = TOK_AMP;
-          return;
+        if (*inbufptr == '&') {
+          curtok = TOK_ANDAND;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_AMP;
+
+        return;
       //}}}
       //{{{
       case '|':
-          if (*inbufptr == '|') {
-              curtok = TOK_OROR;
-              inbufptr++;
-          } else
-              curtok = TOK_VBAR;
-          return;
+        if (*inbufptr == '|') {
+          curtok = TOK_OROR;
+          inbufptr++;
+          }
+        else
+         curtok = TOK_VBAR;
+
+        return;
       //}}}
       //{{{
       case '~':
-          curtok = TOK_TWIDDLE;
-          return;
+        curtok = TOK_TWIDDLE;
+        return;
       //}}}
       //{{{
       case '!':
-          if (*inbufptr == '=') {
-              curtok = TOK_BANGEQ;
-              inbufptr++;
-          } else
-              curtok = TOK_BANG;
-          return;
+        if (*inbufptr == '=') {
+          curtok = TOK_BANGEQ;
+          inbufptr++;
+          }
+        else
+          curtok = TOK_BANG;
+
+        return;
       //}}}
       //{{{
       case '%':
         if (C_lex) {
-            curtok = TOK_PERC;
-            return;
-        }
+          curtok = TOK_PERC;
+          return;
+          }
+
         goto ident;
       //}}}
       //{{{
       case '?':
-          curtok = TOK_QM;
-          return;
+        curtok = TOK_QM;
+        return;
       //}}}
       //{{{
       case '@':
-          curtok = TOK_ADDR;
-          return;
+        curtok = TOK_ADDR;
+        return;
       //}}}
       //{{{
       case EOFMARK:
-          if (curtok == TOK_EOF) {
-              if (inputkind == INP_STRLIST)
-                  error("Unexpected end of macro");
-              else
-                  error("Unexpected end of file");
+        if (curtok == TOK_EOF) {
+          if (inputkind == INP_STRLIST)
+            error ("Unexpected end of macro");
+          else
+            error ("Unexpected end of file");
           }
-          curtok = TOK_EOF;
-          return;
+
+        curtok = TOK_EOF;
+        return;
       //}}}
       default:
         if (isdigit (ch)) {
@@ -3976,9 +4028,9 @@ Static void debugGettok() {
               if (*cp == '.') {
                 for (cp++; isspace (*cp); cp++) ;
                 if (isalpha (*cp)) {
-                  Meaning *mp = curtokmeaning;
-                  Symbol *sym = curtoksym;
-                  char *saveinbufptr = inbufptr;
+                  Meaning* mp = curtokmeaning;
+                  Symbol* sym = curtoksym;
+                  char* saveinbufptr = inbufptr;
 
                   gettok();
                   if (curtok == TOK_DOT)
@@ -3990,11 +4042,11 @@ Static void debugGettok() {
                     curtokmeaning = curtoksym->mbase;
                     while (curtokmeaning && curtokmeaning->ctx != mp)
                       curtokmeaning = curtokmeaning->snext;
+
                     if (!curtokmeaning && !strcmp (sym->name, "SYSTEM")) {
                       curtokmeaning = curtoksym->mbase;
-                      while (curtokmeaning &&
-                       curtokmeaning->ctx != nullctx)
-                      curtokmeaning = curtokmeaning->snext;
+                      while (curtokmeaning && curtokmeaning->ctx != nullctx)
+                        curtokmeaning = curtokmeaning->snext;
                       }
                     }
                   else
@@ -4022,8 +4074,9 @@ Static void debugGettok() {
 //}}}
 //{{{
 void gettok() {
+// simple intercept of getTok to trace tokens
 
-  debugGettok();
+  debugGetToken();
 
   if (tokentrace) {
     printf ("gettok - %s", tok_name (curtok));

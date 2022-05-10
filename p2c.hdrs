@@ -148,7 +148,7 @@ extern void     expecttok          PP( (Token tok) );
 extern void     needtok            PP( (Token tok) );
 extern int      wexpected          PP( (char *msg) );
 extern int      wexpecttok         PP( (Token tok) );
-extern int      wneedtok           PP( (Token tok) );
+extern int      needToken          PP( (Token tok) );
 extern void     alreadydef         PP( (Symbol *sym) );
 extern void     undefsym           PP( (Symbol *sym) );
 extern void     symclass           PP( (Symbol *sym) );
@@ -178,8 +178,7 @@ extern int      undooption         PP( (int i, char *name) );
 extern void     badinclude         PV();
 extern int      handle_include     PP( (char *fn) );
 extern int      turbo_directive    PP( (char *closing, char *after) );
-extern void     defmacro           PP( (char *name, long kind, char *fname,
-                                        int lnum) );
+extern void     defMacro           PP( (char *name, long kind, char *fname, int lnum));
 extern void     check_unused_macros PV();
 extern char    *getinlinepart      PV();
 extern char     getchartok         PV();

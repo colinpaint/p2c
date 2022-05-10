@@ -421,7 +421,7 @@ again:
     newstmt(SK_LABEL);
     sp->exp1 = makeexpr_name (format_s (name_LABEL, curtokmeaning->name), tp_integer);
     gettok();
-    wneedtok(TOK_COLON);
+    needToken (TOK_COLON);
     }
 
   tiplabel = NULL;
@@ -431,7 +431,7 @@ again:
     tiplabel->isreturn = 1;
     distinctdef--;
     gettok();
-    wneedtok (TOK_COLON);
+    needToken (TOK_COLON);
     }
 
   firstserial = curserial;
@@ -488,7 +488,7 @@ again:
         break;
       cmt = curcomments;
       curcomments = NULL;
-      if (!wneedtok (TOK_END))
+      if (!needToken (TOK_END))
         skippasttoken (TOK_END);
 
       if ((sflags & SF_IF) && curtok == TOK_ELSE)
@@ -518,7 +518,7 @@ again:
       tp = swexpr->val.type;
       defsp = NULL;
       defsphook = &defsp;
-      if (!wneedtok (TOK_OF)) {
+      if (!needToken (TOK_OF)) {
         skippasttoken (TOK_END);
         break;
         }
@@ -573,7 +573,7 @@ again:
               break;
             }
 
-          wneedtok(TOK_COLON);
+          needToken (TOK_COLON);
           if (toobig) {
             free_stmt(*spp3);
             spp2 = spp3;
@@ -588,15 +588,15 @@ again:
           }
 
         i = 0;
-        checkkeyword(TOK_OTHERWISE);
+        checkkeyword (TOK_OTHERWISE);
         if (curtok != TOK_END && curtok != TOK_OTHERWISE && curtok != TOK_ELSE) {
           if (curtok == TOK_VBAR) {
             while (curtok == TOK_VBAR)
               gettok();
             }
           else
-            wneedtok(TOK_SEMI);
-          checkkeyword(TOK_OTHERWISE);
+            needToken (TOK_SEMI);
+          checkkeyword (TOK_OTHERWISE);
           }
         }
 
@@ -670,8 +670,8 @@ again:
         ep2->val.type = sp->exp2->val.type = ep3->val.type->indextype;
         }
       else {
-        if (!wneedtok(TOK_ASSIGN)) {
-          skippasttoken(TOK_DO);
+        if (!needToken (TOK_ASSIGN)) {
+          skippasttoken (TOK_DO);
           break;
           }
 
@@ -777,7 +777,7 @@ again:
         }
 
       sp->exp3 = makeexpr_assign (copyexpr(ep), makeexpr_inc(copyexpr(ep), copyexpr(forstep)));
-      wneedtok (TOK_DO);
+      needToken (TOK_DO);
 
       forfixed = (fixedflag != forfixed);
       mp = makestmttempvar (ep->val.type, name_FOR);
@@ -900,7 +900,7 @@ again:
       saveserial = curserial;
       curserial = ++serialcount;
       sp->exp1 = p_expr(tp_boolean);
-      wneedtok(TOK_THEN);
+      needToken (TOK_THEN);
       sp->stm1 = p_stmt(NULL, SF_SAVESER|SF_IF);
 
       changecomments(curcomments, -1, saveserial+1, -1, saveserial);
@@ -910,7 +910,7 @@ again:
         sp->stm2 = makestmt(SK_IF);
         sp = sp->stm2;
         sp->exp1 = p_expr(tp_boolean);
-        wneedtok(TOK_THEN);
+        needToken(TOK_THEN);
         sp->stm1 = p_stmt(NULL, SF_SAVESER|SF_IF);
         sp->exp2 = makeexpr_long(1);
         }
@@ -930,7 +930,7 @@ again:
         }
 
       if (modula2)
-        wneedtok(TOK_END);
+        needToken(TOK_END);
 
       curserial = saveserial;
       break;
@@ -987,7 +987,7 @@ again:
           spp2 = &((*spp2)->next);
         } while (curtok == TOK_SEMI);
 
-      if (!wneedtok (TOK_UNTIL))
+      if (!needToken (TOK_UNTIL))
         skippasttoken (TOK_UNTIL);
 
       sp->exp1 = makeexpr_not (p_expr(tp_boolean));
@@ -1022,7 +1022,7 @@ again:
           spp2 = &((*spp2)->next);
         } while (curtok == TOK_SEMI);
 
-      if (!wneedtok(TOK_RECOVER))
+      if (!needToken(TOK_RECOVER))
         skippasttoken(TOK_RECOVER);
 
       sp->stm2 = p_stmt(NULL, SF_SAVESER);
@@ -1035,7 +1035,7 @@ again:
 
       newstmt(SK_WHILE);
       sp->exp1 = p_expr(tp_boolean);
-      wneedtok(TOK_DO);
+      needToken(TOK_DO);
 
       sp->stm1 = p_stmt(NULL, SF_SAVESER);
 
@@ -1068,7 +1068,7 @@ again:
         sp2 = p_stmt (NULL, (sflags & SF_FIRST) | SF_SAVESER);
         }
       else {
-        wneedtok (TOK_DO);
+        needToken (TOK_DO);
         sp2 = p_stmt (NULL, (sflags & SF_FIRST) | SF_SAVESER);
         }
 
@@ -1103,7 +1103,7 @@ again:
     case TOK_ADDR:   /* flakey Turbo "@procptr := anyptr" assignment */
       newstmt(SK_ASSIGN);
       ep = p_expr(tp_void);
-      if (wneedtok(TOK_ASSIGN))
+      if (needToken(TOK_ASSIGN))
         sp->exp1 = makeexpr_assign(ep, p_expr(ep->val.type));
       else
         sp->exp1 = ep;
@@ -1131,7 +1131,7 @@ again:
 
       if (mp == mp_self_func) {
         gettok();
-        wneedtok(TOK_DOT);
+        needToken(TOK_DOT);
         if (!wexpecttok(TOK_IDENT))
           break;
         mp = curtokmeaning;
@@ -1154,7 +1154,7 @@ again:
                  curtok == TOK_LBR || curtok == TOK_DOT) {
           ep = makeexpr_name(name, tp_integer);
           ep = fake_dots_n_hats(ep);
-          if (wneedtok(TOK_ASSIGN))
+          if (needToken(TOK_ASSIGN))
             sp->exp1 = makeexpr_assign(ep, p_expr(NULL));
           else
             sp->exp1 = ep;
@@ -4870,7 +4870,7 @@ Static void p_moduleinit (Meaning* mod) {
     sl->value = 1;
     }
   else
-    wneedtok (TOK_END);
+    needToken (TOK_END);
   }
 //}}}
 //{{{
@@ -4887,7 +4887,7 @@ Static void p_nested_module() {
   note ("Nested modules not fully supported [261]");
   checkmodulewords();
 
-  wneedtok (TOK_MODULE);
+  needToken (TOK_MODULE);
   wexpecttok (TOK_IDENT);
 
   mp = addmeaning (curtoksym, MK_MODULE);
@@ -4895,7 +4895,7 @@ Static void p_nested_module() {
 
   gettok();
   skipunitheader();
-  wneedtok (TOK_SEMI);
+  needToken (TOK_SEMI);
 
   p_block (TOK_IMPLEMENT);
   p_moduleinit (mp);
@@ -4903,7 +4903,7 @@ Static void p_nested_module() {
   if (curtok == TOK_IDENT)
     gettok();
 
-  wneedtok (TOK_SEMI);
+  needToken (TOK_SEMI);
   }
 //}}}
 //{{{
@@ -4916,7 +4916,7 @@ Static int p_module (int ignoreit, int isdefn) {
   char* cp;
 
   checkmodulewords();
-  wneedtok (TOK_MODULE);
+  needToken (TOK_MODULE);
   wexpecttok (TOK_IDENT);
   if (curtokmeaning && curtokmeaning->kind == MK_MODULE && isdefn == 2) {
     //{{{  module
@@ -4934,7 +4934,7 @@ Static int p_module (int ignoreit, int isdefn) {
   pushctx (mod);
   gettok();
   skipunitheader();
-  wneedtok (TOK_SEMI);
+  needToken (TOK_SEMI);
 
   if (ignoreit || (requested_module && strcicmp(requested_module, mod->name))) {
     if (!quietmode)
@@ -4958,7 +4958,7 @@ Static int p_module (int ignoreit, int isdefn) {
     if (curtok == TOK_IMPLEMENT)
       skiptomodule();
     else {
-      if (!wneedtok (TOK_END))
+      if (!needToken (TOK_END))
         skippasttoken (TOK_END);
       if (curtok == TOK_SEMI)
         gettok();
@@ -5059,7 +5059,7 @@ Static int p_module (int ignoreit, int isdefn) {
   checkmodulewords();
   if (curtok != TOK_END) {
     if (!modula2 && !implementationmodules)
-      wneedtok(TOK_IMPLEMENT);
+      needToken(TOK_IMPLEMENT);
     import_ctx (mod);
     p_block (TOK_IMPLEMENT);
     flushcomments (NULL, -1, -1);
@@ -5068,7 +5068,7 @@ Static int p_module (int ignoreit, int isdefn) {
     }
   else {
     kind = 0;
-    if (!wneedtok (TOK_END))
+    if (!needToken (TOK_END))
       skippasttoken (TOK_END);
     }
 
@@ -5145,7 +5145,7 @@ Static void p_import (int inheader) {
 
   if (isfrom) {
     checkkeyword (TOK_IMPORT);
-    if (wneedtok (TOK_IMPORT)) {
+    if (needToken (TOK_IMPORT)) {
       do {
         gettok();
         if (curtok == TOK_IDENT)
@@ -5153,7 +5153,7 @@ Static void p_import (int inheader) {
         } while (curtok == TOK_COMMA);
       }
     }
-  if (!wneedtok (TOK_SEMI))
+  if (!needToken (TOK_SEMI))
     skippasttoken (TOK_SEMI);
 
   outsection (minorspace);
@@ -5257,7 +5257,7 @@ Static void p_function (int isfunc) {
 
   if (blockkind == TOK_EXPORT)
     flushcomments (NULL, -1, -1);
-  wneedtok (TOK_SEMI);
+  needToken (TOK_SEMI);
 
   if (initializeattr) {
     //{{{  initialise attrib
@@ -5268,7 +5268,7 @@ Static void p_function (int isfunc) {
   if (curtok == TOK_IDENT && !strcmp (curtokbuf, "C")) {
     //{{{  ident
     gettok();
-    wneedtok (TOK_SEMI);
+    needToken (TOK_SEMI);
     }
     //}}}
 
@@ -5282,7 +5282,7 @@ Static void p_function (int isfunc) {
       gettok();
       while (curtok == TOK_IDENT)
       gettok();
-      wneedtok (TOK_SEMI);
+      needToken (TOK_SEMI);
       }
         /* do nothing more */
     }
@@ -5301,7 +5301,7 @@ Static void p_function (int isfunc) {
     if (curtok == TOK_INTERRUPT) {
       note ("Ignoring INTERRUPT keyword [258]");
       gettok();
-      wneedtok (TOK_SEMI);
+      needToken (TOK_SEMI);
       }
 
     if (curtok == TOK_IDENT && !strcicmp (curtokbuf, "FORWARD")) {
@@ -5373,7 +5373,7 @@ Static void p_function (int isfunc) {
          }                          /*  (sub-procedures are output later) */
       }
       //}}}
-    if (!wneedtok (TOK_SEMI))
+    if (!needToken (TOK_SEMI))
       skippasttoken (TOK_SEMI);
     }
     //}}}
@@ -5490,10 +5490,10 @@ void p_block (Token blkind) {
             if (curtok == TOK_QUALIFIED)
               gettok();
 
-            wneedtok (TOK_IDENT);
+            needToken (TOK_IDENT);
             } while (curtok == TOK_COMMA);
 
-          if (!wneedtok (TOK_SEMI))
+          if (!needToken (TOK_SEMI))
             skippasttoken (TOK_SEMI);
 
           break;
@@ -5597,7 +5597,7 @@ int p_search (char* fname, char* ext, int need) {
       warning("IMPLEMENTATION module in search text! [275]");
       }
       //}}}
-    if (!wneedtok (TOK_MODULE))
+    if (!needToken (TOK_MODULE))
       break;
     if (!wexpecttok (TOK_IDENT))
       break;
@@ -5615,7 +5615,7 @@ int p_search (char* fname, char* ext, int need) {
     pushctx (mod);
     gettok();
     skipunitheader();
-    wneedtok (TOK_SEMI);
+    needToken (TOK_SEMI);
     mypermflag = permflag;
 
     printf ("using module %s\n", mod->name);
@@ -5709,7 +5709,7 @@ void p_program() {
           }
         }
 
-      wneedtok(TOK_DOT);
+      needToken(TOK_DOT);
       break;
     //}}}
     //{{{
@@ -5738,7 +5738,7 @@ void p_program() {
 
         if (curtok == TOK_LBR)
           skipparens();
-        wneedtok (TOK_SEMI);
+        needToken (TOK_SEMI);
         }
       else
         prog = addmeaning(findsymbol("program"), MK_MODULE);
@@ -5795,7 +5795,7 @@ void p_program() {
         if (curtok == TOK_SEMI)
           gettok();
         else
-          wneedtok (TOK_DOT);
+          needToken (TOK_DOT);
         }
         //}}}
 

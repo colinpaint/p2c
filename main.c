@@ -1375,7 +1375,7 @@ int main (int argc, char** argv) {
 
   strlist_empty (&synonyms);
   for (sl = addmacros; sl; sl = sl->next)
-    defmacro (sl->s, sl->value, "<macro>", 0);
+    defMacro (sl->s, sl->value, "<macro>", 0);
 
   strlist_empty (&addmacros);
   handle_nameof();

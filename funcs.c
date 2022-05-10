@@ -56,9 +56,9 @@ Type *target;
 {
     Expr *ex;
 
-    if (wneedtok(TOK_LPAR)) {
+    if (needToken(TOK_LPAR)) {
   ex = p_expr(target);
-  if (!wneedtok(TOK_RPAR))
+  if (!needToken(TOK_RPAR))
       skippasttotoken(TOK_RPAR, TOK_SEMI);
     } else
   ex = p_expr(target);
@@ -283,7 +283,7 @@ Static Expr *func_addr()
     Type *type, *tp2;
     int haspar;
 
-    haspar = wneedtok(TOK_LPAR);
+    haspar = needToken(TOK_LPAR);
     ex = p_expr(tp_proc);
     if (curtok == TOK_COMMA) {
         gettok();
@@ -310,7 +310,7 @@ Static Expr *func_addr()
       ex = makeexpr_addrf(ex);
     }
     if (haspar) {
-  if (!wneedtok(TOK_RPAR))
+  if (!needToken(TOK_RPAR))
       skippasttotoken(TOK_RPAR, TOK_SEMI);
     }
     return ex;
@@ -1266,7 +1266,7 @@ Static Stmt *proc_call()
             makepointertype(type->basetype));
     mp = type->basetype->fbase;
     if (mp) {
-        if (wneedtok(TOK_COMMA))
+        if (needToken(TOK_COMMA))
       ex = p_funcarglist(ex, mp, 0, 0);
     }
     skipcloseparen();
@@ -1567,7 +1567,7 @@ Static Expr* parse_constructor (Type* type, Expr* var) {
       mp = curtokmeaning;
       if (mp && mp->kind == MK_FUNCTION && curtokint >= savewith) {
         expr = p_expr (tp_void);
-        } 
+        }
       else
         warning (format_s ("No constructor/destructor named %s [334]", curtokbuf));
       }
@@ -1915,7 +1915,7 @@ Static Expr *func_fcall()
   firstarg++;
     }
     if (mp) {
-        if (wneedtok(TOK_COMMA))
+        if (needToken(TOK_COMMA))
       ex = p_funcarglist(ex, mp, 0, 0);
     }
     if (tvar)
@@ -2494,7 +2494,7 @@ Static Expr *var_mem()
 {
     Expr *ex, *ex2;
 
-    if (!wneedtok(TOK_LBR))
+    if (!needToken(TOK_LBR))
   return makeexpr_name("MEM", tp_integer);
     ex = p_expr(tp_integer);
     if (curtok == TOK_COLON) {
@@ -2504,7 +2504,7 @@ Static Expr *var_mem()
     } else {
   ex = makeexpr_bicall_1("MEM", tp_ubyte, ex);
     }
-    if (!wneedtok(TOK_RBR))
+    if (!needToken(TOK_RBR))
   skippasttotoken(TOK_RBR, TOK_SEMI);
     note("Reference to MEM [191]");
     return ex;
@@ -2515,7 +2515,7 @@ Static Expr *var_memw()
 {
     Expr *ex, *ex2;
 
-    if (!wneedtok(TOK_LBR))
+    if (!needToken(TOK_LBR))
   return makeexpr_name("MEMW", tp_integer);
     ex = p_expr(tp_integer);
     if (curtok == TOK_COLON) {
@@ -2525,7 +2525,7 @@ Static Expr *var_memw()
     } else {
   ex = makeexpr_bicall_1("MEMW", tp_ushort, ex);
     }
-    if (!wneedtok(TOK_RBR))
+    if (!needToken(TOK_RBR))
   skippasttotoken(TOK_RBR, TOK_SEMI);
     note("Reference to MEMW [191]");
     return ex;
@@ -2536,7 +2536,7 @@ Static Expr *var_meml()
 {
     Expr *ex, *ex2;
 
-    if (!wneedtok(TOK_LBR))
+    if (!needToken(TOK_LBR))
   return makeexpr_name("MEML", tp_integer);
     ex = p_expr(tp_integer);
     if (curtok == TOK_COLON) {
@@ -2546,7 +2546,7 @@ Static Expr *var_meml()
     } else {
   ex = makeexpr_bicall_1("MEML", tp_integer, ex);
     }
-    if (!wneedtok(TOK_RBR))
+    if (!needToken(TOK_RBR))
   skippasttotoken(TOK_RBR, TOK_SEMI);
     note("Reference to MEML [191]");
     return ex;
@@ -2808,7 +2808,7 @@ Static Expr *func_ord()
 {
     Expr *ex;
 
-    if (wneedtok(TOK_LPAR)) {
+    if (needToken(TOK_LPAR)) {
   ex = p_ord_expr();
   skipcloseparen();
     } else
@@ -2821,7 +2821,7 @@ Static Expr *func_ord4()
 {
     Expr *ex;
 
-    if (wneedtok(TOK_LPAR)) {
+    if (needToken(TOK_LPAR)) {
   ex = p_ord_expr();
   skipcloseparen();
     } else
@@ -2957,10 +2957,10 @@ Static Expr *var_port()
 {
     Expr *ex;
 
-    if (!wneedtok(TOK_LBR))
+    if (!needToken(TOK_LBR))
   return makeexpr_name("PORT", tp_integer);
     ex = p_expr(tp_integer);
-    if (!wneedtok(TOK_RBR))
+    if (!needToken(TOK_RBR))
   skippasttotoken(TOK_RBR, TOK_SEMI);
     note("Reference to PORT [191]");
     return makeexpr_bicall_1("PORT", tp_ubyte, ex);
@@ -2971,10 +2971,10 @@ Static Expr *var_portw()
 {
     Expr *ex;
 
-    if (!wneedtok(TOK_LBR))
+    if (!needToken(TOK_LBR))
   return makeexpr_name("PORTW", tp_integer);
     ex = p_expr(tp_integer);
-    if (!wneedtok(TOK_RBR))
+    if (!needToken(TOK_RBR))
   skippasttotoken(TOK_RBR, TOK_SEMI);
     note("Reference to PORTW [191]");
     return makeexpr_bicall_1("PORTW", tp_ushort, ex);
@@ -3016,7 +3016,7 @@ Static Expr *func_pred()
 {
     Expr *ex;
 
-    if (wneedtok(TOK_LPAR)) {
+    if (needToken(TOK_LPAR)) {
   ex = p_ord_expr();
   skipcloseparen();
     } else
@@ -3548,7 +3548,7 @@ Static Stmt *proc_read()
   return NULL;
     ex = p_expr(NULL);
     sp = NULL;
-    if (isfiletype(ex->val.type, -1) && wneedtok(TOK_COMMA)) {
+    if (isfiletype(ex->val.type, -1) && needToken(TOK_COMMA)) {
         fex = ex;
   if (israndomfile(fex->val.type)) {
       ex = p_expr(tp_integer);
@@ -3602,7 +3602,7 @@ Static Stmt *proc_readln()
         ex = p_expr(NULL);
         if (isfiletype(ex->val.type, -1)) {
             fex = ex;
-            if (curtok == TOK_RPAR || !wneedtok(TOK_COMMA)) {
+            if (curtok == TOK_RPAR || !needToken(TOK_COMMA)) {
                 skippasttotoken(TOK_RPAR, TOK_SEMI);
                 return wrapopencheck(skipeoln(copyexpr(fex)), fex);
             } else {
@@ -4226,7 +4226,7 @@ Static Expr *func_succ()
 {
     Expr *ex;
 
-    if (wneedtok(TOK_LPAR)) {
+    if (needToken(TOK_LPAR)) {
   ex = p_ord_expr();
   skipcloseparen();
     } else
@@ -4940,7 +4940,7 @@ Static Stmt *proc_write()
   return NULL;
     ex = p_expr(NULL);
     sp = NULL;
-    if (isfiletype(ex->val.type, -1) && wneedtok(TOK_COMMA)) {
+    if (isfiletype(ex->val.type, -1) && needToken(TOK_COMMA)) {
         fex = ex;
   if (israndomfile(fex->val.type)) {
       ex = p_expr(tp_integer);
@@ -5063,7 +5063,7 @@ int iswriteln;
         ex = p_expr(NULL);
         if (isfiletype(ex->val.type, -1)) {
             fex = ex;
-            if (curtok == TOK_RPAR || !wneedtok(TOK_COMMA)) {
+            if (curtok == TOK_RPAR || !needToken(TOK_COMMA)) {
                 if (iswriteln)
                     ex = makeexpr_string("");
                 else

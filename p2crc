@@ -1,6 +1,7 @@
 Language          OREGON
 HeaderName        "p2c.h"
 LibraryFile       system.imp    # Names of import-text files to search
+FuncMacro                       # Format:  FuncMacro foo(a,b,c) = C-expression
 
 ReplaceBefore     abort = abort1
 ReplaceBefore     unix = unix1

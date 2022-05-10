@@ -3322,7 +3322,7 @@ Meaning *tname;
       gettok();
       if (curtok == TOK_IDENT && curtokmeaning == tname) {
     gettok();
-    wneedtok(TOK_DOT);
+    needToken (TOK_DOT);
       }
       if (!wexpecttok(TOK_IDENT))
     skiptotoken(TOK_IDENT);
@@ -3392,7 +3392,7 @@ Meaning *tname;
             gettok();
       decl_comments(lastm);
         }
-        if (wneedtok(TOK_COLON)) {
+        if (needToken (TOK_COLON)) {
       constflag = volatileflag = 0;
       p_attributes();
       if ((l1 = strlist_find(attrlist, "READONLY")) != NULL) {
@@ -3452,7 +3452,7 @@ Meaning *tname;
         } else {
       firstm = NULL;
   }
-        if (!wneedtok(TOK_OF)) {
+        if (!needToken (TOK_OF)) {
       skiptotoken2(TOK_END, TOK_RPAR);
       goto bounce;
   }
@@ -3489,8 +3489,8 @@ Meaning *tname;
             }
       if (curtok == TOK_ELSE || curtok == TOK_OTHERWISE) {
     gettok();
-            } else if (!wneedtok(TOK_COLON) ||
-         (!modula2 && !wneedtok(TOK_LPAR))) {
+            } else if (!needToken(TOK_COLON) ||
+         (!modula2 && !needToken(TOK_LPAR))) {
     skiptotoken2(TOK_END, TOK_RPAR);
     goto bounce;
       }
@@ -3505,14 +3505,14 @@ Meaning *tname;
     while (curtok == TOK_VBAR)
         gettok();
       } else {
-    if (!wneedtok(TOK_RPAR))
+    if (!needToken(TOK_RPAR))
         skiptotoken(TOK_RPAR);
       }
             if (curtok == TOK_SEMI)
                 gettok();
         }
   if (modula2) {
-      wneedtok(TOK_END);
+      needToken(TOK_END);
       if (curtok == TOK_IDENT) {
     note("Record variants supported only at end of record [106]");
     p_fieldlist(tp, &lastm->ctx, ispacked, tname);
@@ -3571,8 +3571,8 @@ Meaning ***confp;
       mp->xnext->type = mp->type;
       if (which_lang == LANG_TIP) {
     tp2->smin = p_expr(tp_integer);
-    wneedtok(TOK_DOTS);
-    wneedtok(TOK_QM);
+    needToken(TOK_DOTS);
+    needToken(TOK_QM);
     tp2->smax = makeexpr_var(mp->xnext);
       } else {
     tp2->smin = makeexpr_long(0);
@@ -3588,11 +3588,11 @@ Meaning ***confp;
     (!curtokmeaning || curtokmeaning->kind != MK_TYPE)) {
     mp = addmeaning(curtoksym, MK_PARAM);
     gettok();
-    wneedtok(TOK_DOTS);
+    needToken(TOK_DOTS);
     wexpecttok(TOK_IDENT);
     mp->xnext = addmeaning(curtoksym, MK_PARAM);
     gettok();
-    if (wneedtok(TOK_COLON)) {
+    if (needToken(TOK_COLON)) {
         tp2->basetype = p_type(NULL);
     } else {
         tp2->basetype = tp_integer;
@@ -3622,10 +3622,10 @@ Meaning ***confp;
         return tp;
     } else {
   if (!modula2) {
-      if (!wneedtok(TOK_RBR))
+      if (!needToken(TOK_RBR))
     skiptotoken(TOK_OF);
   }
-        if (!wneedtok(TOK_OF))
+        if (!needToken(TOK_OF))
       skippasttotoken(TOK_OF, TOK_COMMA);
   checkkeyword(TOK_VARYING);
   if (confp != NULL &&
@@ -3712,7 +3712,7 @@ Meaning ***confp;
     checkkeyword(TOK_VARYING);
     if (curtok == TOK_VARYING) {
   gettok();
-  wneedtok(TOK_LBR);
+  needToken(TOK_LBR);
   wexpecttok(TOK_IDENT);
   mp = addmeaning(curtoksym, MK_PARAM);
   mp->fakeparam = 1;
@@ -3729,13 +3729,13 @@ Meaning ***confp;
   tp->basetype = tp_char;
   tp->structdefd = 1;     /* conformant array flag */
   gettok();
-  wneedtok(TOK_RBR);
+  needToken(TOK_RBR);
   skippasttoken(TOK_OF);
   tp->basetype = p_type(NULL);
   return tp;
     }
-    if (wneedtok(TOK_ARRAY) &&
-  (modula2 || wneedtok(TOK_LBR))) {
+    if (needToken(TOK_ARRAY) &&
+  (modula2 || needToken(TOK_LBR))) {
   return p_arraydecl(tname, ispacked, confp);
     } else {
   return tp_integer;
@@ -3794,12 +3794,12 @@ void p_attributes()
       p_expr(NULL);
         }
     }
-    if (!wneedtok(TOK_RPAR)) {
+    if (!needToken(TOK_RPAR)) {
         skippasttotoken(TOK_RPAR, TOK_LBR);
     }
       }
   } while (curtok == TOK_COMMA);
-  if (!wneedtok(TOK_RBR)) {
+  if (!needToken(TOK_RBR)) {
       skippasttoken(TOK_RBR);
   }
     }
@@ -3870,7 +3870,7 @@ Type *basetype;
     Type *tp;
     Value val;
 
-    wneedtok(TOK_LBR);
+    needToken(TOK_LBR);
     tp = maketype(TK_SUBR);
     tp->smin = p_ord_expr();
     if (basetype)
@@ -3901,7 +3901,7 @@ Type *basetype;
     } else {
   tp = tp_integer;
     }
-    if (!wneedtok(TOK_RBR))
+    if (!needToken(TOK_RBR))
   skippasttotoken(TOK_RBR, TOK_SEMI);
     return tp;
 }
@@ -3994,12 +3994,12 @@ Meaning *tname;
     else
         warning("Expected a base object type name [329]");
     gettok();
-    if (!wneedtok(TOK_RPAR))
+    if (!needToken(TOK_RPAR))
         skippasttoken(TOK_RPAR);
       }
             p_fieldlist(tp, &(tp->fbase), ispacked, tname);
       notephase = savenotephase;
-            if (!wneedtok(TOK_END)) {
+            if (!needToken(TOK_END)) {
     skippasttoken(TOK_END);
       }
             break;
@@ -4007,7 +4007,7 @@ Meaning *tname;
         case TOK_ARRAY:
             gettok();
       if (!modula2) {
-    if (!wneedtok(TOK_LBR))
+    if (!needToken(TOK_LBR))
         break;
       }
       tp = p_arraydecl(tname ? tname->name : NULL, ispacked, NULL);
@@ -4017,13 +4017,13 @@ Meaning *tname;
   case TOK_VARYING:
       gettok();
       tp = maketype(TK_STRING);
-      if (wneedtok(TOK_LBR)) {
+      if (needToken(TOK_LBR)) {
     ex = p_ord_expr();
-    if (!wneedtok(TOK_RBR))
+    if (!needToken(TOK_RBR))
         skippasttoken(TOK_RBR);
       } else
     ex = makeexpr_long(stringdefault);
-      if (wneedtok(TOK_OF))
+      if (needToken(TOK_OF))
     tp->basetype = p_type(NULL);
       else
     tp->basetype = tp_char;
@@ -4044,7 +4044,7 @@ Meaning *tname;
 
         case TOK_SET:
             gettok();
-            if (!wneedtok(TOK_OF))
+            if (!needToken(TOK_OF))
     break;
       tp = p_type(NULL);
       if (tp == tp_integer || tp == tp_unsigned)
@@ -4109,7 +4109,7 @@ Meaning *tname;
   case TOK_POINTER:
       if (curtok == TOK_POINTER) {
     gettok();
-    wneedtok(TOK_TO);
+    needToken(TOK_TO);
     if (curtok == TOK_IDENT && !strcmp(curtokbuf, "WORD")) {
         tp = tp_anyptr;
         gettok();
@@ -4182,7 +4182,7 @@ Meaning *tname;
                 flast = &(mp->xnext);
                 gettok();
             } while (curtok == TOK_COMMA);
-      if (!wneedtok(TOK_RPAR))
+      if (!needToken(TOK_RPAR))
     skippasttoken(TOK_RPAR);
             tp->smin = makeexpr_long(0);
             tp->smax = makeexpr_long(num-1);
@@ -4209,7 +4209,7 @@ Meaning *tname;
                 if (curtok == TOK_LBR) {
                     gettok();
                     ex = p_ord_expr();
-                    if (!wneedtok(TOK_RBR))
+                    if (!needToken(TOK_RBR))
       skippasttoken(TOK_RBR);
                 } else {
         ex = makeexpr_long(stringdefault);
@@ -4251,7 +4251,7 @@ Meaning *tname;
       note("UCSD size spec ignored; using 'long int' [110]");
       if (ord_type(tp)->kind == TK_INTEGER)
           tp = tp_integer;
-      if (!wneedtok(TOK_RBR))
+      if (!needToken(TOK_RBR))
           skippasttotoken(TOK_RBR, TOK_SEMI);
         }
     } else if (curtok == TOK_LPAR) {
@@ -4498,7 +4498,7 @@ int *isfunc, istype;
                 firstmp = firstmp->xnext;
             }
         } while (curtok == TOK_SEMI || curtok == TOK_COMMA);
-        if (!wneedtok(TOK_RPAR))
+        if (!needToken(TOK_RPAR))
       skippasttotoken(TOK_RPAR, TOK_SEMI);
     }
     if (modula2) {
@@ -4509,7 +4509,7 @@ int *isfunc, istype;
   }
     }
     if (*isfunc) {
-        if (wneedtok(TOK_COLON)) {
+        if (needToken(TOK_COLON)) {
       dtype = (curtok == TOK_IDENT) ? curtokmeaning : NULL;
       retmp->type = type->basetype = p_type(NULL);
       dtype = validatedtype(dtype, type->basetype);
@@ -4598,7 +4598,7 @@ void p_labeldecl()
   mp->xnext->refcount = 0;
         gettok();
     } while (curtok == TOK_COMMA);
-    if (!wneedtok(TOK_SEMI))
+    if (!needToken(TOK_SEMI))
   skippasttoken(TOK_SEMI);
 }
 //}}}
@@ -4642,7 +4642,7 @@ int style;   /* 0=HP, 1=Turbo, 2=Oregon+VAX */
     Expr *ex, *cex;
     int i, j, nvars, newnvars, varcounts[20];
 
-    if (!wneedtok(style ? TOK_LPAR : TOK_LBR))
+    if (!needToken(style ? TOK_LPAR : TOK_LBR))
   return makeexpr_long(0);
     cex = makeexpr(EK_STRUCTCONST, 0);
     nvars = 0;
@@ -4693,7 +4693,7 @@ int style;   /* 0=HP, 1=Turbo, 2=Oregon+VAX */
       }
       sym = curtoksym;
       gettok();
-      if (!wneedtok(TOK_COLON)) {
+      if (!needToken(TOK_COLON)) {
     skiptotoken2(TOK_RPAR, TOK_RBR);
     break;
       }
@@ -4747,7 +4747,7 @@ ignorefield:
         else
             break;
     }
-    if (!wneedtok(style ? TOK_RPAR : TOK_RBR))
+    if (!needToken(style ? TOK_RPAR : TOK_RBR))
   skippasttoken2(TOK_RPAR, TOK_RBR);
     if (style != 2) {
   j = 0;
@@ -4790,7 +4790,7 @@ int style;
 
     if (type->kind == TK_SMALLARRAY)
         warning("Small-array constructors not yet implemented [135]");
-    if (!wneedtok(style ? TOK_LPAR : TOK_LBR))
+    if (!needToken(style ? TOK_LPAR : TOK_LBR))
   return makeexpr_long(0);
     if (type->smin && type->smin->kind == EK_CONST)
         skipped = type->smin->val.i;
@@ -4819,7 +4819,7 @@ int style;
                 ex->val.i > 1 && !skipped && style == 0 && !cex &&
                 type->basetype->kind == TK_CHAR &&
                 checkconst(type->indextype->smin, 1)) {
-                if (!wneedtok(TOK_RBR))
+                if (!needToken(TOK_RBR))
         skippasttoken2(TOK_RBR, TOK_RPAR);
                 return ex;   /* not quite right, but close enough */
             }
@@ -4855,7 +4855,7 @@ int style;
         else
             break;
     }
-    if (!wneedtok(style ? TOK_RPAR : TOK_RBR))
+    if (!needToken(style ? TOK_RPAR : TOK_RBR))
   skippasttoken2(TOK_RPAR, TOK_RBR);
     val.type = type;
     val.i = (long)cex;
@@ -4879,7 +4879,7 @@ int style;
         warning("Multi-element string constructors not yet supported [136]");
   skiptotoken(close);
     }
-    if (!wneedtok(close))
+    if (!needToken(close))
   skippasttoken(close);
     return ex;
 }
@@ -4967,7 +4967,7 @@ void p_constdecl()
       decl_comments(mp);
             gettok();
             mp->type = p_type(mp);
-            if (wneedtok(TOK_EQ)) {
+            if (needToken(TOK_EQ)) {
     if (mp->kind == MK_VARMAC) {
         freeexpr(p_subconst(mp->type, 1));
         note("Initializer ignored for variable with VarMacro [115]");
@@ -5120,7 +5120,7 @@ void p_constdecl()
                 freeexpr(ex);
             mp->wasdeclared = 1;
         }
-        if (!wneedtok(TOK_SEMI))
+        if (!needToken(TOK_SEMI))
       skippasttoken(TOK_SEMI);
     }
     if (outflag)
@@ -5340,7 +5340,7 @@ void p_typedecl()
   if (curtok == TOK_SEMI) {
       mp->type = tp_anyptr;    /* Modula-2 opaque type */
   } else {
-      if (!wneedtok(TOK_EQ)) {
+      if (!needToken(TOK_EQ)) {
     skippasttoken(TOK_SEMI);
     continue;
       }
@@ -5358,7 +5358,7 @@ void p_typedecl()
       if (!anydeferredptrs)
     declaretypes(outflag);
   }
-  if (!wneedtok(TOK_SEMI))
+  if (!needToken(TOK_SEMI))
       skippasttoken(TOK_SEMI);
     }
     notephase = 0;
@@ -5418,7 +5418,7 @@ int skip, wasaliased;
     } else if (curtok == TOK_LBR) {
         gettok();
         ex = p_expr(tp_integer);
-        if (!wneedtok(TOK_RBR))
+        if (!needToken(TOK_RBR))
       skippasttotoken(TOK_RBR, TOK_SEMI);
         if (skip) {
             freeexpr(ex);
@@ -5540,7 +5540,7 @@ int iscommon;
     decl_comments(lastmp);
       }
         }
-        if (!wneedtok(TOK_COLON)) {
+        if (!needToken(TOK_COLON)) {
       skippasttoken(TOK_SEMI);
       continue;
   }
@@ -5635,7 +5635,7 @@ int iscommon;
                 break;
             firstmp = firstmp->cnext;
         }
-        if (!wneedtok(TOK_SEMI))
+        if (!needToken(TOK_SEMI))
       skippasttoken(TOK_SEMI);
     }
     notephase = 0;
@@ -5675,9 +5675,9 @@ void p_valuedecl()
       if (curtok == TOK_DOT || curtok == TOK_LBR) {
     note("Partial structure initialization not supported [117]");
     skippasttoken(TOK_SEMI);
-      } else if (wneedtok(TOK_ASSIGN)) {
+      } else if (needToken(TOK_ASSIGN)) {
     mp->constdefn = p_subconst(mp->type, 2);
-    if (!wneedtok(TOK_SEMI))
+    if (!needToken(TOK_SEMI))
         skippasttoken(TOK_SEMI);
       } else
     skippasttoken(TOK_SEMI);
