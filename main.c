@@ -92,7 +92,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 Static Strlist* tweaksymbols;
 Static Strlist* synonyms;
 Strlist* addmacros;
-Static long starting_time;
+Static time_t starting_time;
 //{{{
 Static void initrc() {
 
@@ -638,15 +638,15 @@ Static void openlogfile() {
 //{{{
 void closelogfile() {
 
-  long ending_time;
+  time_t ending_time;
 
   if (logfile) {
     fprintf (logfile, "\n\n");
 
     time (&ending_time);
     fprintf (logfile, "Processed %d source lines in %ld:%ld seconds.\n",
-      inf_ltotal, (ending_time - starting_time) / 60,
-      (ending_time - starting_time) % 60);
+      inf_ltotal, ((long)ending_time - (long)starting_time) / 60,
+      ((long)ending_time - (long)starting_time) % 60);
 
     fprintf (logfile, "\n\nTranslation completed on %s", ctime(&ending_time));
 

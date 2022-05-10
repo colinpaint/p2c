@@ -229,17 +229,10 @@ void fixfname (char* fn, char* ext) {
 //{{{
 void removesuffix (char* fn) {
 
-  char *cp, *cp2;
+  char *cp;
   cp = my_strrchr(fn, '.');
   if (!cp)
     return;
-
-  #if defined(unix) || defined(__unix)
-    cp2 = my_strrchr(fn, '/');
-    if (cp2 && cp < cp2)
-      return;
-  #endif
-
   *cp = 0;
   }
 //}}}

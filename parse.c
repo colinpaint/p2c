@@ -2324,7 +2324,7 @@ Expr *ex;
          !strcmp(ex->val.s, "fputc")) {
   if (ex->args[0]->kind != EK_CONST)
       return 0;
-  ch = ex->args[0]->val.i;
+  ch = (char)ex->args[0]->val.i;
   cp = &ch;
   len = 1;
     } else

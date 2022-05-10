@@ -1085,7 +1085,7 @@ Expr *accumulate_strlit()
     gettok();
     val = p_constant(tp_integer);
     if (++len <= 255)
-        *cp++ = val.i;
+        *cp++ = (char)val.i;
       } while (curtok == TOK_COMMA);
       skipcloseparen();
       continue;
