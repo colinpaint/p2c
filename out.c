@@ -26,10 +26,7 @@ typedef struct S_paren {
 //}}}
 #define PROTO_OUT_C
 #include "main.h"
-#define USETIME
-
 #include <time.h>
-//}}}
 //{{{  defines, vars
 //{{{
 /* Output control characters:
@@ -148,7 +145,7 @@ void flush_outfilebuf() {
 //}}}
 #define putc_outf(ch) ( (outfilebufptr == outfilebufend) ? grow_outfilebuf() : 0, *outfilebufptr++ = (ch) )
 //{{{
-void puts_outf (char *s) {
+void puts_outf (char* s) {
 
   int len = strlen(s);
   if (len > 0) {
@@ -164,7 +161,7 @@ void puts_outf (char *s) {
   }
 //}}}
 //{{{
-void select_outfile (FILE *fp) {
+void select_outfile (FILE* fp) {
 
   flush_outfilebuf();
   if (outf == codef) {
@@ -246,8 +243,8 @@ int lookback_prn (int n) {
 //}}}
 
 //{{{
-/* Combine two indentation adjustments */
 int adddeltas (int d1, int d2) {
+/* Combine two indentation adjustments */
 
   if (d2 >= 1000)
     return d2;
@@ -256,8 +253,8 @@ int adddeltas (int d1, int d2) {
   }
 //}}}
 //{{{
-/* Apply an indentation delta */
 int applydelta (int i, int d) {
+/* Apply an indentation delta */
 
   if (d >= 1000)
     return d - 1000;
@@ -267,26 +264,29 @@ int applydelta (int i, int d) {
 //}}}
 
 //{{{
-/* Adjust the current indentation by delta */
 void moreindent (int delta) {
+/* Adjust the current indentation by delta */
+
   outindent = applydelta(outindent, delta);
   }
 //}}}
 //{{{
-/* Adjust indentation for just this line */
 void singleindent (int delta) {
+/* Adjust indentation for just this line */
+
   deltaindent = adddeltas(deltaindent, delta);
   }
 //}}}
 //{{{
-/* Predict indentation for next line */
 void futureindent (int num) {
+/* Predict indentation for next line */
+
   thisfutureindent = applydelta(applydelta(outindent, deltaindent), num);
   }
 //}}}
 
 //{{{
-int parsedelta (char *cp, int def) {
+int parsedelta (char* cp, int def) {
 
   if (!cp || !*cp)
     return def;
@@ -322,8 +322,8 @@ void eatblanklines() {
   }
 //}}}
 //{{{
-Static void flush_outbuf (int numbreaks, int *breakpos, int *breakindent, int numedits, int *editpos,
-                          char *editold, char *editnew) {
+Static void flush_outbuf (int numbreaks, int* breakpos, int* breakindent, int numedits, int* editpos,
+                          char* editold, char* editnew) {
 
   unsigned char ch, ch2;
   char *cp;
@@ -416,9 +416,8 @@ Static void flush_outbuf (int numbreaks, int *breakpos, int *breakindent, int nu
     return;
     }
 
-  if (suppressnewline) {
+  if (suppressnewline)
     lastlinelength = linelen;
-    }
   else {
     putc_outf ('\n');
     flush_outfilebuf();
@@ -428,12 +427,14 @@ Static void flush_outbuf (int numbreaks, int *breakpos, int *breakindent, int nu
   }
 //}}}
 
+//{{{  defines
 #define ISQUOTE(ch)  ((ch)=='"' || (ch)=='\'')
 #define ISOPENP(ch)  ((ch)=='(' || (ch)=='[' || (ch)=='\003' || (ch)=='\010')
 #define ISCLOSEP(ch) ((ch)==')' || (ch)==']' || (ch)=='\004')
 #define ISBREAK(ch)  ((ch)=='\001' || (ch)=='\002' || (ch)=='\006' || (ch)=='\011' || (ch)=='\017')
+//}}}
 //{{{
-Static int readquotes (int *posp, int err) {
+Static int readquotes (int* posp, int err) {
 
   int pos = *posp;
   char quote = outbuf[pos++];
@@ -459,112 +460,127 @@ Static int readquotes (int *posp, int err) {
 
 Static int maxdepth;
 //{{{
-Static int readparens (posp, err)
-int *posp, err;
-{
-    char ch, closing;
-    int pos, level;
+Static int readparens (int* posp, int err) {
 
-    pos = *posp;
-    switch (outbuf[pos]) {
-      case '(':
-  closing = ')';
-  break;
-      case '[':
-  closing = ']';
-  break;
-      case '\003':
-      case '\010':
-  closing = '\004';
-  break;
-      default:
-  closing = 0;
-  break;
-    }
-    level = 0;
-    for (;;) {
-  pos++;
-  if (pos >= outbufpos)
+  char closing;
+  int pos = *posp;
+  switch (outbuf[pos]) {
+    //{{{
+    case '(':
+      closing = ')';
       break;
-  ch = outbuf[pos];
-  if (ISOPENP(ch)) {
+    //}}}
+    //{{{
+    case '[':
+       closing = ']';
+       break;
+    //}}}
+    case '\003':
+    //{{{
+    case '\010':
+      closing = '\004';
+      break;
+    //}}}
+    //{{{
+    default:
+      closing = 0;
+      break;
+    //}}}
+    }
+
+  char ch;
+  int level = 0;
+  for (;;) {
+    pos++;
+    if (pos >= outbufpos)
+      break;
+    ch = outbuf[pos];
+    if (ISOPENP(ch)) {
       level++;
       if (level > maxdepth)
-    maxdepth = level;
-  } else if (ISCLOSEP(ch)) {
+      maxdepth = level;
+      }
+    else if (ISCLOSEP(ch)) {
       level--;
       if (level < 0) {
-    if (closing && outbuf[pos] != closing)
-        break;
-    *posp = pos;
-    return 1;
+        if (closing && outbuf[pos] != closing)
+          break;
+        *posp = pos;
+        return 1;
+        }
       }
-  } else if (ISQUOTE(ch)) {
+    else if (ISQUOTE(ch))
       if (!readquotes(&pos, err))
-    return 0;
-  }
+        return 0;
     }
-    if (err && breakerrorflag) {
-  switch (closing) {
-    case ')':
-      intwarning("output", "Mismatched parentheses [249]");
-      break;
-    case ']':
-      intwarning("output", "Mismatched brackets [249]");
-      break;
-    default:
-      intwarning("output", "Mismatched clauses [250]");
-      break;
-  }
-  breakerrorflag = 0;
+
+  if (err && breakerrorflag) {
+    switch (closing) {
+      //{{{
+      case ')':
+        intwarning("output", "Mismatched parentheses [249]");
+        break;
+      //}}}
+      //{{{
+      case ']':
+        intwarning("output", "Mismatched brackets [249]");
+        break;
+      //}}}
+      //{{{
+      default:
+        intwarning("output", "Mismatched clauses [250]");
+        break;
+      //}}}
+      }
+    breakerrorflag = 0;
     }
-    return 0;
-}
+
+  return 0;
+  }
 //}}}
 //{{{
-Static int measurechars (first, last)
-int first, last;
-{
-    int count = 0;
+Static int measurechars (int first, int last) {
 
-    while (first <= last) {
-  if (outbuf[first] >= ' ')
+  int count = 0;
+
+  while (first <= last) {
+    if (outbuf[first] >= ' ')
       count++;
-  first++;
+    first++;
     }
-    return count;
-}
-//}}}
-//{{{
-Static void makeedit (pos, ch)
-int pos, ch;
-{
-    editpos[numedits] = pos;
-    editold[numedits] = outbuf[pos];
-    editnew[numedits] = ch;
-    outbuf[pos] = ch;
-    numedits++;
-}
-//}}}
-//{{{
-Static void unedit()
-{
-    numedits--;
-    outbuf[editpos[numedits]] = editold[numedits];
-}
-//}}}
-//{{{
-Static int parencount (par)
-Paren *par;
-{
-    int count = 0;
 
-    while (par) {
-  count++;
-  par = par->next;
+  return count;
+  }
+//}}}
+//{{{
+Static void makeedit (int pos, int ch) {
+
+  editpos[numedits] = pos;
+  editold[numedits] = outbuf[pos];
+  editnew[numedits] = ch;
+  outbuf[pos] = ch;
+  numedits++;
+  }
+//}}}
+//{{{
+Static void unedit() {
+
+  numedits--;
+  outbuf[editpos[numedits]] = editold[numedits];
+  }
+//}}}
+//{{{
+Static int parencount (Paren* par) {
+
+  int count = 0;
+
+  while (par) {
+    count++;
+    par = par->next;
     }
-    return count;
-}
+
+  return count;
+  }
 //}}}
 
 //{{{
@@ -609,823 +625,860 @@ Paren *par;
 #define TBR_REACHED   0x4
 //}}}
 //{{{
-Static int trybreakline (pos, count, indent, badness, flags, parens)
-int pos, count, indent, flags;
-double badness;
-Paren *parens;
-{
-    int edited;
-    int i, j, jmask, f, pos2, r;
-    char ch, ch2, closing;
-    double extra, penalty;
-    Paren *pp;
+Static int trybreakline (int pos, int count, int indent, double badness, int flags, Paren* parens) {
 
-#if 0
+  int edited;
+  int i, j, jmask, f, pos2, r;
+  char ch, ch2, closing;
+  double extra, penalty;
+  Paren *pp;
+
+  #if 0
     { static double save = -1;
       if (showbadlimit != save) printf("Showbadlimit = %g\n", showbadlimit);
       save = showbadlimit;
     }
-#endif
+  #endif
 
-    if (numalts >= maxalts)
-  return TBR_ABORT;
-    jmask = -1;
-    for (;;) {
-  if (numbreaks >= MAXBREAKS) {   /* must leave rest of line alone */
+  if (numalts >= maxalts)
+    return TBR_ABORT;
+  jmask = -1;
+  for (;;) {
+    if (numbreaks >= MAXBREAKS) {   /* must leave rest of line alone */
       count += measurechars(pos, outbufpos-1);
       pos = outbufpos;
-  }
-  i = count - breakcount[numbreaks-1] +
-      breakindent[numbreaks-1] - linewidth;
-  if (i <= 0)
+      }
+    i = count - breakcount[numbreaks-1] + breakindent[numbreaks-1] - linewidth;
+
+    if (i <= 0)
       extra = 0;
-  else {
+    else {
       if (i + linewidth >= maxlinewidth || randombreaks == -2)
-    return 0;   /* absolutely too long! */
+        return 0;   /* absolutely too long! */
       extra = overwidepenalty + ((long)i*i)*overwideextrapenalty;
       jmask &= ~TBR_SIMPLE;
       if (extra < 0)
-    extra = 0;
-  }
-  if ((testinglinebreaker > 1 && showbadlimit > 0) ?
-      (badness + extra >= showbadlimit) :
-      (badness + extra >= bestbadness)) {
+        extra = 0;
+      }
+
+    if ((testinglinebreaker > 1 && showbadlimit > 0) ?
+        (badness + extra >= showbadlimit) :
+        (badness + extra >= bestbadness)) {
       numalts++;
       return 0;   /* no point in going on, badness will only increase */
-  }
-  if (pos >= outbufpos)
+      }
+    if (pos >= outbufpos)
       break;
-  if (parens && pos >= parens->pos) {
+    if (parens && pos >= parens->pos) {
       indent = parens->indent;
       flags = parens->flags;
       parens = parens->next;
-  }
-  ch = outbuf[pos++];
-  if (ch >= ' ')
+      }
+    ch = outbuf[pos++];
+    if (ch >= ' ')
       count++;
-  switch (ch) {
 
-    case '(':
-    case '[':
-    case '\003':     /* "invisible open paren" */
-    case '\010':     /* "semi-invisible open paren" */
-      pos2 = pos - 1;
-      if (!readparens(&pos2, 1))
-    break;
-      i = measurechars(pos, pos2);
-      if (count + i - breakcount[numbreaks-1] +
-    breakindent[numbreaks-1] <= linewidth) {
-    /* it fits, so leave it on one line */
-#if 0  /* I don't think this is necessary */
-    while (pos <= pos2) {
-        if (outbuf[pos] == '\002') {
-      jmask &= ~TBR_SIMPLE;
-      pos = pos2 + 1;
-      break;
-        }
-        pos++;
-    }
-#else
-    pos = pos2 + 1;
-#endif
-    count += i;
-    break;
-      }
-      pp = ALLOC(1, Paren, parens);   /* doesn't fit, try poss breaks */
-      pp->next = parens;
-      pp->pos = pos2;
-      pp->indent = indent;
-      pp->qmindent = indent;
-      pp->flags = flags;
-      parens = pp;
-      flags = 0;
-      if (ch == '\010' &&       /* change to real parens when broken */
-    numedits+1 < MAXEDITS) {    /* (assume it will be broken!) */
-    makeedit(pos-1, '(');
-    makeedit(pos2, ')');
-    count++;    /* count the new open paren */
-    edited = 1;
-      } else
-    edited = 0;
-      i = breakindent[numbreaks-1] + count - breakcount[numbreaks-1];
-      if (i <= thisindent)
-    r = 0;  /* e.g., don't break top-level assignments */
-      else if (i == indent + extraindent)
-    r = 1;  /* don't waste time on identical operations */
-      else
-    r = randtest(0xc00);
-      if (r != 0) {
-    j = trybreakline(pos, count, i,
-         badness + MAX(- extraindentpenalty,0),
-         flags, parens);
-      } else
-    j = 0;
-      if (r != 1) {
-    j &= trybreakline(pos, count, indent + extraindent,
-          badness + MAX(extraindentpenalty,0),
-          flags | TB_EXTRAIND, parens);
-      }
-      if (!randombreaks && bumpindent != 0) {
-    if (i == thisfutureindent) {
-        j &= trybreakline(pos, count, i + bumpindent,
-              badness + MAX(- extraindentpenalty,0)
-                      + bumpindentpenalty,
-              flags, parens);
-    } else if (indent + extraindent == thisfutureindent) {
-        j &= trybreakline(pos, count,
-              indent + extraindent + bumpindent,
-              badness + MAX(extraindentpenalty,0)
-                      + bumpindentpenalty,
-              flags | TB_EXTRAIND, parens);
-    }
-      }
-      if (edited) {
-    unedit();
-    unedit();
-      }
-      FREE(pp);
-      return j & jmask;
+    switch (ch) {
+      case '(':
+      case '[':
+      case '\003':       /* "invisible open paren" */
+      //{{{
+      case '\010':  /* "semi-invisible open paren" */
+        pos2 = pos - 1;
+        if (!readparens (&pos2, 1))
+          break;
 
-    case '\005':   /* "set left margin" */
-      indent = breakindent[numbreaks-1] +
-         count - breakcount[numbreaks-1];
-      break;
+        i = measurechars(pos, pos2);
+        if (count + i - breakcount[numbreaks-1] + breakindent[numbreaks-1] <= linewidth) {
+          //{{{
+          /* it fits, so leave it on one line */
+          #if 0  /* I don't think this is necessary */
+            while (pos <= pos2) {
+              if (outbuf[pos] == '\002') {
+                jmask &= ~TBR_SIMPLE;
+                pos = pos2 + 1;
+                break;
+                }
+            pos++;
+            }
+          #else
+            pos = pos2 + 1;
+          #endif
 
-    case '\007':   /* "all-or-none breaking" */
-      flags |= TB_ALLORNONE;
-      break;
-
-    case '\001':   /* "possible break point" */
-    case '\002':   /* "break point in parens" */
-    case '\006':   /* "forced break point" */
-    case '\011':   /* "break point after special args" */
-    case '\017':   /* "break point for final : operator" */
-      /* first try the non-breaking case */
-      if (ch != '\001' && ch != '\006')
-    jmask &= ~TBR_SIMPLE;
-      if ((flags & TB_BRKCOUNT) != TB_BRKCOUNT)
-    flags++;   /* increment TB_BRKCOUNT field */
-      if (outbuf[pos] == '?' && parens)
-    parens->qmindent = breakindent[numbreaks-1] +
-                       count - breakcount[numbreaks-1];
-      j = TBR_REACHED;
-      if (ch == '\006' || (flags & TB_FORCEBRK)) {
-    /* don't try the non-breaking case */
-      } else {
-    if (ch == '\011') {
-        i = breakindent[numbreaks-1] +
-      count - breakcount[numbreaks-1] + 2;
-    } else {
-        i = indent;
-    }
-    f = flags;
-    if (f & TB_ALLORNONE)
-        f |= TB_NOBREAK;
-    r = randtest(0x800);
-    if (r != 1 || (flags & TB_NOBREAK)) {
-        j = trybreakline(pos, count, i, badness, f, parens) &
-      jmask;
-        if (randombreaks == -2 && !(j & TBR_REACHED)) {
-      r = -1;
-      j |= TBR_REACHED;
-        }
-        if (r == 0 || (j & TBR_SIMPLE))
-      flags |= TB_NOBREAK;
-    }
-      }
-      if (flags & TB_NOBREAK)
-    return j;
-      if (flags & TB_ALLORNONE)
-    flags |= TB_FORCEBRK;
-      if (flags & TB_EXTRAIND) {
-    flags &= ~TB_EXTRAIND;
-    flags |= TB_EXTRAIND2;
-      }
-      /* now try breaking here */
-      if (ch == '\017')
-    indent = parens->qmindent;
-      if (indent < 0)
-    indent = 0;
-      breakpos[numbreaks] = pos;
-      breakcount[numbreaks] = count;
-      breakindent[numbreaks] = indent;
-      breakparen[numbreaks] = parens ? parens->pos : 0;
-      numbreaks++;
-      penalty = extra;
-      if (indent == thisfutureindent) {
-    i = pos;
-    while (i < outbufpos-1 && outbuf[i] <= ' ')
-        i++;
-    ch2 = outbuf[i];   /* first character on next line */
-    if (ch2 != '(' && ch2 != '!' && ch2 != '~' && ch2 != '-')
-        penalty += nobumpindentpenalty;
-      }
-      switch (ch) {
-        case '\001':
-    penalty += commabreakpenalty;
-    if (flags & TB_ALREADYBRK)
-        penalty += morebreakpenalty;
-    break;
-        case '\011':
-    i = parencount(parens);
-    penalty += specialargbreakpenalty + commabreakextrapenalty*i;
-    break;
-        case '\002':
-        case '\017':
-    i = parencount(parens);
-    if (outbuf[pos-2] == '(')
-        penalty += parenbreakpenalty + parenbreakextrapenalty*i;
-    else if (outbuf[pos-2] == ',')
-        penalty += commabreakpenalty + commabreakextrapenalty*i;
-    else if (((outbuf[pos] == '&' || outbuf[pos] == '|') &&
-        outbuf[pos+1] == outbuf[pos]) ||
-       ((outbuf[pos-3] == '&' || outbuf[pos-3] == '|') &&
-        outbuf[pos-3] == outbuf[pos-2]))
-        penalty += logbreakpenalty + logbreakextrapenalty*i;
-    else if (((outbuf[pos] == '<' || outbuf[pos] == '>') &&
-        outbuf[pos+1] != outbuf[pos]) ||
-       ((outbuf[pos] == '=' || outbuf[pos] == '!') &&
-        outbuf[pos+1] == '=') ||
-       ((outbuf[pos-2] == '<' || outbuf[pos-2] == '>') &&
-        outbuf[pos-3] != outbuf[pos-2]) ||
-       ((outbuf[pos-3] == '<' || outbuf[pos-3] == '>' ||
-         outbuf[pos-3] == '=' || outbuf[pos-3] == '!') &&
-        outbuf[pos-2] == '='))
-        penalty += relbreakpenalty + relbreakextrapenalty*i;
-    else if (outbuf[pos-2] == '=')
-        penalty += assignbreakpenalty + assignbreakextrapenalty*i;
-    else if (outbuf[pos] == '?') {
-        penalty += qmarkbreakpenalty + qmarkbreakextrapenalty*i;
-        if (parens)
-      parens->qmindent = breakindent[numbreaks-1] +
-                         count - breakcount[numbreaks-1];
-    } else
-        penalty += opbreakpenalty + opbreakextrapenalty*i;
-    if (outbuf[pos-2] == '-')
-        penalty += exhyphenpenalty;
-    if (flags & TB_ALREADYBRK)
-        penalty += morebreakpenalty + morebreakextrapenalty*i;
-    break;
-        default:
-    break;
-      }
-      while (pos < outbufpos && outbuf[pos] == '\013') {
-    penalty += wrongsidepenalty;
-    pos++;
-      }
-      penalty -= earlybreakpenalty*(flags & TB_BRKCOUNT);
-      /* the following test is not quite right, but it's not too bad. */
-      if (breakindent[numbreaks-2] == breakindent[numbreaks-1] &&
-    breakparen[numbreaks-2] != breakparen[numbreaks-1])
-    penalty += sameindentpenalty;
-#if 0
-      else if (ch == '\002' && parens &&  /*don't think this is needed*/
-         parens->indent == breakindent[numbreaks-1] &&
-         parens->pos != breakparen[numbreaks-1])
-    penalty += sameindentpenalty + 0.001;   /***/
-#endif
-      penalty += (breakindent[numbreaks-1] - thisindent) *
-           indentamountpenalty;
-      if (penalty < 1) penalty = 1;
-      pos2 = pos;
-      while (pos2 < outbufpos && outbuf[pos2] == ' ')
-    pos2++;
-      flags |= TB_ALREADYBRK;
-      j = trybreakline(pos2, count, indent, badness + penalty,
-           flags, parens) & jmask;
-      numbreaks--;
-      return j;
-
-    case '\016':    /* "hang-indent operator" */
-      if (count <= breakcount[numbreaks-1] + 2 &&
-    !(flags & TB_EXTRAIND2)) {
-    breakindent[numbreaks-1] -= count - breakcount[numbreaks-1];
-    pos2 = pos;
-    while (pos2 < outbufpos && outbuf[pos2] <= ' ') {
-        if (outbuf[pos2] == ' ')
-      breakindent[numbreaks-1]--;
-        pos2++;
-    }
-      }
-      break;
-
-    case '"':
-    case '\'':
-      closing = ch;
-      while (pos < outbufpos && outbuf[pos] != closing) {
-    if (outbuf[pos] == '\\')
-        pos++, count++;
-    pos++;
-    count++;
-      }
-      if (pos >= outbufpos) {
-    intwarning("output", "Mismatched quotes [248]");
-    continue;
-      }
-      pos++;
-      count++;
-      break;
-
-    case '/':
-      if (pos < outbufpos && (outbuf[pos] == '*' ||
-            (outbuf[pos] == '/' && slashslash))) {
-    count += measurechars(pos, outbufpos-1);
-    pos = outbufpos;   /* assume comment is at end of line */
-      }
-      break;
-
-  }
-    }
-    numalts++;
-    badness += extra;
-    if (testinglinebreaker > 1) {
-  if (badness >= bestbadness &&
-      (badness < showbadlimit || showbadlimit == 0)) {
-      fprintf(outf, "\n#if 0   /* rejected #%ld, badness = %g >= %g */\n", numalts, badness, bestbadness);
-      flush_outbuf(numbreaks, breakpos, breakindent,
-       numedits, editpos, editold, editnew);
-      fprintf(outf, "#endif\n");
-      return TBR_SIMPLE & jmask;
-  } else if ((bestbadness < showbadlimit || showbadlimit == 0) &&
-       bestnumalts > 0) {
-      fprintf(outf, "\n#if 0   /* rejected #%ld, badness = %g > %g */\n", bestnumalts, bestbadness, badness);
-      flush_outbuf(bestnumbreaks, bestbreakpos, bestbreakindent,
-       bestnumedits, besteditpos,
-       besteditold, besteditnew);
-      fprintf(outf, "#endif\n");
-  }
-    }
-    bestbadness = badness;
-    bestnumbreaks = numbreaks;
-    bestnumalts = numalts;
-    for (i = 0; i < numbreaks; i++) {
-  bestbreakpos[i] = breakpos[i];
-  bestbreakindent[i] = breakindent[i];
-    }
-    bestnumedits = numedits;
-    for (i = 0; i < numedits; i++) {
-  besteditpos[i] = editpos[i];
-  besteditold[i] = editold[i];
-  besteditnew[i] = editnew[i];
-    }
-    return TBR_SIMPLE & jmask;
-}
-//}}}
-
-//{{{
-int parse_breakstr (cp)
-char *cp;
-{
-    short val = 0;
-
-    if (isdigit(*cp))
-  return atoi(cp);
-    while (*cp && !isspace(*cp) && *cp != '}') {
-  switch (toupper(*cp++)) {
-
-    case 'N':
-    case '=':
-      break;
-
-    case 'L':
-      val |= BRK_LEFT;
-      break;
-
-    case 'R':
-      val |= BRK_RIGHT;
-      break;
-
-    case 'H':
-      val |= BRK_HANG | BRK_LEFT;
-      break;
-
-    case '>':
-      if (val & BRK_LEFT)
-    val |= BRK_LPREF;
-      else if (val & BRK_RIGHT)
-    val |= BRK_RPREF;
-      else
-    return -1;
-      break;
-
-    case '<':
-      if (val & BRK_LEFT)
-    val |= BRK_RPREF;
-      else if (val & BRK_RIGHT)
-    val |= BRK_LPREF;
-      else
-    return -1;
-      break;
-
-    case 'A':
-      val |= BRK_ALLNONE;
-      break;
-
-    default:
-      return -1;
-
-  }
-    }
-    return val;
-}
-//}}}
-//{{{
-void output (msg)
-register char *msg;
-{
-    unsigned char ch;
-    double savelimit;
-    int i, savemaxlw, maxdp;
-    long alts;
-
-    debughook();
-
-    if (outputmode) {
-      end_source();
-      while ((ch = *msg++) != 0) {
-        if (ch >= ' ') {
-          putc_outf (ch);
+          count += i;
+          break;
           }
-        else if (ch == '\n' || ch == '\r') {
-          putc_outf (ch);
-          flush_outfilebuf();
-          outf_lnum++;
-          }
-        }
-      return;
-      }
+          //}}}
 
-    while ((ch = *msg++) != 0) {
-      if (ch == '\n' || ch == '\r') {
-        //{{{  lf or cr
-        if (outbufpos == 0) {
-          //  blank line
-          thisfutureindent = -1;
-          blanklines++;
+        pp = ALLOC(1, Paren, parens);   /* doesn't fit, try poss breaks */
+        pp->next = parens;
+        pp->pos = pos2;
+        pp->indent = indent;
+        pp->qmindent = indent;
+        pp->flags = flags;
+        parens = pp;
+
+        flags = 0;
+
+        if (ch == '\010' &&       /* change to real parens when broken */
+          numedits+1 < MAXEDITS) {    /* (assume it will be broken!) */
+          makeedit (pos-1, '(');
+          makeedit (pos2, ')');
+
+          count++;    /* count the new open paren */
+          edited = 1;
+          }
+        else
+          edited = 0;
+          i = breakindent[numbreaks-1] + count - breakcount[numbreaks-1];
+          if (i <= thisindent)
+            r = 0;  /* e.g., don't break top-level assignments */
+          else if (i == indent + extraindent)
+            r = 1;  /* don't waste time on identical operations */
+          else
+            r = randtest(0xc00);
+
+          if (r != 0) {
+            j = trybreakline (pos, count, i, badness + MAX(- extraindentpenalty,0), flags, parens);
+            }
+          else
+            j = 0;
+
+          if (r != 1) {
+            j &= trybreakline (pos, count, indent + extraindent, badness + MAX(extraindentpenalty,0),
+                               flags | TB_EXTRAIND, parens);
+            }
+          if (!randombreaks && bumpindent != 0) {
+            if (i == thisfutureindent) {
+              j &= trybreakline (pos, count, i + bumpindent, badness + MAX(- extraindentpenalty,0) + bumpindentpenalty,
+                                 flags, parens);
+            }
+         else if (indent + extraindent == thisfutureindent) {
+            j &= trybreakline (pos, count, indent + extraindent + bumpindent,
+                               badness + MAX(extraindentpenalty,0) + bumpindentpenalty,
+                               flags | TB_EXTRAIND, parens);
+            }
+          }
+
+        if (edited) {
+          unedit();
+          unedit();
+          }
+
+        FREE(pp);
+        return j & jmask;
+      //}}}
+      //{{{
+      case '\005':  /* "set left margin" */
+        indent = breakindent[numbreaks-1] + count - breakcount[numbreaks-1];
+        break;
+      //}}}
+      //{{{
+      case '\007':  /* "all-or-none breaking" */
+        flags |= TB_ALLORNONE;
+        break;
+      //}}}
+      case '\001':       /* "possible break point" */
+      case '\002':       /* "break point in parens" */
+      case '\006':       /* "forced break point" */
+      case '\011':       /* "break point after special args" */
+      //{{{
+      case '\016':  /* "hang-indent operator" */
+        if (count <= breakcount[numbreaks-1] + 2 && !(flags & TB_EXTRAIND2)) {
+          breakindent[numbreaks-1] -= count - breakcount[numbreaks-1];
+          pos2 = pos;
+          while (pos2 < outbufpos && outbuf[pos2] <= ' ') {
+            if (outbuf[pos2] == ' ')
+              breakindent[numbreaks-1]--;
+            pos2++;
+            }
+          }
+        break;
+      //}}}
+      //{{{
+      case '\017':  /* "break point for final : operator" */
+        /* first try the non-breaking case */
+        if (ch != '\001' && ch != '\006')
+          jmask &= ~TBR_SIMPLE;
+
+        if ((flags & TB_BRKCOUNT) != TB_BRKCOUNT)
+          flags++;   /* increment TB_BRKCOUNT field */
+
+        if (outbuf[pos] == '?' && parens)
+          parens->qmindent = breakindent[numbreaks-1] + count - breakcount[numbreaks-1];
+
+        j = TBR_REACHED;
+        if (ch == '\006' || (flags & TB_FORCEBRK)) {
+          /* don't try the non-breaking case */
+          }
+        else {
+          if (ch == '\011') {
+            i = breakindent[numbreaks-1] +
+            count - breakcount[numbreaks-1] + 2;
+            }
+          else {
+            i = indent;
+            }
+
+          f = flags;
+          if (f & TB_ALLORNONE)
+            f |= TB_NOBREAK;
+          r = randtest(0x800);
+          if (r != 1 || (flags & TB_NOBREAK)) {
+            j = trybreakline(pos, count, i, badness, f, parens) &
+            jmask;
+            if (randombreaks == -2 && !(j & TBR_REACHED)) {
+              r = -1;
+              j |= TBR_REACHED;
+              }
+            if (r == 0 || (j & TBR_SIMPLE))
+              flags |= TB_NOBREAK;
+            }
+          }
+        if (flags & TB_NOBREAK)
+          return j;
+        if (flags & TB_ALLORNONE)
+          flags |= TB_FORCEBRK;
+        if (flags & TB_EXTRAIND) {
+          flags &= ~TB_EXTRAIND;
+          flags |= TB_EXTRAIND2;
+          }
+
+        /* now try breaking here */
+        if (ch == '\017')
+          indent = parens->qmindent;
+
+        if (indent < 0)
+          indent = 0;
+
+        breakpos[numbreaks] = pos;
+        breakcount[numbreaks] = count;
+        breakindent[numbreaks] = indent;
+        breakparen[numbreaks] = parens ? parens->pos : 0;
+        numbreaks++;
+        penalty = extra;
+
+        if (indent == thisfutureindent) {
+          i = pos;
+          while (i < outbufpos-1 && outbuf[i] <= ' ')
+            i++;
+          ch2 = outbuf[i];   /* first character on next line */
+          if (ch2 != '(' && ch2 != '!' && ch2 != '~' && ch2 != '-')
+            penalty += nobumpindentpenalty;
+          }
+
+        switch (ch) {
+          //{{{
+          case '\001':
+            penalty += commabreakpenalty;
+            if (flags & TB_ALREADYBRK)
+              penalty += morebreakpenalty;
+            break;
+          //}}}
+          //{{{
+          case '\011':
+            i = parencount(parens);
+            penalty += specialargbreakpenalty + commabreakextrapenalty*i;
+            break;
+          //}}}
+          case '\002':
+          //{{{
+          case '\017':
+            i = parencount(parens);
+            if (outbuf[pos-2] == '(')
+                penalty += parenbreakpenalty + parenbreakextrapenalty*i;
+            else if (outbuf[pos-2] == ',')
+                penalty += commabreakpenalty + commabreakextrapenalty*i;
+            else if (((outbuf[pos] == '&' || outbuf[pos] == '|') &&
+                outbuf[pos+1] == outbuf[pos]) ||
+               ((outbuf[pos-3] == '&' || outbuf[pos-3] == '|') &&
+                outbuf[pos-3] == outbuf[pos-2]))
+                penalty += logbreakpenalty + logbreakextrapenalty*i;
+            else if (((outbuf[pos] == '<' || outbuf[pos] == '>') &&
+                outbuf[pos+1] != outbuf[pos]) ||
+               ((outbuf[pos] == '=' || outbuf[pos] == '!') &&
+                outbuf[pos+1] == '=') ||
+               ((outbuf[pos-2] == '<' || outbuf[pos-2] == '>') &&
+                outbuf[pos-3] != outbuf[pos-2]) ||
+               ((outbuf[pos-3] == '<' || outbuf[pos-3] == '>' ||
+                 outbuf[pos-3] == '=' || outbuf[pos-3] == '!') &&
+                outbuf[pos-2] == '='))
+                penalty += relbreakpenalty + relbreakextrapenalty*i;
+            else if (outbuf[pos-2] == '=')
+                penalty += assignbreakpenalty + assignbreakextrapenalty*i;
+            else if (outbuf[pos] == '?') {
+                penalty += qmarkbreakpenalty + qmarkbreakextrapenalty*i;
+                if (parens)
+              parens->qmindent = breakindent[numbreaks-1] +
+                                 count - breakcount[numbreaks-1];
+            } else
+                penalty += opbreakpenalty + opbreakextrapenalty*i;
+            if (outbuf[pos-2] == '-')
+                penalty += exhyphenpenalty;
+            if (flags & TB_ALREADYBRK)
+                penalty += morebreakpenalty + morebreakextrapenalty*i;
+            break;
+          //}}}
+          //{{{
+          default:
+            break;
+          //}}}
+          }
+
+        while (pos < outbufpos && outbuf[pos] == '\013') {
+          penalty += wrongsidepenalty;
+          pos++;
+          }
+
+        penalty -= earlybreakpenalty*(flags & TB_BRKCOUNT);
+        /* the following test is not quite right, but it's not too bad. */
+        if (breakindent[numbreaks-2] == breakindent[numbreaks-1] && breakparen[numbreaks-2] != breakparen[numbreaks-1])
+          penalty += sameindentpenalty;
+
+        #if 0
+          else if (ch == '\002' && parens &&  /*don't think this is needed*/
+             parens->indent == breakindent[numbreaks-1] && parens->pos != breakparen[numbreaks-1])
+          penalty += sameindentpenalty + 0.001;   /***/
+        #endif
+
+        penalty += (breakindent[numbreaks-1] - thisindent) * indentamountpenalty;
+        if (penalty < 1)
+          penalty = 1;
+
+        pos2 = pos;
+        while (pos2 < outbufpos && outbuf[pos2] == ' ')
+          pos2++;
+
+        flags |= TB_ALREADYBRK;
+        j = trybreakline(pos2, count, indent, badness + penalty, flags, parens) & jmask;
+        numbreaks--;
+        return j;
+      //}}}
+      case '"':
+      //{{{
+      case '\'':
+        closing = ch;
+        while (pos < outbufpos && outbuf[pos] != closing) {
+          if (outbuf[pos] == '\\')
+            pos++, count++;
+          pos++;
+          count++;
+          }
+
+        if (pos >= outbufpos) {
+          intwarning ("output", "Mismatched quotes [248]");
           continue;
           }
 
-        if (sectionsize > blanklines)
-          blanklines = sectionsize;
-
-        sectionsize = 0;
-        if (eatblanks)
-          blanklines = 0;
-
-        while (blanklines > 0) {
-          //  more blank lines
-          blanklines--;
-          end_source();
-          putc_outf ('\n');
-          flush_outfilebuf();
-          outf_lnum++;
+        pos++;
+        count++;
+        break;
+      //}}}
+      //{{{
+      case '/':
+        if (pos < outbufpos && (outbuf[pos] == '*' || (outbuf[pos] == '/' && slashslash))) {
+          count += measurechars(pos, outbufpos-1);
+          pos = outbufpos;   /* assume comment is at end of line */
           }
-
-        if (thisindent + outbufcount >= linewidth && !dontbreaklines) {
-          //{{{  try to break lines
-          numbreaks = 1;
-          bestnumbreaks = 0;
-          bestbadness = BIGBADNESS;
-          breakpos[0] = 0;
-          breakindent[0] = thisindent;
-          breakcount[0] = 0;
-          breakerrorflag = 1;
-          numedits = 0;
-          bestnumedits = 0;
-          savelimit = showbadlimit;
-          numalts = 0;
-          bestnumalts = 0;
-          savemaxlw = maxlinewidth;
-
-          if (regression)
-            srand(17);
-
-          if (thisindent + outbufcount > linewidth*3/2) {
-            //{{{  try some breaks
-            i = 0;
-            maxdepth = 0;
-            readparens(&i, 0);
-            maxdp = maxdepth;
-            for (;;) {    /* try some simple fixed methods first... */
-              for (i = 1; i <= 20; i++) {
-                randombreaks = -1;
-                trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-                }
-              randombreaks = -2;
-              trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-              for (i = 0; i <= maxdp+1; i++) {
-                randombreaks = i+1;
-                trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-                }
-              if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
-                maxlinewidth = 9999;   /* no choice but to relax */
-                numalts = 0;
-                }
-              else
-                break;
-              }
-            }
-            //}}}
-
-          randombreaks = 0;
-          trybreakline (0, 0, thisindent, 0.0, 0, NULL);
-          if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
-            numalts = 0;
-            maxlinewidth = 9999;   /* no choice but to relax this */
-            trybreakline (0, 0, thisindent, 0.0, 0, NULL);
-            }
-
-          alts = numalts;
-          if (testinglinebreaker) {
-            if (savelimit < 0 && testinglinebreaker > 1) {
-              showbadlimit = bestbadness * (-savelimit);
-              numalts = 0;
-              bestnumalts = 0;
-              trybreakline(0, 0, thisindent, 0.0, 0, NULL);
-              }
-            fprintf(outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld */\n", bestnumalts, bestbadness, alts);
-            }
-
-          showbadlimit = savelimit;
-          maxlinewidth = savemaxlw;
-          flush_outbuf (bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
-
-          if (verbose) {
-            fprintf (logfile, "%s, %d/%d: Line breaker spent %ld tries\n", infname, inf_lnum, outf_lnum, alts);
-            }
-          if (testinglinebreaker)
-            fprintf(outf, "#endif\n\n");
-          }
-          //}}}
-        else if (testinglinebreaker < 2)
-          flush_outbuf (0, NULL, NULL, 0, NULL, NULL, NULL);
-
-        thisfutureindent = -1;
-        outbufpos = 0;
-        outbufcount = 0;
-        }
-        //}}}
-      else {
-        if (outbufpos == 0) {
-          // eat leading spaces
-          if (ch == ' ' && !dontbreaklines)
-            continue;
-          thisindent = applydelta (outindent, deltaindent);
-          deltaindent = 0;
-          }
-
-        if (outbufpos == outbufsize) {
-          outbufsize *= 2;
-          outbuf = REALLOC(outbuf, outbufsize, char);
-          }
-
-        outbuf[outbufpos++] = ch;
-        if (ch >= ' ' || ch == '\f')
-          outbufcount++;
-        }
+        break;
+      //}}}
       }
     }
-//}}}
-//{{{
-void out_n_spaces (n)
-int n;
-{
-    while (--n >= 0)
-  output(" ");
-}
-//}}}
-//{{{
-void out_spaces (spc, over, len, delta)
-int spc, over, len, delta;
-{
-    int n;
 
-    if (spc == -999)
-  spc = commentindent;
-    if (spc < 0) {               /* right-justify */
-  n = (-spc) - cur_column() - len;
-  if (n < minspcthresh)
+  numalts++;
+  badness += extra;
+  if (testinglinebreaker > 1) {
+    if (badness >= bestbadness &&
+        (badness < showbadlimit || showbadlimit == 0)) {
+      fprintf(outf, "\n#if 0   /* rejected #%ld, badness = %g >= %g */\n", numalts, badness, bestbadness);
+      flush_outbuf(numbreaks, breakpos, breakindent,
+      numedits, editpos, editold, editnew);
+      fprintf(outf, "#endif\n");
+      return TBR_SIMPLE & jmask;
+      }
+    else if ((bestbadness < showbadlimit || showbadlimit == 0) &&
+      bestnumalts > 0) {
+      fprintf(outf, "\n#if 0   /* rejected #%ld, badness = %g > %g */\n", bestnumalts, bestbadness, badness);
+      flush_outbuf(bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
+      fprintf(outf, "#endif\n");
+      }
+    }
+
+  bestbadness = badness;
+  bestnumbreaks = numbreaks;
+  bestnumalts = numalts;
+  for (i = 0; i < numbreaks; i++) {
+    bestbreakpos[i] = breakpos[i];
+    bestbreakindent[i] = breakindent[i];
+    }
+  bestnumedits = numedits;
+
+  for (i = 0; i < numedits; i++) {
+    besteditpos[i] = editpos[i];
+    besteditold[i] = editold[i];
+    besteditnew[i] = editnew[i];
+    }
+
+  return TBR_SIMPLE & jmask;
+  }
+//}}}
+
+//{{{
+int parse_breakstr (char *cp) {
+
+  short val = 0;
+
+  if (isdigit(*cp))
+    return atoi(cp);
+  while (*cp && !isspace(*cp) && *cp != '}') {
+
+    switch (toupper(*cp++)) {
+      case 'N':
+      case '=':
+        break;
+
+      case 'L':
+        val |= BRK_LEFT;
+        break;
+
+      case 'R':
+        val |= BRK_RIGHT;
+        break;
+
+      case 'H':
+        val |= BRK_HANG | BRK_LEFT;
+        break;
+
+      case '>':
+        if (val & BRK_LEFT)
+          val |= BRK_LPREF;
+        else if (val & BRK_RIGHT)
+          val |= BRK_RPREF;
+        else
+          return -1;
+        break;
+
+      case '<':
+        if (val & BRK_LEFT)
+          val |= BRK_RPREF;
+        else if (val & BRK_RIGHT)
+          val |= BRK_LPREF;
+        else
+          return -1;
+        break;
+
+      case 'A':
+        val |= BRK_ALLNONE;
+        break;
+
+      default:
+        return -1;
+      }
+    }
+
+  return val;
+  }
+//}}}
+//{{{
+void output (char *msg) {
+
+  unsigned char ch;
+  double savelimit;
+  int i, savemaxlw, maxdp;
+  long alts;
+
+  debughook();
+
+  if (outputmode) {
+    end_source();
+    while ((ch = *msg++) != 0) {
+      if (ch >= ' ') {
+        putc_outf (ch);
+        }
+      else if (ch == '\n' || ch == '\r') {
+        putc_outf (ch);
+        flush_outfilebuf();
+        outf_lnum++;
+        }
+      }
+    return;
+    }
+
+  while ((ch = *msg++) != 0) {
+    if (ch == '\n' || ch == '\r') {
+      //{{{  lf or cr
+      if (outbufpos == 0) {
+        //  blank line
+        thisfutureindent = -1;
+        blanklines++;
+        continue;
+        }
+
+      if (sectionsize > blanklines)
+        blanklines = sectionsize;
+
+      sectionsize = 0;
+      if (eatblanks)
+        blanklines = 0;
+
+      while (blanklines > 0) {
+        //  more blank lines
+        blanklines--;
+        end_source();
+        putc_outf ('\n');
+        flush_outfilebuf();
+        outf_lnum++;
+        }
+
+      if (thisindent + outbufcount >= linewidth && !dontbreaklines) {
+        //{{{  try to break lines
+        numbreaks = 1;
+        bestnumbreaks = 0;
+        bestbadness = BIGBADNESS;
+        breakpos[0] = 0;
+        breakindent[0] = thisindent;
+        breakcount[0] = 0;
+        breakerrorflag = 1;
+        numedits = 0;
+        bestnumedits = 0;
+        savelimit = showbadlimit;
+        numalts = 0;
+        bestnumalts = 0;
+        savemaxlw = maxlinewidth;
+
+        if (regression)
+          srand(17);
+
+        if (thisindent + outbufcount > linewidth*3/2) {
+          //{{{  try some breaks
+          i = 0;
+          maxdepth = 0;
+          readparens(&i, 0);
+          maxdp = maxdepth;
+          for (;;) {    /* try some simple fixed methods first... */
+            for (i = 1; i <= 20; i++) {
+              randombreaks = -1;
+              trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+              }
+            randombreaks = -2;
+            trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+            for (i = 0; i <= maxdp+1; i++) {
+              randombreaks = i+1;
+              trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+              }
+            if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
+              maxlinewidth = 9999;   /* no choice but to relax */
+              numalts = 0;
+              }
+            else
+              break;
+            }
+          }
+          //}}}
+
+        randombreaks = 0;
+        trybreakline (0, 0, thisindent, 0.0, 0, NULL);
+        if (bestbadness == BIGBADNESS && maxlinewidth < 9999) {
+          numalts = 0;
+          maxlinewidth = 9999;   /* no choice but to relax this */
+          trybreakline (0, 0, thisindent, 0.0, 0, NULL);
+          }
+
+        alts = numalts;
+        if (testinglinebreaker) {
+          if (savelimit < 0 && testinglinebreaker > 1) {
+            showbadlimit = bestbadness * (-savelimit);
+            numalts = 0;
+            bestnumalts = 0;
+            trybreakline(0, 0, thisindent, 0.0, 0, NULL);
+            }
+          fprintf(outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld */\n", bestnumalts, bestbadness, alts);
+          }
+
+        showbadlimit = savelimit;
+        maxlinewidth = savemaxlw;
+        flush_outbuf (bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
+
+        if (verbose) {
+          fprintf (logfile, "%s, %d/%d: Line breaker spent %ld tries\n", infname, inf_lnum, outf_lnum, alts);
+          }
+        if (testinglinebreaker)
+          fprintf(outf, "#endif\n\n");
+        }
+        //}}}
+      else if (testinglinebreaker < 2)
+        flush_outbuf (0, NULL, NULL, 0, NULL, NULL, NULL);
+
+      thisfutureindent = -1;
+      outbufpos = 0;
+      outbufcount = 0;
+      }
+      //}}}
+    else {
+      if (outbufpos == 0) {
+        // eat leading spaces
+        if (ch == ' ' && !dontbreaklines)
+          continue;
+        thisindent = applydelta (outindent, deltaindent);
+        deltaindent = 0;
+        }
+
+      if (outbufpos == outbufsize) {
+        outbufsize *= 2;
+        outbuf = REALLOC(outbuf, outbufsize, char);
+        }
+
+      outbuf[outbufpos++] = ch;
+      if (ch >= ' ' || ch == '\f')
+        outbufcount++;
+      }
+    }
+  }
+//}}}
+//{{{
+void out_n_spaces (int n) {
+
+  while (--n >= 0)
+    output(" ");
+  }
+//}}}
+//{{{
+void out_spaces (int spc, int over, int len, int delta) {
+
+  int n;
+
+  if (spc == -999)
+    spc = commentindent;
+
+  if (spc < 0) {               /* right-justify */
+    n = (-spc) - cur_column() - len;
+    if (n < minspcthresh)
       n = minspacing;
-  else
+    else
       over = 1000;
-    } else if (spc >= 2000) {    /* tab to multiple */
-  spc -= 2000;
-  n = (spc-1) - ((cur_column()+spc-1) % spc);
-  if (n < minspcthresh)
-      n += spc;
-    } else if (spc >= 1000) {    /* absolute column */
-  spc -= 1000;
-  n = spc - cur_column();
-  if (n < minspcthresh)
-      n = minspacing;
-    } else                       /* relative spacing */
-  n = spc;
-    if (line_start()) {
-  singleindent(n);
-    } else if (len > 0 && over != 1000 && cur_column() + n + len > linewidth) {
-  output("\n");
-  out_spaces(over, 1000, len, 0);
-  singleindent(delta);
-    } else {
-  out_n_spaces(n);
     }
-}
+  else if (spc >= 2000) {    /* tab to multiple */
+    spc -= 2000;
+    n = (spc-1) - ((cur_column()+spc-1) % spc);
+    if (n < minspcthresh)
+      n += spc;
+    }
+  else if (spc >= 1000) {    /* absolute column */
+    spc -= 1000;
+    n = spc - cur_column();
+    if (n < minspcthresh)
+      n = minspacing;
+    }
+  else                       /* relative spacing */
+    n = spc;
+
+  if (line_start()) {
+    singleindent(n);
+    }
+  else if (len > 0 && over != 1000 && cur_column() + n + len > linewidth) {
+    output("\n");
+    out_spaces(over, 1000, len, 0);
+    singleindent(delta);
+    }
+  else {
+    out_n_spaces(n);
+    }
+  }
 //}}}
 //{{{
-void testlinebreaker (lev, fn)
-int lev;
-char *fn;
-{
-    char buf[256], *bp, *cp;
-    int first, indent;
+void testlinebreaker (int lev, char *fn) {
 
-    testinglinebreaker = lev;
-    if (!fn)
-  return;
-    inf = fopen(fn, "r");
-    if (!inf) {
-  perror(fn);
-  exit_failure();
+ char buf[256], *bp, *cp;
+  int first, indent;
+
+  testinglinebreaker = lev;
+  if (!fn)
+    return;
+  inf = fopen(fn, "r");
+  if (!inf) {
+    perror(fn);
+    exit_failure();
     }
-    sprintf(buf, "%s.br", fn);
-    outf = fopen(buf, "w");
-    if (!outf) {
-  perror(buf);
-  exit_failure();
+  sprintf(buf, "%s.br", fn);
+  outf = fopen(buf, "w");
+  if (!outf) {
+    perror(buf);
+    exit_failure();
     }
-    setup_out();
-    outindent = 4;
-    first = 1;
-    while (fgets(buf, 256, inf)) {
-  cp = buf + strlen(buf) - 2;
-  if (cp >= buf) {
+
+  setup_out();
+  outindent = 4;
+  first = 1;
+  while (fgets(buf, 256, inf)) {
+    cp = buf + strlen(buf) - 2;
+    if (cp >= buf) {
       bp = buf;
       indent = 0;
       while (isspace(*bp))
-    if (*bp++ == '\t')
-        indent += 8;
-    else
-        indent++;
+        if (*bp++ == '\t')
+         indent += 8;
+        else
+          indent++;
       if (first) {
-    first = 0;
-    outindent = indent;
-      }
-      if (!(*cp == '{' ||
-      *cp == ')' ||
-      *cp == ';') ||
-      (*cp == '/' && cp[-1] == '*')) {
-    cp[1] = '\001';   /* eat the \n */
-      } else {
-    first = 1;
-      }
-      output(bp);
-  }
-    }
-    fclose(outf);
-    fclose(inf);
-}
-//}}}
-//{{{
-void outsection (size)
-int size;
-{
-    if (size > sectionsize)
-        sectionsize = size;
-}
-//}}}
-
-//{{{
-int isembedcomment (cmt)
-Strlist *cmt;
-{
-    int len = strlen(embedcomment);
-    return (cmt && len > 0 && !strncmp(cmt->s, embedcomment, len) &&
-      (isspace(cmt->s[len]) ||
-       (!cmt->s[len] && cmt->next &&
-        (*cmt->next->s == '\002' || *cmt->next->s == '\003'))));
-}
-//}}}
-//{{{
-Strlist* outcomments (cmt)
-Strlist* cmt;
-{
-    char* cp;
-    int saveindent = outindent, savesingle = deltaindent, theindent;
-    int saveeat = eatcomments;
-    int i = 0;
-    int slash;
-
-    if (!cmt)
-      return NULL;
-
-    if (!commentvisible(cmt)) {
-      setcommentkind(cmt, CMT_DONE);
-      return cmt->next;
-      }
-
-    if (*cmt->s == '\001') {
-      cp = cmt->s;
-      if (cp[1] == '\014') {
-        output("\f\n");
-        cp += 2;
-        if (*cp == '\001')
-          cp++;
+        first = 0;
+        outindent = indent;
         }
-
-      for ( ; *cp; cp++) {
-        output("\n");
-        }
-
-      setcommentkind(cmt, CMT_DONE);
-      return cmt->next;
-      }
-
-    dontbreaklines++;
-
-    if (isembedcomment(cmt)) {
-      embeddedcode = 1;
-      eatcomments = 0;
-      if (!strcmp(cmt->s, embedcomment)) {
-        cmt = cmt->next;
-        theindent = 0;
-        cp = cmt/*->next*/->s + 1;
-        while (*cp++ == ' ')
-          theindent++;
+      if (!(*cp == '{' || *cp == ')' || *cp == ';') || (*cp == '/' && cp[-1] == '*')) {
+        cp[1] = '\001';   /* eat the \n */
         }
       else {
-        strcpy(cmt->s, cmt->s + strlen(embedcomment) + 1);
-        moreindent(deltaindent);
-        theindent = outindent;
-        deltaindent = 0;
+        first = 1;
         }
-      slash = 0;
+      output(bp);
+      }
+    }
+
+  fclose(outf);
+  fclose(inf);
+  }
+//}}}
+//{{{
+void outsection (int size) {
+
+  if (size > sectionsize)
+    sectionsize = size;
+  }
+//}}}
+
+//{{{
+int isembedcomment (Strlist* cmt) {
+
+  int len = strlen(embedcomment);
+  return (cmt && len > 0 && !strncmp(cmt->s, embedcomment, len) &&
+         (isspace(cmt->s[len]) ||
+         (!cmt->s[len] && cmt->next &&
+         (*cmt->next->s == '\002' || *cmt->next->s == '\003'))));
+  }
+//}}}
+//{{{
+Strlist* outcomments (Strlist* cmt) {
+
+  char* cp;
+  int saveindent = outindent, savesingle = deltaindent, theindent;
+  int saveeat = eatcomments;
+  int i = 0;
+  int slash;
+
+  if (!cmt)
+    return NULL;
+
+  if (!commentvisible(cmt)) {
+    setcommentkind(cmt, CMT_DONE);
+    return cmt->next;
+    }
+
+  if (*cmt->s == '\001') {
+    cp = cmt->s;
+    if (cp[1] == '\014') {
+      output("\f\n");
+      cp += 2;
+      if (*cp == '\001')
+        cp++;
+      }
+
+    for ( ; *cp; cp++) {
+      output("\n");
+      }
+
+    setcommentkind(cmt, CMT_DONE);
+    return cmt->next;
+    }
+
+  dontbreaklines++;
+
+  if (isembedcomment(cmt)) {
+    embeddedcode = 1;
+    eatcomments = 0;
+    if (!strcmp(cmt->s, embedcomment)) {
+      cmt = cmt->next;
+      theindent = 0;
+      cp = cmt/*->next*/->s + 1;
+      while (*cp++ == ' ')
+        theindent++;
       }
     else {
+      strcpy(cmt->s, cmt->s + strlen(embedcomment) + 1);
       moreindent(deltaindent);
-      if (cmt->s[0] == '\004')
-        outindent = 0;
       theindent = outindent;
       deltaindent = 0;
-      slash = (slashslash && (slashslash == 2 || outbufpos == 0 || outbuf[0] != '#'));
-      if (!slash)
-        output("/*");
       }
+    slash = 0;
+    }
+  else {
+    moreindent(deltaindent);
+    if (cmt->s[0] == '\004')
+      outindent = 0;
+    theindent = outindent;
+    deltaindent = 0;
+    slash = (slashslash && (slashslash == 2 || outbufpos == 0 || outbuf[0] != '#'));
+    if (!slash)
+      output("/*");
+    }
 
-    cp = cmt->s;
-    for (;;) {
-      if (slash)
-        output("//");
-      if (*cp == '\002')
-        cp++;
-      else if (*cp == '\003' || *cp == '\004') {
-        outindent = 0;
-        cp++;
-        }
-
-      if (embeddedcode) {
-       for (i = 0; *cp == ' ' && i < theindent; i++)
-          cp++;
-        i = *cp;
-        if (*cp == '#')
-        outindent = 0;
-        }
-
-      output (cp);
-      setcommentkind (cmt, CMT_DONE);
-      cmt = cmt->next;
-      if (!cmt || !commentvisible(cmt))
-        break;
-      cp = cmt->s;
-      if (*cp != '\002' && *cp != '\003')
-        break;
-      output ("\n");
-      if (!embeddedcode) {
-        outindent = (*cp == '\002') ? theindent : 0;
-        deltaindent = 0;
-        }
+  cp = cmt->s;
+  for (;;) {
+    if (slash)
+      output("//");
+    if (*cp == '\002')
+      cp++;
+    else if (*cp == '\003' || *cp == '\004') {
+      outindent = 0;
+      cp++;
       }
 
     if (embeddedcode) {
-      embeddedcode = 0;
-      if (i) {   /* eat final blank line */
-        output ("\n");
-        }
-      }
-    else {
-      if (!slash)
-        output ("*/");
-      output ("\n");
+     for (i = 0; *cp == ' ' && i < theindent; i++)
+        cp++;
+      i = *cp;
+      if (*cp == '#')
+      outindent = 0;
       }
 
-    outindent = saveindent;
-    deltaindent = savesingle;
-    dontbreaklines--;
-    eatcomments = saveeat;
-    return cmt;
+    output (cp);
+    setcommentkind (cmt, CMT_DONE);
+
+    cmt = cmt->next;
+    if (!cmt || !commentvisible(cmt))
+      break;
+
+    cp = cmt->s;
+    if (*cp != '\002' && *cp != '\003')
+      break;
+
+    output ("\n");
+
+    if (!embeddedcode) {
+      outindent = (*cp == '\002') ? theindent : 0;
+      deltaindent = 0;
+      }
     }
+
+  if (embeddedcode) {
+    embeddedcode = 0;
+    if (i) {   /* eat final blank line */
+      output ("\n");
+      }
+    }
+  else {
+    if (!slash)
+      output ("*/");
+    output ("\n");
+    }
+
+  outindent = saveindent;
+  deltaindent = savesingle;
+  dontbreaklines--;
+  eatcomments = saveeat;
+  return cmt;
+  }
 //}}}
 //{{{
-void outcomment (Strlist *cmt) {
+void outcomment (Strlist* cmt) {
 
   Strlist *savenext;
 
@@ -1438,7 +1491,7 @@ void outcomment (Strlist *cmt) {
   }
 //}}}
 //{{{
-void outtrailcomment (Strlist *cmt, int serial, int indent) {
+void outtrailcomment (Strlist* cmt, int serial, int indent) {
 
   int savedelta = deltaindent;
 
@@ -1459,7 +1512,7 @@ void outtrailcomment (Strlist *cmt, int serial, int indent) {
   }
 //}}}
 //{{{
-void flushcomments (Strlist **cmt, int kind, int serial) {
+void flushcomments (Strlist** cmt, int kind, int serial) {
 
   Strlist *cmt2, *cmt3;
   int saveindent, savesingle, saveeat;
@@ -1490,7 +1543,7 @@ void flushcomments (Strlist **cmt, int kind, int serial) {
 //}}}
 
 //{{{
-char* rawCstring (char *fmt, char *s, int len, int special) {
+char* rawCstring (char* fmt, char* s, int len, int special) {
 
   char buf[500];
   char *cp;
@@ -1554,7 +1607,7 @@ char* rawCstring (char *fmt, char *s, int len, int special) {
   }
 //}}}
 //{{{
-char* makeCstring (char *s, int len) {
+char* makeCstring (char* s, int len) {
 
   return rawCstring ("\"%s\"", s, len, 0);
   }

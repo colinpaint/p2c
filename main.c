@@ -617,7 +617,7 @@ Static void openlogfile() {
     fprintf (logfile, "Translated");
 
     time (&starting_time);
-    fprintf (logfile, " on %s", ctime(&starting_time));
+    fprintf (logfile, " on %s", ctime (&starting_time));
     fprintf (logfile, "\n");
     }
 
@@ -667,12 +667,6 @@ void showinitfile() {
   fclose (f);
   }
 //}}}
-//{{{
-void usage() {
-  fprintf(stderr, "usage: p2c [-q -t -x -e -v -check] file\n");
-  exit_failure();
-  }
-//}}}
 
 //{{{
 void exit_failure() {
@@ -718,6 +712,12 @@ char* stmtkindname (enum stmtkind kind) {
 //}}}
 
 //{{{
+void usage() {
+  fprintf (stderr, "usage: p2c [-q -t -x -e -v -check] file\n");
+  exit_failure();
+  }
+//}}}
+//{{{
 int main (int argc, char** argv) {
 
   printf ("p2c commandLine parsed as");
@@ -739,7 +739,7 @@ int main (int argc, char** argv) {
   initrc();
   setup_dir();
 
-  // skip past switches to infname text
+  // skip past switches till infname text
   char infnbuf[200];
   infname = infnbuf;
   *infname = 0;
@@ -770,7 +770,7 @@ int main (int argc, char** argv) {
   partialdump = 1;
   numsearch = 0;
 
-  //{{{  over complicated argv parser
+  //{{{  option parser
   argc--;
   argv++;
 
@@ -806,7 +806,7 @@ int main (int argc, char** argv) {
           maxerrors = atoi (*argv + 2);
         }
 
-      else if (argv[0][1] == 'V') {
+      else if (argv[0][1] == 'v') {
         if (strlen (*argv) == 2)
           verbose = 1;
         else
@@ -928,10 +928,6 @@ int main (int argc, char** argv) {
   for (sl = librfiles; sl; sl = sl->next)
     if (strlist_find (librfiles, sl->s) == sl)
       p_search (format_none(sl->s), "pas", 0);
-
-  // load something ???
-  for (i = 0; i < numsearch; i++)
-    p_search (format_none (searchlist[i]), "pas", 1);
 
   // unsave quietmode
   quietmode = savequiet;

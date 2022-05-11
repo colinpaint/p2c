@@ -123,7 +123,7 @@ Static void forward_decl (Meaning* func, int isextern) {
   }
 //}}}
 //{{{
-void need_forward_decl (Meaning *func) {
+void need_forward_decl (Meaning* func) {
 // Check if calling a parent procedure, whose body must  be declared forward
 
   Meaning* mp;
@@ -282,7 +282,7 @@ int stmtcount (Stmt *sp) {
 //}}}
 
 //{{{
-Stmt* close_files_to_ctx (Meaning *ctx) {
+Stmt* close_files_to_ctx (Meaning* ctx) {
 
   Meaning *ctx2, *mp;
   Stmt *splist = NULL, *sp;
@@ -304,7 +304,7 @@ Stmt* close_files_to_ctx (Meaning *ctx) {
   }
 //}}}
 //{{{
-void withrecordtype (Type *tp, Expr *ex) {
+void withrecordtype (Type* tp, Expr* ex) {
 
   Type* tp2 = tp;
 
@@ -340,14 +340,14 @@ int simplewith (Expr *ex) {
   }
 //}}}
 //{{{
-int simplefor (Stmt *sp, Expr *ex) {
-  return (exprspeed (sp->exp2) <= 3 && 
-          !checkexprchanged (sp->stm1, sp->exp2) && 
+int simplefor (Stmt *sp, Expr* ex) {
+  return (exprspeed (sp->exp2) <= 3 &&
+          !checkexprchanged (sp->stm1, sp->exp2) &&
           !exproccurs (sp->exp2, ex));
 }
 //}}}
 //{{{
-int tryfuncmacro (Expr **exp, Meaning *mp) {
+int tryfuncmacro (Expr** exp, Meaning* mp) {
 
   char* name;
   Strlist* lp;
@@ -395,7 +395,7 @@ Static int memberfuncwithlevel;
 //}}}
 //}}}
 //{{{
-Static Stmt* p_stmt (Stmt *slist, int sflags) {
+Static Stmt* p_stmt (Stmt* slist, int sflags) {
 
   Stmt *sbase = NULL, **spp = &sbase, **spp2, **spp3, **savespp;
   Stmt *defsp, **defsphook;
@@ -1336,7 +1336,7 @@ Static void outnl (int serial) {
   }
 //}}}
 //{{{
-Static void out_block (Stmt *spbase, int opts, int serial) {
+Static void out_block (Stmt* spbase, int opts, int serial) {
 
   int i, j, braces, always, trynum, istrail, hascmt;
   int gotcomments = 0;
@@ -1952,162 +1952,170 @@ Static void out_block (Stmt *spbase, int opts, int serial) {
 //{{{
 /* Should have a way to convert GOTO's to the end of the function to RETURN's */
 /* Convert "_RETV = foo;" at end of function to "return foo" */
-Static int checkreturns (spp, nearret)
-Stmt **spp;
-int nearret;
-{
-    Stmt *sp;
-    Expr *rvar, *ex;
-    Meaning *mp;
-    int spnearret, spnextreturn;
-    int result = 0;
+Static int checkreturns (Stmt** spp, int nearret) {
 
-    while ((sp = *spp)) {
-        spnextreturn = (sp->next &&
-                        sp->next->kind == SK_RETURN && sp->next->exp1 &&
-                        isretvar(sp->next->exp1) == curctx->cbase);
-        spnearret = (nearret && !sp->next) || spnextreturn;
-        result = 0;
-        switch (sp->kind) {
+  Stmt *sp;
+  Expr *rvar, *ex;
+  Meaning *mp;
+  int spnearret, spnextreturn;
+  int result = 0;
 
-            case SK_ASSIGN:
-                ex = sp->exp1;
-                if (ex->kind == EK_ASSIGN || structuredfunc(ex)) {
-                    rvar = ex->args[0];
-                    mp = isretvar(rvar);
-                    if (mp == curctx->cbase && spnearret) {
-                        if (ex->kind == EK_ASSIGN) {
-                            if (mp->kind == MK_VARPARAM) {
-                                ex = makeexpr_comma(ex, makeexpr_var(mp));
-                            } else {
-                                ex = grabarg(ex, 1);
-                                mp->refcount--;
-                            }
-                        }
-                        sp->exp1 = ex;
-                        sp->kind = SK_RETURN;
-                        if (spnextreturn) {
-                            mp->refcount--;
-                            sp->next = sp->next->next;
-                        }
-                        result = 1;
-                    }
+  while ((sp = *spp)) {
+    spnextreturn = (sp->next &&
+                    sp->next->kind == SK_RETURN && sp->next->exp1 &&
+                    isretvar(sp->next->exp1) == curctx->cbase);
+    spnearret = (nearret && !sp->next) || spnextreturn;
+    result = 0;
+    switch (sp->kind) {
+      //{{{
+      case SK_ASSIGN:
+        ex = sp->exp1;
+        if (ex->kind == EK_ASSIGN || structuredfunc(ex)) {
+          rvar = ex->args[0];
+          mp = isretvar(rvar);
+          if (mp == curctx->cbase && spnearret) {
+            if (ex->kind == EK_ASSIGN) {
+              if (mp->kind == MK_VARPARAM) {
+                ex = makeexpr_comma(ex, makeexpr_var(mp));
                 }
-                break;
+              else {
+                ex = grabarg(ex, 1);
+                mp->refcount--;
+                }
+              }
 
-            case SK_RETURN:
-            case SK_GOTO:
-                result = 1;
-                break;
+            sp->exp1 = ex;
+            sp->kind = SK_RETURN;
 
-            case SK_IF:
-                result = checkreturns(&sp->stm1, spnearret) &    /* NOT && */
-                         checkreturns(&sp->stm2, spnearret);
-                break;
+            if (spnextreturn) {
+              mp->refcount--;
+              sp->next = sp->next->next;
+              }
 
-            case SK_TRY:
-                (void) checkreturns(&sp->stm1, 0);
-                (void) checkreturns(&sp->stm2, spnearret);
-                break;
+            result = 1;
+            }
+          }
 
-            /* should handle CASE statements as well */
+        break;
+      //}}}
 
-            default:
-                (void) checkreturns(&sp->stm1, 0);
-                (void) checkreturns(&sp->stm2, 0);
-                break;
-        }
-        spp = &sp->next;
+      case SK_RETURN:
+      case SK_GOTO:
+        result = 1;
+        break;
+
+      case SK_IF:
+        result = checkreturns(&sp->stm1, spnearret) &    /* NOT && */
+                 checkreturns(&sp->stm2, spnearret);
+        break;
+
+      case SK_TRY:
+        (void) checkreturns(&sp->stm1, 0);
+        (void) checkreturns(&sp->stm2, spnearret);
+        break;
+
+      /* should handle CASE statements as well */
+      default:
+        (void) checkreturns(&sp->stm1, 0);
+        (void) checkreturns(&sp->stm2, 0);
+        break;
+      }
+
+    spp = &sp->next;
     }
-    return result;
-}
 
+  return result;
+  }
 //}}}
 //{{{
 /* Replace all occurrences of one expression with another expression */
 
-Expr* replaceexprexpr (ex, oldex, newex, keeptype)
-Expr *ex, *oldex, *newex;
-int keeptype;
-{
-    int i;
-    Type *type;
+Expr* replaceexprexpr (Expr* ex, Expr* oldex, Expr* newex, int keeptype) {
 
-    for (i = 0; i < ex->nargs; i++)
-        ex->args[i] = replaceexprexpr(ex->args[i], oldex, newex, keeptype);
-    if (exprsame(ex, oldex, 2)) {
-        if (ex->val.type->kind == TK_POINTER &&
-            ex->val.type->basetype == oldex->val.type) {
-            freeexpr(ex);
-            return makeexpr_addr(copyexpr(newex));
-        } else if (oldex->val.type->kind == TK_POINTER &&
-                   oldex->val.type->basetype == ex->val.type) {
-            freeexpr(ex);
-            return makeexpr_hat(copyexpr(newex), 0);
-        } else {
+  int i;
+  Type *type;
+
+  for (i = 0; i < ex->nargs; i++)
+    ex->args[i] = replaceexprexpr(ex->args[i], oldex, newex, keeptype);
+
+  if (exprsame(ex, oldex, 2)) {
+    if (ex->val.type->kind == TK_POINTER &&
+        ex->val.type->basetype == oldex->val.type) {
+      freeexpr(ex);
+      return makeexpr_addr(copyexpr(newex));
+      }
+    else if (oldex->val.type->kind == TK_POINTER &&
+             oldex->val.type->basetype == ex->val.type) {
+      freeexpr(ex);
+      return makeexpr_hat(copyexpr(newex), 0);
+      }
+    else {
       type = ex->val.type;
-            freeexpr(ex);
-            ex = copyexpr(newex);
+      freeexpr(ex);
+      ex = copyexpr(newex);
       if (keeptype)
-    ex->val.type = type;
+        ex->val.type = type;
       return ex;
-        }
+      }
     }
-    return resimplify(ex);
-}
+
+  return resimplify(ex);
+  }
 //}}}
 //{{{
-void replaceexpr (sp, oldex, newex)
-Stmt *sp;
-Expr *oldex, *newex;
-{
-    while (sp) {
-        replaceexpr(sp->stm1, oldex, newex);
-        replaceexpr(sp->stm2, oldex, newex);
-        if (sp->exp1)
-            sp->exp1 = replaceexprexpr(sp->exp1, oldex, newex, 1);
-        if (sp->exp2)
-            sp->exp2 = replaceexprexpr(sp->exp2, oldex, newex, 1);
-        if (sp->exp3)
-            sp->exp3 = replaceexprexpr(sp->exp3, oldex, newex, 1);
-        sp = sp->next;
+void replaceexpr (Stmt *sp, Expr *oldex, Expr *newex) {
+
+  while (sp) {
+    replaceexpr (sp->stm1, oldex, newex);
+    replaceexpr (sp->stm2, oldex, newex);
+
+    if (sp->exp1)
+      sp->exp1 = replaceexprexpr (sp->exp1, oldex, newex, 1);
+
+    if (sp->exp2)
+      sp->exp2 = replaceexprexpr (sp->exp2, oldex, newex, 1);
+
+    if (sp->exp3)
+      sp->exp3 = replaceexprexpr (sp->exp3, oldex, newex, 1);
+
+    sp = sp->next;
     }
-}
+  }
 //}}}
 //{{{
-Stmt* mixassignments (sp, mp)
-Stmt *sp;
-Meaning *mp;
-{
-    if (!sp)
-        return NULL;
-    sp->next = mixassignments(sp->next, mp);
-    if (sp->next &&
-   sp->kind == SK_ASSIGN &&
-         sp->exp1->kind == EK_ASSIGN &&
-         sp->exp1->args[0]->kind == EK_VAR &&
-         (!mp || mp == (Meaning *)sp->exp1->args[0]->val.i) &&
-         ord_type(sp->exp1->args[0]->val.type)->kind == TK_INTEGER &&
-         nodependencies(sp->exp1->args[1], 0) &&
-         sp->next->kind == SK_ASSIGN &&
-         sp->next->exp1->kind == EK_ASSIGN &&
-         (exprsame(sp->exp1->args[0], sp->next->exp1->args[0], 1) ||
-          (mp && mp->istemporary)) &&
-         exproccurs(sp->next->exp1->args[1], sp->exp1->args[0]) == 1) {
-        sp->next->exp1->args[1] = replaceexprexpr(sp->next->exp1->args[1],
-                                                  sp->exp1->args[0],
-                                                  sp->exp1->args[1], 1);
-        if (mp && mp->istemporary)
-            canceltempvar(mp);
-        return sp->next;
+Stmt* mixassignments (Stmt *sp, Meaning *mp) {
+
+  if (!sp)
+    return NULL;
+
+  sp->next = mixassignments(sp->next, mp);
+  if (sp->next &&
+      sp->kind == SK_ASSIGN &&
+      sp->exp1->kind == EK_ASSIGN &&
+      sp->exp1->args[0]->kind == EK_VAR &&
+      (!mp || mp == (Meaning *)sp->exp1->args[0]->val.i) &&
+      ord_type(sp->exp1->args[0]->val.type)->kind == TK_INTEGER &&
+      nodependencies(sp->exp1->args[1], 0) &&
+      sp->next->kind == SK_ASSIGN &&
+      sp->next->exp1->kind == EK_ASSIGN &&
+      (exprsame(sp->exp1->args[0], sp->next->exp1->args[0], 1) || (mp && mp->istemporary)) &&
+      exproccurs(sp->next->exp1->args[1], sp->exp1->args[0]) == 1) {
+    sp->next->exp1->args[1] = replaceexprexpr (sp->next->exp1->args[1],
+                                               sp->exp1->args[0],
+                                               sp->exp1->args[1], 1);
+    if (mp && mp->istemporary)
+      canceltempvar (mp);
+
+     return sp->next;
     }
-    return sp;
-}
+
+  return sp;
+  }
 //}}}
 
 Static Stmt bogusreturn = { SK_RETURN, NULL, NULL, NULL, NULL, NULL, NULL };
 //{{{
-Static int isescape (Expr *ex) {
+Static int isescape (Expr* ex) {
 
   if (ex->kind == EK_BICALL && (!strcmp(ex->val.s, name_ESCAPE) ||
                                 !strcmp(ex->val.s, name_ESCIO) ||
@@ -2126,7 +2134,7 @@ Static int isescape (Expr *ex) {
   }
 //}}}
 //{{{
-Static int deadendblock (Stmt *sp, int breaks) {
+Static int deadendblock (Stmt* sp, int breaks) {
 /* check if a block can never exit by falling off the end */
 
   if (!sp)
@@ -2139,12 +2147,12 @@ Static int deadendblock (Stmt *sp, int breaks) {
           sp->kind == SK_CASECHECK ||
           ((sp->kind == SK_GOTO || sp->kind == SK_BREAK ||
           sp->kind == SK_CONTINUE) && breaks) ||
-          (sp->kind == SK_IF && deadendblock(sp->stm1, breaks) && deadendblock(sp->stm2, breaks)) || 
+          (sp->kind == SK_IF && deadendblock(sp->stm1, breaks) && deadendblock(sp->stm2, breaks)) ||
           (sp->kind == SK_ASSIGN && isescape(sp->exp1)));
   }
 //}}}
 //{{{
-int expr_is_bool (Expr *ex, int want) {
+int expr_is_bool (Expr* ex, int want) {
 
   long val;
   if (ex->val.type == tp_boolean && isconstexpr(ex, &val))
@@ -2154,7 +2162,7 @@ int expr_is_bool (Expr *ex, int want) {
   }
 //}}}
 //{{{
-int implies (Expr *c1, Expr *c2, int not1, int not2) {
+int implies (Expr* c1, Expr* c2, int not1, int not2) {
 /* Returns 1 if c1 implies c2, 0 otherwise */
 /* If not1 is true, then checks if (!c1) implies c2; similarly for not2 */
 /* Identities used:
@@ -2325,113 +2333,116 @@ void infiniteloop (Stmt *sp) {
 
 //{{{  print utils
 //{{{
-Expr* print_func (ex)
-Expr *ex;
-{
-    if (!ex || ex->kind != EK_BICALL)
-  return NULL;
-    if ((!strcmp(ex->val.s, "printf") &&
-   ex->args[0]->kind == EK_CONST) ||
-  !strcmp(ex->val.s, "putchar") ||
-  !strcmp(ex->val.s, "puts"))
-  return ex_output;
-    if ((!strcmp(ex->val.s, "fprintf") ||
-   !strcmp(ex->val.s, "sprintf")) &&
-  ex->args[1]->kind == EK_CONST)
-  return ex->args[0];
-    if (!strcmp(ex->val.s, "putc") ||
-  !strcmp(ex->val.s, "fputc") ||
-  !strcmp(ex->val.s, "fputs"))
-  return ex->args[1];
+Expr* print_func (Expr *ex) {
+
+  if (!ex || ex->kind != EK_BICALL)
     return NULL;
-}
 
+  if ((!strcmp(ex->val.s, "printf") && ex->args[0]->kind == EK_CONST) ||
+      !strcmp(ex->val.s, "putchar") || !strcmp(ex->val.s, "puts"))
+    return ex_output;
+
+  if ((!strcmp(ex->val.s, "fprintf") || !strcmp(ex->val.s, "sprintf")) &&
+      ex->args[1]->kind == EK_CONST)
+    return ex->args[0];
+
+  if (!strcmp(ex->val.s, "putc") || !strcmp(ex->val.s, "fputc") || !strcmp(ex->val.s, "fputs"))
+    return ex->args[1];
+
+  return NULL;
+  }
 //}}}
 //{{{
-int printnl_func (ex)
-Expr *ex;
-{
-    char *cp, ch;
-    int i, len;
+int printnl_func (Expr *ex) {
 
-    if (!strcmp(ex->val.s, "printf") ||
-  !strcmp(ex->val.s, "puts") ||
-  !strcmp(ex->val.s, "fputs")) {
-  if (ex->args[0]->kind != EK_CONST)
+  char *cp, ch;
+  int i, len;
+
+  if (!strcmp (ex->val.s, "printf") || !strcmp (ex->val.s, "puts") || !strcmp (ex->val.s, "fputs")) {
+    if (ex->args[0]->kind != EK_CONST)
       return 0;
-  cp = (char*)ex->args[0]->val.s;
-  len = (int)ex->args[0]->val.i;
-    } else if (!strcmp(ex->val.s, "fprintf")) {
-  if (ex->args[1]->kind != EK_CONST)
+    cp = (char*)ex->args[0]->val.s;
+    len = (int)ex->args[0]->val.i;
+    } 
+
+  else if (!strcmp(ex->val.s, "fprintf")) {
+    if (ex->args[1]->kind != EK_CONST)
       return 0;
-  cp = (char*)ex->args[1]->val.s;
-  len = (int)ex->args[1]->val.i;
-    } else if (!strcmp(ex->val.s, "putchar") ||
-         !strcmp(ex->val.s, "putc") ||
-         !strcmp(ex->val.s, "fputc")) {
-  if (ex->args[0]->kind != EK_CONST)
+    cp = (char*)ex->args[1]->val.s;
+    len = (int)ex->args[1]->val.i;
+    } 
+
+  else if (!strcmp (ex->val.s, "putchar") || !strcmp (ex->val.s, "putc") || !strcmp (ex->val.s, "fputc")) {
+    if (ex->args[0]->kind != EK_CONST)
       return 0;
-  ch = (char)ex->args[0]->val.i;
-  cp = &ch;
-  len = 1;
-    } else
-  return 0;
-    for (i = 1; i <= len; i++)
-  if (*cp++ != '\n')
+    ch = (char)ex->args[0]->val.i;
+    cp = &ch;
+    len = 1;
+    } 
+
+  else
+    return 0;
+
+  for (i = 1; i <= len; i++)
+    if (*cp++ != '\n')
       return 0;
-    return len + (!strcmp(ex->val.s, "puts"));
-}
+
+  return len + (!strcmp (ex->val.s, "puts"));
+  }
 //}}}
 //{{{
-Expr* chg_printf (ex)
-Expr *ex;
-{
-    Expr *fex;
+Expr* chg_printf (Expr *ex) {
 
-    if (!strcmp(ex->val.s, "putchar")) {
-  ex = makeexpr_sprintfify(grabarg(ex, 0));
-  canceltempvar(istempvar(ex->args[0]));
-  strchange(&ex->val.s, "printf");
-  delfreearg(&ex, 0);
-  ex->val.type = tp_void;
-    } else if (!strcmp(ex->val.s, "putc") ||
-         !strcmp(ex->val.s, "fputc") ||
-         !strcmp(ex->val.s, "fputs")) {
-  fex = copyexpr(ex->args[1]);
-  ex = makeexpr_sprintfify(grabarg(ex, 0));
-  canceltempvar(istempvar(ex->args[0]));
-  strchange(&ex->val.s, "fprintf");
-  ex->args[0] = fex;
-  ex->val.type = tp_void;
-    } else if (!strcmp(ex->val.s, "puts")) {
-  ex = makeexpr_concat(makeexpr_sprintfify(grabarg(ex, 0)),
-           makeexpr_string("\n"), 1);
-  strchange(&ex->val.s, "printf");
-  delfreearg(&ex, 0);
-  ex->val.type = tp_void;
+  Expr *fex;
+
+  if (!strcmp(ex->val.s, "putchar")) {
+    ex = makeexpr_sprintfify (grabarg(ex, 0));
+    canceltempvar (istempvar (ex->args[0]));
+    strchange (&ex->val.s, "printf");
+    delfreearg (&ex, 0);
+    ex->val.type = tp_void;
+    } 
+  else if (!strcmp(ex->val.s, "putc") ||
+           !strcmp(ex->val.s, "fputc") ||
+           !strcmp(ex->val.s, "fputs")) {
+    fex = copyexpr(ex->args[1]);
+    ex = makeexpr_sprintfify (grabarg(ex, 0));
+    canceltempvar (istempvar(ex->args[0]));
+    strchange (&ex->val.s, "fprintf");
+    ex->args[0] = fex;
+    ex->val.type = tp_void;
+    } 
+  else if (!strcmp(ex->val.s, "puts")) {
+    ex = makeexpr_concat (makeexpr_sprintfify (grabarg (ex, 0)), makeexpr_string ("\n"), 1);
+    strchange (&ex->val.s, "printf");
+    delfreearg (&ex, 0);
+    ex->val.type = tp_void;
     }
-    if (!strcmp(ex->val.s, "fprintf") && exprsame(ex->args[0], ex_output, 1)) {
-  delfreearg(&ex, 0);
-  strchange(&ex->val.s, "printf");
+
+  if (!strcmp (ex->val.s, "fprintf") && exprsame (ex->args[0], ex_output, 1)) {
+    delfreearg (&ex, 0);
+    strchange (&ex->val.s, "printf");
     }
-    return ex;
-}
+
+  return ex;
+  }
 //}}}
 //{{{
-Expr* mix_printf (ex, ex2)
-Expr *ex, *ex2;
-{
-    int i;
+Expr* mix_printf (Expr *ex, Expr *ex2) {
 
-    ex = chg_printf(ex);
-    ex2 = chg_printf(copyexpr(ex2));
-    i = (!strcmp(ex->val.s, "printf")) ? 0 : 1;
-    ex->args[i] = makeexpr_concat(ex->args[i], ex2->args[i], 0);
-    for (i++; i < ex2->nargs; i++) {
-  insertarg(&ex, ex->nargs, ex2->args[i]);
-    }
-    return ex;
-}
+  int i;
+
+  ex = chg_printf (ex);
+  ex2 = chg_printf (copyexpr (ex2));
+  i = (!strcmp (ex->val.s, "printf")) ? 0 : 1;
+
+  ex->args[i] = makeexpr_concat (ex->args[i], ex2->args[i], 0);
+
+  for (i++; i < ex2->nargs; i++)
+    insertarg (&ex, ex->nargs, ex2->args[i]);
+
+  return ex;
+  }
 //}}}
 //}}}
 //{{{  Data flow analysis
@@ -4124,7 +4135,7 @@ int checkvaroffset (Stmt *sp, Meaning *mp) {
 //}}}
 
 //{{{
-Expr* initfilevar (Expr *ex) {
+Expr* initfilevar (Expr* ex) {
 
   Expr *ex2;
   Meaning *mp;
@@ -4202,7 +4213,7 @@ Static Stmt* findinittab[FINDINITMAX];
 Static int findinitstep[FINDINITMAX];
 Static int findinitokay;
 //{{{
-Static void findinitsexpr (Expr *ex) {
+Static void findinitsexpr (Expr* ex) {
 
   int i;
   for (i = 0; i < ex->nargs; i++)
@@ -4213,7 +4224,7 @@ Static void findinitsexpr (Expr *ex) {
   }
 //}}}
 //{{{
-Static int findinitscheckexpr (Expr *ex, Meaning *mp) {
+Static int findinitscheckexpr (Expr* ex, Meaning* mp) {
 
   if (ex->kind == EK_VAR && (Meaning *)ex->val.i == mp)
     return 1;
@@ -4228,7 +4239,7 @@ Static int findinitscheckexpr (Expr *ex, Meaning *mp) {
   }
 //}}}
 //{{{
-Static int findinitscheckstmt (Stmt *sp, Meaning *mp) {
+Static int findinitscheckstmt (Stmt* sp, Meaning* mp) {
 
   while (sp) {
     if (sp->exp1 && findinitscheckexpr(sp->exp1, mp))
@@ -4248,7 +4259,7 @@ Static int findinitscheckstmt (Stmt *sp, Meaning *mp) {
   }
 //}}}
 //{{{
-Static int anygotos (Stmt *sp) {
+Static int anygotos (Stmt* sp) {
 
   while (sp) {
     if (sp->kind == SK_GOTO)
@@ -4264,7 +4275,7 @@ Static int anygotos (Stmt *sp) {
   }
 //}}}
 //{{{
-Static void findinits (Stmt *sp, int depth, int okay) {
+Static void findinits (Stmt* sp, int depth, int okay) {
 
   Meaning *mp;
   Expr *ex;
@@ -4691,7 +4702,7 @@ Meaning *mp;
 
 //}}}
 //{{{
-Static void scanfwdparams (Meaning *mp) {
+Static void scanfwdparams (Meaning* mp) {
 
   Symbol* sym;
   mp = mp->type->fbase;
@@ -4703,7 +4714,7 @@ Static void scanfwdparams (Meaning *mp) {
   }
 //}}}
 //{{{
-Static void out_include (char *name, int quoted) {
+Static void out_include (char* name, int quoted) {
 
   if (*name == '"' || *name == '<')
     output (format_s ("#include %s\n", name));
@@ -4714,7 +4725,7 @@ Static void out_include (char *name, int quoted) {
   }
 //}}}
 //{{{
-Static void cleanheadername (char *dest, char *name) {
+Static void cleanheadername (char* dest, char* name) {
 
   if (*name == '<' || *name == '"')
     name++;
@@ -4733,7 +4744,7 @@ Static void cleanheadername (char *dest, char *name) {
   }
 //}}}
 //{{{
-Static int tryimport (Symbol *sym, char *fname, char *ext, int need) {
+Static int tryimport (Symbol* sym, char* fname, char* ext, int need) {
 
   int found = 0;
   Meaning *savectx, *savectxlast;

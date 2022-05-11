@@ -24,22 +24,22 @@ Static int cmttablesize;
 Static uchar* cmttable;
 Static int grabbed_comment;
 
-//   \001\001\001...      Blank line(s), one \001 char per blank line
-//   \001\014\001\001...  Form feed followed by blank lines
-//   \002text...          Additional line for previous comment
-//   \003text...          Additional comment line, absolutely indented
-//   \004text...    Note or warning line, unindented
+//  \001\001\001...      Blank line(s), one \001 char per blank line
+//  \001\014\001\001...  Form feed followed by blank lines
+//  \002text...          Additional line for previous comment
+//  \003text...          Additional comment line, absolutely indented
+//  \004text...          Note or warning line, unindented
 //{{{
-void setup_comment()
-{
-    curcomments = NULL;
-    cmttablesize = 200;
-    cmttable = ALLOC(cmttablesize, uchar, misc);
-    grabbed_comment = 0;
-}
+void setup_comment() {
+
+  curcomments = NULL;
+  cmttablesize = 200;
+  cmttable = ALLOC(cmttablesize, uchar, misc);
+  grabbed_comment = 0;
+  }
 //}}}
 //{{{
-int commentlen (Strlist *cmt) {
+int commentlen (Strlist* cmt) {
 
   if (cmt)
     if (*(cmt->s))
@@ -51,7 +51,7 @@ int commentlen (Strlist *cmt) {
   }
 //}}}
 //{{{
-int commentvisible (Strlist *cmt) {
+int commentvisible (Strlist* cmt) {
 
   return (cmt &&
           getcommentkind(cmt) != CMT_DONE &&
@@ -109,7 +109,7 @@ void steal_comments (long olds, long news, int always) {
   }
 //}}}
 //{{{
-Strlist* fixbeginendcomment (Strlist *cmt) {
+Strlist* fixbeginendcomment (Strlist* cmt) {
 
   char *cp, *cp2;
 
@@ -149,7 +149,7 @@ Strlist* fixbeginendcomment (Strlist *cmt) {
   }
 //}}}
 //{{{
-Static void attach_mark (Stmt *sp) {
+Static void attach_mark (Stmt* sp) {
 
   long serial;
 
@@ -169,7 +169,7 @@ Static void attach_mark (Stmt *sp) {
 //}}}
 
 //{{{
-void attach_comments (Stmt *sbase) {
+void attach_comments (Stmt* sbase) {
 
   Strlist *cmt;
   long serial, i, j;
@@ -225,8 +225,7 @@ void attach_comments (Stmt *sbase) {
   }
 //}}}
 //{{{
-void setcommentkind (Strlist *cmt, int kind) {
-
+void setcommentkind (Strlist* cmt, int kind) {
   cmt->value = (cmt->value & CMT_MASK) | ((long)kind << CMT_SHIFT);
   }
 //}}}
@@ -270,7 +269,7 @@ void commentline (int kind) {
 //}}}
 
 //{{{
-void addnote (char *msg, long serial) {
+void addnote (char* msg, long serial) {
 
   int len1, len2, xextra, extra;
   int defer = (notephase > 0 && spitcomments == 0);
@@ -292,7 +291,7 @@ void addnote (char *msg, long serial) {
     fprintf (logfile, "%s:%d:%d: %s\n", infname, inf_lnum, outf_lnum, msg);
 
   if (notephase == 2 || regression)
-    prefix = format_s("\004 p2c: %s:", infname);
+    prefix = format_s ("\004 p2c: %s:", infname);
   else
     prefix = format_sd ("\004 p2c: %s, line %d:", infname, inf_lnum);
 
@@ -304,10 +303,10 @@ void addnote (char *msg, long serial) {
   else {
     extra = xextra = 0;
     while (len2 - extra > linewidth-6) {
-      while (extra < len2 && !isspace(msg[extra]))
+      while (extra < len2 && !isspace (msg[extra]))
         extra++;
       xextra = extra;
-      while (extra < len2 && isspace(msg[extra]))
+      while (extra < len2 && isspace (msg[extra]))
       extra++;
       }
 
@@ -319,18 +318,19 @@ void addnote (char *msg, long serial) {
     msg = format_s ("\003 * %s ", msg);
     }
 
-  sl = strlist_append(pbase, msg);
+  sl = strlist_append (pbase, msg);
   sl->value = serial;
-  setcommentkind(sl, CMT_POST);
+  setcommentkind (sl, CMT_POST);
+
   outputmode++;
-  outcomments(base);
+  outcomments (base);
   outputmode--;
 }
 //}}}
 
 //{{{
-/* Grab a comment off the end of the current line */
 Strlist* grabcomment (int kind) {
+/* Grab a comment off the end of the current line */
 
   char *cp, *cp2, *cp3, *cp4;
   Strlist *cmt, *savecmt;
@@ -436,15 +436,17 @@ Strlist* grabcomment (int kind) {
   }
 //}}}
 //{{{
-int matchcomment (Strlist *cmt, int kind, long stamp) {
+int matchcomment (Strlist* cmt, int kind, long stamp) {
 
   if (spitcomments == 1 && (cmt->value & CMT_MASK) != 10000 && *cmt->s != '\001' && (kind >= 0 || stamp >= 0))
     return 0;
 
   if (!cmt || getcommentkind(cmt) == CMT_DONE)
     return 0;
+
   if (stamp >= 0 && (cmt->value & CMT_MASK) != stamp)
     return 0;
+
   if (kind >= 0) {
     if (kind & CMT_NOT) {
       if (getcommentkind(cmt) == kind - CMT_NOT)
@@ -460,7 +462,7 @@ int matchcomment (Strlist *cmt, int kind, long stamp) {
   }
 //}}}
 //{{{
-Strlist* findcomment (Strlist *cmt, int kind, long stamp) {
+Strlist* findcomment (Strlist* cmt, int kind, long stamp) {
 
   while (cmt && !matchcomment(cmt, kind, stamp))
     cmt = cmt->next;
@@ -469,11 +471,12 @@ Strlist* findcomment (Strlist *cmt, int kind, long stamp) {
     fprintf(outf, "Found comment %ld %s\n",
 
   cmt->value & CMT_MASK, cmt->s);
+
   return cmt;
   }
 //}}}
 //{{{
-Strlist* extractcomment (Strlist **cmt, int kind, long stamp) {
+Strlist* extractcomment (Strlist** cmt, int kind, long stamp) {
 
   Strlist *base, **last, *sl;
 
@@ -491,11 +494,12 @@ Strlist* extractcomment (Strlist **cmt, int kind, long stamp) {
     }
 
    *last = NULL;
+
   return base;
   }
 //}}}
 //{{{
-void changecomments (Strlist *cmt, int okind, long ostamp, int kind, long stamp) {
+void changecomments (Strlist* cmt, int okind, long ostamp, int kind, long stamp) {
 
   while (cmt) {
     if (matchcomment(cmt, okind, ostamp)) {

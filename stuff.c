@@ -259,7 +259,7 @@ void strchange (char** v, char* s) {
 static char *(formatbuf[NUMBUF]);
 static int nextformat = -1;
 #define getformat()  ((nextformat=(nextformat+1)%NUMBUF), formatbuf[nextformat])
-
+//{{{  case defines
 #define FF_UCASE   0x1
 #define FF_LCASE   0x2
 #define FF_REMSUFF 0x4
@@ -267,7 +267,7 @@ static int nextformat = -1;
 #define FF_PRESERVE 0x10
 #define FF_REMSLASH 0x20
 #define FF_REMUNDER 0x40
-
+//}}}
 //{{{
 Static void cvcase (char *buf, int flags) {
 

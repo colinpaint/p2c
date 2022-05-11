@@ -21,7 +21,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #include "main.h"
 
 //{{{
-Expr *dots_n_hats(ex, target)
+Expr *dots_n_hats (ex, target)
 Expr *ex;
 Type *target;
 {
@@ -168,7 +168,7 @@ Type *target;
 }
 //}}}
 //{{{
-Expr *p_index(Expr *ex, Expr *ex2) {
+Expr *p_index (Expr *ex, Expr* ex2) {
 
   Expr *ex3;
   Type *tp, *ot;
@@ -229,7 +229,7 @@ Expr *p_index(Expr *ex, Expr *ex2) {
 //}}}
 
 //{{{
-Expr *fake_dots_n_hats (Expr *ex) {
+Expr *fake_dots_n_hats (Expr* ex) {
 
   for (;;) {
     switch (curtok) {
@@ -302,7 +302,7 @@ Static void bindnames (Expr* ex) {
 //}}}
 
 //{{{
-void var_reference (Meaning *mp) {
+void var_reference (Meaning* mp) {
 
   Meaning *mp2;
 
@@ -340,7 +340,7 @@ void var_reference (Meaning *mp) {
   }
 //}}}
 //{{{
-Expr* expr_reference (Expr *ex) {
+Expr* expr_reference (Expr* ex) {
 
   int i;
   for (i = 0; i < ex->nargs; i++)
@@ -513,7 +513,7 @@ Expr *packset (Expr* ex, Type* type) {
 
 #define MAXSETLIT 400
 //{{{
-Expr *p_setfactor (Type *target, int sure) {
+Expr *p_setfactor (Type* target, int sure) {
 
   Expr *ex, *exmax = NULL, *ex2;
   Expr *first[MAXSETLIT], *last[MAXSETLIT];
@@ -4006,61 +4006,48 @@ Static void wrexpr (Expr *ex, int prec) {
 //}}}
 
 //{{{
+void out_expr (Expr* ex) {
 /* will parenthesize assignments and "," operators */
 
-void out_expr(ex)
-Expr *ex;
-{
-    wrexpr(ex, 2);
-}
+  wrexpr(ex, 2);
+  }
 //}}}
 //{{{
+void out_expr_top (Expr* ex) {
 /* will not parenthesize anything at top level */
 
-void out_expr_top(ex)
-Expr *ex;
-{
-    wrexpr(ex, 0);
+  wrexpr(ex, 0);
 }
 //}}}
 //{{{
+void out_expr_factor (Expr* ex) {
 /* will parenthesize unless only writing a factor */
 
-void out_expr_factor(ex)
-Expr *ex;
-{
-    wrexpr(ex, 15);
-}
+  wrexpr(ex, 15);
+  }
 //}}}
 //{{{
+void out_expr_parens (Expr* ex) {
 /* will parenthesize always */
 
-void out_expr_parens(ex)
-Expr *ex;
-{
-    output("(");
-    wrexpr(ex, 1);
-    output(")");
-}
+  output ("(");
+  wrexpr (ex, 1);
+  output (")");
+  }
 //}}}
 //{{{
+void out_expr_stmt (Expr* ex) {
 /* evaluate expression for side effects only */
 /* no top-level parentheses */
 
-void out_expr_stmt(ex)
-Expr *ex;
-{
-    wrexpr(ex, 0);
-}
-
+  wrexpr(ex, 0);
+  }
 //}}}
 //{{{
+void out_expr_bool (Expr* ex) {
 /* evaluate expression for boolean (zero/non-zero) result only */
 /* parenthesizes like out_expr() */
 
-void out_expr_bool(ex)
-Expr *ex;
-{
-    wrexpr(ex, 2);
-}
+  wrexpr(ex, 2);
+  }
 //}}}
