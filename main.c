@@ -17,11 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
-#define _CRT_SECURE_NO_WARNINGS
-#define DEFINE_GLOBALS
-#define PROTO_TRANS_C
-#include "main.h"
-#include <time.h>
 //{{{  description
 /*
   main.h          Declarations for all public global variables, types, and macros.
@@ -62,6 +57,11 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
   p2clib.c        Run-time library used by translated programs.
 */
 //}}}
+#define _CRT_SECURE_NO_WARNINGS
+#define DEFINE_GLOBALS
+#define PROTO_TRANS_C
+#include "main.h"
+#include <time.h>
 
 //{{{
 #if !defined(NO_ISBOGUS) && (defined(mc68000) || defined(m68k) || defined(vax))
@@ -80,10 +80,15 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #endif
 //}}}
 
+Static int commandLineDebug = 0;
+//{{{  static vars
 Static Strlist* tweaksymbols;
 Static Strlist* synonyms;
+
 Strlist* addmacros;
-Static time_t starting_time;
+
+Static time_t startTime;
+//}}}
 //{{{
 Static void initrc() {
 
@@ -613,12 +618,10 @@ Static void openlogfile() {
 
   logfile = fopen (name, "w");
   if (logfile) {
-    fprintf (logfile, "\nTranslation of %s to %s by p2c %s\n", infname, codefname, P2C_VERSION);
-    fprintf (logfile, "Translated");
+    fprintf (logfile, "p2c %s to %s by version %s\n", infname, codefname, P2C_VERSION);
 
-    time (&starting_time);
-    fprintf (logfile, " on %s", ctime (&starting_time));
-    fprintf (logfile, "\n");
+    time (&startTime);
+    fprintf (logfile, "started %s\n", ctime (&startTime));
     }
 
   else {
@@ -630,47 +633,40 @@ Static void openlogfile() {
 //{{{
 void closelogfile() {
 
-  time_t ending_time;
-
   if (logfile) {
-    fprintf (logfile, "\n\n");
-
-    time (&ending_time);
-    fprintf (logfile, "Processed %d source lines in %ld:%ld seconds.\n",
-      inf_ltotal, ((long)ending_time - (long)starting_time) / 60,
-      ((long)ending_time - (long)starting_time) % 60);
-
-    fprintf (logfile, "\n\nTranslation completed on %s", ctime(&ending_time));
-
+    time_t endTime;
+    time (&endTime);
+    fprintf (logfile, "processed %d source lines in %ld:%ld seconds\n",
+                       inf_ltotal, ((long)endTime - (long)startTime) / 60,
+                       ((long)endTime - (long)startTime) % 60);
+    fprintf (logfile, "finished %s\n", ctime (&endTime));
     fclose (logfile);
     }
   }
 //}}}
 
 //{{{
+void exit_failure() {
+  exit(EXIT_FAILURE);
+  }
+//}}}
+//{{{
 void showinitfile() {
 
-  FILE *f;
-  int ch;
-  char *name;
-
-  name = format_s ("%s", "p2crc");
+  char* name = format_s ("%s", "p2crc");
   printf ("p2crc %s:\n", name);
-  f = fopen (name, "r");
+
+  FILE* f = fopen (name, "r");
   if (!f) {
     perror (name);
     exit_failure();
     }
 
+  int ch;
   while ((ch = getc(f)) != EOF)
     putchar (ch);
-  fclose (f);
-  }
-//}}}
 
-//{{{
-void exit_failure() {
-  exit(EXIT_FAILURE);
+  fclose (f);
   }
 //}}}
 
@@ -720,19 +716,21 @@ void usage() {
 //{{{
 int main (int argc, char** argv) {
 
-  printf ("p2c commandLine parsed as");
-  for (int i = 0; i < argc; i++)
-    printf (" %d:%s", i, argv[i]);
-  printf ("\n");
+  if (commandLineDebug) {
+    //{{{  commandLineDebug
+    printf ("p2c commandLine parsed as");
+    for (int i = 0; i < argc; i++)
+      printf (" %d:%s", i, argv[i]);
+    printf ("\n");
+    }
+    //}}}
 
   int numsearch;
-  char* searchlist[50];
   char codefnbuf[200];
   char hdrfnbuf[200];
   Symbol* sp;
   Strlist* sl;
   int nobuffer = 0;
-  int savequiet;
 
   init_stuff();
 
@@ -920,16 +918,12 @@ int main (int argc, char** argv) {
   handle_nameof();
   setup_complete = 1;
 
-  // save quietmode, not sure why
-  savequiet = quietmode;
+  // save quietmode while loading system.imp
+  int savequiet = quietmode;
   quietmode = 1;
-
-  // load system.imp
   for (sl = librfiles; sl; sl = sl->next)
     if (strlist_find (librfiles, sl->s) == sl)
       p_search (format_none(sl->s), "pas", 0);
-
-  // unsave quietmode
   quietmode = savequiet;
 
   p_program();
@@ -938,18 +932,15 @@ int main (int argc, char** argv) {
   showendnotes();
 
   check_unused_macros();
-  if (!quietmode)
-    printf ("\n");
 
   if (!showprogress && !quietmode)
     fprintf (stderr, "\n");
 
-  output ("\n");
   if (codef != stdout) {
     if (slashslash)
-      output ("\n\n// End.\n");
+      output ("// End\n");
     else
-      output ("\n\n/* End. */\n");
+      output ("/* End */\n");
     }
 
   // shutdown

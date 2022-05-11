@@ -322,30 +322,6 @@ Static void cvcase (char *buf, int flags) {
 //}}}
 
 //{{{
-/* Called regularly, for debugging purposes */
-void debughook() {
-
-  #if 0
-    Symbol *sp;
-    Meaning *mp;
-    static int flag = 0;
-
-    sp = findsymbol_opt("DEFSTIPPLES");
-    if (sp) {
-      mp = sp->mbase;
-      if (mp) {
-        flag = 1;
-        if (mp->sym != sp || mp->snext)
-        intwarning("debughook", "Inconsistent!");
-        }
-      else
-        if (flag)
-      intwarning("debughook", "Missing!");
-      }
-  #endif
-  }
-//}}}
-//{{{
 char* format_gen (char *fmt, long i1, long i2, double dbl, char *s1, char *s2, char *s3) {
 
   char *buf = getformat();
@@ -355,7 +331,6 @@ char* format_gen (char *fmt, long i1, long i2, double dbl, char *s1, char *s2, c
   char fmtbuf[50], *fp;
   Strlist *sl;
 
-  debughook();
   while (*src) {
     if (*src != '%') {
       *dst++ = *src++;

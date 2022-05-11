@@ -12,6 +12,7 @@ Release
 *.sa
 *.ro
 *.tmp
+*.log
 
 p2c
 test

@@ -39,7 +39,7 @@ Meaning *mp;
 }
 //}}}
 //{{{
-char *getstring(ex)
+char* getstring(ex)
 Expr *ex;
 {
     ex = makeexpr_stringify(ex);
@@ -51,7 +51,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Expr *p_parexpr(target)
+Expr* p_parexpr(target)
 Type *target;
 {
     Expr *ex;
@@ -66,7 +66,7 @@ Type *target;
 }
 //}}}
 //{{{
-Type *argbasetype(ex)
+Type* argbasetype(ex)
 Expr *ex;
 {
     if (ex->kind == EK_CAST)
@@ -78,7 +78,7 @@ Expr *ex;
 }
 //}}}
 //{{{
-Type *choosetype(t1, t2)
+Type* choosetype(t1, t2)
 Type *t1, *t2;
 {
     if (t1 == tp_void ||
@@ -89,7 +89,7 @@ Type *t1, *t2;
 }
 //}}}
 //{{{
-Expr *convert_offset(type, ex2)
+Expr* convert_offset(type, ex2)
 Type *type;
 Expr *ex2;
 {
@@ -163,7 +163,7 @@ Expr *ex2;
 }
 //}}}
 //{{{
-Expr *convert_size(type, ex, name)
+Expr* convert_size(type, ex, name)
 Type *type;
 Expr *ex;
 char *name;
@@ -350,7 +350,7 @@ Static Expr *func_addtopointer()
 }
 //}}}
 //{{{
-Stmt *proc_assert()
+Stmt* proc_assert()
 {
     Expr *ex;
 
@@ -359,7 +359,7 @@ Stmt *proc_assert()
 }
 //}}}
 //{{{
-Stmt *wrapopencheck(sp, fex)
+Stmt* wrapopencheck(sp, fex)
 Stmt *sp;
 Expr *fex;
 {
@@ -3082,7 +3082,7 @@ Static Stmt *proc_rewrite()
 }
 //}}}
 //{{{
-Stmt *doseek(fex, ex)
+Stmt* doseek(fex, ex)
 Expr *fex, *ex;
 {
     Expr *ex2;
@@ -4550,7 +4550,7 @@ Type *tp;
 //{{{
 /* This function must return a "tempsprintf" */
 
-Expr *writeelement(ex, wid, prec, base)
+Expr* writeelement(ex, wid, prec, base)
 Expr *ex, *wid, *prec;
 int base;
 {
@@ -5267,264 +5267,251 @@ Static Expr *func_xor()
 //}}}
 
 //{{{
-void decl_builtins()
-{
-    makespecialfunc( "ABS",           func_abs);
-    makespecialfunc( "ADDR",          func_addr);
-    if (!modula2)
-  makespecialfunc( "ADDRESS",   func_addr);
-    makespecialfunc( "ADDTOPOINTER",  func_addtopointer);
-    makespecialfunc( "ADR",           func_addr);
-    makespecialfunc( "ASL",       func_lsl);
-    makespecialfunc( "ASR",       func_asr);
-    makespecialfunc( "BADDRESS",      func_iaddress);
-    makespecialfunc( "BAND",        func_uand);
-    makespecialfunc( "BIN",           func_bin);
-    makespecialfunc( "BITNEXT",       func_bitnext);
-    makespecialfunc( "BITSIZE",       func_bitsize);
-    makespecialfunc( "BITSIZEOF",     func_bitsize);
-mp_blockread_ucsd =
-    makespecialfunc( "BLOCKREAD",     func_blockread);
-mp_blockwrite_ucsd =
-    makespecialfunc( "BLOCKWRITE",    func_blockwrite);
-    makespecialfunc( "BNOT",        func_unot);
-    makespecialfunc( "BOR",       func_uor);
-    makespecialfunc( "BSL",       func_bsl);
-    makespecialfunc( "BSR",       func_bsr);
-    makespecialfunc( "BTST",        func_btst);
-    makespecialfunc( "BXOR",        func_uxor);
-    makespecialfunc( "BYTEREAD",      func_byteread);
-    makespecialfunc( "BYTEWRITE",     func_bytewrite);
-    makespecialfunc( "BYTE_OFFSET",   func_byte_offset);
-    makespecialfunc( "CHR",           func_chr);
-    makespecialfunc( "CONCAT",        func_concat);
-    makespecialfunc( "DBLE",          func_float);
-mp_dec_dec =
-    makespecialfunc( "DEC",           func_dec);
-    makespecialfunc( "EOF",           func_eof);
-    makespecialfunc( "EOLN",          func_eoln);
-    makespecialfunc( "FCALL",         func_fcall);
-    makespecialfunc( "FILEPOS",       func_filepos);
-    makespecialfunc( "FILESIZE",      func_filesize);
-    makespecialfunc( "FLOAT",       func_float);
-    makespecialfunc( "HEX",           func_hex);
-    makespecialfunc( "HI",            func_hi);
-    makespecialfunc( "HIWORD",        func_hiword);
-    makespecialfunc( "HIWRD",         func_hiword);
-    makespecialfunc( "HIGH",          func_high);
-    makespecialfunc( "IADDRESS",      func_iaddress);
-    makespecialfunc( "INT",           func_int);
-    makespecialfunc( "LAND",        func_uand);
-    makespecialfunc( "LINT",        func_lint);
-    makespecialfunc( "LNOT",        func_unot);
-    makespecialfunc( "LO",            func_lo);
-    makespecialfunc( "LOCATION",      func_addr);
-    makespecialfunc( "LOOPHOLE",      func_loophole);
-    makespecialfunc( "LOR",       func_uor);
-    makespecialfunc( "LOWER",       func_lower);
-    makespecialfunc( "LOWORD",        func_loword);
-    makespecialfunc( "LOWRD",         func_loword);
-    makespecialfunc( "LSL",       func_lsl);
-    makespecialfunc( "LSR",       func_lsr);
-    makespecialfunc( "MAX",       func_max);
-    makespecialfunc( "MAXPOS",        func_maxpos);
-    makespecialfunc( "MIN",       func_min);
-mp_new_turbo =
-    makespecialfunc( "NEW_TURBO",     func_new_turbo);
-    makespecialfunc( "NEXT",          func_sizeof);
-    makespecialfunc( "OCT",           func_oct);
-    makespecialfunc( "OFS",           func_ofs);
-    makespecialfunc( "ORD",           func_ord);
-    makespecialfunc( "ORD4",          func_ord4);
-    makespecialfunc( "PI",        func_pi);
-    makespecialfunc( "POSITION",      func_position);
-    makespecialfunc( "PRED",          func_pred);
-    makespecialfunc( "QUAD",          func_float);
-    makespecialfunc( "RANDOM",        func_random);
-    makespecialfunc( "REF",       func_addr);
-    makespecialfunc( "SCAN",        func_scan);
-    makespecialfunc( "SEEKEOF",       func_seekeof);
-    makespecialfunc( "SEEKEOLN",      func_seekeoln);
-    makespecialfunc( "SEG",           func_seg);
-mp_self_func =
-    makespecialfunc( "SELF",          func_self);
-    makespecialfunc( "SIZE",          func_sizeof);
-    makespecialfunc( "SIZEOF",        func_sizeof);
-    makespecialfunc( "SNGL",          func_sngl);
-    makespecialfunc( "SQR",           func_sqr);
-    makespecialfunc( "STATUSV",       func_statusv);
-    makespecialfunc( "SUCC",          func_succ);
-    makespecialfunc( "TSIZE",         func_sizeof);
-    makespecialfunc( "TYPEOF",        func_typeof);
-    makespecialfunc( "UAND",        func_uand);
-    makespecialfunc( "UB",            func_ub);
-    makespecialfunc( "UDEC",          func_udec);
-    makespecialfunc( "UINT",          func_uint);
-    makespecialfunc( "UNOT",        func_unot);
-    makespecialfunc( "UOR",       func_uor);
-    makespecialfunc( "UPPER",       func_upper);
-    makespecialfunc( "UXOR",        func_uxor);
-mp_val_modula =
-    makespecialfunc( "VAL",       func_val_modula);
-    makespecialfunc( "WADDRESS",      func_iaddress);
-    makespecialfunc( "XOR",       func_xor);
+void decl_builtins() {
 
-    makestandardfunc("ARCTAN",        func_arctan);
-    makestandardfunc("ARCTANH",       func_arctanh);
-    makestandardfunc("BINARY",        func_binary);
-    makestandardfunc("CAP",           func_upcase);
-    makestandardfunc("COPY",          func_copy);
-    makestandardfunc("COS",           func_cos);
-    makestandardfunc("COSH",          func_cosh);
-    makestandardfunc("EXP",           func_exp);
-    makestandardfunc("EXP10",         func_pwroften);
-    makestandardfunc("EXPO",          func_expo);
-    makestandardfunc("FRAC",          func_frac);
-    makestandardfunc("INDEX",         func_strpos);
-    makestandardfunc("LASTPOS",       NULL);
-    makestandardfunc("LINEPOS",       NULL);
-    makestandardfunc("LENGTH",        func_strlen);
-    makestandardfunc("LN",            func_ln);
-    makestandardfunc("LOG",           func_log);
-    makestandardfunc("LOG10",         func_log);
-    makestandardfunc("LROUND",        func_round);
-    makestandardfunc("LTRUNC",        func_trunc);
-    makestandardfunc("MAXAVAIL",      func_maxavail);
-    makestandardfunc("MEMAVAIL",      func_memavail);
-    makestandardfunc("OCTAL",         func_octal);
-    makestandardfunc("ODD",           func_odd);
-    makestandardfunc("PAD",           func_pad);
-    makestandardfunc("PARAMCOUNT",    func_paramcount);
-    makestandardfunc("PARAMSTR",      func_paramstr);
-    makestandardfunc("POS",           func_pos);
-    makestandardfunc("PTR",           func_ptr);
-    makestandardfunc("PWROFTEN",      func_pwroften);
-    makestandardfunc("ROUND",         func_round);
-    makestandardfunc("SCANEQ",        func_scaneq);
-    makestandardfunc("SCANNE",        func_scanne);
-    makestandardfunc("SIN",           func_sin);
-    makestandardfunc("SINH",          func_sinh);
-    makestandardfunc("SQRT",          func_sqrt);
-mp_str_hp =
-    makestandardfunc("STR",           func_str_hp);
-    makestandardfunc("STRLEN",        func_strlen);
-    makestandardfunc("STRLTRIM",      func_strltrim);
-    makestandardfunc("STRMAX",        func_strmax);
-    makestandardfunc("STRPOS",        func_strpos);
-    makestandardfunc("STRRPT",        func_strrpt);
-    makestandardfunc("STRRTRIM",      func_strrtrim);
-    makestandardfunc("SUBSTR",        func_str_hp);
-    makestandardfunc("SWAP",          func_swap);
-    makestandardfunc("TAN",           func_tan);
-    makestandardfunc("TANH",          func_tanh);
-    makestandardfunc("TRUNC",         func_trunc);
-    makestandardfunc("UPCASE",        func_upcase);
-    makestandardfunc("UROUND",        func_uround);
-    makestandardfunc("UTRUNC",        func_utrunc);
+  makespecialfunc ("ABS",           func_abs);
+  makespecialfunc ("ADDR",          func_addr);
+  if (!modula2)
+    makespecialfunc ("ADDRESS",       func_addr);
+  makespecialfunc ("ADDTOPOINTER",  func_addtopointer);
+  makespecialfunc ("ADR",           func_addr);
+  makespecialfunc ("ASL",           func_lsl);
+  makespecialfunc ("ASR",           func_asr);
+  makespecialfunc ("BADDRESS",      func_iaddress);
+  makespecialfunc ("BAND",          func_uand);
+  makespecialfunc ("BIN",           func_bin);
+  makespecialfunc ("BITNEXT",       func_bitnext);
+  makespecialfunc ("BITSIZE",       func_bitsize);
+  makespecialfunc ("BITSIZEOF",     func_bitsize);
+  mp_blockread_ucsd = makespecialfunc ("BLOCKREAD",     func_blockread);
+  mp_blockwrite_ucsd = makespecialfunc ("BLOCKWRITE",    func_blockwrite);
+  makespecialfunc ("BNOT",          func_unot);
+  makespecialfunc ("BOR",           func_uor);
+  makespecialfunc ("BSL",           func_bsl);
+  makespecialfunc ("BSR",           func_bsr);
+  makespecialfunc ("BTST",          func_btst);
+  makespecialfunc ("BXOR",          func_uxor);
+  makespecialfunc ("BYTEREAD",      func_byteread);
+  makespecialfunc ("BYTEWRITE",     func_bytewrite);
+  makespecialfunc ("BYTE_OFFSET",   func_byte_offset);
+  makespecialfunc ("CHR",           func_chr);
+  makespecialfunc ("CONCAT",        func_concat);
+  makespecialfunc ("DBLE",          func_float);
+  mp_dec_dec = makespecialfunc ("DEC",           func_dec);
+  makespecialfunc ("EOF",           func_eof);
+  makespecialfunc ("EOLN",          func_eoln);
+  makespecialfunc ("FCALL",         func_fcall);
+  makespecialfunc ("FILEPOS",       func_filepos);
+  makespecialfunc ("FILESIZE",      func_filesize);
+  makespecialfunc ("FLOAT",       func_float);
+  makespecialfunc ("HEX",           func_hex);
+  makespecialfunc ("HI",            func_hi);
+  makespecialfunc ("HIWORD",        func_hiword);
+  makespecialfunc ("HIWRD",         func_hiword);
+  makespecialfunc( "HIGH",          func_high);
+  makespecialfunc ("IADDRESS",      func_iaddress);
+  makespecialfunc ("INT",           func_int);
+  makespecialfunc ("LAND",        func_uand);
+  makespecialfunc ("LINT",        func_lint);
+  makespecialfunc ("LNOT",        func_unot);
+  makespecialfunc ("LO",            func_lo);
+  makespecialfunc ("LOCATION",      func_addr);
+  makespecialfunc ("LOOPHOLE",      func_loophole);
+  makespecialfunc ("LOR",       func_uor);
+  makespecialfunc ("LOWER",       func_lower);
+  makespecialfunc ("LOWORD",        func_loword);
+  makespecialfunc ("LOWRD",         func_loword);
+  makespecialfunc ("LSL",       func_lsl);
+  makespecialfunc ("LSR",       func_lsr);
+  makespecialfunc ("MAX",       func_max);
+  makespecialfunc ("MAXPOS",        func_maxpos);
+  makespecialfunc( "MIN",       func_min);
+  mp_new_turbo = makespecialfunc ("NEW_TURBO",     func_new_turbo);
+  makespecialfunc ("NEXT",          func_sizeof);
+  makespecialfunc ("OCT",           func_oct);
+  makespecialfunc ("OFS",           func_ofs);
+  makespecialfunc ("ORD",           func_ord);
+  makespecialfunc ("ORD4",          func_ord4);
+  makespecialfunc ("PI",        func_pi);
+  makespecialfunc ("POSITION",      func_position);
+  makespecialfunc ("PRED",          func_pred);
+  makespecialfunc ("QUAD",          func_float);
+  makespecialfunc ("RANDOM",        func_random);
+  makespecialfunc ("REF",       func_addr);
+  makespecialfunc ("SCAN",        func_scan);
+  makespecialfunc ("SEEKEOF",       func_seekeof);
+  makespecialfunc ("SEEKEOLN",      func_seekeoln);
+  makespecialfunc ("SEG",           func_seg);
+  mp_self_func = makespecialfunc ("SELF",          func_self);
+  makespecialfunc ("SIZE",          func_sizeof);
+  makespecialfunc ("SIZEOF",        func_sizeof);
+  makespecialfunc ("SNGL",          func_sngl);
+  makespecialfunc ("SQR",           func_sqr);
+  makespecialfunc ("STATUSV",       func_statusv);
+  makespecialfunc ("SUCC",          func_succ);
+  makespecialfunc ("TSIZE",         func_sizeof);
+  makespecialfunc ("TYPEOF",        func_typeof);
+  makespecialfunc ("UAND",        func_uand);
+  makespecialfunc ("UB",            func_ub);
+  makespecialfunc ("UDEC",          func_udec);
+  makespecialfunc ("UINT",          func_uint);
+  makespecialfunc ("UNOT",        func_unot);
+  makespecialfunc ("UOR",       func_uor);
+  makespecialfunc ("UPPER",       func_upper);
+  makespecialfunc ("UXOR",        func_uxor);
+  mp_val_modula = makespecialfunc ("VAL",       func_val_modula);
+  makespecialfunc ("WADDRESS",      func_iaddress);
+  makespecialfunc ("XOR",       func_xor);
 
-    makespecialproc( "APPEND",        proc_append);
-    makespecialproc( "ARGV",        proc_argv);
-    makespecialproc( "ASSERT",        proc_assert);
-    makespecialproc( "ASSIGN",        proc_assign);
-    makespecialproc( "BCLR",        proc_bclr);
-mp_blockread_turbo =
-    makespecialproc( "BLOCKREAD_TURBO", proc_blockread);
-mp_blockwrite_turbo =
-    makespecialproc( "BLOCKWRITE_TURBO", proc_blockwrite);
-    makespecialproc( "BREAK",         proc_flush);
-    makespecialproc( "BSET",        proc_bset);
-    makespecialproc( "CALL",          proc_call);
-    makespecialproc( "CLOSE",         proc_close);
-    makespecialproc( "CONNECT",       proc_assign);
-    makespecialproc( "CYCLE",       proc_cycle);
-    makespecialproc( "DATE",        proc_date);
-mp_dec_turbo =
-    makespecialproc( "DEC_TURBO",     proc_dec);
-    makespecialproc( "DISPOSE",       proc_dispose);
-    makespecialproc( "ESCAPE",        proc_escape);
-    makespecialproc( "EXCL",          proc_excl);
-    makespecialproc( "EXIT",          proc_exit);
-    makespecialproc( "EXTEND",        proc_append);
-    makespecialproc( "FILLCHAR",      proc_fillchar);
-    makespecialproc( "FLUSH",         proc_flush);
-    makespecialproc( "GET",           proc_get);
-    makespecialproc( "HALT",          proc_halt);
-    makespecialproc( "INC",           proc_inc);
-    makespecialproc( "INCL",          proc_incl);
-    makespecialproc( "LEAVE",       proc_leave);
-    makespecialproc( "LOCATE",        proc_seek);
-    makespecialproc( "MESSAGE",       proc_message);
-    makespecialproc( "MOVE_FAST",     proc_move_fast);
-    makespecialproc( "MOVE_L_TO_R",   proc_move_fast);
-    makespecialproc( "MOVE_R_TO_L",   proc_move_fast);
-mp_new_normal =
-    makespecialproc( "NEW",           proc_new);
-    if (which_lang != LANG_VAX)
-  makespecialproc( "OPEN",      proc_open);
-    makespecialproc( "OVERPRINT",     proc_overprint);
-    makespecialproc( "PACK",          proc_pack);
-    makespecialproc( "PAGE",          proc_page);
-    makespecialproc( "PUT",           proc_put);
-    makespecialproc( "PROMPT",        proc_prompt);
-    makespecialproc( "RANDOMIZE",     proc_randomize);
-    makespecialproc( "READ",          proc_read);
-    makespecialproc( "READDIR",       proc_readdir);
-    makespecialproc( "READLN",        proc_readln);
-    makespecialproc( "READV",         proc_readv);
-    makespecialproc( "RESET",         proc_reset);
-    makespecialproc( "REWRITE",       proc_rewrite);
-    makespecialproc( "SEEK",          proc_seek);
-    makespecialproc( "SETNAME",       proc_assign);
-    makespecialproc( "SETSTRLEN",     proc_setstrlen);
-    makespecialproc( "SETTEXTBUF",    proc_settextbuf);
-mp_str_turbo =
-    makespecialproc( "STR_TURBO",     proc_str_turbo);
-    makespecialproc( "STRAPPEND",     proc_strappend);
-    makespecialproc( "STRDELETE",     proc_strdelete);
-    makespecialproc( "STRINSERT",     proc_strinsert);
-    makespecialproc( "STRMOVE",       proc_strmove);
-    makespecialproc( "STRREAD",       proc_strread);
-    makespecialproc( "STRWRITE",      proc_strwrite);
-    makespecialproc( "TIME",        proc_time);
-    makespecialproc( "UNPACK",        proc_unpack);
-    makespecialproc( "WRITE",         proc_write);
-    makespecialproc( "WRITEDIR",      proc_writedir);
-    makespecialproc( "WRITELN",       proc_writeln);
-    makespecialproc( "WRITEV",        proc_writev);
-mp_val_turbo =
-    makespecialproc( "VAL_TURBO",     proc_val_turbo);
+  makestandardfunc ("ARCTAN",        func_arctan);
+  makestandardfunc ("ARCTANH",       func_arctanh);
+  makestandardfunc ("BINARY",        func_binary);
+  makestandardfunc ("CAP",           func_upcase);
+  makestandardfunc ("COPY",          func_copy);
+  makestandardfunc ("COS",           func_cos);
+  makestandardfunc ("COSH",          func_cosh);
+  makestandardfunc ("EXP",           func_exp);
+  makestandardfunc ("EXP10",         func_pwroften);
+  makestandardfunc ("EXPO",          func_expo);
+  makestandardfunc ("FRAC",          func_frac);
+  makestandardfunc ("INDEX",         func_strpos);
+  makestandardfunc ("LASTPOS",       NULL);
+  makestandardfunc ("LINEPOS",       NULL);
+  makestandardfunc ("LENGTH",        func_strlen);
+  makestandardfunc ("LN",            func_ln);
+  makestandardfunc ("LOG",           func_log);
+  makestandardfunc ("LOG10",         func_log);
+  makestandardfunc ("LROUND",        func_round);
+  makestandardfunc ("LTRUNC",        func_trunc);
+  makestandardfunc ("MAXAVAIL",      func_maxavail);
+  makestandardfunc ("MEMAVAIL",      func_memavail);
+  makestandardfunc ("OCTAL",         func_octal);
+  makestandardfunc ("ODD",           func_odd);
+  makestandardfunc ("PAD",           func_pad);
+  makestandardfunc ("PARAMCOUNT",    func_paramcount);
+  makestandardfunc ("PARAMSTR",      func_paramstr);
+  makestandardfunc ("POS",           func_pos);
+  makestandardfunc ("PTR",           func_ptr);
+  makestandardfunc ("PWROFTEN",      func_pwroften);
+  makestandardfunc ("ROUND",         func_round);
+  makestandardfunc ("SCANEQ",        func_scaneq);
+  makestandardfunc ("SCANNE",        func_scanne);
+  makestandardfunc ("SIN",           func_sin);
+  makestandardfunc ("SINH",          func_sinh);
+  makestandardfunc ("SQRT",          func_sqrt);
+  mp_str_hp = makestandardfunc ("STR",           func_str_hp);
+  makestandardfunc ("STRLEN",        func_strlen);
+  makestandardfunc ("STRLTRIM",      func_strltrim);
+  makestandardfunc ("STRMAX",        func_strmax);
+  makestandardfunc ("STRPOS",        func_strpos);
+  makestandardfunc ("STRRPT",        func_strrpt);
+  makestandardfunc ("STRRTRIM",      func_strrtrim);
+  makestandardfunc ("SUBSTR",        func_str_hp);
+  makestandardfunc ("SWAP",          func_swap);
+  makestandardfunc ("TAN",           func_tan);
+  makestandardfunc ("TANH",          func_tanh);
+  makestandardfunc ("TRUNC",         func_trunc);
+  makestandardfunc ("UPCASE",        func_upcase);
+  makestandardfunc ("UROUND",        func_uround);
+  makestandardfunc ("UTRUNC",        func_utrunc);
 
-    if (which_lang != LANG_VAX)
-  makestandardproc("DELETE",        proc_delete);
-    makestandardproc("FREEMEM",       proc_freemem);
-    makestandardproc("GETMEM",        proc_getmem);
-    makestandardproc("GOTOXY",        proc_gotoxy);
-    makestandardproc("INSERT",        proc_insert);
-    makestandardproc("MARK",          NULL);
-    makestandardproc("MOVE",          proc_move);
-    makestandardproc("MOVELEFT",      proc_move);
-    makestandardproc("MOVERIGHT",     proc_move);
-    makestandardproc("RELEASE",       NULL);
+  makespecialproc ("APPEND",        proc_append);
+  makespecialproc ("ARGV",          proc_argv);
+  makespecialproc ("ASSERT",        proc_assert);
+  makespecialproc ("ASSIGN",        proc_assign);
+  makespecialproc ("BCLR",          proc_bclr);
+  mp_blockread_turbo = makespecialproc ("BLOCKREAD_TURBO", proc_blockread);
+  mp_blockwrite_turbo = makespecialproc ("BLOCKWRITE_TURBO", proc_blockwrite);
+  makespecialproc ("BREAK",         proc_flush);
+  makespecialproc ("BSET",          proc_bset);
+  makespecialproc ("CALL",          proc_call);
+  makespecialproc ("CLOSE",         proc_close);
+  makespecialproc ("CONNECT",       proc_assign);
+  makespecialproc ("CYCLE",         proc_cycle);
+  makespecialproc ("DATE",          proc_date);
+  mp_dec_turbo = makespecialproc ("DEC_TURBO",     proc_dec);
+  makespecialproc ("DISPOSE",       proc_dispose);
+  makespecialproc ("ESCAPE",        proc_escape);
+  makespecialproc ("EXCL",          proc_excl);
+  makespecialproc ("EXIT",          proc_exit);
+  makespecialproc ("EXTEND",        proc_append);
+  makespecialproc ("FILLCHAR",      proc_fillchar);
+  makespecialproc ("FLUSH",         proc_flush);
+  makespecialproc ("GET",           proc_get);
+  makespecialproc ("HALT",          proc_halt);
+  makespecialproc ("INC",           proc_inc);
+  makespecialproc ("INCL",          proc_incl);
+  makespecialproc ("LEAVE",         proc_leave);
+  makespecialproc ("LOCATE",        proc_seek);
+  makespecialproc ("MESSAGE",       proc_message);
+  makespecialproc ("MOVE_FAST",     proc_move_fast);
+  makespecialproc ("MOVE_L_TO_R",   proc_move_fast);
+  makespecialproc ("MOVE_R_TO_L",   proc_move_fast);
+  mp_new_normal = makespecialproc ("NEW",           proc_new);
+  if (which_lang != LANG_VAX)
+    makespecialproc ("OPEN",          proc_open);
+  makespecialproc ("OVERPRINT",     proc_overprint);
+  makespecialproc ("PACK",          proc_pack);
+  makespecialproc ("PAGE",          proc_page);
+  makespecialproc ("PUT",           proc_put);
+  makespecialproc ("PROMPT",        proc_prompt);
+  makespecialproc ("RANDOMIZE",     proc_randomize);
+  makespecialproc ("READ",          proc_read);
+  makespecialproc ("READDIR",       proc_readdir);
+  makespecialproc ("READLN",        proc_readln);
+  makespecialproc ("READV",         proc_readv);
+  makespecialproc ("RESET",         proc_reset);
+  makespecialproc ("REWRITE",       proc_rewrite);
+  makespecialproc ("SEEK",          proc_seek);
+  makespecialproc ("SETNAME",       proc_assign);
+  makespecialproc ("SETSTRLEN",     proc_setstrlen);
+  makespecialproc ("SETTEXTBUF",    proc_settextbuf);
+  mp_str_turbo = makespecialproc ("STR_TURBO",     proc_str_turbo);
+  makespecialproc ("STRAPPEND",     proc_strappend);
+  makespecialproc ("STRDELETE",     proc_strdelete);
+  makespecialproc ("STRINSERT",     proc_strinsert);
+  makespecialproc ("STRMOVE",       proc_strmove);
+  makespecialproc ("STRREAD",       proc_strread);
+  makespecialproc ("STRWRITE",      proc_strwrite);
+  makespecialproc ("TIME",          proc_time);
+  makespecialproc ("UNPACK",        proc_unpack);
+  makespecialproc ("WRITE",         proc_write);
+  makespecialproc ("WRITEDIR",      proc_writedir);
+  makespecialproc ("WRITELN",       proc_writeln);
+  makespecialproc ("WRITEV",        proc_writev);
+  mp_val_turbo = makespecialproc ("VAL_TURBO",     proc_val_turbo);
 
-    makespecialvar(  "MEM",           var_mem);
-    makespecialvar(  "MEMW",          var_memw);
-    makespecialvar(  "MEML",          var_meml);
-    makespecialvar(  "PORT",          var_port);
-    makespecialvar(  "PORTW",         var_portw);
+  if (which_lang != LANG_VAX)
+    makestandardproc ("DELETE",       proc_delete);
+  makestandardproc ("FREEMEM",      proc_freemem);
+  makestandardproc ("GETMEM",       proc_getmem);
+  makestandardproc ("GOTOXY",       proc_gotoxy);
+  makestandardproc ("INSERT",       proc_insert);
+  makestandardproc ("MARK",         NULL);
+  makestandardproc ("MOVE",         proc_move);
+  makestandardproc ("MOVELEFT",     proc_move);
+  makestandardproc ("MOVERIGHT",    proc_move);
+  makestandardproc ("RELEASE",      NULL);
 
-    /* Modula-2 standard I/O procedures (case-sensitive!) */
-    makespecialproc( "Read",          proc_read);
-    makespecialproc( "ReadCard",      proc_read);
-    makespecialproc( "ReadInt",       proc_read);
-    makespecialproc( "ReadReal",      proc_read);
-    makespecialproc( "ReadString",    proc_read);
-    makespecialproc( "Write",         proc_write);
-    makespecialproc( "WriteCard",     proc_writecard);
-    makespecialproc( "WriteHex",      proc_writehex);
-    makespecialproc( "WriteInt",      proc_writeint);
-    makespecialproc( "WriteOct",      proc_writeoct);
-    makespecialproc( "WriteLn",       proc_writeln);
-    makespecialproc( "WriteReal",     proc_writereal);
-    makespecialproc( "WriteString",   proc_write);
-}
+  makespecialvar ("MEM",            var_mem);
+  makespecialvar ("MEMW",           var_memw);
+  makespecialvar ("MEML",           var_meml);
+  makespecialvar ("PORT",           var_port);
+  makespecialvar ("PORTW",          var_portw);
+
+  /* Modula-2 standard I/O procedures (case-sensitive!) */
+  makespecialproc ("Read",          proc_read);
+  makespecialproc ("ReadCard",      proc_read);
+  makespecialproc ("ReadInt",       proc_read);
+  makespecialproc ("ReadReal",      proc_read);
+  makespecialproc ("ReadString",    proc_read);
+  makespecialproc ("Write",         proc_write);
+  makespecialproc ("WriteCard",     proc_writecard);
+  makespecialproc ("WriteHex",      proc_writehex);
+  makespecialproc ("WriteInt",      proc_writeint);
+  makespecialproc ("WriteOct",      proc_writeoct);
+  makespecialproc ("WriteLn",       proc_writeln);
+  makespecialproc ("WriteReal",     proc_writereal);
+  makespecialproc ("WriteString",   proc_write);
+  }
 //}}}

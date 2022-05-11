@@ -11,6 +11,19 @@ ReplaceBefore     fabs = fabs1
 AnsiC             1             # 1=use all Ansi C features and definitions
 MainType          int           # Type name to put in front of "main";
 
+MajorSpacing      1
+MinorSpacing      1
+#CloseBraceIndent  0             # Indentation delta for the close brace that ends a block
+#FuncCloseIndent   0             # Indentation delta for the close brace that ends a function body
+SpaceFuncs        1             # 1=write a space after function name in call
+SpaceCommas       1             # space after commas: f(x, y)
+PhysTabSize       0             # Spacing of tab-character tabs; default=8.
+
+NoBanner          1             # 1=omit "From input file..." comment
+SlashSlash        1             # 1=use C++ // for all comments except #define
+                                # 2=use C++ // even on #define lines
+                                # 0=use C /* */ for all comments
+
 C++                             # 1=use C++ extensions,
                                 # 0=use straight C,
                                 # default=generate code that works on either

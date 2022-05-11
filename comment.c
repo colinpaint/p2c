@@ -279,9 +279,9 @@ void addnote (char* msg, long serial) {
   if (!quietmode) {
     if (defer) {
       if (outf == stdout)
-        fprintf(stderr, "\"%s\", line %d: %s\n", infname, inf_lnum, msg);
+        fprintf (stderr, "\"%s\", line %d: %s\n", infname, inf_lnum, msg);
       else
-        printf("\"%s\", line %d: %s\n", infname, inf_lnum, msg);
+        printf ("\"%s\", line %d: %s\n", infname, inf_lnum, msg);
       }
     else if (outf != stdout)
       printf ("\"%s\", line %d,%d: %s\n", infname, inf_lnum, outf_lnum, msg);
@@ -295,8 +295,8 @@ void addnote (char* msg, long serial) {
   else
     prefix = format_sd ("\004 p2c: %s, line %d:", infname, inf_lnum);
 
-  len1 = strlen (prefix);
-  len2 = strlen (msg) + 2;
+  len1 = (int)strlen (prefix);
+  len2 = (int)strlen (msg) + 2;
   if (len1 + len2 < linewidth-4) {
     msg = format_ss ("%s %s ", prefix, msg);
     }

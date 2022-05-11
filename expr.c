@@ -2608,7 +2608,7 @@ Expr *a, *b;
     }
     if (((b->kind == EK_CONST && (i = b->val.i)) ||
          (b->kind == EK_VAR && (mp = (Meaning *)b->val.i)->kind == MK_CONST &&
-    mp->val.type && (i = mp->val.i) && foldconsts != 0)) && i > 0) {
+         mp->val.type && (i = mp->val.i) && foldconsts != 0)) && i > 0) {
         if (i == 1)
             return a;
         if (div_po2 > 0) {
@@ -2672,7 +2672,7 @@ Expr *a, *b;
     }
     if (((b->kind == EK_CONST && (i = b->val.i)) ||
          (b->kind == EK_VAR && (mp = (Meaning *)b->val.i)->kind == MK_CONST &&
-    mp->val.type && (i = mp->val.i) && foldconsts != 0)) && i > 0) {
+         mp->val.type && (i = mp->val.i) && foldconsts != 0)) && i > 0) {
         if (i == 1)
             return makeexpr_long(0);
         if (mod_po2 != 0) {
@@ -4186,10 +4186,10 @@ Expr *a, *b;
          b->args[1]->val.i > 2 &&                     /*   of the form, "s := s + ..." */
          !strncmp(b->args[1]->val.s, "%s", 2) &&
          exprsame(a, b->args[2], 1) &&
-         nosideeffects(a, 0) &&
-         (ex = singlevar(a)) != NULL) {
-        ex2 = copyexpr(b);
-        delfreearg(&ex2, 2);
+         nosideeffects (a, 0) &&
+         (ex = singlevar (a)) != NULL) {
+        ex2 = copyexpr (b);
+        delfreearg (&ex2, 2);
         freeexpr(ex2->args[1]);
         ex2->args[1] = makeexpr_lstring(b->args[1]->val.s+2,
                                         b->args[1]->val.i-2);
@@ -4197,34 +4197,34 @@ Expr *a, *b;
            /* noargdependencies(ex2) && */ !exproccurs(ex2, ex)) {
             freeexpr(b);
             if (ex2->args[1]->val.i == 2 &&     /* s := s + s2 */
-                !strncmp(ex2->args[1]->val.s, "%s", 2)) {
-                canceltempvar(mp);
+                !strncmp (ex2->args[1]->val.s, "%s", 2)) {
+                canceltempvar (mp);
     tp = ex2->val.type;
-                return makeexpr_bicall_2("strcat", tp,
-                                         makeexpr_addrstr(a), grabarg(ex2, 2));
+                return makeexpr_bicall_2 ("strcat", tp,
+                                         makeexpr_addrstr (a), grabarg (ex2, 2));
             } else if (sprintflength(ex2, 0) >= 0) {    /* s := s + 's2' */
     tp = ex2->val.type;
-                return makeexpr_bicall_2("strcat", tp,
-                                         makeexpr_addrstr(a),
-                                         makeexpr_unsprintfify(ex2));
+                return makeexpr_bicall_2 ("strcat", tp,
+                                          makeexpr_addrstr (a),
+                                          makeexpr_unsprintfify (ex2));
             } else {                            /* general case */
-                canceltempvar(mp);
+                canceltempvar (mp);
                 freeexpr(ex2->args[0]);
-                ex = makeexpr_bicall_1("strlen", tp_int, copyexpr(a));
-                ex2->args[0] = bumpstring(a, ex, 0);
+                ex = makeexpr_bicall_1 ("strlen", tp_int, copyexpr (a));
+                ex2->args[0] = bumpstring (a, ex, 0);
                 return ex2;
             }
         } else
-            freeexpr(ex2);
+            freeexpr (ex2);
     }
-    if (b->kind == EK_BICALL && !strcmp(b->val.s, "sprintf") &&
-         istempvar(b->args[0]) &&
+    if (b->kind == EK_BICALL && !strcmp (b->val.s, "sprintf") &&
+         istempvar (b->args[0]) &&
          (ex = singlevar(a)) != NULL) {
         j = -1;     /* does lhs var appear exactly once on rhs? */
         for (i = 2; i < b->nargs; i++) {
-            if (exprsame(b->args[i], ex, 1) && j < 0)
+            if (exprsame (b->args[i], ex, 1) && j < 0)
                 j = i;
-            else if (exproccurs(b->args[i], ex))
+            else if (exproccurs (b->args[i], ex))
                 break;
         }
         if (i == b->nargs && j > 0) {
@@ -4313,9 +4313,9 @@ Expr *a, *b;
              isliteralconst(b->args[1], NULL) == 2);
         if (j && b->args[1]->val.i > 0 &&
                  b->args[1]->val.i <= 5) {     /* lengthening the string */
-            a = grabarg(a, 0);
+            a = grabarg (a, 0);
             i = b->args[1]->val.i;
-            freeexpr(b);
+            freeexpr (b);
             if (i == 1)
                 b = makeexpr_string(" ");
             else
@@ -4324,10 +4324,9 @@ Expr *a, *b;
         } else {      /* maybe shortening the string */
             if (!j && !isconstexpr(b, NULL))
                 note("Modification of string length may translate incorrectly [146]");
-            a = grabarg(a, 0);
-            b = makeexpr_ord(b);
-            return makeexpr_assign(makeexpr_index(a, b, NULL),
-                                   makeexpr_char(0));
+            a = grabarg (a, 0);
+            b = makeexpr_ord (b);
+            return makeexpr_assign (makeexpr_index(a, b, NULL), makeexpr_char(0));
         }
     }
     if (a->val.type->kind == TK_ARRAY ||
@@ -4571,12 +4570,12 @@ Expr *ex;
         (mp = (Meaning *)(ex->val.i))->kind == MK_CONST && mp->val.type)
         return mp->val.i;
     if (ex->kind == EK_BICALL) {
-  if (!strcmp(ex->val.s, strsubname)) {
+  if (!strcmp (ex->val.s, strsubname)) {
       if (isliteralconst(ex->args[3], &val) && val.type)
     return val.i;
   }
     }
-    if (ord_range(type->indextype, NULL, &smax))
+    if (ord_range (type->indextype, NULL, &smax))
         return smax;
     else
         return stringceiling;
@@ -5008,26 +5007,26 @@ Expr* strmax_func (Expr* ex) {
     }
 
   if (ex->kind == EK_CONST)
-    return makeexpr_long(ex->val.i);
+    return makeexpr_long (ex->val.i);
 
   if (ex->kind == EK_VAR &&
       (mp = (Meaning *)ex->val.i)->kind == MK_CONST && mp->type == tp_str255 && mp->val.type)
-    return makeexpr_long(mp->val.i);
+    return makeexpr_long (mp->val.i);
 
   if (ex->kind == EK_VAR &&
     (mp = (Meaning *)ex->val.i)->kind == MK_VARPARAM && mp->type == tp_strptr) {
 
     if (mp->anyvarflag) {
       if (mp->ctx != curctx && mp->ctx->kind == MK_FUNCTION)
-        note(format_s("Reference to STRMAX of parent proc's \"%s\" must be fixed [150]", mp->name));
-      return makeexpr_name(format_s(name_STRMAX, mp->name), tp_int);
+        note (format_s ("Reference to STRMAX of parent proc's \"%s\" must be fixed [150]", mp->name));
+      return makeexpr_name (format_s (name_STRMAX, mp->name), tp_int);
       }
     else
-      note(format_s("STRMAX of \"%s\" wants VarStrings=1 [151]", mp->name));
+      note (format_s ("STRMAX of \"%s\" wants VarStrings=1 [151]", mp->name));
     }
 
-  ord_range_expr(type->indextype, NULL, &ex2);
-  return copyexpr(ex2);
+  ord_range_expr (type->indextype, NULL, &ex2);
+  return copyexpr (ex2);
   }
 //}}}
 //{{{

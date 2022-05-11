@@ -21,23 +21,33 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #include "main.h"
 
 #define EOFMARK 1
+Static int silenceIncludes = 1;
 //{{{  static vars
-Static char dollar_flag, lex_initialized;
-Static int if_flag, if_skip;
-Static int commenting_flag;
-Static char *commenting_ptr;
+Static char dollar_flag;
+Static char lex_initialized;
+Static int if_flag;
+Static int if_skip;
+
 Static int skipflag;
+Static int commenting_flag;
+Static char* commenting_ptr;
+
 Static char modulenotation;
 Static short inputkind;
-Static Strlist *instrlist;
+
+Static Strlist* instrlist;
+Static Strlist* endnotelist;
+
 Static char inbuf[300];
-Static char *oldinfname, *oldctxname;
-Static Strlist *endnotelist;
+Static char* oldinfname;
+Static char* oldctxname;
 //}}}
 
+//{{{  inp defines
 #define INP_FILE     0
 #define INP_INCFILE  1
 #define INP_STRLIST  2
+//}}}
 //{{{
 Static struct inprec {
   struct inprec* next;
@@ -484,7 +494,7 @@ int checkeatnote (char* msg) {
     if (!strcmp (lp->s, "0"))
       return 0;
 
-    len = strlen (lp->s);
+    len = (int)strlen (lp->s);
     cp = msg;
     while (*cp && (*cp != lp->s[0] || strncmp (cp, lp->s, len)))
       cp++;
@@ -646,6 +656,7 @@ void showendnotes() {
         else
           fprintf (stderr, "Note: %s\n", endnotelist->s);
         }
+
       if (slashslash)
         fprintf (outf, "// p2c: Note: %s\n", endnotelist->s);
       else
@@ -855,7 +866,7 @@ int skipcomma() {
 //}}}
 
 //{{{
-char* findaltname (char *name, int num) {
+char* findaltname (char* name, int num) {
 
   char *cp;
 
@@ -885,7 +896,7 @@ char* findaltname (char *name, int num) {
   }
 //}}}
 //{{{
-Symbol* findsymbol_opt (char *name) {
+Symbol* findsymbol_opt (char* name) {
 
   int i;
   unsigned int hash;
@@ -970,7 +981,7 @@ void progress()
         }
         if (needrefr) {
             fprintf(stderr, "\r%5d %s  %s", inf_lnum, infname, ctxname);
-      prevlen = 8 + strlen(infname) + strlen(ctxname);
+      prevlen = 8 + strlen(infname) + (int)strlen(ctxname);
         } else {
             fprintf(stderr, "\r%5d", inf_lnum);
       prevlen = 5;
@@ -996,7 +1007,7 @@ Strlist *sl;
     while (*cp2 && toupper(*cp1) == toupper(*cp2))
         cp1++, cp2++;
     if (!*cp2) {
-        int diff = strlen((char *)p->value) - strlen(p->s);
+        int diff = strlen((char *)p->value) - (int)strlen(p->s);
         if (diff > 0) {
       cp1 = cp + strlen(cp);
       while (cp1 >= cp) {
@@ -1070,14 +1081,14 @@ void getaline() {
           }
         if (showprogress && inf_lnum % showprogress == 0)
           progress();
-        } 
+        }
       else {
         if (showprogress)
           fprintf(stderr, "\n");
         if (inputkind == INP_INCFILE) {
           pop_input();
           getaline();
-          } 
+          }
         else
           strcpy(inbuf, "\001");
         }
@@ -1092,7 +1103,7 @@ void getaline() {
         else
           inf_lnum++;
         instrlist = instrlist->next;
-        } 
+        }
       else
          strcpy(inbuf, "\001");
       break;
@@ -1316,9 +1327,8 @@ void badinclude() {
   }
 //}}}
 //{{{
-int handle_include (fn)
-char *fn;
-  {
+int handle_include (char* fn) {
+
   FILE* fp = NULL;
 
   Strlist* sl;
@@ -1335,8 +1345,9 @@ char *fn;
     warning (format_s ("Could not open include file %s [230]", fn));
     return 0;
     }
+
   else {
-    if (!quietmode && !showprogress)
+    if (!quietmode && !showprogress && !silenceIncludes)
       if (outf == stdout)
         fprintf (stderr, "Reading include file \"%s\"\n", fn);
       else
@@ -2568,7 +2579,6 @@ Static void comment (int starparen) {
       case EOFMARK:
         error (format_d ("Runaway comment from line %d", startlnum));
         eatcomments = saveeat;
-
         return;     /* unnecessary */
       //}}}
       }
@@ -2690,7 +2700,7 @@ char getchartok() {
   }
 //}}}
 //{{{
-char* getparenstr (char *buf) {
+char* getparenstr (char* buf) {
 
   int count = 0;
   char *cp;
@@ -2822,7 +2832,7 @@ void get_C_string (int term) {
 //}}}
 
 //{{{
-void begincommenting (char *cp) {
+void begincommenting (char* cp) {
 
   if (!commenting_flag) {
     commenting_ptr = cp;
@@ -2832,7 +2842,7 @@ void begincommenting (char *cp) {
   }
 //}}}
 //{{{
-void saveinputcomment (char *cp) {
+void saveinputcomment (char* cp) {
 
   if (commenting_ptr)
     sprintf (curtokbuf, "%.*s", (int)(cp - commenting_ptr), commenting_ptr);
@@ -2844,7 +2854,7 @@ void saveinputcomment (char *cp) {
   }
 //}}}
 //{{{
-void endcommenting (char *cp) {
+void endcommenting (char* cp) {
 
   commenting_flag--;
   if (!commenting_flag) {
@@ -2889,8 +2899,7 @@ char* peeknextptr() {
 //{{{
 int peeknextchar() {
 
-  char *cp;
-  cp = peeknextptr();
+  char* cp = peeknextptr();
   if (*cp == ':')
     if (cp[1] == '=')
       return 1;
@@ -2901,11 +2910,11 @@ int peeknextchar() {
   }
 //}}}
 //{{{
-int peeknextword (char *word) {
+int peeknextword (char* word) {
 
   char* cp = peeknextptr();
 
-  int len = strlen(word);
+  int len = (int)strlen(word);
   if (strcincmp(cp, word, len))
     return 0;
   if (isalnum(cp[len]) || cp[len] == '_')
@@ -2975,7 +2984,6 @@ Static void debugGetToken() {
   char* startcp;
   int i;
 
-  debughook();
   for (;;) {
     switch ((ch = *inbufptr++)) {
       //{{{

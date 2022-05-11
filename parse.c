@@ -20,60 +20,59 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define PROTO_PARSE_C
 #include "main.h"
 
+Static int silenceEcho = 1;
 Static int trycount;
 Static Strlist* includedfiles;
 Static char echo_first;
 Static int echo_pos;
-
 //{{{
-void setup_parse()
-{
-    trycount = 0;
-    includedfiles = NULL;
-    echo_first = 1;
-    echo_pos = 0;
-    fixexpr_tryblock = 0;
-}
+void setup_parse() {
+
+  trycount = 0;
+  includedfiles = NULL;
+  echo_first = 1;
+  echo_pos = 0;
+  fixexpr_tryblock = 0;
+  }
 //}}}
 //{{{
 void echobreak() {
 
   if (echo_pos > 0) {
-    printf("\n");
+    printf ("\n");
     echo_pos = 0;
     echo_first = 0;
     }
   }
 //}}}
 //{{{
-void echoword (char *name, int comma) {
+void echoword (char* name, int comma) {
 
-#ifndef NO_ECHOWORD
-  FILE *f = (outf == stdout) ? stderr : stdout;
+  if (quietmode || showprogress || silenceEcho)
+    return;
 
-  if (quietmode || showprogress)
-      return;
+  FILE* f = (outf == stdout) ? stderr : stdout;
 
-    if (!echo_first) {
-      if (comma) {
-        fprintf(f, ",");
-        echo_pos++;
-        }
-
-      if (echo_pos + strlen (name) > 77) {
-        fprintf(f, "\n");
-        echo_pos = 0;
-        }
-      else {
-        fprintf(f, " ");
-        echo_pos++;
-        }
+  if (!echo_first) {
+    if (comma) {
+      fprintf (f, ",");
+      echo_pos++;
       }
-    echo_first = 0;
-    fprintf(f, "%s", name);
-    echo_pos += (int)strlen (name);
-    fflush(f);
-  #endif
+
+    if (echo_pos + strlen (name) > 77) {
+      fprintf (f, "\n");
+      echo_pos = 0;
+      }
+    else {
+      fprintf (f, " ");
+      echo_pos++;
+      }
+    }
+
+  echo_first = 0;
+  fprintf (f, "%s", name);
+  echo_pos += (int)strlen (name);
+  fflush (f);
   }
 //}}}
 //{{{
@@ -126,11 +125,10 @@ Static void forward_decl (Meaning* func, int isextern) {
 void need_forward_decl (Meaning* func) {
 // Check if calling a parent procedure, whose body must  be declared forward
 
-  Meaning* mp;
-
   if (func->wasdeclared)
     return;
 
+  Meaning* mp;
   for (mp = curctx->ctx; mp; mp = mp->ctx) {
     if (mp == func) {
       if (func->ctx->kind == MK_FUNCTION)
@@ -144,7 +142,7 @@ void need_forward_decl (Meaning* func) {
 //}}}
 //{{{  statement utils
 //{{{
-void free_stmt (Stmt *sp) {
+void free_stmt (Stmt* sp) {
 
   if (sp) {
     free_stmt (sp->stm1);
@@ -161,9 +159,8 @@ void free_stmt (Stmt *sp) {
 //{{{
 Stmt* makestmt (enum stmtkind kind) {
 
-  Stmt *sp;
+  Stmt* sp = ALLOC(1, Stmt, stmts);
 
-  sp = ALLOC(1, Stmt, stmts);
   sp->kind = kind;
   sp->next = NULL;
   sp->stm1 = NULL;
@@ -182,7 +179,7 @@ Stmt* makestmt (enum stmtkind kind) {
 //{{{
 Stmt* makestmt_call (Expr* call) {
 
-  Stmt *sp = makestmt(SK_ASSIGN);
+  Stmt* sp = makestmt(SK_ASSIGN);
   sp->exp1 = call;
   return sp;
   }
@@ -190,7 +187,7 @@ Stmt* makestmt_call (Expr* call) {
 //{{{
 Stmt* makestmt_assign (Expr* lhs, Expr* rhs) {
 
-  Stmt *sp = makestmt(SK_ASSIGN);
+  Stmt* sp = makestmt(SK_ASSIGN);
   sp->exp1 = makeexpr_assign(lhs, rhs);
   return sp;
   }
@@ -198,37 +195,38 @@ Stmt* makestmt_assign (Expr* lhs, Expr* rhs) {
 //{{{
 Stmt* makestmt_if (Expr* cond, Stmt* thn, Stmt* els) {
 
-  Stmt *sp = makestmt(SK_IF);
+  Stmt* sp = makestmt (SK_IF);
   sp->exp1 = cond;
   sp->stm1 = thn;
   sp->stm2 = els;
   sp->quietelim = 1;
+
   return sp;
   }
 //}}}
 //{{{
 Stmt* makestmt_seq (Stmt* s1, Stmt* s2) {
 
-  Stmt *s1a;
-
   if (!s1)
     return s2;
+
   if (!s2)
     return s1;
 
+  Stmt* s1a;
   for (s1a = s1; s1a->next; s1a = s1a->next) ;
   s1a->next = s2;
+
   return s1;
   }
 //}}}
 
 //{{{
-Stmt* copystmt (Stmt *sp) {
+Stmt* copystmt (Stmt* sp) {
 
-  Stmt *sp2;
 
   if (sp) {
-    sp2 = makestmt(sp->kind);
+    Stmt* sp2 = makestmt(sp->kind);
     sp2->stm1 = copystmt(sp->stm1);
     sp2->stm2 = copystmt(sp->stm2);
     sp2->exp1 = copyexpr(sp->exp1);
@@ -253,29 +251,28 @@ void nukestmt (Stmt* sp) {
 //{{{
 void splicestmt (Stmt* sp, Stmt* spnew) {
 
-  Stmt* snext;
-
   if (spnew) {
-    snext = sp->next;
+    Stmt* snext = sp->next;
     *sp = *spnew;
     while (sp->next)
       sp = sp->next;
     sp->next = snext;
     }
+
   else
-    nukestmt(sp);
+    nukestmt (sp);
   }
 //}}}
 
 //{{{
-int stmtcount (Stmt *sp) {
+int stmtcount (Stmt* sp) {
 
   int i = 0;
-
   while (sp) {
-    i += 1 + stmtcount(sp->stm1) + stmtcount(sp->stm2);
+    i += 1 + stmtcount (sp->stm1) + stmtcount (sp->stm2);
     sp = sp->next;
     }
+
   return i;
   }
 //}}}
@@ -284,19 +281,21 @@ int stmtcount (Stmt *sp) {
 //{{{
 Stmt* close_files_to_ctx (Meaning* ctx) {
 
-  Meaning *ctx2, *mp;
-  Stmt *splist = NULL, *sp;
+  Stmt* splist = NULL;
 
-  ctx2 = curctx;
+  Meaning* ctx2 = curctx;
   while (ctx2 && ctx2 != ctx && ctx2->kind == MK_FUNCTION) {
+    Meaning *mp;
     for (mp = ctx2->cbase; mp; mp = mp->cnext) {
       if (mp->kind == MK_VAR && isfiletype(mp->type, -1) && !mp->istemporary) {
         var_reference(mp);
-        sp = makestmt_if (makeexpr_rel(EK_NE, filebasename(makeexpr_var(mp)), makeexpr_nil()),
-                          makestmt_call( makeexpr_bicall_1("fclose", tp_void, filebasename(makeexpr_var(mp)))), NULL);
-        splist = makestmt_seq(splist, sp);
+        Stmt* sp = makestmt_if (makeexpr_rel(EK_NE, filebasename (makeexpr_var(mp)), makeexpr_nil ()),
+                                makestmt_call (makeexpr_bicall_1 ("fclose", tp_void, filebasename (makeexpr_var(mp)))),
+                                NULL);
+        splist = makestmt_seq (splist, sp);
         }
       }
+
     ctx2 = ctx2->ctx;
     }
 
@@ -2363,14 +2362,14 @@ int printnl_func (Expr *ex) {
       return 0;
     cp = (char*)ex->args[0]->val.s;
     len = (int)ex->args[0]->val.i;
-    } 
+    }
 
   else if (!strcmp(ex->val.s, "fprintf")) {
     if (ex->args[1]->kind != EK_CONST)
       return 0;
     cp = (char*)ex->args[1]->val.s;
     len = (int)ex->args[1]->val.i;
-    } 
+    }
 
   else if (!strcmp (ex->val.s, "putchar") || !strcmp (ex->val.s, "putc") || !strcmp (ex->val.s, "fputc")) {
     if (ex->args[0]->kind != EK_CONST)
@@ -2378,7 +2377,7 @@ int printnl_func (Expr *ex) {
     ch = (char)ex->args[0]->val.i;
     cp = &ch;
     len = 1;
-    } 
+    }
 
   else
     return 0;
@@ -2401,7 +2400,7 @@ Expr* chg_printf (Expr *ex) {
     strchange (&ex->val.s, "printf");
     delfreearg (&ex, 0);
     ex->val.type = tp_void;
-    } 
+    }
   else if (!strcmp(ex->val.s, "putc") ||
            !strcmp(ex->val.s, "fputc") ||
            !strcmp(ex->val.s, "fputs")) {
@@ -2411,7 +2410,7 @@ Expr* chg_printf (Expr *ex) {
     strchange (&ex->val.s, "fprintf");
     ex->args[0] = fex;
     ex->val.type = tp_void;
-    } 
+    }
   else if (!strcmp(ex->val.s, "puts")) {
     ex = makeexpr_concat (makeexpr_sprintfify (grabarg (ex, 0)), makeexpr_string ("\n"), 1);
     strchange (&ex->val.s, "printf");
@@ -4956,7 +4955,7 @@ Static int p_module (int ignoreit, int isdefn) {
   skipunitheader();
   needToken (TOK_SEMI);
 
-  if (ignoreit || (requested_module && strcicmp(requested_module, mod->name))) {
+  if (ignoreit || (requested_module && strcicmp (requested_module, mod->name))) {
     if (!quietmode)
       if (outf == stdout)
         fprintf (stderr, "Skipping over module \"%s\"\n", mod->name);

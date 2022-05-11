@@ -90,11 +90,12 @@ Static int showingsourcecode = 0;
 void setup_out() {
 
   end_source();
+
   if (!nobanner)
     if (slashslash)
-      fprintf(outf, "// From input file \"%s\"\n", infname);
+      fprintf (outf, "// From input file \"%s\"\n", infname);
     else
-      fprintf(outf, "/* From input file \"%s\" */\n", infname);
+      fprintf (outf, "/* From input file \"%s\" */\n", infname);
 
   outf_lnum++;
   hdrlnum = 1;
@@ -109,14 +110,17 @@ void setup_out() {
   outputmode = 0;
   suppressnewline = 0;
   eatblanks = 0;
+
   outbufsize = 1000;
   outbuf = ALLOC(outbufsize, char, misc);
   outbufpos = 0;
   outbufcount = 0;
+
   outfilebufsize = 10;
   outfilebuf = ALLOC(outfilebufsize, char, misc);
   outfilebufptr = outfilebuf;
   outfilebufend = outfilebuf + outfilebufsize/2;
+
   srand (17);
   }
 //}}}
@@ -147,7 +151,7 @@ void flush_outfilebuf() {
 //{{{
 void puts_outf (char* s) {
 
-  int len = strlen(s);
+  size_t len = strlen(s);
   if (len > 0) {
     while (outfilebufptr + len > outfilebufend)
       grow_outfilebuf();
@@ -990,17 +994,15 @@ Static int trybreakline (int pos, int count, int indent, double badness, int fla
   if (testinglinebreaker > 1) {
     if (badness >= bestbadness &&
         (badness < showbadlimit || showbadlimit == 0)) {
-      fprintf(outf, "\n#if 0   /* rejected #%ld, badness = %g >= %g */\n", numalts, badness, bestbadness);
-      flush_outbuf(numbreaks, breakpos, breakindent,
-      numedits, editpos, editold, editnew);
-      fprintf(outf, "#endif\n");
+      fprintf (outf, "\n#if 0   /* rejected #%ld, badness = %g >= %g */\n", numalts, badness, bestbadness);
+      flush_outbuf (numbreaks, breakpos, breakindent, numedits, editpos, editold, editnew);
+      fprintf (outf, "#endif\n");
       return TBR_SIMPLE & jmask;
       }
-    else if ((bestbadness < showbadlimit || showbadlimit == 0) &&
-      bestnumalts > 0) {
-      fprintf(outf, "\n#if 0   /* rejected #%ld, badness = %g > %g */\n", bestnumalts, bestbadness, badness);
-      flush_outbuf(bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
-      fprintf(outf, "#endif\n");
+    else if ((bestbadness < showbadlimit || showbadlimit == 0) && bestnumalts > 0) { 
+      fprintf (outf, "\n#if 0   /* rejected #%ld, badness = %g > %g */\n", bestnumalts, bestbadness, badness);
+      flush_outbuf (bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
+      fprintf (outf, "#endif\n");
       }
     }
 
@@ -1086,8 +1088,6 @@ void output (char *msg) {
   double savelimit;
   int i, savemaxlw, maxdp;
   long alts;
-
-  debughook();
 
   if (outputmode) {
     end_source();
@@ -1192,7 +1192,7 @@ void output (char *msg) {
             bestnumalts = 0;
             trybreakline(0, 0, thisindent, 0.0, 0, NULL);
             }
-          fprintf(outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld */\n", bestnumalts, bestbadness, alts);
+          fprintf (outf, "\n#if 1   /* accepted #%ld, badness = %g, tried %ld */\n", bestnumalts, bestbadness, alts);
           }
 
         showbadlimit = savelimit;
@@ -1203,7 +1203,7 @@ void output (char *msg) {
           fprintf (logfile, "%s, %d/%d: Line breaker spent %ld tries\n", infname, inf_lnum, outf_lnum, alts);
           }
         if (testinglinebreaker)
-          fprintf(outf, "#endif\n\n");
+          fprintf (outf, "#endif\n\n");
         }
         //}}}
       else if (testinglinebreaker < 2)
@@ -1239,7 +1239,7 @@ void output (char *msg) {
 void out_n_spaces (int n) {
 
   while (--n >= 0)
-    output(" ");
+    output (" ");
   }
 //}}}
 //{{{
@@ -1276,12 +1276,12 @@ void out_spaces (int spc, int over, int len, int delta) {
     singleindent(n);
     }
   else if (len > 0 && over != 1000 && cur_column() + n + len > linewidth) {
-    output("\n");
-    out_spaces(over, 1000, len, 0);
-    singleindent(delta);
+    output ("\n");
+    out_spaces (over, 1000, len, 0);
+    singleindent (delta);
     }
   else {
-    out_n_spaces(n);
+    out_n_spaces (n);
     }
   }
 //}}}
@@ -1329,12 +1329,12 @@ void testlinebreaker (int lev, char *fn) {
       else {
         first = 1;
         }
-      output(bp);
+      output (bp);
       }
     }
 
-  fclose(outf);
-  fclose(inf);
+  fclose (outf);
+  fclose (inf);
   }
 //}}}
 //{{{
@@ -1348,7 +1348,7 @@ void outsection (int size) {
 //{{{
 int isembedcomment (Strlist* cmt) {
 
-  int len = strlen(embedcomment);
+  size_t len = strlen(embedcomment);
   return (cmt && len > 0 && !strncmp(cmt->s, embedcomment, len) &&
          (isspace(cmt->s[len]) ||
          (!cmt->s[len] && cmt->next &&
@@ -1375,15 +1375,14 @@ Strlist* outcomments (Strlist* cmt) {
   if (*cmt->s == '\001') {
     cp = cmt->s;
     if (cp[1] == '\014') {
-      output("\f\n");
+      output ("\f\n");
       cp += 2;
       if (*cp == '\001')
         cp++;
       }
 
-    for ( ; *cp; cp++) {
-      output("\n");
-      }
+    for ( ; *cp; cp++) 
+      output ("\n");
 
     setcommentkind(cmt, CMT_DONE);
     return cmt->next;
@@ -1417,13 +1416,13 @@ Strlist* outcomments (Strlist* cmt) {
     deltaindent = 0;
     slash = (slashslash && (slashslash == 2 || outbufpos == 0 || outbuf[0] != '#'));
     if (!slash)
-      output("/*");
+      output ("/*");
     }
 
   cp = cmt->s;
   for (;;) {
     if (slash)
-      output("//");
+      output ("//");
     if (*cp == '\002')
       cp++;
     else if (*cp == '\003' || *cp == '\004') {
@@ -1460,9 +1459,8 @@ Strlist* outcomments (Strlist* cmt) {
 
   if (embeddedcode) {
     embeddedcode = 0;
-    if (i) {   /* eat final blank line */
+    if (i)  /* eat final blank line */
       output ("\n");
-      }
     }
   else {
     if (!slash)
@@ -1495,12 +1493,6 @@ void outtrailcomment (Strlist* cmt, int serial, int indent) {
 
   int savedelta = deltaindent;
 
-  #if 0
-    suppressnewline = 1;
-    output ("\n");
-    suppressnewline = 0;
-  #endif
-
   cmt = findcomment (cmt, CMT_TRAIL, serial);
   if (commentvisible (cmt)) {
     out_spaces (indent, commentoverindent, commentlen(cmt), 0);
@@ -1508,7 +1500,7 @@ void outtrailcomment (Strlist* cmt, int serial, int indent) {
     deltaindent = savedelta;
     }
   else
-    output("\n");
+    output ("\n");
   }
 //}}}
 //{{{

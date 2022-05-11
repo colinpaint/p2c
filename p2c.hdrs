@@ -1,13 +1,8 @@
-
 /* Declarations created by "makeproto" on Tue Apr 12 10:38:48 2022 */
-
-
 
 /* Declarations from trans.c */
 extern void     saveoldfile        PP( (char *fname) );
 extern void     closelogfile       PV();
-extern void     showinitfile       PV();
-extern void     usage              PV();
 extern int      main               PP( (int argc, char **argv) );
 extern void     exit_failure       PV();
 extern int      ISBOGUS            PP( (char *p) );
@@ -17,7 +12,6 @@ extern char    *exprkindname       PP( (enum exprkind kind) );
 extern char    *stmtkindname       PP( (enum stmtkind kind) );
 
 /* Declarations from stuff.c */
-extern void     debughook          PV();
 extern Strlist *strlist_append     PP( (Strlist **base, char *s) );
 extern Strlist *strlist_insert     PP( (Strlist **base, char *s) );
 extern Strlist *strlist_add        PP( (Strlist **base, char *s) );

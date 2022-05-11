@@ -11791,7 +11791,7 @@ var
           resulp = ref(bigtable[resulttype]);
           resulp^.ptrtypename := t
           end
-        else 
+        else
           warnbetween(novarerr);
         end;
     end {ptrtyp} ;
@@ -11818,7 +11818,7 @@ var
       isstring: boolean;          { set if it is a string}
 
     begin
-      gettyp (follow + [ofsym, comma, rpar, rbrack] + begsimplset, newindextype:2);
+      gettyp (follow + [ofsym, comma, rpar, rbrack] + begsimplset, newindextype);
       f := ref(bigtable[newindextype]);
 
       {Writeln ('arraywork:', f^.typ, ' newindextype:',newindextype);

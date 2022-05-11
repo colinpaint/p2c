@@ -4,6 +4,7 @@ MainType          int           # Type name to put in front of "main";
 HeaderName        "../p2c.h"
 LibraryFile       system.imp    # Names of import-text files to search
 
+# replacements
 ReplaceBefore     abort = abort1
 ReplaceBefore     unix = unix1
 ReplaceBefore     fmod = fmod1
@@ -11,6 +12,7 @@ ReplaceBefore     fabs = fabs1
 ReplaceBefore     remainder = remainder1
 ReplaceBefore     rename = rename1
 
+# buffered files
 BufferedFile      tokenFile
 BufferedFile      interFile
 BufferedFile      pseudoFile
@@ -19,6 +21,18 @@ BufferedFile      relFile
 BufferedFile      dumpFile
 BufferedFile      debugfile
 
+# formatting
+MajorSpacing      1
+MinorSpacing      1
+#CloseBraceIndent  0             # Indentation delta for the close brace that ends a block
+#FuncCloseIndent   0             # Indentation delta for the close brace that ends a function body
+SpaceFuncs        1             # 1=write a space after function name in call
+SpaceCommas       1             # space after commas: f(x, y)
+PhysTabSize       0             # Spacing of tab-character tabs; default=8.
+NoBanner          1             # 1=omit "From input file..." comment
+SlashSlash        1             # 1=use C++ // for all comments except #define
+
+# defaults
 ExternWords       external      # Words analogous to "forward" for declaring
 ExternWords       extern        # procedures or functions external.
 ExternWords       fortran

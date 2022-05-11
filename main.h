@@ -51,7 +51,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #endif
 
 #ifdef _WIN32
-  #pragma message("compiling with _WIN32")
+  //#pragma message("compiling with _WIN32")
 
   #include <stdlib.h>
   #include <stddef.h>
@@ -99,7 +99,7 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #define MIN(a,b)  ((a) < (b) ? (a) : (b))
 #define MAX(a,b)  ((a) > (b) ? (a) : (b))
 
-#define P2C_VERSION  "2.00.Oct.15"
+#define P2C_VERSION  "Colin hack"
 //}}}
 typedef unsigned char uchar;
 //{{{

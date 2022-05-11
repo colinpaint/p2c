@@ -45,6 +45,7 @@ Static struct tempvarlist {
 } *tempvars, *stmttempvars;
 //}}}
 
+//{{{  static vars
 Static int tempvarcount;
 Static int stringtypecachesize;
 Static Type **stringtypecache;
@@ -58,7 +59,7 @@ Static int silentalreadydef;
 Static int nonloclabelcount;
 Static int useextern;
 Static Strlist *varstructdecllist;
-
+//}}}
 //{{{
 Static Meaning* findstandardmeaning (kind, name)
 enum meaningkind kind;
@@ -88,8 +89,8 @@ Static Meaning* makestandardmeaning (enum meaningkind kind, char *name) {
   if (!mp) {
     mp = addmeaning (sym, kind);
     strchange (&mp->name, name);
-    } 
-  else 
+    }
+  else
     mp->kind = kind;
   mp->refcount = 1;
 
@@ -881,7 +882,7 @@ int isglobal, isdefine, isfield;
 }
 //}}}
 
-Static Meaning *enum_tname;
+Static Meaning* enum_tname;
 //{{{
 void setupmeaning (mp, sym, kind, namekind)
 Meaning *mp;
@@ -1549,25 +1550,6 @@ Type *t1, *t2;
     return t1;
 }
 //}}}
-
-#if 0
-//{{{
-void predeclare_varstruct (mp)
-Meaning *mp;
-{
-    if (mp->ctx &&
-   mp->ctx->kind == MK_FUNCTION &&
-   mp->ctx->varstructflag &&
-   (usePPMacros != 0 || prototypes != 0) &&
-   !strlist_find(varstructdecllist, mp->ctx->name)) {
-  output("struct ");
-  output(format_s(name_LOC, mp->ctx->name));
-  output(" ;\n");
-  strlist_insert(&varstructdecllist, mp->ctx->name);
-    }
-}
-//}}}
-#endif
 
 //{{{
 Static void declare_args (type, isheader, isforward)
