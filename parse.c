@@ -4405,7 +4405,7 @@ Static Stmt* p_body() {
   long saveserial;
 
   if (verbose)
-    fprintf(logfile, "%s, %d/%d: Translating %s (in %s)\n",
+    fprintf (logfile, "%s, %d/%d: took %s (in %s)\n",
 
   infname, inf_lnum, outf_lnum,
   curctx->name, curctx->ctx->name);
@@ -5625,11 +5625,11 @@ int p_search (char* fname, char* ext, int need) {
     mod->anyvarflag = 0;
     if (!quietmode && !showprogress)
       if (outf == stdout)
-        fprintf (stderr, "Reading import text for \"%s\"\n", mod->name);
+        fprintf (stderr, "import %s\n", infname);
       else
-        printf ("Reading import text for \"%s\"\n", mod->name);
+        printf ("import %s\n", infname);
     if (verbose)
-      fprintf (logfile, "%s, %d/%d: Reading import text for \"%s\"\n", infname, inf_lnum, outf_lnum, mod->name);
+      fprintf (logfile, "import %s line:%d of line:%d\n", infname, inf_lnum, outf_lnum);
 
     pushctx (mod);
     gettok();
@@ -5637,7 +5637,6 @@ int p_search (char* fname, char* ext, int need) {
     needToken (TOK_SEMI);
     mypermflag = permflag;
 
-    printf ("using module %s\n", mod->name);
     checkmodulewords();
     while (curtok == TOK_IMPORT || curtok == TOK_FROM)
       p_import (1);
@@ -5686,12 +5685,11 @@ int p_search (char* fname, char* ext, int need) {
 //{{{
 void p_program() {
 
-  Meaning *prog;
-  Stmt *sp;
-  int nummods, isdefn = 0;
+  int nummods = 0;
+  int isdefn = 0;
 
   flushcomments (NULL, -1, -1);
-  output (format_s("\n#include %s\n", p2c_h_name));
+  output (format_s ("#include %s\n", p2c_h_name));
   outsection (majorspace);
 
   p_attributes();
@@ -5732,7 +5730,8 @@ void p_program() {
       break;
     //}}}
     //{{{
-    default:
+    default: {
+      Meaning* prog;
       if (curtok == TOK_PROGRAM) {
         gettok();
         if (!wexpecttok (TOK_IDENT))
@@ -5747,7 +5746,7 @@ void p_program() {
                 strlist_add (&literalfiles, curtokbuf);
                 }
               else if (strcicmp (curtokbuf, "KEYBOARD") && strcicmp (curtokbuf, "LISTING")) {
-                note(format_s ("Unexpected name \"%s\" in program header [262]", curtokcase));
+                note (format_s ("Unexpected name \"%s\" in program header [262]", curtokcase));
                 }
               }
             gettok();
@@ -5782,7 +5781,7 @@ void p_program() {
       if (curtok != TOK_EOF) {
         //{{{  not eof
         nullbody = 0;
-        sp = p_body();
+        Stmt* sp = p_body();
         if (!nullbody) {
           strlist_mix (&prog->comments, curcomments);
           curcomments = NULL;
@@ -5808,7 +5807,7 @@ void p_program() {
           out_block (sp, BR_FUNCTION, 10000);
           }
 
-        free_stmt(sp);
+        free_stmt (sp);
         popctx();
 
         if (curtok == TOK_SEMI)
@@ -5817,8 +5816,8 @@ void p_program() {
           needToken (TOK_DOT);
         }
         //}}}
-
       break;
+      }
     //}}}
     }
 

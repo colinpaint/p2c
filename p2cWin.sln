@@ -20,6 +20,7 @@ Global
 		{F3A315EC-A1E8-47DF-AE21-55E9247EF696}.Release|x64.ActiveCfg = Release|x64
 		{F3A315EC-A1E8-47DF-AE21-55E9247EF696}.Release|x64.Build.0 = Release|x64
 		{F3A315EC-A1E8-47DF-AE21-55E9247EF696}.Release|x86.ActiveCfg = Release|x64
+		{F3A315EC-A1E8-47DF-AE21-55E9247EF696}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

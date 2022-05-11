@@ -149,8 +149,6 @@ Static int readrc (char* rcname, int need) {
   int i;
   Strlist* sl;
 
-  printf ("using resource %s\n", rcname);
-
   rc = fopen (rcname, "r");
   if (!rc) {
     if (need)
@@ -744,12 +742,8 @@ int main (int argc, char** argv) {
   int i = 1;
   while ((i < argc) && (argv[i][0] == '-'))
     i++;
-  if (i < argc) {
-    //{{{  use first non '-' argv as infname, pascal file to be translated
+  if (i < argc)
     strcpy (infname, argv[i]);
-    printf ("using pascal %s\n", infname);
-    }
-    //}}}
 
   readrc ("p2crc", 1);
 
@@ -827,9 +821,12 @@ int main (int argc, char** argv) {
     //{{{  check for and open infname file for read
     if (strlen (infname) > 2 &&
         !strcmp (infname + strlen(infname) - 2, ".c")) {
-      fprintf(stderr, "What is wrong with this picture?\n");
+      fprintf (stderr, "What is wrong with this picture?\n");
       exit_failure();
       }
+
+    if (!quietmode)
+      printf ("using pascal %s\n", infname);
 
     inf = fopen (infname, "r");
     if (!inf) {
@@ -843,6 +840,9 @@ int main (int argc, char** argv) {
     //}}}
   else
     exit_failure();
+
+  if (!quietmode)
+    printf ("using resource p2crc\n");
 
   if (strcmp (codefname, "-")) {
     //{{{  open codefname file for write
@@ -918,13 +918,10 @@ int main (int argc, char** argv) {
   handle_nameof();
   setup_complete = 1;
 
-  // save quietmode while loading system.imp
-  int savequiet = quietmode;
-  quietmode = 1;
-  for (sl = librfiles; sl; sl = sl->next)
+  // load import system.imp
+ for (sl = librfiles; sl; sl = sl->next)
     if (strlist_find (librfiles, sl->s) == sl)
       p_search (format_none(sl->s), "pas", 0);
-  quietmode = savequiet;
 
   p_program();
   end_source();

@@ -30,6 +30,13 @@ p2clib.a: p2clib.o
 clean:
 	rm -f -v p2c
 	rm -f -v *.sa
+	rm -f -v *.ro
+	rm -f -v *.inter
+	rm -f -v *.token
+	rm -f -v *.pseudo
+	rm -f -v *.local
+	rm -f -v *.log
+	rm -f -v *.tmp
 	rm -f -v *.a
 	rm -f -v *.o
 	rm -f -v *.~*

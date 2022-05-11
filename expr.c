@@ -2695,12 +2695,12 @@ Expr* makeexpr_rem (a, b)
 Expr *a, *b;
 {
     if (!(possiblesigns(a) & 1) && !(possiblesigns(b) & 1))
-  return makeexpr_mod(a, b);
+      return makeexpr_mod(a, b);
     if (checkconst(b, 0))
-        warning("Division by zero [163]");
+      warning("Division by zero [163]");
     if (!*remname)
-  note("Translating REM same as MOD [141]");
-    return dodivmod(*remname ? remname : modname, EK_MOD, a, b);
+      note ("Translating REM same as MOD [141]");
+    return dodivmod (*remname ? remname : modname, EK_MOD, a, b);
 }
 //}}}
 //{{{
