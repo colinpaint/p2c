@@ -651,16 +651,16 @@ void showendnotes() {
       if (!quietmode) {
         if (outf != stdout) {
           beginerror();
-          printf ("Note: %s\n", endnotelist->s);
+          printf ("Note %s\n", endnotelist->s);
           }
         else
-          fprintf (stderr, "Note: %s\n", endnotelist->s);
+          fprintf (stderr, "Note %s\n", endnotelist->s);
         }
 
       if (slashslash)
-        fprintf (outf, "// p2c: Note: %s\n", endnotelist->s);
+        fprintf (outf, "// p2c: Note %s\n", endnotelist->s);
       else
-        fprintf (outf, "/* p2c: Note: %s */\n", endnotelist->s);
+        fprintf (outf, "/* p2c: Note %s */\n", endnotelist->s);
 
       outf_lnum++;
       strlist_eat (&endnotelist);
@@ -1349,12 +1349,12 @@ int handle_include (char* fn) {
   else {
     if (!quietmode && !showprogress && !silenceIncludes)
       if (outf == stdout)
-        fprintf (stderr, "Reading include file \"%s\"\n", fn);
+        fprintf (stderr, "include file %s\n", fn);
       else
-        printf ("Reading include file \"%s\"\n", fn);
+        printf ("include file %s\n", fn);
 
     if (verbose)
-      fprintf (logfile, "Reading include file \"%s\"\n", fn);
+      fprintf (logfile, "include file %s\n", fn);
 
     if (expandincludes == 0) {
       push_input_file (fp, fn, 2);

@@ -4958,9 +4958,9 @@ Static int p_module (int ignoreit, int isdefn) {
   if (ignoreit || (requested_module && strcicmp (requested_module, mod->name))) {
     if (!quietmode)
       if (outf == stdout)
-        fprintf (stderr, "Skipping over module \"%s\"\n", mod->name);
+        fprintf (stderr, "Skipping module %s\n", mod->name);
       else
-        printf ("Skipping over module \"%s\"\n", mod->name);
+        printf ("Skipping module %s\n", mod->name);
 
     checkmodulewords();
     while (curtok == TOK_IMPORT || curtok == TOK_FROM)
@@ -5628,6 +5628,7 @@ int p_search (char* fname, char* ext, int need) {
         fprintf (stderr, "import %s\n", infname);
       else
         printf ("import %s\n", infname);
+
     if (verbose)
       fprintf (logfile, "import %s line:%d of line:%d\n", infname, inf_lnum, outf_lnum);
 
