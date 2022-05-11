@@ -21,9 +21,8 @@ the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 #include "main.h"
 
 //{{{
-void free_value (val)
-Value *val;
-{
+void free_value (Value* val) {
+
   if (!val || !val->type)
     return;
 
@@ -39,159 +38,174 @@ Value *val;
     default:
       break;
     }
-}
+  }
 //}}}
 //{{{
-Value copyvalue (val)
-Value val;
-{
-    char *cp;
+Value copyvalue (Value val) {
 
-    switch (val.type->kind) {
+  char* cp;
+  switch (val.type->kind) {
+    case TK_STRING:
+    case TK_SET:
+      if (val.s) {
+        cp = ALLOC(val.i+1, char, literals);
+        memcpy(cp, val.s, val.i);
+        cp[val.i] = 0;
+        val.s = cp;
+        }
+      break;
 
-        case TK_STRING:
-        case TK_SET:
-            if (val.s) {
-                cp = ALLOC(val.i+1, char, literals);
-                memcpy(cp, val.s, val.i);
-    cp[val.i] = 0;
-                val.s = cp;
-            }
-            break;
+    case TK_REAL:
+    case TK_ARRAY:
+    case TK_RECORD:
+      if (val.s)
+        val.s = stralloc(val.s);
+      break;
 
-        case TK_REAL:
-        case TK_ARRAY:
-        case TK_RECORD:
-            if (val.s)
-                val.s = stralloc(val.s);
-            break;
-
-  default:
+    default:
       break;
     }
-    return val;
-}
+
+  return val;
+  }
 //}}}
 //{{{
-int valuesame (a, b)
-Value a, b;
-{
-    if (a.type != b.type)
-        return 0;
-    switch (a.type->kind) {
+int valuesame (Value a, Value b) {
 
-        case TK_INTEGER:
-        case TK_CHAR:
-        case TK_BOOLEAN:
-        case TK_ENUM:
-        case TK_SMALLSET:
-        case TK_SMALLARRAY:
-            return (a.i == b.i);
+  if (a.type != b.type)
+    return 0;
 
-        case TK_STRING:
-        case TK_SET:
-            return (a.i == b.i && !memcmp(a.s, b.s, a.i));
+  switch (a.type->kind) {
+    case TK_INTEGER:
+    case TK_CHAR:
+    case TK_BOOLEAN:
+    case TK_ENUM:
+    case TK_SMALLSET:
+    case TK_SMALLARRAY:
+      return (a.i == b.i);
 
-        case TK_REAL:
-        case TK_ARRAY:
-        case TK_RECORD:
-            return (!strcmp(a.s, b.s));
+    case TK_STRING:
+    case TK_SET:
+      return (a.i == b.i && !memcmp(a.s, b.s, a.i));
 
-        default:
-            return 1;
+    case TK_REAL:
+    case TK_ARRAY:
+    case TK_RECORD:
+      return (!strcmp(a.s, b.s));
+
+    default:
+        return 1;
     }
-}
-
+  }
 //}}}
 //{{{
-char* value_name (val, intfmt, islong)
-Value val;
-char *intfmt;
-int islong;
-{
-    Meaning *mp;
-    Type *type = val.type;
+char* value_name (Value val, char* intfmt, int islong) {
 
-    if (type->kind == TK_SUBR)
-  type = type->basetype;
-    switch (type->kind) {
+  Meaning *mp;
+  Type *type = val.type;
 
-        case TK_INTEGER:
-        case TK_SMALLSET:
-        case TK_SMALLARRAY:
-            if (!intfmt)
-    intfmt = "%ld";
-      if (*intfmt == '\'') {
-    if (val.i >= -'~' && val.i <= -' ') {
-        intfmt = format_s("-%s", intfmt);
-        val.i = -val.i;
-    }
-    if (val.i < ' ' || val.i > '~' || islong)
+  if (type->kind == TK_SUBR)
+    type = type->basetype;
+
+  switch (type->kind) {
+    case TK_INTEGER:
+    case TK_SMALLSET:
+    //{{{
+    case TK_SMALLARRAY:
+      if (!intfmt)
         intfmt = "%ld";
-      }
-            if (islong)
-                intfmt = format_s("%sL", intfmt);
-            return format_d(intfmt, val.i);
 
-        case TK_REAL:
-            return val.s;
+      if (*intfmt == '\'') {
+        if (val.i >= -'~' && val.i <= -' ') {
+          intfmt = format_s("-%s", intfmt);
+          val.i = -val.i;
+          }
 
-        case TK_ARRAY:    /* obsolete */
-        case TK_RECORD:   /* obsolete */
-            return val.s;
+        if (val.i < ' ' || val.i > '~' || islong)
+          intfmt = "%ld";
+        }
 
-        case TK_STRING:
-            return makeCstring(val.s, val.i);
+      if (islong)
+        intfmt = format_s("%sL", intfmt);
 
-        case TK_BOOLEAN:
-            if (!intfmt)
-                if (val.i == 1 && *name_TRUE &&
-        strcmp(name_TRUE, "1") && !islong)
-                    intfmt = name_TRUE;
-                else if (val.i == 0 && *name_FALSE &&
-       strcmp(name_FALSE, "0") && !islong)
-                    intfmt = name_FALSE;
-                else
-                    intfmt = "%ld";
-            if (islong)
-                intfmt = format_s("%sL", intfmt);
-            return format_d(intfmt, val.i);
+      return format_d(intfmt, val.i);
+    //}}}
+    //{{{
+    case TK_REAL:
+      return val.s;
+    //}}}
+    case TK_ARRAY:    /* obsolete */
+    //{{{
+    case TK_RECORD:   /* obsolete */
+      return val.s;
+    //}}}
+    //{{{
+    case TK_STRING:
+      return makeCstring(val.s, val.i);
+    //}}}
+    //{{{
+    case TK_BOOLEAN:
+      if (!intfmt)
+        if (val.i == 1 &&
+            *name_TRUE &&
+            strcmp (name_TRUE, "1") && !islong)
+          intfmt = name_TRUE;
 
-        case TK_CHAR:
-            if (islong)
-                return format_d("%ldL", val.i);
+        else if (val.i == 0 &&
+                 *name_FALSE &&
+                strcmp (name_FALSE, "0") && !islong)
+          intfmt = name_FALSE;
+
+        else
+          intfmt = "%ld";
+
+        if (islong)
+          intfmt = format_s ("%sL", intfmt);
+
+        return format_d (intfmt, val.i);
+    //}}}
+    //{{{
+    case TK_CHAR:
+      if (islong)
+        return format_d ("%ldL", val.i);
       else if ((val.i < 0 || val.i > 127) && highcharints)
-    return format_d("%ld", val.i);
-            else
-                return makeCchar(val.i);
+        return format_d ("%ld", val.i);
+      else
+        return makeCchar (val.i);
+    //}}}
+    //{{{
+    case TK_POINTER:
+      return (*name_NULL) ? name_NULL : "NULL";
+    //}}}
+    //{{{
+    case TK_ENUM:
+      mp = val.type->fbase;
+      while (mp && mp->val.i != val.i)
+         mp = mp->xnext;
 
-        case TK_POINTER:
-            return (*name_NULL) ? name_NULL : "NULL";
+      if (!mp) {
+        intwarning ("value_name", "bad enum value [152]");
+        return format_d ("%ld", val.i);
+        }
 
-        case TK_ENUM:
-            mp = val.type->fbase;
-            while (mp && mp->val.i != val.i)
-                mp = mp->xnext;
-            if (!mp) {
-                intwarning("value_name", "bad enum value [152]");
-                return format_d("%ld", val.i);
-            }
-            return mp->name;
-
-        default:
-            intwarning("value_name", format_s("bad type for constant: %s [153]",
-                                              typekindname(type->kind)));
-            return "<spam>";
+      return mp->name;
+    //}}}
+    //{{{
+    default:
+      intwarning ("value_name", format_s ("bad type for constant: %s [153]", typekindname (type->kind)));
+      return "<spam>";
+    //}}}
     }
-}
+  }
 //}}}
 //{{{
-Value value_cast (Value val, Type *type) {
+Value value_cast (Value val, Type* type) {
 
   char buf[20];
 
   if (type->kind == TK_SUBR)
     type = type->basetype;
+
   if (val.type == type)
     return val;
 
@@ -240,64 +254,61 @@ Value value_cast (Value val, Type *type) {
   }
 //}}}
 //{{{
-Type* ord_type (tp)
-Type *tp;
-{
-    if (!tp) {
-        warning("Expected a constant [127]");
-        return tp_integer;
+Type* ord_type (Type* tp) {
+
+  if (!tp) {
+    warning("Expected a constant [127]");
+    return tp_integer;
     }
-    switch (tp->kind) {
 
-        case TK_SUBR:
-            tp = tp->basetype;
-            break;
-
-        case TK_STRING:
-            if (!CHECKORDEXPR(tp->indextype->smax, 1))
-                tp = tp_char;
-            break;
-
-  default:
+  switch (tp->kind) {
+    case TK_SUBR:
+      tp = tp->basetype;
       break;
 
+    case TK_STRING:
+      if (!CHECKORDEXPR(tp->indextype->smax, 1))
+        tp = tp_char;
+      break;
+
+    default:
+      break;
     }
-    return tp;
-}
+
+  return tp;
+  }
 //}}}
 //{{{
-int long_type (tp)
-Type *tp;
-{
-    switch (tp->kind) {
+int long_type (Type* tp) {
 
-        case TK_INTEGER:
-            return (tp != tp_int && tp != tp_uint && tp != tp_sint);
+  switch (tp->kind) {
+    case TK_INTEGER:
+      return (tp != tp_int && tp != tp_uint && tp != tp_sint);
 
-        case TK_SUBR:
-            return (findbasetype(tp, ODECL_NOPRES) == tp_integer);
+    case TK_SUBR:
+      return (findbasetype(tp, ODECL_NOPRES) == tp_integer);
 
-        default:
-            return 0;
+    default:
+      return 0;
     }
-}
+  }
 //}}}
 //{{{
-Value make_ord (type, i)
-Type *type;
-long i;
-{
-    Value val;
+Value make_ord (Type *type, long i) {
 
-    if (type->kind == TK_ENUM)
-        type = findbasetype(type, ODECL_NOPRES);
-    if (type->kind == TK_SUBR)
-        type = type->basetype;
-    val.type = type;
-    val.i = i;
-    val.s = NULL;
-    return val;
-}
+  Value val;
+
+  if (type->kind == TK_ENUM)
+    type = findbasetype(type, ODECL_NOPRES);
+  if (type->kind == TK_SUBR)
+    type = type->basetype;
+
+  val.type = type;
+  val.i = i;
+  val.s = NULL;
+
+  return val;
+  }
 //}}}
 //{{{
 long ord_value (Value val) {
@@ -321,7 +332,7 @@ long ord_value (Value val) {
   }
 //}}}
 //{{{
-void ord_range_expr (Type *type, Expr **smin, Expr **smax) {
+void ord_range_expr (Type* type, Expr** smin, Expr** smax) {
 
   if (!type) {
     warning("Expected a constant [127]");
@@ -337,24 +348,24 @@ void ord_range_expr (Type *type, Expr **smin, Expr **smax) {
     case TK_ENUM:
     case TK_CHAR:
     case TK_BOOLEAN:
-      if (smin) 
+      if (smin)
         *smin = type->smin;
-      if (smax) 
+      if (smax)
         *smax = type->smax;
       break;
 
     default:
       warning ("Expected an ordinal type [156]");
-      if (smin) 
+      if (smin)
         *smin = makeexpr_long(0);
-      if (smax) 
+      if (smax)
         *smax = makeexpr_long(1);
       break;
       }
   }
 //}}}
 //{{{
-int ord_range (Type *type, long *smin, long *smax) {
+int ord_range (Type* type, long* smin, long* smax) {
 
   Expr *emin, *emax;
   Value vmin, vmax;
@@ -372,9 +383,9 @@ int ord_range (Type *type, long *smin, long *smax) {
       return 0;
     }
 
-  if (smin) 
+  if (smin)
     *smin = ord_value(vmin);
-  if (smax) 
+  if (smax)
     *smax = ord_value(vmax);
 
   return 1;
@@ -382,7 +393,7 @@ int ord_range (Type *type, long *smin, long *smax) {
 //}}}
 
 //{{{
-void freeexpr (Expr *ex) {
+void freeexpr (Expr* ex) {
 
   int i;
   if (ex) {
@@ -424,117 +435,103 @@ Expr* makeexpr (enum exprkind kind, int n) {
   }
 //}}}
 //{{{
-Expr* makeexpr_un (kind, type, arg1)
-enum exprkind kind;
-Type *type;
-Expr *arg1;
-{
-    Expr *ex;
+Expr* makeexpr_un  (enum exprkind kind, Type *type, Expr *arg1) {
 
-    ex = makeexpr(kind, 1);
-    ex->val.type = type;
-    ex->args[0] = arg1;
-    return ex;
-}
-//}}}
-//{{{
-Expr* makeexpr_bin (kind, type, arg1, arg2)
-enum exprkind kind;
-Type *type;
-Expr *arg1, *arg2;
-{
-    Expr *ex;
+  Expr *ex = makeexpr(kind, 1);
+  ex->val.type = type;
+  ex->args[0] = arg1;
 
-    ex = makeexpr(kind, 2);
-    ex->val.type = type;
-    ex->args[0] = arg1;
-    ex->args[1] = arg2;
-    return ex;
-}
+  return ex;
+  }
 //}}}
 //{{{
-Expr* makeexpr_val (val)
-Value val;
-{
-    Expr *ex;
+Expr* makeexpr_bin (enum exprkind kind, Type *type, Expr *arg1, Expr *arg2) {
 
-    if (val.type->kind == TK_INTEGER &&
-        (val.i < -32767 || val.i > 32767) &&
-        sizeof_int < 32)
-        ex = makeexpr(EK_LONGCONST, 0);
-    else
-        ex = makeexpr(EK_CONST, 0);
-    ex->val = val;
-    return ex;
-}
-//}}}
-//{{{
-Expr* makeexpr_char (c)
-int c;
-{
-    return makeexpr_val(make_ord(tp_char, c));
-}
-//}}}
-//{{{
-Expr* makeexpr_long (i)
-long i;
-{
-    return makeexpr_val(make_ord(tp_integer, i));
-}
-//}}}
-//{{{
-Expr* makeexpr_real (r)
-char *r;
-{
-    Value val;
+  Expr* ex = makeexpr(kind, 2);
+  ex->val.type = type;
+  ex->args[0] = arg1;
+  ex->args[1] = arg2;
 
-    val.type = tp_real;
-    val.i = 0;
-    val.s = stralloc(r);
-    return makeexpr_val(val);
-}
+  return ex;
+  }
 //}}}
 //{{{
-Expr* makeexpr_lstring (msg, len)
-char *msg;
-int len;
-{
-    Value val;
+Expr* makeexpr_val (Value val) {
 
-    val.type = tp_str255;
-    val.i = len;
-    val.s = ALLOC(len+1, char, literals);
-    memcpy(val.s, msg, len);
-    val.s[len] = 0;
-    return makeexpr_val(val);
-}
-//}}}
-//{{{
-Expr* makeexpr_string (msg)
-char *msg;
-{
-    Value val;
+  Expr *ex;
 
-    val.type = tp_str255;
-    val.i = strlen(msg);
-    val.s = stralloc(msg);
-    return makeexpr_val(val);
-}
+  if (val.type->kind == TK_INTEGER &&
+      (val.i < -32767 || val.i > 32767) &&
+      sizeof_int < 32)
+    ex = makeexpr(EK_LONGCONST, 0);
+  else
+    ex = makeexpr(EK_CONST, 0);
+  ex->val = val;
+
+  return ex;
+  }
 //}}}
 //{{{
-int checkstring (ex, msg)
-Expr *ex;
-char *msg;
-{
-    if (!ex || ex->val.type->kind != TK_STRING || ex->kind != EK_CONST)
-        return 0;
-    if (ex->val.i != strlen(msg))
-        return 0;
-    return memcmp(ex->val.s, msg, ex->val.i) == 0;
-}
+Expr* makeexpr_char (int c) {
+  return makeexpr_val (make_ord (tp_char, c));
+  }
 //}}}
 //{{{
-Expr* makeexpr_var (Meaning *mp) {
+Expr* makeexpr_long (long i) {
+  return makeexpr_val (make_ord (tp_integer, i));
+  }
+//}}}
+//{{{
+Expr* makeexpr_real (char* r) {
+
+  Value val;
+
+  val.type = tp_real;
+  val.i = 0;
+  val.s = stralloc(r);
+
+  return makeexpr_val(val);
+  }
+//}}}
+//{{{
+Expr* makeexpr_lstring (char* msg, int len) {
+
+  Value val;
+
+  val.type = tp_str255;
+  val.i = len;
+  val.s = ALLOC(len+1, char, literals);
+  memcpy(val.s, msg, len);
+  val.s[len] = 0;
+
+  return makeexpr_val(val);
+  }
+//}}}
+//{{{
+Expr* makeexpr_string (char* msg) {
+
+  Value val;
+
+  val.type = tp_str255;
+  val.i = strlen(msg);
+  val.s = stralloc(msg);
+
+  return makeexpr_val(val);
+  }
+//}}}
+//{{{
+int checkstring (Expr* ex, char* msg) {
+
+  if (!ex || ex->val.type->kind != TK_STRING || ex->kind != EK_CONST)
+     return 0;
+  if (ex->val.i != strlen (msg))
+     return 0;
+
+  return memcmp (ex->val.s, msg, ex->val.i) == 0;
+  }
+//}}}
+//{{{
+Expr* makeexpr_var (Meaning* mp) {
 
   Expr* ex = makeexpr (EK_VAR, 0);
   ex->val.i = (int64_t)mp;
@@ -543,86 +540,80 @@ Expr* makeexpr_var (Meaning *mp) {
   }
 //}}}
 //{{{
-Expr* makeexpr_name (name, type)
-char *name;
-Type *type;
-{
-    Expr *ex;
+Expr* makeexpr_name (char* name, Type* type) {
 
-    ex = makeexpr(EK_NAME, 0);
-    ex->val.s = stralloc(name);
-    ex->val.type = type;
-    return ex;
-}
+  Expr* ex = makeexpr(EK_NAME, 0);
+  ex->val.s = stralloc(name);
+  ex->val.type = type;
+
+  return ex;
+  }
 //}}}
 //{{{
-Expr* makeexpr_setbits()
-{
-    if (*name_SETBITS)
-        return makeexpr_name(name_SETBITS, tp_integer);
-    else
-        return makeexpr_long(setbits);
-}
+Expr* makeexpr_setbits() {
+
+  if (*name_SETBITS)
+    return makeexpr_name (name_SETBITS, tp_integer);
+  else
+    return makeexpr_long (setbits);
+  }
 //}}}
 //{{{
+Expr* makeexpr_bicall_0 (char* name, Type* type) {
 /* Note: BICALL's to the following functions should obey the ANSI standard. */
 /*       Non-ANSI transformations occur while writing the expression. */
 /*              char *sprintf(buf, fmt, ...)   [returns buf]  */
 /*              void *memcpy(dest, src, size)  [returns dest] */
-Expr* makeexpr_bicall_0 (name, type)
-char *name;
-Type *type;
-{
-    Expr *ex;
 
-    if (!name || !*name) {
-        intwarning("makeexpr_bicall_0", "Required name of built-in procedure is missing [157]");
-        name = "MissingProc";
+  Expr *ex;
+
+  if (!name || !*name) {
+    intwarning ("makeexpr_bicall_0", "Required name of built-in procedure is missing [157]");
+    name = "MissingProc";
     }
-    ex = makeexpr(EK_BICALL, 0);
-    ex->val.s = stralloc(name);
-    ex->val.type = type;
-    return ex;
-}
+  ex = makeexpr (EK_BICALL, 0);
+  ex->val.s = stralloc (name);
+  ex->val.type = type;
+
+  return ex;
+ }
 //}}}
 //{{{
-Expr* makeexpr_bicall_1 (name, type, arg1)
-char *name;
-Type *type;
-Expr *arg1;
-{
-    Expr *ex;
+Expr* makeexpr_bicall_1 (char* name, Type* type, Expr* arg1) {
 
-    if (!name || !*name) {
-        intwarning("makeexpr_bicall_1", "Required name of built-in procedure is missing [157]");
-        name = "MissingProc";
+  Expr *ex;
+
+  if (!name || !*name) {
+    intwarning ("makeexpr_bicall_1", "Required name of built-in procedure is missing [157]");
+    name = "MissingProc";
     }
-    ex = makeexpr(EK_BICALL, 1);
-    ex->val.s = stralloc(name);
-    ex->val.type = type;
-    ex->args[0] = arg1;
-    return ex;
-}
+
+  ex = makeexpr(EK_BICALL, 1);
+  ex->val.s = stralloc(name);
+  ex->val.type = type;
+  ex->args[0] = arg1;
+
+  return ex;
+  }
 //}}}
 //{{{
-Expr* makeexpr_bicall_2 (name, type, arg1, arg2)
-char *name;
-Type *type;
-Expr *arg1, *arg2;
-{
-    Expr *ex;
+Expr* makeexpr_bicall_2 (char* name, Type* type, Expr* arg1, Expr* arg2) {
 
-    if (!name || !*name) {
-        intwarning("makeexpr_bicall_2", "Required name of built-in procedure is missing [157]");
-        name = "MissingProc";
+  Expr *ex;
+
+  if (!name || !*name) {
+    intwarning ("makeexpr_bicall_2", "Required name of built-in procedure is missing [157]");
+    name = "MissingProc";
     }
-    ex = makeexpr(EK_BICALL, 2);
-    ex->val.s = stralloc(name);
-    ex->val.type = type;
-    ex->args[0] = arg1;
-    ex->args[1] = arg2;
-    return ex;
-}
+
+  ex = makeexpr (EK_BICALL, 2);
+  ex->val.s = stralloc (name);
+  ex->val.type = type;
+  ex->args[0] = arg1;
+  ex->args[1] = arg2;
+
+  return ex;
+  }
 //}}}
 //{{{
 Expr* makeexpr_bicall_3 (name, type, arg1, arg2, arg3)
@@ -692,555 +683,580 @@ Expr *arg1, *arg2, *arg3, *arg4, *arg5;
 }
 //}}}
 //{{{
-Expr* makeexpr_SETIO(flag, code, name)
-Expr *flag;
-char *code;
-Expr *name;
-{
-    Expr *ecode;
+Expr* makeexpr_SETIO (Expr *flag, char *code, Expr *name) {
 
-    if (code) {
-  ecode = makeexpr_name(code, tp_int);
-    } else {
-  ecode = name->args[0];
-  name = name->args[1];
+  Expr *ecode;
+
+  if (code) {
+    ecode = makeexpr_name(code, tp_int);
+    } 
+  else {
+    ecode = name->args[0];
+    name = name->args[1];
     }
-    if (iocheck_flag) {
-  if (name) {
-      if (name->val.type->kind == TK_STRING ||
-    name->val.type->kind == TK_ARRAY)
-    name = copyexpr(name);
+
+  if (iocheck_flag) {
+    if (name) {
+      if (name->val.type->kind == TK_STRING || name->val.type->kind == TK_ARRAY)
+        name = copyexpr(name);
       else
-    name = filenamepart(name);
-  }
-  if (name)
+        name = filenamepart(name);
+      }
+
+    if (name)
       return makeexpr_bicall_3("~~SETIO", tp_void, flag, ecode, name);
-  else
+    else
       return makeexpr_bicall_2("~~SETIO", tp_void, flag, ecode);
-    } else
-  return makeexpr_bicall_2(name_SETIO, tp_void, flag, ecode);
-}
+    } 
+  else
+    return makeexpr_bicall_2(name_SETIO, tp_void, flag, ecode);
+  }
 //}}}
 //{{{
-Expr* copyexpr (ex)
-register Expr *ex;
-{
-    register int i;
-    register Expr *ex2;
+Expr* copyexpr (Expr *ex) {
 
-    if (ex) {
-        ex2 = makeexpr(ex->kind, ex->nargs);
-        for (i = 0; i < ex->nargs; i++)
-            ex2->args[i] = copyexpr(ex->args[i]);
-        switch (ex->kind) {
+  int i;
+  Expr* ex2;
 
-            case EK_CONST:
-            case EK_LONGCONST:
-                ex2->val = copyvalue(ex->val);
-                break;
+  if (ex) {
+    ex2 = makeexpr(ex->kind, ex->nargs);
+    for (i = 0; i < ex->nargs; i++)
+      ex2->args[i] = copyexpr(ex->args[i]);
 
-            case EK_DOT:
-            case EK_NAME:
-            case EK_BICALL:
-                ex2->val.type = ex->val.type;
-                ex2->val.i = ex->val.i;
-                if (ex->val.s)
-                    ex2->val.s = stralloc(ex->val.s);
-                break;
+    switch (ex->kind) {
+      case EK_CONST:
+      case EK_LONGCONST:
+        ex2->val = copyvalue(ex->val);
+        break;
 
-            default:
-                ex2->val = ex->val;
-                break;
-        }
-        return ex2;
-    } else
-        return NULL;
-}
-//}}}
-//{{{
-int exprsame (a, b, strict)
-register Expr *a, *b;
-int strict;
-{
-    register int i;
+      case EK_DOT:
+      case EK_NAME:
+      case EK_BICALL:
+        ex2->val.type = ex->val.type;
+        ex2->val.i = ex->val.i;
+        if (ex->val.s)
+          ex2->val.s = stralloc(ex->val.s);
+        break;
 
-    if (!a)
-        return (!b);
-    if (!b)
-        return 0;
-    if (a->val.type != b->val.type && strict != 2) {
-        if (strict ||
-      !((a->val.type->kind == TK_POINTER &&
-         a->val.type->basetype == b->val.type) ||
-        (b->val.type->kind == TK_POINTER &&
-         b->val.type->basetype == a->val.type)))
-        return 0;
+      default:
+        ex2->val = ex->val;
+        break;
+      }
+    return ex2;
     }
-    if (a->kind != b->kind || a->nargs != b->nargs)
+
+  else
+    return NULL;
+  }
+//}}}
+//{{{
+int exprsame (Expr *a, Expr *b, int strict) {
+
+  int i;
+
+  if (!a)
+    return (!b);
+  if (!b)
+    return 0;
+
+  if (a->val.type != b->val.type && strict != 2) {
+    if (strict ||
+        !((a->val.type->kind == TK_POINTER && a->val.type->basetype == b->val.type) ||
+         (b->val.type->kind == TK_POINTER && b->val.type->basetype == a->val.type)))
+      return 0;
+    }
+
+  if (a->kind != b->kind || a->nargs != b->nargs)
+    return 0;
+
+  switch (a->kind) {
+    case EK_CONST:
+    case EK_LONGCONST:
+      if (!valuesame(a->val, b->val))
         return 0;
-    switch (a->kind) {
-
-        case EK_CONST:
-        case EK_LONGCONST:
-            if (!valuesame(a->val, b->val))
-                return 0;
-            break;
-
-        case EK_BICALL:
-        case EK_NAME:
-            if (strcmp(a->val.s, b->val.s))
-                return 0;
-            break;
-
-        case EK_VAR:
-        case EK_FUNCTION:
-        case EK_CTX:
-        case EK_MACARG:
-            if (a->val.i != b->val.i)
-                return 0;
-            break;
-
-        case EK_DOT:
-            if (a->val.i != b->val.i ||
-                (!a->val.i && strcmp(a->val.s, b->val.s)))
-                return 0;
-            break;
-
-  default:
       break;
-    }
-    i = a->nargs;
-    while (--i >= 0)
-        if (!exprsame(a->args[i], b->args[i], (strict == 2) ? 1 : strict))
-            return 0;
-    return 1;
-}
+
+    case EK_BICALL:
+    case EK_NAME:
+      if (strcmp(a->val.s, b->val.s))
+        return 0;
+      break;
+
+    case EK_VAR:
+    case EK_FUNCTION:
+    case EK_CTX:
+    case EK_MACARG:
+      if (a->val.i != b->val.i)
+        return 0;
+      break;
+
+    case EK_DOT:
+      if (a->val.i != b->val.i || (!a->val.i && strcmp(a->val.s, b->val.s)))
+        return 0;
+      break;
+
+     default:
+       break;
+     }
+
+  i = a->nargs;
+  while (--i >= 0)
+    if (!exprsame (a->args[i], b->args[i], (strict == 2) ? 1 : strict))
+      return 0;
+
+  return 1;
+  }
 //}}}
 //{{{
-int exprequiv (a, b)
-register Expr *a, *b;
-{
-    register int i, j, k;
-    enum exprkind kind2;
+int exprequiv (Expr *a, Expr *b) {
 
-    if (!a)
-        return (!b);
-    if (!b)
-        return 0;
-    switch (a->kind) {
+  int i, j, k;
+  enum exprkind kind2;
 
-        case EK_PLUS:
-        case EK_TIMES:
-        case EK_BAND:
-        case EK_BOR:
-        case EK_BXOR:
-        case EK_EQ:
-        case EK_NE:
-            if (b->kind != a->kind || b->nargs != a->nargs ||
-                b->val.type != a->val.type)
-                return 0;
-            if (a->nargs > 3)
-                break;
-            for (i = 0; i < b->nargs; i++) {
-                if (exprequiv(a->args[0], b->args[i])) {
-                    for (j = 0; j < b->nargs; j++) {
-                        if (j != i &&
-                            exprequiv(a->args[1], b->args[i])) {
-                            if (a->nargs == 2)
+  if (!a)
+    return (!b);
+  if (!b)
+    return 0;
+
+  switch (a->kind) {
+    case EK_PLUS:
+    case EK_TIMES:
+    case EK_BAND:
+    case EK_BOR:
+    case EK_BXOR:
+    case EK_EQ:
+    //{{{
+    case EK_NE:
+        if (b->kind != a->kind || b->nargs != a->nargs ||
+            b->val.type != a->val.type)
+            return 0;
+        if (a->nargs > 3)
+            break;
+        for (i = 0; i < b->nargs; i++) {
+            if (exprequiv(a->args[0], b->args[i])) {
+                for (j = 0; j < b->nargs; j++) {
+                    if (j != i &&
+                        exprequiv(a->args[1], b->args[i])) {
+                        if (a->nargs == 2)
+                            return 1;
+                        for (k = 0; k < b->nargs; k++) {
+                            if (k != i && k != j &&
+                                exprequiv(a->args[2], b->args[k]))
                                 return 1;
-                            for (k = 0; k < b->nargs; k++) {
-                                if (k != i && k != j &&
-                                    exprequiv(a->args[2], b->args[k]))
-                                    return 1;
-                            }
                         }
                     }
                 }
             }
+        }
+        break;
+    //}}}
+    case EK_LT:
+    case EK_GT:
+    case EK_LE:
+    //{{{
+    case EK_GE:
+        switch (a->kind) {
+            case EK_LT:  kind2 = EK_GT; break;
+            case EK_GT:  kind2 = EK_LT; break;
+            case EK_LE:  kind2 = EK_GE; break;
+            default:     kind2 = EK_LE; break;
+        }
+        if (b->kind != kind2 || b->val.type != a->val.type)
             break;
-
-        case EK_LT:
-        case EK_GT:
-        case EK_LE:
-        case EK_GE:
-            switch (a->kind) {
-                case EK_LT:  kind2 = EK_GT; break;
-                case EK_GT:  kind2 = EK_LT; break;
-                case EK_LE:  kind2 = EK_GE; break;
-                default:     kind2 = EK_LE; break;
-            }
-            if (b->kind != kind2 || b->val.type != a->val.type)
-                break;
-            if (exprequiv(a->args[0], b->args[1]) &&
-                exprequiv(a->args[1], b->args[0])) {
-                return 1;
-            }
-            break;
-
-        case EK_CONST:
-        case EK_LONGCONST:
-        case EK_BICALL:
-        case EK_NAME:
-        case EK_VAR:
-        case EK_FUNCTION:
-        case EK_CTX:
-        case EK_DOT:
-            return exprsame(a, b, 0);
-
-  default:
-      break;
+        if (exprequiv(a->args[0], b->args[1]) &&
+            exprequiv(a->args[1], b->args[0])) {
+            return 1;
+        }
+        break;
+    //}}}
+    case EK_CONST:
+    case EK_LONGCONST:
+    case EK_BICALL:
+    case EK_NAME:
+    case EK_VAR:
+    case EK_FUNCTION:
+    case EK_CTX:
+    //{{{
+    case EK_DOT:
+        return exprsame(a, b, 0);
+    //}}}
+    //{{{
+    default:
+        break;
+    //}}}
     }
-    if (b->kind != a->kind || b->nargs != a->nargs ||
-        b->val.type != a->val.type)
-        return 0;
-    i = a->nargs;
-    while (--i >= 0)
-        if (!exprequiv(a->args[i], b->args[i]))
-            return 0;
-    return 1;
-}
+
+  if (b->kind != a->kind || b->nargs != a->nargs || b->val.type != a->val.type)
+    return 0;
+
+  i = a->nargs;
+  while (--i >= 0)
+    if (!exprequiv (a->args[i], b->args[i]))
+      return 0;
+
+  return 1;
+  }
 //}}}
 //{{{
-void deletearg (ex, n)
-Expr **ex;
-register int n;
-{
-    register Expr *ex1 = *ex, *ex2;
-    register int i;
+void deletearg (Expr **ex, int n) {
 
-    if (n < 0 || n >= (*ex)->nargs) {
-        intwarning("deletearg", "argument number out of range [158]");
-        return;
+  Expr *ex1 = *ex, *ex2;
+  int i;
+
+  if (n < 0 || n >= (*ex)->nargs) {
+    intwarning ("deletearg", "argument number out of range [158]");
+    return;
     }
-    ex2 = makeexpr(ex1->kind, ex1->nargs-1);
-    ex2->val = ex1->val;
-    for (i = 0; i < n; i++)
-        ex2->args[i] = ex1->args[i];
-    for (; i < ex2->nargs; i++)
-        ex2->args[i] = ex1->args[i+1];
-    *ex = ex2;
-    FREE(ex1);
-}
+
+  ex2 = makeexpr (ex1->kind, ex1->nargs-1);
+  ex2->val = ex1->val;
+
+  for (i = 0; i < n; i++)
+    ex2->args[i] = ex1->args[i];
+
+  for (; i < ex2->nargs; i++)
+    ex2->args[i] = ex1->args[i+1];
+
+  *ex = ex2;
+  FREE(ex1);
+  }
 //}}}
 //{{{
-void insertarg (ex, n, arg)
-Expr **ex;
-Expr *arg;
-register int n;
-{
-    register Expr *ex1 = *ex, *ex2;
-    register int i;
+void insertarg (Expr **ex, int n, Expr *arg) {
 
-    if (n < 0 || n > (*ex)->nargs) {
-        intwarning("insertarg", "argument number out of range [159]");
-        return;
+  Expr *ex1 = *ex, *ex2;
+  int i;
+
+  if (n < 0 || n > (*ex)->nargs) {
+    intwarning ("insertarg", "argument number out of range [159]");
+    return;
     }
-    ex2 = makeexpr(ex1->kind, ex1->nargs+1);
-    ex2->val = ex1->val;
-    for (i = 0; i < n; i++)
-        ex2->args[i] = ex1->args[i];
-    ex2->args[n] = arg;
-    for (; i < ex1->nargs; i++)
-        ex2->args[i+1] = ex1->args[i];
-    *ex = ex2;
-    FREE(ex1);
-}
+
+  ex2 = makeexpr(ex1->kind, ex1->nargs+1);
+  ex2->val = ex1->val;
+
+  for (i = 0; i < n; i++)
+      ex2->args[i] = ex1->args[i];
+
+  ex2->args[n] = arg;
+  for (; i < ex1->nargs; i++)
+      ex2->args[i+1] = ex1->args[i];
+
+  *ex = ex2;
+
+  FREE(ex1);
+  }
 //}}}
 //{{{
-Expr* grabarg (ex, n)
-Expr *ex;
-int n;
-{
-    Expr *ex2;
+Expr* grabarg (Expr *ex, int n) {
 
-    if (n < 0 || n >= ex->nargs) {
-        intwarning("grabarg", "argument number out of range [160]");
-        return ex;
-    }
-    ex2 = ex->args[n];
-    ex->args[n] = makeexpr_long(0);   /* placeholder */
-    freeexpr(ex);
-    return ex2;
-}
-//}}}
-//{{{
-void delsimparg (ep, n)
-Expr **ep;
-int n;
-{
-    if (n < 0 || n >= (*ep)->nargs) {
-        intwarning("delsimparg", "argument number out of range [161]");
-        return;
-    }
-    deletearg(ep, n);
-    switch ((*ep)->kind) {
+  Expr *ex2;
 
-        case EK_PLUS:
-        case EK_TIMES:
-        case EK_COMMA:
-            if ((*ep)->nargs == 1)
-                *ep = grabarg(*ep, 0);
-            break;
-
-  default:
-      break;
-
-    }
-}
-//}}}
-//{{{
-Expr* resimplify (ex)
-Expr *ex;
-{
-    Expr *ex2;
-    Type *type;
-    int i;
-
-    if (!ex)
-        return NULL;
-    type = ex->val.type;
-    switch (ex->kind) {
-
-        case EK_PLUS:
-            ex2 = ex->args[0];
-            for (i = 1; i < ex->nargs; i++)
-                ex2 = makeexpr_plus(ex2, ex->args[i]);
-            FREE(ex);
-            return ex2;
-
-        case EK_TIMES:
-            ex2 = ex->args[0];
-            for (i = 1; i < ex->nargs; i++)
-                ex2 = makeexpr_times(ex2, ex->args[i]);
-            FREE(ex);
-            return ex2;
-
-        case EK_NEG:
-            ex = makeexpr_neg(grabarg(ex, 0));
-            ex->val.type = type;
-            return ex;
-
-        case EK_NOT:
-            ex = makeexpr_not(grabarg(ex, 0));
-            ex->val.type = type;
-            return ex;
-
-        case EK_HAT:
-            ex = makeexpr_hat(grabarg(ex, 0), 0);
-      if (ex->kind == EK_HAT)
-    ex->val.type = type;
-            return ex;
-
-        case EK_ADDR:
-            ex = makeexpr_addr(grabarg(ex, 0));
-            ex->val.type = type;
-            return ex;
-
-  case EK_ASSIGN:
-      ex2 = makeexpr_assign(ex->args[0], ex->args[1]);
-      FREE(ex);
-      return ex2;
-
-  default:
-      break;
-    }
+  if (n < 0 || n >= ex->nargs) {
+    intwarning ("grabarg", "argument number out of range [160]");
     return ex;
-}
-//}}}
-//{{{
-int realzero (s)
-register char *s;
-{
-    if (*s == '-') s++;
-    while (*s == '0' || *s == '.') s++;
-    return (!isdigit(*s));
-}
-
-int realint(s, i)
-register char *s;
-int i;
-{
-    if (i == 0)
-  return realzero(s);
-    if (*s == '-') {
-  s++;
-  i = -i;
     }
-    if (i < 0 || i > 9) return 0;   /* we don't care about large values here */
-    while (*s == '0') s++;
-    if (*s++ != i + '0') return 0;
-    if (*s == '.')
-  while (*++s == '0') ;
-    return (!isdigit(*s) && toupper(*s) != 'E');
-}
+
+  ex2 = ex->args[n];
+  ex->args[n] = makeexpr_long(0);   /* placeholder */
+
+  freeexpr (ex);
+
+  return ex2;
+  }
+//}}}
+//{{{
+void delsimparg (Expr **ep, int n) {
+
+  if (n < 0 || n >= (*ep)->nargs) {
+    intwarning("delsimparg", "argument number out of range [161]");
+    return;
+    }
+
+  deletearg(ep, n);
+  switch ((*ep)->kind) {
+    case EK_PLUS:
+    case EK_TIMES:
+    case EK_COMMA:
+      if ((*ep)->nargs == 1)
+        *ep = grabarg(*ep, 0);
+      break;
+
+    default:
+      break;
+    }
+  }
+//}}}
+//{{{
+Expr* resimplify (Expr *ex) {
+
+  Expr *ex2;
+  Type *type;
+  int i;
+
+  if (!ex)
+    return NULL;
+
+  type = ex->val.type;
+  switch (ex->kind) {
+    //{{{
+    case EK_PLUS:
+        ex2 = ex->args[0];
+        for (i = 1; i < ex->nargs; i++)
+            ex2 = makeexpr_plus(ex2, ex->args[i]);
+        FREE(ex);
+        return ex2;
+    //}}}
+    //{{{
+    case EK_TIMES:
+        ex2 = ex->args[0];
+        for (i = 1; i < ex->nargs; i++)
+            ex2 = makeexpr_times(ex2, ex->args[i]);
+        FREE(ex);
+        return ex2;
+    //}}}
+    //{{{
+    case EK_NEG:
+        ex = makeexpr_neg(grabarg(ex, 0));
+        ex->val.type = type;
+        return ex;
+    //}}}
+    //{{{
+    case EK_NOT:
+        ex = makeexpr_not(grabarg(ex, 0));
+        ex->val.type = type;
+        return ex;
+    //}}}
+    //{{{
+    case EK_HAT:
+      ex = makeexpr_hat(grabarg(ex, 0), 0);
+      if (ex->kind == EK_HAT)
+        ex->val.type = type;
+      return ex;
+    //}}}
+    //{{{
+    case EK_ADDR:
+        ex = makeexpr_addr(grabarg(ex, 0));
+        ex->val.type = type;
+        return ex;
+    //}}}
+    //{{{
+    case EK_ASSIGN:
+        ex2 = makeexpr_assign(ex->args[0], ex->args[1]);
+        FREE(ex);
+        return ex2;
+    //}}}
+    //{{{
+    default:
+        break;
+    //}}}
+    }
+
+  return ex;
+  }
+//}}}
+//{{{
+int realzero (char *s) {
+
+  if (*s == '-') 
+    s++;
+  while (*s == '0' || *s == '.') 
+    s++;
+  return (!isdigit (*s));
+  }
+//}}}
+//{{{
+int realint (char *s, int i) {
+
+  if (i == 0)
+    return realzero (s);
+
+  if (*s == '-') {
+    s++;
+    i = -i;
+    }
+
+  if (i < 0 || i > 9) 
+    return 0;   /* we don't care about large values here */
+
+  while (*s == '0') 
+    s++;
+
+  if (*s++ != i + '0') 
+    return 0;
+
+  if (*s == '.')
+    while (*++s == '0') ;
+
+  return (!isdigit (*s) && toupper (*s) != 'E');
+  }
 //}}}
 
 //{{{
-int checkconst (ex, val)
-Expr *ex;
-long val;
-{
-    Meaning *mp;
-    Value exval;
+int checkconst (Expr *ex, long val) {
 
-    if (!ex)
-        return 0;
-    if (ex->kind == EK_CAST || ex->kind == EK_ACTCAST)
-        ex = ex->args[0];
-    if (ex->kind == EK_CONST || ex->kind == EK_LONGCONST)
-        exval = ex->val;
-    else if (ex->kind == EK_VAR &&
-             (mp = (Meaning *)ex->val.i)->kind == MK_CONST &&
-       mp->val.type &&
-             foldconsts != 0)
-        exval = mp->val;
-    else
-        return 0;
-    switch (exval.type->kind) {
+  Meaning *mp;
+  Value exval;
 
-        case TK_BOOLEAN:
-        case TK_INTEGER:
-        case TK_CHAR:
-        case TK_ENUM:
-        case TK_SUBR:
-        case TK_SMALLSET:
-        case TK_SMALLARRAY:
-            return exval.i == val;
+  if (!ex)
+    return 0;
+  if (ex->kind == EK_CAST || ex->kind == EK_ACTCAST)
+    ex = ex->args[0];
+  if (ex->kind == EK_CONST || ex->kind == EK_LONGCONST)
+    exval = ex->val;
+  else if (ex->kind == EK_VAR &&
+           (mp = (Meaning *)ex->val.i)->kind == MK_CONST && mp->val.type && foldconsts != 0)
+    exval = mp->val;
+  else
+    return 0;
 
-        case TK_POINTER:
-        case TK_STRING:
-            return (val == 0 && exval.i == 0);
+  switch (exval.type->kind) {
+    case TK_BOOLEAN:
+    case TK_INTEGER:
+    case TK_CHAR:
+    case TK_ENUM:
+    case TK_SUBR:
+    case TK_SMALLSET:
+    case TK_SMALLARRAY:
+      return exval.i == val;
 
-        case TK_REAL:
-            return realint(exval.s, val);
+    case TK_POINTER:
+    case TK_STRING:
+      return (val == 0 && exval.i == 0);
 
-  default:
+    case TK_REAL:
+      return realint(exval.s, val);
+
+    default:
       return 0;
     }
-}
+  }
 //}}}
 //{{{
-int isliteralconst (ex, valp)
-Expr *ex;
-Value *valp;
-{
-    Meaning *mp;
+int isliteralconst (Expr *ex, Value *valp) {
 
-    if (ex) {
-        switch (ex->kind) {
+  Meaning *mp;
 
-            case EK_CONST:
-            case EK_LONGCONST:
-                if (valp)
-                    *valp = ex->val;
-                return 2;
+  if (ex) {
+    switch (ex->kind) {
+      case EK_CONST:
+      case EK_LONGCONST:
+        if (valp)
+          *valp = ex->val;
+        return 2;
 
-            case EK_VAR:
-                mp = (Meaning *)ex->val.i;
-                if (mp->kind == MK_CONST) {
-                    if (valp) {
-                        if (foldconsts == 0)
-                            valp->type = NULL;
-                        else
-                            *valp = mp->val;
-                    }
-                    return 1;
-                }
-                break;
+      case EK_VAR:
+        mp = (Meaning *)ex->val.i;
+        if (mp->kind == MK_CONST) {
+          if (valp) {
+            if (foldconsts == 0)
+              valp->type = NULL;
+            else
+              *valp = mp->val;
+            }
+          return 1;
+          }
+        break;
 
       default:
-    break;
-        }
+        break;
+      }
     }
+
+  if (valp)
+    valp->type = NULL;
+
+  return 0;
+  }
+//}}}
+//{{{
+int isconstexpr (Expr *ex, long *valp) {
+
+  Value exval = eval_expr(ex);
+
+  if (exval.type) {
     if (valp)
-        valp->type = NULL;
+      *valp = exval.i;
+    return 1;
+    } 
+  else
     return 0;
-}
+  }
 //}}}
 //{{{
-int isconstexpr (ex, valp)
-Expr *ex;
-long *valp;
-{
-    Value exval;
+int isconstantexpr (Expr *ex) {
 
-    exval = eval_expr(ex);
-    if (exval.type) {
-        if (valp)
-            *valp = exval.i;
-        return 1;
-    } else
-        return 0;
-}
-//}}}
-//{{{
-int isconstantexpr (ex)
-Expr *ex;
-{
-    Meaning *mp;
-    int i;
+  Meaning *mp;
+  int i;
 
-    switch (ex->kind) {
-
-        case EK_CONST:
-        case EK_LONGCONST:
-        case EK_SIZEOF:
-            return 1;
-
-        case EK_ADDR:
-            if (ex->args[0]->kind == EK_VAR) {
-                mp = (Meaning *)ex->args[0]->val.i;
-                return (!mp->ctx || mp->ctx->kind == MK_MODULE);
-            }
-            return 0;
-
-        case EK_VAR:
-            mp = (Meaning *)ex->val.i;
-            return (mp->kind == MK_CONST);
-
-        case EK_BICALL:
-        case EK_FUNCTION:
-            if (!deterministic_func(ex))
-                return 0;
-
-        /* fall through */
-        case EK_EQ:
-        case EK_NE:
-        case EK_LT:
-        case EK_GT:
-        case EK_LE:
-        case EK_GE:
-        case EK_PLUS:
-        case EK_NEG:
-        case EK_TIMES:
-        case EK_DIVIDE:
-        case EK_DIV:
-        case EK_MOD:
-        case EK_AND:
-        case EK_OR:
-        case EK_NOT:
-        case EK_BAND:
-        case EK_BOR:
-        case EK_BXOR:
-        case EK_BNOT:
-        case EK_LSH:
-        case EK_RSH:
-        case EK_CAST:
-        case EK_ACTCAST:
-        case EK_COND:
-            for (i = 0; i < ex->nargs; i++) {
-                if (!isconstantexpr(ex->args[i]))
-                    return 0;
-            }
-            return 1;
-
-        case EK_COMMA:
-            return isconstantexpr(ex->args[ex->nargs-1]);
-
-  default:
+  switch (ex->kind) {
+    case EK_CONST:
+    case EK_LONGCONST:
+    //{{{
+    case EK_SIZEOF:
+      return 1;
+    //}}}
+    //{{{
+    case EK_ADDR:
+      if (ex->args[0]->kind == EK_VAR) {
+        mp = (Meaning *)ex->args[0]->val.i;
+        return (!mp->ctx || mp->ctx->kind == MK_MODULE);
+        }
       return 0;
+    //}}}
+    //{{{
+    case EK_VAR:
+      mp = (Meaning *)ex->val.i;
+      return (mp->kind == MK_CONST);
+    //}}}
+    case EK_BICALL:
+    //{{{
+    case EK_FUNCTION:
+      if (!deterministic_func(ex))
+        return 0;
+    //}}}
+    /* fall through */
+    case EK_EQ:
+    case EK_NE:
+    case EK_LT:
+    case EK_GT:
+    case EK_LE:
+    case EK_GE:
+    case EK_PLUS:
+    case EK_NEG:
+    case EK_TIMES:
+    case EK_DIVIDE:
+    case EK_DIV:
+    case EK_MOD:
+    case EK_AND:
+    case EK_OR:
+    case EK_NOT:
+    case EK_BAND:
+    case EK_BOR:
+    case EK_BXOR:
+    case EK_BNOT:
+    case EK_LSH:
+    case EK_RSH:
+    case EK_CAST:
+    case EK_ACTCAST:
+    //{{{
+    case EK_COND:
+      for (i = 0; i < ex->nargs; i++) {
+        if (!isconstantexpr(ex->args[i]))
+          return 0;
+        }
+      return 1;
+    //}}}
+    //{{{
+    case EK_COMMA:
+      return isconstantexpr(ex->args[ex->nargs-1]);
+    //}}}
+    //{{{
+    default:
+      return 0;
+    //}}}
     }
-}
+  }
 //}}}
 
 //{{{
@@ -4721,7 +4737,7 @@ int allownulls;
 //}}}
 
 //{{{
-Expr* makeexpr_concat (Expr *a, Expr *b, int usesprintf) {
+Expr* makeexpr_concat (Expr* a, Expr* b, int usesprintf) {
 
   int i, ii, j, len, nargs;
   Type *type;
@@ -4836,7 +4852,7 @@ Expr* makeexpr_concat (Expr *a, Expr *b, int usesprintf) {
   }
 //}}}
 //{{{
-Expr* cleansprintf (Expr *ex) {
+Expr* cleansprintf (Expr* ex) {
 
   int fidx, i, j, k, len, changed = 0;
   char *cp, *bp;
@@ -4901,7 +4917,7 @@ Expr* cleansprintf (Expr *ex) {
   }
 //}}}
 //{{{
-Expr* makeexpr_substring (Expr *vex, Expr *ex, Expr *exi, Expr *exj) {
+Expr* makeexpr_substring (Expr* vex, Expr* ex, Expr* exi, Expr* exj) {
 
   exi = makeexpr_unlongcast (exi);
   exj = makeexpr_longcast (exj, 0);
@@ -4911,7 +4927,7 @@ Expr* makeexpr_substring (Expr *vex, Expr *ex, Expr *exi, Expr *exj) {
   }
 //}}}
 //{{{
-Expr* makeexpr_dot (Expr *ex, Meaning *mp) {
+Expr* makeexpr_dot (Expr* ex, Meaning* mp) {
 
   Type *ot1, *ot2;
   Expr *ex2, *ex3, *nex;
@@ -4972,7 +4988,7 @@ Type *type;
 }
 //}}}
 //{{{
-Expr* strmax_func (Expr *ex) {
+Expr* strmax_func (Expr* ex) {
 
   Meaning *mp;
   Expr *ex2;
@@ -5027,7 +5043,7 @@ Expr* makeexpr_nil() {
   }
 //}}}
 //{{{
-Expr* makeexpr_ctx (Meaning *ctx) {
+Expr* makeexpr_ctx (Meaning* ctx) {
 
   Expr* ex = makeexpr(EK_CTX, 0);
   ex->val.type = tp_text;     /* handy pointer type */
@@ -5036,7 +5052,7 @@ Expr* makeexpr_ctx (Meaning *ctx) {
   }
 //}}}
 //{{{
-Expr* force_signed (Expr *ex) {
+Expr* force_signed (Expr* ex) {
 
   Type *tp;
 
@@ -5057,7 +5073,7 @@ Expr* force_signed (Expr *ex) {
   }
 //}}}
 //{{{
-Expr* force_unsigned (Expr *ex) {
+Expr* force_unsigned (Expr* ex) {
 
   Type *tp;
 
@@ -5079,7 +5095,7 @@ Expr* force_unsigned (Expr *ex) {
 
 #define CHECKSIZE(size) (((size) > 0 && (size)%charsize == 0) ? (size)/charsize : 0)
 //{{{
-long type_sizeof (Type *type, int pasc) {
+long type_sizeof (Type* type, int pasc) {
 
   long s1, smin, smax;
   int charsize = (sizeof_char) ? sizeof_char : CHAR_BIT;      /* from <limits.h> */
