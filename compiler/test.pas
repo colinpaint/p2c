@@ -9,6 +9,12 @@ var
   uc: upperCase;
   ch: char;
 
+  procedure simple;
+
+  begin
+  Writeln ('hello colin');
+  end;
+
 begin
   uc['a'] := 'A';
   uc['A'] := 'A';
@@ -19,6 +25,7 @@ begin
     Writeln ('hello colin', i, j, i+j);
     end;
 
+  simple;
 
   for ch := ' ' to 'Z' do
     Writeln ('convert', uc[ch]);
