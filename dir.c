@@ -1,3 +1,4 @@
+// dir.c
 //{{{
 /* "p2c", a Pascal to C translator.
    Copyright (C) 1989, 1990, 1991, 1992, 1993 Free Software Foundation.
@@ -17,8 +18,8 @@ along with this program; see the file COPYING.  If not, write to
 the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. */
 //}}}
 #define _CRT_SECURE_NO_WARNINGS
-#define define_parameters
 #define PROTO_DIR_C
+#define define_parameters
 #include "main.h"
 
 //{{{

@@ -1,3 +1,4 @@
+// out.c
 //{{{
 /* "p2c", a Pascal to C translator.
    Copyright (C) 1989, 1990, 1991, 1992, 1993 Free Software Foundation.
@@ -999,7 +1000,7 @@ Static int trybreakline (int pos, int count, int indent, double badness, int fla
       fprintf (outf, "#endif\n");
       return TBR_SIMPLE & jmask;
       }
-    else if ((bestbadness < showbadlimit || showbadlimit == 0) && bestnumalts > 0) { 
+    else if ((bestbadness < showbadlimit || showbadlimit == 0) && bestnumalts > 0) {
       fprintf (outf, "\n#if 0   /* rejected #%ld, badness = %g > %g */\n", bestnumalts, bestbadness, badness);
       flush_outbuf (bestnumbreaks, bestbreakpos, bestbreakindent, bestnumedits, besteditpos, besteditold, besteditnew);
       fprintf (outf, "#endif\n");
@@ -1381,7 +1382,7 @@ Strlist* outcomments (Strlist* cmt) {
         cp++;
       }
 
-    for ( ; *cp; cp++) 
+    for ( ; *cp; cp++)
       output ("\n");
 
     setcommentkind(cmt, CMT_DONE);

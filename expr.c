@@ -1,3 +1,4 @@
+//expr.c
 //{{{
 /* "p2c", a Pascal to C translator.
    Copyright (C) 1989, 1990, 1991, 1992, 1993 Free Software Foundation.
@@ -689,7 +690,7 @@ Expr* makeexpr_SETIO (Expr *flag, char *code, Expr *name) {
 
   if (code) {
     ecode = makeexpr_name(code, tp_int);
-    } 
+    }
   else {
     ecode = name->args[0];
     name = name->args[1];
@@ -707,7 +708,7 @@ Expr* makeexpr_SETIO (Expr *flag, char *code, Expr *name) {
       return makeexpr_bicall_3("~~SETIO", tp_void, flag, ecode, name);
     else
       return makeexpr_bicall_2("~~SETIO", tp_void, flag, ecode);
-    } 
+    }
   else
     return makeexpr_bicall_2(name_SETIO, tp_void, flag, ecode);
   }
@@ -1058,9 +1059,9 @@ Expr* resimplify (Expr *ex) {
 //{{{
 int realzero (char *s) {
 
-  if (*s == '-') 
+  if (*s == '-')
     s++;
-  while (*s == '0' || *s == '.') 
+  while (*s == '0' || *s == '.')
     s++;
   return (!isdigit (*s));
   }
@@ -1076,13 +1077,13 @@ int realint (char *s, int i) {
     i = -i;
     }
 
-  if (i < 0 || i > 9) 
+  if (i < 0 || i > 9)
     return 0;   /* we don't care about large values here */
 
-  while (*s == '0') 
+  while (*s == '0')
     s++;
 
-  if (*s++ != i + '0') 
+  if (*s++ != i + '0')
     return 0;
 
   if (*s == '.')
@@ -1178,7 +1179,7 @@ int isconstexpr (Expr *ex, long *valp) {
     if (valp)
       *valp = exval.i;
     return 1;
-    } 
+    }
   else
     return 0;
   }
