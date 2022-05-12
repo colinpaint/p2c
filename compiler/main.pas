@@ -195,6 +195,8 @@ var
   stringindex: integer;           { index into stringfile }
 
 begin
+  Write ('Panic - ');
+
   case sharedPtr^.abortmsg of
     wrongversionenv: write ('Recompile environment file with this compiler. Error');
     outofmem:        write ('Out of memory');
@@ -216,9 +218,7 @@ begin
     inconsistent: ;
     end;
 
-  Write ('- panic - ', sharedPtr^.abortmsg);
-  Writeln ('- looping for debug');
-  while true do {}
+  Writeln ('- ', sharedPtr^.abortmsg);
 
   if sharedPtr^.abortmsg in [undeltemps, builderror, walkerror, interntemp, badadjust, inconsistent, badrelfile] then
     begin
@@ -246,6 +246,11 @@ begin
       end;
     end;
   writeln (' during Pascal-2 compilation');
+
+  Writeln (' - looping for debug');
+  while true do 
+    begin
+    end;
 
   if not sharedPtr^.switcheverplus[test] then
     exitst (exitstatus);

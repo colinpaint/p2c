@@ -249,11 +249,11 @@ register int pos;
 
     if (--pos < 0)
         return 0;
-    slen = strlen(s) - pos;
+    slen = (int)strlen(s) - pos;
     cp = s + pos;
     if (!(ch = *pat++))
         return 0;
-    pos = strlen(pat);
+    pos = (int)strlen(pat);
     slen -= pos;
     while (--slen >= 0) {
         if (*cp++ == ch && !strncmp(cp, pat, pos))
@@ -384,7 +384,7 @@ register int pos, len;
 
     if (--pos < 0)
         return;
-    slen = strlen(s) - pos;
+    slen = (int)strlen(s) - pos;
     if (slen <= 0)
         return;
     s += pos;
@@ -406,14 +406,14 @@ register int pos;
 
     if (--pos < 0)
         return;
-    dlen = strlen(dst);
+    dlen = (int)strlen(dst);
     dst += dlen;
     dlen -= pos;
     if (dlen <= 0) {
         strcpy(dst, src);
         return;
     }
-    slen = strlen(src);
+    slen = (int)strlen(src);
     do {
         dst[slen] = *dst;
         --dst;

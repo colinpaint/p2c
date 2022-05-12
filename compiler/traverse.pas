@@ -102,7 +102,7 @@ const { convert back to commandLine quals }
   dumpFiles = true;
   dumpDetails = false;
   traceGetIntFile = false;
-  traceBlock = false;
+  traceBlock = true;
 
 {<<<}
 const

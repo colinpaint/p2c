@@ -345,27 +345,32 @@ var
             else
               write (Result, Character);
             end
+
           else if ActionIs = Spaces then
             begin
-            if SavingBlanks then InitialBlanks := InitialBlanks + Spacing
-            else for i := 1 to Spacing do write(Result, ' ');
+            if SavingBlanks then
+              InitialBlanks := InitialBlanks + Spacing
+            else for i := 1 to Spacing do
+              write(Result, ' ');
             end
+
           else {action_is = begin_line}
             begin
-            if CharCount > BufsizeP1 then writeln(Result);
+            if CharCount > BufsizeP1 then
+              writeln(Result);
             SavingBlanks := true;
             InitialBlanks := Spacing;
             OutputLine := OutputLine + 1;
             end;
 
         ActionIs := Graphic;
+
         Character := Ch;
         if Ch = Chr(Ht) then
           WriteCol := ((WriteCol + TabInterval) div TabInterval) * TabInterval
         else
           WriteCol := WriteCol + 1;
         end; {with}
-
     end;
   {>>>}
 

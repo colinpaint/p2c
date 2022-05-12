@@ -63,7 +63,6 @@
 %include 'code.def';
 {>>>}
 const
-  targetopsys = vdos;
   traceNode = false;
 
 {<<<}
@@ -100,7 +99,7 @@ const
   undefinedaddr = 1; { impossible address flag}
   loopdepth = 10; { maximum number of nested loops optimized }
 
-  {special keys for building internal loops}
+  { special keys for building internal loops}
   loopsrc = - 3;   { source descriptor}
   loopsrc1 = - 4;  { second source descriptor (for three operand loops)}
   loopdst = - 5;   { destination descriptor}
@@ -838,17 +837,17 @@ var
   nextlabel: labelindex;  { next available entry in the label table}
   labelnextnode: boolean; { Mark the next node as labeled}
 
-  lastnode: nodeindex;  { last valid node (locally). New nodes go here}
-  level: levelindex;    { current block nesting levels}
-  formatcount: integer; { number of field-width expressions in writearg}
-  fileoffset: integer;  { 0 if default file for read/write, 2 if specified}
+  lastnode: nodeindex;  { last valid node (locally). New nodes go here }
+  level: levelindex;    { current block nesting levels }
+  formatcount: integer; { number of field-width expressions in writearg }
+  fileoffset: integer;  { 0 if default file for read/write, 2 if specified }
 
   labeltable: array [labelindex] of
-      record { links label numbers to nodes, plus useful data}
-        nodelink: nodeindex; { node being labeled}
-        labno: integer; { label number}
-        stackdepth: integer; { stack depth at this label}
-        address: addressrange; { actual address of this label}
+      record                   { links label numbers to nodes, plus useful data }
+        nodelink: nodeindex;   { node being labeled }
+        labno: integer;        { label number }
+        stackdepth: integer;   { stack depth at this label }
+        address: addressrange; { actual address of this label }
       end;
 
   lastsaved, savereginst, fpsavereginst, stuffreginst: nodeindex;
@@ -857,43 +856,52 @@ var
 
   blockusesframe: boolean; { set to true in blockentryx if frame is used}
 
-  paramsize, blksize: addressrange;
+  paramsize: addressrange;
+  blksize: addressrange;
 
   aregisters: array [regindex] of integer; { usage count of address registers}
   dregisters: array [regindex] of integer; { usage count of data registers}
   fpregisters: array [regindex] of integer; { usage count of floating-point registers}
   stackcounter: keyindex; { key describing top of runtime stack}
   stackoffset: integer;   { depth of runtime stack in bytes}
-  aregused, dregused, fpregused: array [regindex] of boolean; { set if currently used}
+  aregused: array [regindex] of boolean; { set if currently used}
+  dregused: array [regindex] of boolean; { set if currently used}
+  fpregused: array [regindex] of boolean; { set if currently used}
 
-  lastkey: keyindex; { last key used by travrs at the moment}
+  lastkey: keyindex;   { last key used by travrs at the moment}
   settarget: keyindex; { target of a set insert operation}
 
   filestkcnt: integer; { stackcounter value at point of setfile op}
-  filenamed: boolean; { file was specified for read/write}
+  filenamed: boolean;  { file was specified for read/write}
 
-  adjustdelay: boolean; { if set, do not get rid of temps}
+  adjustdelay: boolean;    { if set, do not get rid of temps}
   firstsetinsert: boolean; { true if next setinsert pseudoop is first in line}
-  popflag: boolean; { set true if current loop is popping stack}
-  loopupflag: boolean; { set true if current loop is looping up}
-  loopdownflag: boolean; { set true if current loop is looping down}
+  popflag: boolean;        { set true if current loop is popping stack}
+  loopupflag: boolean;     { set true if current loop is looping up}
+  loopdownflag: boolean;   { set true if current loop is looping down}
   loopdatalength: addressrange; { number of bytes being moved}
   piecesize: addressrange; { length of each data reference within structured move}
 
-  lastdreg, lastareg, lastfpreg: regindex; { last registers available for scratch use in this block}
+  { last registers available for scratch use in this block }
+  lastdreg: regindex;
+  lastareg: regindex;
+  lastfpreg: regindex;
 
-  qualifiedinsts, { have ".length" attribute}
-   shiftinsts, { lsl, etc}
-   shortinsts, { instructions which make immediate operands cheap}
-   immedinsts, monadicinsts, { subset of 1 operand instructions}
-   dyadicinsts: set of insttype; { subset of 2 operand instructions}
-  branches, fpbranches: set of insttype; { initialized to contain all branches}
-  bitfieldinsts: set of insttype; { initialized to contain all bit field insts}
+  qualifiedinsts: set of insttype; { have ".length" attribute}
+  shiftinsts: set of insttype;     { lsl, etc}
+  shortinsts: set of insttype;     { instructions which make immediate operands cheap}
+  immedinsts: set of insttype;
+  monadicinsts: set of insttype;   { subset of 1 operand instructions}
+  dyadicinsts: set of insttype;    { subset of 2 operand instructions}
+  branches: set of insttype;
+  fpbranches: set of insttype;     { initialized to contain all branches}
+  bitfieldinsts: set of insttype;  { initialized to contain all bit field insts}
 
-  len: integer; { length from current pseudo-instruction}
-  left, right: keyindex; { oprnds[1] and oprnds[2] (left and right) from pseudoinst}
-  key: keyindex; { result key from pseudoinst}
-  target: keyindex; { target value, often a key, from pseudoinst}
+  len: integer;      { length from current pseudo-instruction}
+  left: keyindex;    { oprnds[1] and oprnds[2] (left and right) from pseudoinst}
+  right: keyindex;
+  key: keyindex;     { result key from pseudoinst}
+  target: keyindex;  { target value, often a key, from pseudoinst}
   tempkey: keyindex; { current temp key <0}
 
   firstbr: brlinkptr; { beginning of branch link data chain}
@@ -937,16 +945,16 @@ var
   contextsp: contextindex; { top of mark stack (context pointer)}
 
   stringbase: addressrange; { start of string and constant data}
-  constbase: addressrange; { start of constants for the current procedure}
+  constbase: addressrange;  { start of constants for the current procedure}
 
   { Loop stack, used to restore registers at the bottom of loops }
-  loopsp: loopindex; { top of loop stack}
+  loopsp: loopindex;     { top of loop stack}
   loopoverflow: integer; { keep track of loops we don't optimize}
   loopstack: array [loopindex] of
       record
         thecontext: contextindex;
         savelastbranch: nodeindex; { value of lastbranch upon entry }
-        savefirstnode: nodeindex; { value of firstnode upon entry }
+        savefirstnode: nodeindex;  { value of firstnode upon entry }
         abump: bumparray;
         dbump: bumparray;
         fpbump: bumparray;
@@ -955,54 +963,55 @@ var
         fpregstate: regstate;
       end;
 
-  startaddress: addressrange; { start of program}
+  startaddress: addressrange;  { start of program}
   maxstackdepth: addressrange; { maximum stack depth within program}
 
   reverse, fpreverse: array [insttype] of insttype; { for reversing order of compares}
-  invert, fpinvert: array [insttype] of insttype; { for inverting sense of branches}
+  invert, fpinvert: array [insttype] of insttype;   { for inverting sense of branches}
 
-  oktostuff: boolean; { set false if register stuffing not allowed}
-  keytable: keytabletype; { contains operand data}
+  oktostuff: boolean;       { set false if register stuffing not allowed}
+  keytable: keytabletype;   { contains operand data}
   dontchangevalue: integer; { > 0, don't allow changevalue to work!}
   mainsymbolindex: integer; { index of main prog data in the symbol file}
-  firststmt: integer; { first statement in this procedure}
-  lineoffset: integer; { difference between linenumber and file line number}
+  firststmt: integer;       { first statement in this procedure}
+  lineoffset: integer;      { difference between linenumber and file line number}
 
   definelazyklugereg: regindex; { register for definelazy to use}
-  definelazykluge: boolean; { flag for definelazy to use (false = ignore register)}
-  isforward: integer; { used by findlabelpc}
+  definelazykluge: boolean;     { flag for definelazy to use (false = ignore register)}
+  isforward: integer;           { used by findlabelpc}
+
   op, op2: uns_word; { basic value of instruction word }
-  mode: uns_word; { basic mode and register pair }
+  mode: uns_word;    { basic mode and register pair }
+
   objctr: 0..maxwords; { index into object code array }
   pcerrortable: array [1..maxerrs] of puterrortype; { table of error codes }
   lineerrors: 0..maxerrs; { counter of errors in current line}
+
   n: nodeptr; { set by getnextnode via creadaccess}
   p: nodeptr; { set by lookahead via creadaccess}
   currnode: nodeindex; { induction var for scanning nodes}
+
   currinst: insttype;
   opcount: 0..2;
-  datasize: datarange; { number of bytes to operate on }
-  instindex: nodeindex; { index to current instruction}
+
+  datasize: datarange;        { number of bytes to operate on }
+  instindex: nodeindex;       { index to current instruction}
   distancetemp: addressrange; { holds computed relative branch distance }
-  labelpctemp: addressrange; { temp used to resolve labeldeltanode }
-  lscan: labelindex; { used to scan label table for fixup resolution }
-  currlabel: labelindex; { points to next label in nodefile}
+  labelpctemp: addressrange;  { temp used to resolve labeldeltanode }
+  lscan: labelindex;          { used to scan label table for fixup resolution }
+  currlabel: labelindex;      { points to next label in nodefile}
   oplength: datarange;
+
   instpc: addressrange; { address of opcode printed in /test mode }
-  mask: integer; { build mask for dumping gross register lists}
-  first: boolean; { controls emission of '/' for dumping gross register lists}
+  mask: integer;        { build mask for dumping gross register lists}
+
+  first: boolean;        { controls emission of '/' for dumping gross register lists}
   linehaslabel: boolean; { set true if this line has an assembler label on it}
+
   skip_macro_details: boolean; { suppress object details in macro listing}
-  computed_len: integer; { For consistency check on instruction length }
+  computed_len: integer;       { For consistency check on instruction length }
   peep: array[0..maxpeephole] of integer; { counts number of times each peephole optimization is applied;
                                             peep[0] counts total byte savings}
-
-  { Apollo-specific stuff}
-  nextadconloc: addressrange; { offset of the next adcon to be generated}
-  firstind, nextind, lastind: indirect_ref_ptr; { adcon list}
-  firstref, nextref, lastref: globalentryptr; { reference list}
-  firstdef, lastdef: globalentryptr; { definition list}
-  globalcount: integer; { total number of global symbols}
 
   { mc68020 stuff }
   mc68020: boolean; { Shorthand for switcheverplus[mc68020]}
@@ -1192,16 +1201,13 @@ procedure newnode;
 begin
   lastnode := lastnode + 1;
 
-  if (traceNode)
+  if (traceNode) then
     writeln ('newnode ', lastnode);
   {
   if lastnode = cnodetablesize then
   }
   if lastnode >= 1500 then
-    begin
-    writeln ('too many node ', lastnode);
-    abort (manynodes);
-    end
+    abort (manynodes)
   else
     lastptr := ref(bignodetable[lastnode]);
 end;
@@ -2329,21 +2335,15 @@ begin {instlength}
                 len := len + word;
               supportcall:
                 {<<<}
-                if targetopsys = vdos then
-                  if sharedPtr^.switcheverplus[longlib] then
-                    if mc68020 and $pic then
-                      len := len + long + word
-                    else if $pic then { 68000 pic }
-                      len := len + word
-                    else
-                      len := len + long
-                  else {not longlib}
-                    len := len + word
-                else {unix}
+                if sharedPtr^.switcheverplus[longlib] then
                   if mc68020 and $pic then
                     len := len + long + word
+                  else if $pic then { 68000 pic }
+                    len := len + word
                   else
-                    len := len + long;
+                    len := len + long
+                else {not longlib}
+                  len := len + word;
                 {>>>}
               pcrelative, usercall:
                 len := len + p^.operandcost;
@@ -10377,23 +10377,14 @@ function getdreg;
     r: regindex;
 
 
-  begin {getdreg}
+  begin
     cnt := countdreg;
-    if targetopsys = apollo then
-      begin
-      r := lastdreg;
-      while dregisters[r] + ord(context[contextsp].dbump[r]) <> cnt do
-        r := r - 1;
-      end
-    else
-      begin
-      r := 0;
-      while dregisters[r] + ord(context[contextsp].dbump[r]) <> cnt do
-        r := r + 1;
-      end;
+    r := 0;
+    while dregisters[r] + ord(context[contextsp].dbump[r]) <> cnt do
+      r := r + 1;
     markdreg(r);
     getdreg := r;
-  end {getdreg} ;
+  end;
 {>>>}
 
 {<<<}
@@ -10500,23 +10491,14 @@ var
   cnt: integer;
   r: regindex;
 
-begin {getareg}
+begin
   cnt := countareg;
-  if targetopsys = apollo then
-    begin
-    r := lastareg;
-    while aregisters[r] + ord(context[contextsp].abump[r]) <> cnt do
-      r := r - 1;
-    end
-  else
-    begin
-    r := 0;
-    while aregisters[r] + ord(context[contextsp].abump[r]) <> cnt do
-      r := r + 1;
-    end;
+  r := 0;
+  while aregisters[r] + ord(context[contextsp].abump[r]) <> cnt do
+    r := r + 1;
   markareg(r);
   getareg := r;
-end {getareg} ;
+end;
 {>>>}
 
 {<<<}
@@ -10652,7 +10634,7 @@ begin
        not (m in [abslong, commonlong]) and
        not mc68020 and (abs(offset + offsetbias) + len > 32767) or
        needareg and (m in [abslong, pcrelative, commonlong]) or
-       (targetopsys = apollo) and sharedPtr^.switcheverplus[sharecode] and
+       (false) and sharedPtr^.switcheverplus[sharecode] and
        (m = commonlong) or
        shortoffset and ((m in [abslong, pcrelative, commonlong]) or
         (not mc68020 and (abs(offset + offsetbias) > 127))) then
@@ -10668,25 +10650,9 @@ begin
         section is static, so we use the gp register as an optimization to allow shorter instructions }
       settempareg(getareg);
       adjustregcount(k, refcount);
-      if (targetopsys = apollo) and sharedPtr^.switcheverplus[sharecode] and
-         (m = commonlong) then
+      if ((offset > 32767) or (offset < -32768)) and not (m in [abslong, commonlong]) then
         begin
-        gen2(move, long, tempkey, tempkey + 1);
-        tempkey := tempkey + 1;
-        end
-      else if ((offset > 32767) or (offset < -32768)) and not (m in
-               [abslong, commonlong]) then
-        begin
-        if (targetopsys = unix) and (reg = gp) and (m = relative) then
-          begin
-          { Unix code is never pic, so we may address variables in the global section directly.
-            On the 68020 this is faster than relative mode with a long displacement }
-          settemp (long, commonlong, 0, 0, false, offset, 0, 1, global_section);
-          gen2 (lea, long, tempkey, tempkey + 1);
-          tempkey := tempkey + 1;
-          end
-
-        else if not mc68020 then
+        if not mc68020 then
           begin
           tempoffset := offset;
           offset := 0;
@@ -12810,18 +12776,13 @@ procedure dostructx;
       }
 
       begin
-      settempareg(getareg);
-      settemp(long, pcrelative, 0, 0, false, pseudoSharedPtr^.pseudoinst.oprnds[1], 0, 1,
-              unknown);
+      settempareg (getareg);
+      settemp (long, pcrelative, 0, 0, false, pseudoSharedPtr^.pseudoinst.oprnds[1], 0, 1, unknown);
       gen2(lea, long, tempkey, tempkey + 1);
-      setvalue(relative, keytable[tempkey + 1].oprnd.reg, 0, false, 0, 0);
+      setvalue (relative, keytable[tempkey + 1].oprnd.reg, 0, false, 0, 0);
       end
-    else if (targetopsys = apollo) and not sharedPtr^.switcheverplus[sharecode] then
-      begin
-      setvalue(commonlong, 0, 0, false, pseudoSharedPtr^.pseudoinst.oprnds[1], 0);
-      keytable[key].oprnd.commonlong_reloc := pure_section;
-      end
-    else setvalue(pcrelative, 0, 0, false, pseudoSharedPtr^.pseudoinst.oprnds[1], 0);
+    else
+      setvalue (pcrelative, 0, 0, false, pseudoSharedPtr^.pseudoinst.oprnds[1], 0);
 
     keytable[key].knowneven := mc68020 or not odd(pseudoSharedPtr^.pseudoinst.oprnds[1]);
   end {dostructx} ;
@@ -12946,58 +12907,45 @@ procedure checkx(checkingrange: boolean; {true if range, not index check}
         end
       else
         begin
-        settempimmediate(len, upperoffset);
-        gendouble(cmp, tempkey, key);
-        genrelbr(bls, ord(sharedPtr^.switcheverplus[sharecode]) + 1);
-
-        case targetopsys of
-          unix, apollo:
-            begin
-            if checkingrange then callsupport(librangetrap)  { range error }
-            else callsupport(libsubscripttrap);  { subscript error }
-            end;
-          vdos:
-            begin
-            settempimmediate(word, rangetrap);
-            gensingle(trap, tempkey);
-            end;
-          end;
+        settempimmediate (len, upperoffset);
+        gendouble (cmp, tempkey, key);
+        genrelbr (bls, ord(sharedPtr^.switcheverplus[sharecode]) + 1);
+        settempimmediate (word, rangetrap);
+        gensingle (trap, tempkey);
         labelnextnode := true;
         end;
-      generror(error);
+      generror (error);
       if checkingrange then
-        gendouble(add, lower, key);
+        gendouble (add, lower, key);
       end
     else
       begin {non-literal bounds, do a direct check}
-      lock(key);
-      unpack(upper, len);
-      gendouble(cmp, upper, key);
-      if signedop then genbr(bgt, sharedPtr^.lastlabel)
-      else genbr(bhi, sharedPtr^.lastlabel);
-      unpack(lower, len);
-      if checkingrange then gendouble(cmp, lower, key)
-      else gendouble(sub, lower, key);
-      if signedop then genrelbr(bge, ord(sharedPtr^.switcheverplus[sharecode]) + 1)
-      else genrelbr(bhs, ord(sharedPtr^.switcheverplus[sharecode]) + 1);
+      lock( key);
+      unpack (upper, len);
+      gendouble (cmp, upper, key);
+      if signedop then
+        genbr(bgt, sharedPtr^.lastlabel)
+      else
+        genbr(bhi, sharedPtr^.lastlabel);
+      unpack (lower, len);
+      if checkingrange then
+        gendouble(cmp, lower, key)
+      else
+        gendouble (sub, lower, key);
+      if signedop then
+        genrelbr (bge, ord(sharedPtr^.switcheverplus[sharecode]) + 1)
+      else
+        genrelbr (bhs, ord(sharedPtr^.switcheverplus[sharecode]) + 1);
       definelastlabel;
 
-      case targetopsys of
-        unix, apollo:
-          begin
-          if checkingrange then callsupport(librangetrap)  { range error }
-          else callsupport(libsubscripttrap);  { subscript error }
-          end;
-        vdos:
-          begin
-          settempimmediate(word, rangetrap);
-          gensingle(trap, tempkey);
-          end;
-        end;
+      settempimmediate (word, rangetrap);
+      gensingle (trap, tempkey);
+      unlock (key);
 
-      unlock(key);
-      if checkingrange then generror(range_error)
-      else generror(index_error);
+      if checkingrange then
+        generror (range_error)
+      else
+        generror (index_error);
       labelnextnode := true;
       end;
   end {checkx} ;
@@ -13131,12 +13079,7 @@ procedure indxx;
         { Versados always references the global section off of gp, unix
           may address it directly.
         }
-        if (m = relative) and (reg = gp) and (targetopsys = unix) then
-          begin
-          setvalue(commonlong, 0, 0, false, offset + pseudoSharedPtr^.pseudoinst.oprnds[2], 0);
-          reloc := global_section;
-          end
-        else if not mc68020 then
+        if not mc68020 then
           begin
           lock(left);
           setvalue(areg, getareg, 0, false, 0, 0);
@@ -13428,8 +13371,7 @@ procedure ptrtempx;
       number.  If there is a static link in use then there are no pointer
       registers left and indicates a bug in travrs.
     }
-    if (targetopsys = vdos) and
-      (($pic and (sharedPtr^.ownsize > 0) and sharedPtr^.proctable[sharedPtr^.blockref].ownused) or
+    if (($pic and (sharedPtr^.ownsize > 0) and sharedPtr^.proctable[sharedPtr^.blockref].ownused) or
       (sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling])) then
       begin
       register := gp - pseudoSharedPtr^.pseudoinst.oprnds[3] + 1;
@@ -14892,21 +14834,15 @@ procedure pascallabelx;
       if level > 1 then
         begin {generate code to adjust sp}
         jumpx(pseudoSharedPtr^.pseudoinst.oprnds[1], false);
-        definelabel(pseudoSharedPtr^.pseudoinst.oprnds[1] - 1);
-        if level = 2 then t := 0
-        else t := long;
-        settempareg(sp);
+        definelabel (pseudoSharedPtr^.pseudoinst.oprnds[1] - 1);
+        if level = 2 then
+          t := 0
+        else
+          t := long;
 
-        case targetopsys of
-          unix, apollo:
-            settemp(long, relative, sl, 0, false, t - stackoffset, 0,
-                    1, unknown);
-          vdos:
-            settemp(long, relative, sl, 0, false, - stackoffset, 0, 1,
-                    unknown);
-          end {case} ;
-
-        gen2(lea, long, tempkey, tempkey + 1);
+        settempareg (sp);
+        settemp (long, relative, sl, 0, false, - stackoffset, 0, 1, unknown);
+        gen2 (lea, long, tempkey, tempkey + 1);
 
         p := ref(bignodetable[lastnode - 1]);
         p^.tempcount := stackcounter - keysize; {note: negative tempcount!}
@@ -14960,18 +14896,13 @@ procedure pascalgotox;
 
   begin
     clearcontext;
-    if pseudoSharedPtr^.pseudoinst.oprnds[2] = level then jumpx(pseudoSharedPtr^.pseudoinst.oprnds[1], false)
+
+    if pseudoSharedPtr^.pseudoinst.oprnds[2] = level then
+      jumpx (pseudoSharedPtr^.pseudoinst.oprnds[1], false)
     else
       begin
-      if (targetopsys = vdos) or (targetopsys = apollo) then
-        begin
-        if (sharedPtr^.switchcounters[profiling] > 0) or (sharedPtr^.switchcounters[debugging] > 0)
-           then
-          callsupport(libdebugger_goto);
-        end
-      else if sharedPtr^.switchcounters[profiling] > 0 then
-        callsupport(libdebugger_goto);
-      { This call is a profiler/debugger entry point for a non-local goto. }
+        if (sharedPtr^.switchcounters[profiling] > 0) or (sharedPtr^.switchcounters[debugging] > 0) then
+          callsupport (libdebugger_goto);
 
       if pseudoSharedPtr^.pseudoinst.oprnds[2] > 1 then
         begin
@@ -14986,49 +14917,22 @@ procedure pascalgotox;
         begin
         closerange;
 
-        case targetopsys of
-          unix:
-            settempsymbol('p_glbstk');
-          vdos:
-            settemp(long, relative, gp, 0, false, 8, 0, 1, unknown);
-          apollo:
-            if sharedPtr^.switcheverplus[sharecode] then
-              begin
-              lastind^.symbolname := 'p_glbstk';
-              settempareg(0);
-              gen2(move, long, tempkey + 1, tempkey);
-              keytable[tempkey].oprnd.m := indr;
-              end
-            else
-              settempsymbol('p_glbstk');
-          end {case} ;
-        settempareg(sp);
-        gen2(move, long, tempkey + 1, tempkey);
+        settemp (long, relative, gp, 0, false, 8, 0, 1, unknown);
+        settempareg (sp);
+        gen2 (move, long, tempkey + 1, tempkey);
 
-        { Clear the frame pointer so walkback will not blow up.
-        }
+        { Clear the frame pointer so walkback will not blow up }
         if blockusesframe then
           begin
-          if targetopsys = apollo then
-            if sharedPtr^.switcheverplus[sharecode] then
-              begin
-              lastind^.symbolname := 'p_glbfrm';
-              settempareg(0);
-              gen2(move, long, tempkey + 1, tempkey);
-              keytable[tempkey].oprnd.m := indr;
-              end
-            else
-              settempsymbol('p_glbfrm')
-          else
-            settempimmediate(long, 0);
-          settempareg(fp);
-          gen2(move, long, tempkey + 1, tempkey);
+          settempimmediate (long, 0);
+          settempareg (fp);
+          gen2 (move, long, tempkey + 1, tempkey);
           end;
 
-        jumpx(pseudoSharedPtr^.pseudoinst.oprnds[1], true);
+        jumpx (pseudoSharedPtr^.pseudoinst.oprnds[1], true);
         end;
       end;
-  end {pascalgotox} ;
+  end;
 {>>>}
 {<<<}
 procedure addstrx;
@@ -15525,62 +15429,44 @@ procedure callroutinex{s: boolean (signed function value) };
         markdreg(0);
         markdreg(1);
 
-        if targetopsys = apollo then
-          begin
-          if len > long then
-            begin
-            newtemp(long);
-            settemp(long, relative, sp, 0, false, keytable[stackcounter +
-                    pseudoSharedPtr^.pseudoinst.oprnds[2] + 1].oprnd.offset, 0, 1, unknown);
-            gen1(pea, long, tempkey);
-            stackoffset := - keytable[stackcounter].oprnd.offset;
-            end;
-          end
-        else
-          begin
-          if (pseudoSharedPtr^.pseudoinst.oprnds[2] > 0) and
-             ((keytable[stackcounter].len = long) or
-              { (keytable[stackcounter].oprnd.flavor = floatx) and }
-              (keytable[stackcounter].len = quad)) then
-            notcopied := 1;
+        if (pseudoSharedPtr^.pseudoinst.oprnds[2] > 0) and
+           ((keytable[stackcounter].len = long) or
+            { (keytable[stackcounter].oprnd.flavor = floatx) and }
+            (keytable[stackcounter].len = quad)) then
+          notcopied := 1;
 
-          if reverse_params then
-            for param := 1 to pseudoSharedPtr^.pseudoinst.oprnds[2] - notcopied do
-              begin {reverse (and extend) parameters on stack}
-              i := stackcounter + param * 2 + notcopied - 2;
-              if (targetopsys = unix) and
-                 { (keytable[i].oprnd.flavor = floatx) and }
-                 (keytable[i].len = quad) then
-                newtemp(quad)
-              else newtemp(long);
-              if keytable[stackcounter].len = quad then
-                genblockmove(i, stackcounter, long)
-              else if keytable[i].len = long then
-                gensimplemove(i, stackcounter)
-              else if keytable[i].len <= word then
+        if reverse_params then
+          for param := 1 to pseudoSharedPtr^.pseudoinst.oprnds[2] - notcopied do
+            begin {reverse (and extend) parameters on stack}
+            i := stackcounter + param * 2 + notcopied - 2;
+            newtemp (long);
+            if keytable[stackcounter].len = quad then
+              genblockmove(i, stackcounter, long)
+            else if keytable[i].len = long then
+              gensimplemove(i, stackcounter)
+            else if keytable[i].len <= word then
+              begin
+              extend(i, long);
+              gensimplemove(i, stackcounter);
+              end
+            else if keytable[i].len < long then {it's three bytes long!}
+              begin
+              settempimmediate(long, 0);
+              gensimplemove(tempkey, stackcounter);
+              with keytable[stackcounter].oprnd do
                 begin
-                extend(i, long);
-                gensimplemove(i, stackcounter);
-                end
-              else if keytable[i].len < long then {it's three bytes long!}
-                begin
-                settempimmediate(long, 0);
-                gensimplemove(tempkey, stackcounter);
-                with keytable[stackcounter].oprnd do
-                  begin
-                  offset := offset + long - keytable[i].len;
-                  genblockmove(i, stackcounter, byte);
-                  offset := offset - long + keytable[i].len;
-                  end;
-                end
-              else { len > long }
-                begin
-                gen1(pea, long, fix_effective_addr(i));
-                stackoffset := stackoffset + long;
+                offset := offset + long - keytable[i].len;
+                genblockmove(i, stackcounter, byte);
+                offset := offset - long + keytable[i].len;
                 end;
-              tempkey := spkey;
-              end {for} ;
-          end {not apollo} ;
+              end
+            else { len > long }
+              begin
+              gen1(pea, long, fix_effective_addr(i));
+              stackoffset := stackoffset + long;
+              end;
+            tempkey := spkey;
+            end {for} ;
         end {nonpascal} ;
 
       { now make sure any allocated stack space will be reserved }
@@ -15636,54 +15522,33 @@ procedure callroutinex{s: boolean (signed function value) };
     if (pseudoSharedPtr^.pseudoinst.oprnds[3] <= 0) and
        (sharedPtr^.proctable[pseudoSharedPtr^.pseudoinst.oprnds[1]].calllinkage <> pascal2call) then
       begin
-      if targetopsys = apollo then
-        begin
-        if len > long then
-          popstack(pseudoSharedPtr^.pseudoinst.oprnds[2] + 1)
+      if reverse_params then
+        popstack(max(pseudoSharedPtr^.pseudoinst.oprnds[2] * 2 - notcopied, 0))
+      else popstack(pseudoSharedPtr^.pseudoinst.oprnds[2]);
+
+      if keytable[stackcounter].len > 0 then
+        if keytable[stackcounter].len = quad then
+          with keytable[stackcounter].oprnd do
+            begin
+            settempreg(long, dreg, 1);
+            offset := offset + 4;
+            gensimplemove(tempkey, stackcounter);
+            keytable[tempkey].oprnd.reg := 0;
+            offset := offset - 4;
+            gensimplemove(tempkey, stackcounter);
+            end
         else
           begin
-          popstack(pseudoSharedPtr^.pseudoinst.oprnds[2]);
-          if len > 0 then
-            begin {convert to register return value}
-            keytable[stackcounter].refcount := 0;
-            keytable[stackcounter].tempflag := false;
-            adjusttemps; {in case of value conformant array, etc.}
-            setvalue(dreg, 0, 0, false, 0, 0);
-            savekey(key);
-            inreg := true;
-            end;
-          end;
-        end
-      else
-        begin
-        if reverse_params then
-          popstack(max(pseudoSharedPtr^.pseudoinst.oprnds[2] * 2 - notcopied, 0))
-        else popstack(pseudoSharedPtr^.pseudoinst.oprnds[2]);
-
-        if keytable[stackcounter].len > 0 then
-          if keytable[stackcounter].len = quad then
-            with keytable[stackcounter].oprnd do
-              begin
-              settempreg(long, dreg, 1);
-              offset := offset + 4;
-              gensimplemove(tempkey, stackcounter);
-              keytable[tempkey].oprnd.reg := 0;
-              offset := offset - 4;
-              gensimplemove(tempkey, stackcounter);
-              end
-          else
+          { this won't handle 3-byte function results }
+          settempreg(long, dreg, 0);
+          if (pseudoSharedPtr^.pseudobuff.op = movint) and (pseudoSharedPtr^.pseudobuff.oprnds[2] = key) and
+             (keytable[key].refcount = 1) then
             begin
-            { this won't handle 3-byte function results }
-            settempreg(long, dreg, 0);
-            if (pseudoSharedPtr^.pseudobuff.op = movint) and (pseudoSharedPtr^.pseudobuff.oprnds[2] = key) and
-               (keytable[key].refcount = 1) then
-              begin
-              setkeyvalue(tempkey);
-              inreg := true;
-              end
-            else gensimplemove(tempkey, stackcounter);
-            end;
-        end;
+            setkeyvalue(tempkey);
+            inreg := true;
+            end
+          else gensimplemove(tempkey, stackcounter);
+          end;
       end
     else popstack(pseudoSharedPtr^.pseudoinst.oprnds[2]);
 
@@ -15797,37 +15662,34 @@ procedure casebranchx;
     with keytable[key] do
       begin
       adjusttemps;
-      settempimmediate(sharedPtr^.targetintsize, pseudoSharedPtr^.pseudoinst.oprnds[1]);
-      gendouble(sub, tempkey, key);
+      settempimmediate (sharedPtr^.targetintsize, pseudoSharedPtr^.pseudoinst.oprnds[1]);
+      gendouble (sub, tempkey, key);
+
       span := pseudoSharedPtr^.pseudoinst.oprnds[2] - pseudoSharedPtr^.pseudoinst.oprnds[1];
       if span <> 0 then
         begin
         settempimmediate(sharedPtr^.targetintsize, span);
         gendouble(cmp, tempkey, key);
         end;
+
       if errordefault then
         begin
         if pseudoSharedPtr^.pseudoinst.oprnds[2] = pseudoSharedPtr^.pseudoinst.oprnds[1] then
-          genrelbr(beq, ord(sharedPtr^.switcheverplus[sharecode]) + 1)
-        else genrelbr(bls, ord(sharedPtr^.switcheverplus[sharecode]) + 1);
+          genrelbr (beq, ord(sharedPtr^.switcheverplus[sharecode]) + 1)
+        else
+          genrelbr (bls, ord(sharedPtr^.switcheverplus[sharecode]) + 1);
 
-        definelabel(default);
-
-        case targetopsys of
-          unix, apollo:
-            callsupport(libcasetrap);  { case error }
-          vdos:
-            begin
-            settempimmediate(word, casetrap);
-            gensingle(trap, tempkey);
-            end;
-          end;
+        definelabel (default);
+        settempimmediate (word, casetrap);
+        gensingle (trap, tempkey);
 
         labelnextnode := true;
         end
       else if pseudoSharedPtr^.pseudoinst.oprnds[2] = pseudoSharedPtr^.pseudoinst.oprnds[1] then
         genbr(bne, default)
-      else genbr(bhi, default);
+      else
+        genbr(bhi, default);
+
       keytable[key].len := word;
       if pseudoSharedPtr^.pseudoinst.oprnds[2] <> pseudoSharedPtr^.pseudoinst.oprnds[1] then
         gendouble(add, key, key);
@@ -15872,15 +15734,8 @@ procedure caseerrx;
 { Generate a case error trap
 }
   begin
-    case targetopsys of
-      unix:
-        callsupport(libcasetrap);  { case error }
-      vdos:
-        begin
-        settempimmediate(word, casetrap);
-        gensingle(trap, tempkey);
-        end;
-      end;
+  settempimmediate (word, casetrap);
+  gensingle (trap, tempkey);
   end; {caseerrx}
 {>>>}
 {<<<}
@@ -15921,9 +15776,6 @@ procedure stmtbrkx;
       sharedPtr^.current_line := pseudoSharedPtr^.pseudoinst.oprnds[2] - lineoffset;
       flags := pseudoSharedPtr^.pseudoinst.oprnds[3];
       filename := len;
-      if targetopsys = unix then
-        if (sharedPtr^.switchcounters[debugging] > 0) and (flags and 4 <> 0) then
-          callsupport (libdbgtrap);
       end;
   end; {stmtbrkx}
 {>>>}
@@ -16066,23 +15918,7 @@ procedure setinpx;
 
 
   begin {setinpx}
-    if targetopsys = apollo then
-      begin
-      if sharedPtr^.switcheverplus[sharecode] then
-        begin
-        settempareg(getareg);
-        gensimplemove(tempkey + 1, tempkey);
-        keytable[tempkey].oprnd.m := indr;
-        setkeyvalue(tempkey);
-        end
-      else
-        begin
-        setvalue(commonlong, 0, 0, false, globalbase + long, 0);
-        keytable[tempkey].oprnd.commonlong_reloc := global_section;
-        end;
-      end
-    else
-      setvalue(relative, gp, 0, false, globalbase + long, 0);
+    setvalue(relative, gp, 0, false, globalbase + long, 0);
   end {setinpx} ;
 {>>>}
 {<<<}
@@ -16094,23 +15930,7 @@ procedure setfileaddrx;
 
 
   begin {setfileaddrx}
-    if targetopsys = apollo then
-      begin
-      if sharedPtr^.switcheverplus[sharecode] then
-        begin
-        settempareg(getareg);
-        gensimplemove(tempkey + 1, tempkey);
-        keytable[tempkey].oprnd.m := indr;
-        setkeyvalue(tempkey);
-        end
-      else
-        begin
-        setvalue(commonlong, 0, 0, false, globalbase, 0);
-        keytable[tempkey].oprnd.commonlong_reloc := global_section;
-        end;
-      end
-    else
-      setvalue(relative, gp, 0, false, globalbase, 0);
+    setvalue(relative, gp, 0, false, globalbase, 0);
   end {setfileaddrx} ;
 {>>>}
 {<<<}
@@ -17381,20 +17201,11 @@ procedure forcheckx{up: boolean (we are going up) };
       end;
 
     definelastlabel;
+    settempimmediate (word, rangetrap);
+    gensingle (trap, tempkey);
+    generror (range_error);
 
-    case targetopsys of
-      unix, apollo:
-        callsupport(librangetrap);  { range error }
-      vdos:
-        begin
-        settempimmediate(word, rangetrap);
-        gensingle(trap, tempkey);
-        end;
-      end;
-
-    generror(range_error);
     definelastlabel;
-
   end; {forcheckx}
 {>>>}
 {<<<}
@@ -17429,17 +17240,9 @@ procedure forerrchkx;
       else genbr(blo, sharedPtr^.lastlabel)
       end;
 
-    case targetopsys of
-      unix, apollo:
-        callsupport(librangetrap);  { range error }
-      vdos:
-        begin
-        settempimmediate(word, rangetrap);
-        gensingle(trap, tempkey);
-        end;
-      end;
-
-    generror(range_error);
+    settempimmediate (word, rangetrap);
+    gensingle (trap, tempkey);
+    generror (range_error);
     definelastlabel;
   end {forerrchkx} ;
 {>>>}
@@ -23309,10 +23112,7 @@ begin
     mc68881 := false;
 
   aware := sharedPtr^.switcheverplus[awaremode];
-  if targetopsys = vdos then
-    $pic := sharedPtr^.switcheverplus[pic] {shorthand form}
-  else
-    $pic := false;
+  $pic := sharedPtr^.switcheverplus[pic]; {shorthand form}
 
   coprocessor_id := 1; {temporary}
 
