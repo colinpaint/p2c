@@ -1137,10 +1137,9 @@ var
   {>>>}
 {>>>}
 
-{<<<  commc utils}
+{<<<  utils}
 function getareg: regindex; forward;
 procedure markareg (r: regindex); forward;
-function dump_externals: integer; forward;
 
 {<<<}
 function getvartableptr (i: integer): vartablerecptr;
@@ -2371,7 +2370,131 @@ begin
 end;
 {>>>}
 {>>>}
-{<<<  commc2 utils}
+{<<<  utils}
+{<<<}
+procedure putrelfile (data: unsigned);
+
+begin
+  if nextrelfile = maxrelfile then begin
+    put (relfile);
+    nextrelfile := 0;
+    end
+  else
+    nextrelfile := nextrelfile + 1;
+
+  relfile^.block[nextrelfile] := data;
+end;
+{>>>}
+{<<<}
+procedure flushtempbuffer;
+{ Write the current contents of the tempbuffer to the temporary object file }
+
+var
+  i : 0..31;  { induction var for buffer copying }
+  packbits: unsigned;  { pseudo packed array of boolean }
+
+begin
+  if nexttempbuffer > 0 then
+    begin
+    putrelfile ((sectionno[currentsect] + 1) * 256 + nexttempbuffer);
+
+    for i := nexttemprelocn to 31 do
+      temprelocn[i] := false;
+
+    packbits := 0;
+    for i := 0 to 15 do begin
+      packbits := packbits * 2;
+      if temprelocn[i] then
+        packbits := packbits + 1;
+      end;
+    putrelfile (packbits);
+
+    packbits := 0;
+    for i := 16 to 31 do begin
+      packbits := packbits * 2;
+      if temprelocn[i] then
+        packbits := packbits + 1;
+      end;
+    putrelfile (packbits);
+
+    for i := 0 to nexttempbuffer - 1 do
+      putrelfile (tempbuffer[i]);
+
+    tempfilesize := tempfilesize + nexttempbuffer + 3;
+    nexttempbuffer := 0;
+    nexttemprelocn:= 0;
+    end;
+end;
+{>>>}
+{<<<}
+procedure putdata (data: unsigned);
+
+begin
+  tempbuffer[nexttempbuffer] := data and 65535;
+  nexttempbuffer := nexttempbuffer + 1;
+  if nexttempbuffer >= maxtempbuffer then
+    flushtempbuffer;
+end;
+{>>>}
+{<<<}
+procedure putbuffer (data: unsigned; reloc: boolean);
+
+begin
+  temprelocn[nexttemprelocn] := reloc;
+  nexttemprelocn := nexttemprelocn + 1;
+  putdata(data);
+end;
+{>>>}
+
+{<<<}
+procedure seekstringfile (n: integer {byte to access});
+{ Do the equivalent of a "seek" on the string file.  This sets the
+  file and "nextstringfile" to access byte "n" of the stringfile.
+}
+var
+  newblock: 1..maxstringblks; { block to which seeking }
+
+begin
+  newblock := n div (diskbufsize + 1) + 1;
+  if newblock <> sharedPtr^.curstringblock then
+    begin
+    sharedPtr^.curstringblock := newblock;
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
+    if sharedPtr^.stringblkptr = nil then
+      begin
+      write ('unexpected end of stringtable ');
+      abort (inconsistent);
+      end;
+    end;
+  sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
+end;
+{>>>}
+{<<<}
+function getstringfile: hostfilebyte;
+{ move stringfile buffer pointer to next entry.  'get' is called to fill buffer if pointer is at the end }
+
+begin
+  if sharedPtr^.nextstringfile > diskbufsize then
+    begin
+    sharedPtr^.nextstringfile := 0;
+    sharedPtr^.curstringblock := sharedPtr^.curstringblock + 1;
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+    if sharedPtr^.stringblkptr = nil then
+      begin
+      write ('unexpected end of stringtable ');
+      abort (inconsistent);
+      end;
+
+    { return result, even though we are never reached }
+    getstringfile := 0;
+    end
+  else
+    getstringfile := sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile];
+
+  sharedPtr^.nextstringfile := sharedPtr^.nextstringfile + 1;
+end;
+{>>>}
+
 {<<<}
 function uppercase (ch: char): char;
 
@@ -2382,7 +2505,6 @@ begin
     uppercase := ch;
 end;
 {>>>}
-
 {<<<}
 procedure writeCh (ch: char);
 
@@ -2504,6 +2626,21 @@ begin
 end;
 {>>>}
 {<<<}
+procedure writeProcName (procn: proctableindex; len: integer);
+{ Copy the procedure name for procedure "procn" from the string file to the macro file }
+
+var
+  i: integer;
+
+begin
+  sharedPtr^.curstringblock := (sharedPtr^.stringfilecount + sharedPtr^.proctable[procn].charindex - 1) div (diskbufsize + 1) + 1;
+  sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+  sharedPtr^.nextstringfile := (sharedPtr^.stringfilecount + sharedPtr^.proctable[procn].charindex - 1) mod (diskbufsize + 1);
+  for i := 1 to min(len, sharedPtr^.proctable[procn].charlen) do
+    writeCh (uppercase(chr(getstringfile)))
+end;
+{>>>}
+{<<<}
 procedure writeLine;
 
 begin
@@ -2621,81 +2758,6 @@ end;
 {>>>}
 
 {<<<}
-procedure putrelfile (data: unsigned);
-
-begin
-  if nextrelfile = maxrelfile then begin
-    put (relfile);
-    nextrelfile := 0;
-    end
-  else
-    nextrelfile := nextrelfile + 1;
-
-  relfile^.block[nextrelfile] := data;
-end;
-{>>>}
-{<<<}
-procedure flushtempbuffer;
-{ Write the current contents of the tempbuffer to the temporary object file }
-
-var
-  i : 0..31;  { induction var for buffer copying }
-  packbits: unsigned;  { pseudo packed array of boolean }
-
-begin
-  if nexttempbuffer > 0 then
-    begin
-    putrelfile ((sectionno[currentsect] + 1) * 256 + nexttempbuffer);
-
-    for i := nexttemprelocn to 31 do
-      temprelocn[i] := false;
-
-    packbits := 0;
-    for i := 0 to 15 do begin
-      packbits := packbits * 2;
-      if temprelocn[i] then
-        packbits := packbits + 1;
-      end;
-    putrelfile (packbits);
-
-    packbits := 0;
-    for i := 16 to 31 do begin
-      packbits := packbits * 2;
-      if temprelocn[i] then
-        packbits := packbits + 1;
-      end;
-    putrelfile (packbits);
-
-    for i := 0 to nexttempbuffer - 1 do
-      putrelfile (tempbuffer[i]);
-
-    tempfilesize := tempfilesize + nexttempbuffer + 3;
-    nexttempbuffer := 0;
-    nexttemprelocn:= 0;
-    end;
-end;
-{>>>}
-{<<<}
-procedure putdata (data: unsigned);
-
-begin
-  tempbuffer[nexttempbuffer] := data and 65535;
-  nexttempbuffer := nexttempbuffer + 1;
-  if nexttempbuffer >= maxtempbuffer then
-    flushtempbuffer;
-end;
-{>>>}
-{<<<}
-procedure putbuffer (data: unsigned; reloc: boolean);
-
-begin
-  temprelocn[nexttemprelocn] := reloc;
-  nexttemprelocn := nexttemprelocn + 1;
-  putdata(data);
-end;
-{>>>}
-
-{<<<}
 procedure reposition (col: columnrange);
 
 begin
@@ -2732,71 +2794,6 @@ begin
     currentsect := newsect;
     currentpc := sectionpc[currentsect];
     end;
-end;
-{>>>}
-
-{<<<}
-procedure seekstringfile (n: integer {byte to access});
-{ Do the equivalent of a "seek" on the string file.  This sets the
-  file and "nextstringfile" to access byte "n" of the stringfile.
-}
-var
-  newblock: 1..maxstringblks; { block to which seeking }
-
-begin
-  newblock := n div (diskbufsize + 1) + 1;
-  if newblock <> sharedPtr^.curstringblock then
-    begin
-    sharedPtr^.curstringblock := newblock;
-    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
-    if sharedPtr^.stringblkptr = nil then
-      begin
-      write ('unexpected end of stringtable ');
-      abort (inconsistent);
-      end;
-    end;
-  sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
-end;
-{>>>}
-{<<<}
-function getstringfile: hostfilebyte;
-{ move stringfile buffer pointer to next entry.  'get' is called to fill buffer if pointer is at the end }
-
-begin
-  if sharedPtr^.nextstringfile > diskbufsize then
-    begin
-    sharedPtr^.nextstringfile := 0;
-    sharedPtr^.curstringblock := sharedPtr^.curstringblock + 1;
-    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-    if sharedPtr^.stringblkptr = nil then
-      begin
-      write ('unexpected end of stringtable ');
-      abort (inconsistent);
-      end;
-
-    { return result, even though we are never reached }
-    getstringfile := 0;
-    end
-  else
-    getstringfile := sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile];
-
-  sharedPtr^.nextstringfile := sharedPtr^.nextstringfile + 1;
-end;
-{>>>}
-
-{<<<}
-procedure writeprocname (procn: proctableindex; len: integer);
-{ Copy the procedure name for procedure "procn" from the string file to the macro file }
-
-var
-  i: integer;
-
-begin
-  sharedPtr^.curstringblock := (sharedPtr^.stringfilecount + sharedPtr^.proctable[procn].charindex - 1) div (diskbufsize + 1) + 1;
-  sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-  sharedPtr^.nextstringfile := (sharedPtr^.stringfilecount + sharedPtr^.proctable[procn].charindex - 1) mod (diskbufsize + 1);
-  for i := 1 to min(len, sharedPtr^.proctable[procn].charlen) do
-    writeCh (uppercase(chr(getstringfile)))
 end;
 {>>>}
 
@@ -2871,33 +2868,33 @@ begin
 end;
 {>>>}
 {>>>}
-{<<<  putcode2 utils}
+{<<<  utils}
 {<<<}
-function get_from_sfile (loc, len: integer;
-                         ident: boolean {true if in identifier section} ): linknametype;
+function get_from_sfile (loc, len: integer; ident: boolean {true if in identifier section} ): linknametype;
 { Read a string starting from "loc", "len" characters long from the stringtable }
 
-  var
-    i: integer;
-    linkname: linknametype;
+var
+  i: integer;
+  linkname: linknametype;
 
-  begin {get_from_sfile}
-  if ident then loc := sharedPtr^.stringfilecount + loc - 1; {skip strings}
+begin
+if ident then
+  loc := sharedPtr^.stringfilecount + loc - 1; {skip strings}
 
-  sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
-  sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-  sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
+sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
+sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
 
-  for i := 1 to maxprocnamelen do
-    linkname[i] := ' '; { initialize link name }
+for i := 1 to maxprocnamelen do
+  linkname[i] := ' '; { initialize link name }
 
-  for i := 1 to min(linknameused, len) do
-    begin { copy procedure name from string file }
-    linkname[i] := uppercase(chr(getstringfile))
-    end;
+for i := 1 to min(linknameused, len) do
+  begin { copy procedure name from string file }
+  linkname[i] := uppercase(chr(getstringfile))
+  end;
 
-  get_from_sfile := linkname;
-  end; {get_from_sfile}
+get_from_sfile := linkname;
+end;
 {>>>}
 {<<<}
 procedure CopySFile;
@@ -3298,22 +3295,22 @@ begin
           if esdkind = esdentry then
             writeStr ('XDEF')
           else writeStr ('XREF');
-          reposition(opndcolumn);
-          writeprocname(exproc, linknameused);
+          reposition (opndcolumn);
+          writeProcName (exproc, linknameused);
           writeLine;
           end;
 
         esdglobal:
           begin
-          reposition(opcolumn);
+          reposition (opcolumn);
           writeStr ('XDEF');
-          reposition(opndcolumn);
+          reposition (opndcolumn);
           writeStr ('GLOBAL$$');
           writeLine;
           writeStr ('GLOBAL$$');
-          reposition(opcolumn);
+          reposition (opcolumn);
           writeStr ('EQU');
-          reposition(opndcolumn);
+          reposition (opndcolumn);
           writeInt (glbsize);
           writeLine;
           end;
@@ -3344,7 +3341,7 @@ begin
     else if sharedPtr^.proctable[0].charindex = 0 then
       writesymbolname (sharedPtr^.outputname)
     else
-      writeprocname (0, linknameused); {use program name}
+      writeProcName (0, linknameused); {use program name}
 
     reposition(opcolumn);
     writeStr ('SECTION');
@@ -3535,7 +3532,7 @@ var
   vtptr: vartablerecptr;
   j: integer;
 
-begin {fixdefines}
+begin
   if sharedPtr^.lastvartableentry > 0 then
     begin
     for j := 1 to sharedPtr^.lastvartableentry do
@@ -3550,7 +3547,7 @@ begin {fixdefines}
           end; { not referenced and (extvaralloc = definealloc) }
       end; { for }
     end; { lastvartableentry > 0 }
-end; {fixdefines}
+end;
 {>>>}
 {<<<}
 procedure FixObj;
@@ -4100,7 +4097,6 @@ procedure fixDiags;
 { Final code when diagnostics are generated
 }
 var
-  junk: integer; { throw-away result of dump_externals }
   switches: packed record case boolean of
     true: (sw: packed array [1..16] of boolean);
     false: (u: uns_word);
@@ -4149,9 +4145,6 @@ begin
     if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
       putbuffer (switches.u, false);
 
-  if sharedPtr^.switcheverplus[debugging] then
-    junk := dump_externals;
-
   if sharedPtr^.switcheverplus[outputmacro] then
     writeln (macFile, 'ENDIAG', 'DC.W': opcolumn - 6 + 3, 'STDIAG-ENDIAG': opndcolumn - opcolumn - 4 + 13);
 
@@ -4171,8 +4164,8 @@ begin
   insertnewesd;
 end;
 {>>>}
-
-{ putcode }
+{>>>}
+{<<<  putcode}
 const
   objreslen = objtypesx(0, {objnorm}
                         0, {objext}
@@ -4414,6 +4407,7 @@ begin
   newsection(codesect);
 end;
 {>>>}
+
 {<<<}
 procedure findlabelpc (labelno: integer; {label to match}
                       var forwardlab: integer {forward reference} );
@@ -4653,131 +4647,6 @@ begin
     writeLine;
     dumperrors; { if any }
     end;
-end;
-{>>>}
-{<<<}
-function dump_externals: integer;
-{ Put out the debugger entries for externals }
-
-var
-  vtptr: vartablerecptr;
-  j: integer;
-  temp: unsigned;
-  ctr: integer;
-
-begin {dump_externals}
-  skip_macro_details := true;
-  objctr := 0;
-  ctr := 0;
-
-  if sharedPtr^.lastvartableentry > 0 then
-    for j := 1 to sharedPtr^.lastvartableentry do
-      begin
-      vtptr := getvartableptr(j);
-      with vtptr^ do
-        ctr := ctr + long;
-      end;
-
-  temp := ctr;
-  insertobj(temp div 16#10000); { high order }
-  insertobj(temp mod 16#10000); { low order }
-
-  if sharedPtr^.switcheverplus[outputmacro] then
-    begin
-    reposition(opcolumn);
-    writeStr ('DC.L');
-    reposition(opndcolumn);
-    writeInt (ctr);
-    end;
-
-  writeobjline;
-
-  if sharedPtr^.lastvartableentry > 0 then
-    begin
-
-    for j := 1 to sharedPtr^.lastvartableentry do
-      begin
-      objctr := 0;
-      vtptr := getvartableptr(j);
-      with vtptr^ do
-        case extvaralloc of
-          definealloc:
-            begin
-            newESD.ESDkind := ESDdefine;
-            newESD.vartabindex := j;
-            findESDid;
-
-            insertobj(54B * 256 + sharedPtr^.datasection + 1);
-            relocn[objctr] := true; { tag the word relocatable }
-            objtype[objctr] := objforw;
-            currentpc := currentpc - 2; { apply the PC correction }
-            temp := vtptr^.offset;
-            insertobj(temp div 16#10000); { high order offset in psect }
-            objtype[objctr] := objoff;
-            insertobj(temp mod 16#10000); { low order offset in psect }
-            objtype[objctr] := objoff;
-            end;
-
-          sharedalloc:
-            if referenced then
-              begin
-              { Named common esd's must go out after all xref's and xdef's, so
-                we must patch in the ESDID in writedatarecords.
-              }
-              insertobj(50B * 256);
-              relocn[objctr] := true; { tag the word relocatable }
-              currentpc := currentpc + 2; { apply the PC correction }
-
-              allocfixup;
-              fixups[objctr] := fixuptail;
-              with fixuptail^ do
-                begin
-                fixupkind := fixupesdid;
-                fixupobjpc := fixupobjpc - 4;
-                vartabindex := j;
-                end;
-              end
-            else
-              begin
-              insertobj(0);
-              insertobj(0);
-              end;
-
-          usealloc:
-            if referenced then
-              begin
-              newESD.ESDkind := ESDuse;
-              newESD.vartabindex := j;
-              findESDid;
-
-              insertobj(50B * 256 + ESDid);
-              relocn[objctr] := true; { tag the word relocatable }
-              currentpc := currentpc + 2; { apply the PC correction }
-              end
-            else
-              begin
-              insertobj(0);
-              insertobj(0);
-              end;
-          end; { case extvaralloc }
-
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        reposition(opcolumn);
-        writeStr ('DC.L');
-        reposition(opndcolumn);
-
-        with vtptr^ do
-          if referenced or (extvaralloc = definealloc) then
-            WriteSymbolName(get_from_sfile(charindex, charlen, not aliased))
-          else writeCh ('0');
-        end;
-
-      writeobjline;
-      end; { for }
-    end; { lastvartableentry > 0 }
-
-  dump_externals := ctr;  { used by unix }
 end;
 {>>>}
 
@@ -7112,16 +6981,19 @@ procedure writelastopnd;
     if sharedPtr^.switcheverplus[outputmacro] then
       with n^.oprnd do
         case m of
-
-          nomode: puterror(nomodeoprnd);
+          nomode:
+            puterror(nomodeoprnd);
 
           dreg:
+            {<<<}
             begin
             writeCh ('D');
             writeInt (reg);
             end; {dreg}
+            {>>>}
 
           twodregs:
+            {<<<}
               { This is currently only for the divsl and divul instructions.
                 Reg is the quotient register and indxr is the remainder
                 register.  The format is Dr:Dq (remainder:quotient).
@@ -7141,8 +7013,10 @@ procedure writelastopnd;
               writeInt (reg);
               end;
             end; {twodregs}
+            {>>>}
 
           areg:
+          {<<<}
             begin
             if reg = 7 then writeStr ('SP')
             else
@@ -7151,2067 +7025,2142 @@ procedure writelastopnd;
               writeInt (reg);
               end;
             end; {areg}
-
-          fpreg:
-            begin
-            writeStr ('FP');
-            writeInt (reg);
-            end;
-
-          twofpregs:
-              { This is currently only for 68881 fsincos instruction.
-                Reg is the cosine register and indxr is the sine.  The
-                format is FPc:FPs (cosine:sine).
-              }
-
-            begin
-            writeStr ('FP');
-            writeInt (reg);
-            writeCh (':');
-            writeStr ('FP');
-            writeInt (indxr);
-            end; {twofpregs}
-
-          indr:
-            begin
-            if reg = 7 then writeStr ('(SP)')
-            else
-              begin
-              writeStr ('(A');
-              writeInt (reg);
-              writeCh (')');
-              end;
-            end; {indr}
-
-          autoi:
-            begin
-            if reg = 7 then writeStr ('(SP)+')
-            else
-              begin
-              writeStr ('(A');
-              writeInt (reg);
-              writeStr (')+');
-              end;
-            end; {autoi}
-
-          autod:
-            begin
-            if reg = 7 then writeStr ('-(SP)')
-            else
-              begin
-              writeStr ('-(A');
-              writeInt (reg);
-              writeCh (')');
-              end;
-            end; {autod}
-
-          relative:
-            begin
-            if mc68020 and ((offset > 32767) or (offset < -32768)) then
-              begin
-              writeCh ('(');
-              writeInt (offset);
-              writeCh (',');
-              end
-            else
-              begin
-              writeInt (offset);
-              writeCh ('(');
-              end;
-
-            if reg = 7 then
-              begin
-              writeStr ('SP)');
-              if offset < 0 then puterror(negativesp)
-              end
-            else
-              begin
-              writeCh ('A');
-              writeInt (reg);
-              writeCh (')');
-              end;
-            end; {relative}
-
-          indexed:
-            begin
-            if not mc68020 and ((offset > 127) or (offset < - 128)) then
-              puterror(baddisplacement);
-            if mc68020 then
-              begin
-              writeCh ('(');
-              writeInt (offset);
-              writeCh (',');
-              end
-            else
-              begin
-              writeInt (offset);
-              writeCh ('(');
-              end;
-
-            writeCh ('A');
-            writeInt (reg);
-            writeStr (',D');
-            writeInt (indxr);
-            if indxlong then writeStr ('.L')
-            else writeStr ('.W');
-            write_scale;
-            writeCh (')');
-            end; {indexed}
-
-          bitindexed:
-            begin
-            puterror(bitindexmode);
-            end; {bitindexed}
-
-          absshort:
-            begin
-            writeInt (offset);
-            end; {absshort}
-
-          abslong:
-            begin
-            writeCh ('$');
-            kluge.l := offset;
-              { the next two lines assume that "reversebytes" implies that
-                words are also reversed. }
-            writeHex (kluge.w[reversebytes]);
-            writeHex (kluge.w[not reversebytes]);
-            end; {abslong}
-
-          immediate, special_immediate:
-            begin
-            writeCh ('#');
-            if datasize <= word then writeInt (offset)
-            else
-              begin
-              writeCh ('$');
-              if hostintsize <= word then
-                begin
-                if offset < 0 then writeHex ( - 1)
-                else writeHex (0);
-                writeHex (offset);
-                end
-              else
-                begin
-                kluge.l := offset;
-                  { the next two lines assume that "reversebytes" implies that
-                    words are also reversed. }
-                writeHex (kluge.w[reversebytes]);
-                writeHex (kluge.w[not reversebytes]);
-                end;
-              end;
-            end; {immediate}
-
-          immediatelong:
-            begin
-            writeCh ('#');
-
-              { Floating point constants in hex in 68881 instructions must
-                be prefixed by a ":" instead of a "$" -- Strange!
-              }
-            if (currinst in [fp_first..fp_last]) then writeCh (':')
-            else writeCh ('$');
-
-            writeHex (offset1);
-            writeHex (offset);
-            end; { immediatelong }
-
-          immediatequad:
-            begin
-            writeCh ('#');
-
-              { Floating point constants in hex in 68881 instructions must
-                be prefixed by a ":" instead of a "$" -- Strange!
-              }
-            if (currinst in [fp_first..fp_last]) then writeCh (':')
-            else writeCh ('$');
-
-            writeHexLong (offset1);
-            writeHexLong (offset);
-            end; { immediatequad }
-
-          immediate_extended:
-            begin
-            writeCh ('#');
-
-              { Floating point constants in hex in 68881 instructions must
-                be prefixed by a ":" instead of a "$" -- Strange!
-              }
-            if (currinst in [fp_first..fp_last]) then writeCh (':')
-            else writeCh ('$');
-
-            writeHexLong (offset2);
-            writeHexLong (offset1);
-            writeHexLong (offset);
-            end; { immediate_extended }
-
-          commonlong:
-            begin
-            if commonlong_reloc < 0 then writeCh ('G');
-            if commonlong_reloc > 0 then
-              begin
-              vtptr := getvartableptr(commonlong_reloc);
-              with vtptr^ do
-                begin
-{                n^.oprnd.offset := n^.oprnd.offset + offset;}
-                  { Add in psect offset for Versados define'd var }
-                if $pic and (extvaralloc = sharedalloc) then
-                  begin
-                  writeCh ('#');
-                  WriteSymbolName(get_from_sfile(charindex, charlen, true));
-                  writeCh ('-');
-                  supname(loophole(libroutines, libown), s);
-                  WriteSymbolName(s);
-                  end
-                else WriteSymbolName(get_from_sfile(charindex, charlen,
-                                     not aliased));
-                end;
-              end;
-
-            if offset <> 0 then
-              begin
-              if offset >= 0 then writeCh ('+');
-              writeInt (offset);
-              end;
-            end; {commonlong}
-
-          pcrelative:
-            begin
-            writeCh ('L');
-            if offset >= 0 then writeCh ('+');
-            writeInt (offset);
-            if (n^.operandcost < long) or $pic then writeStr ('(PC)');
-            end; {pcrelative}
-
-          pcindexed:
-            begin
-            if not mc68020 and ((offset > 127) or (offset < - 128)) then
-              puterror(baddisplacement);
-            if mc68020 then
-              begin
-              writeStr ('(*');
-              {??? how much bias is needed for 68020 ???}
-              if offset + word >= 0 then writeCh ('+');
-              writeInt (offset + word);
-              writeCh (',');
-              end
-            else
-              begin
-              writeCh ('*');
-              if offset + word >= 0 then writeCh ('+');
-              writeInt (offset + word);
-              writeCh ('(');
-              end;
-            writeStr ('PC,D');
-            writeInt (indxr);
-            writeStr ('.W');
-            write_scale;
-            writeCh (')');
-            end; {pcindexed}
-
-          supportcall:
-            begin
-            if (offset < ord(first_call)) or (offset > ord(last_call)) then
-              puterror(badsupportcall);
-
-            supname(loophole(libroutines, offset), s);
-
-            if $pic then
-              if mc68020 then
-                begin { must use 68020 32 bit form }
-                writeCh ('(');
-                WriteSymbolName(s);
-                writeStr (',PC)');
-                end
-              else
-                begin { use 68000 16 bit form }
-                WriteSymbolName(s);
-                writeStr ('(PC)');
-                end
-            else WriteSymbolName(s); { non pic -- use absolute form }
-            end; {supportcall}
-
-          usercall:
-            begin
-            if $pic then
-              if mc68020 and ((sharedPtr^.proctable[offset].externallinkage and
-                 not sharedPtr^.proctable[offset].bodydefined) or
-                 (procmap[offset].addr = undefinedaddr) or
-                 (n^.operandcost >= long)) then
-                begin { must use 68020 32 bit form }
-                writeCh ('(');
-                if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
-                  writeprocname(offset, linknameused) {maintains col counter}
-                else
-                  begin
-                  writeCh ('P');
-                  writeInt (offset);
-                  end;
-
-                if offset1 <> 0 then
-                  begin
-                  writeInt (offset1);
-                  if odd(offset1) or (offset1 > 0) then puterror(badoffset);
-                  end;
-
-                writeStr (',PC)');
-                end
-              else
-                begin { use 68000 16 bit form }
-                if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
-                  writeprocname(offset, linknameused) {maintains col counter}
-                else
-                  begin
-                  writeCh ('P');
-                  writeInt (offset);
-                  end;
-
-                if offset1 <> 0 then
-                  begin
-                  writeInt (offset1);
-                  if odd(offset1) or (offset1 > 0) then puterror(badoffset);
-                  end;
-
-                writeStr ('(PC)');
-                end
-            else if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
-              begin
-              writeprocname(offset, linknameused); {maintains column counter}
-
-              if sharedPtr^.proctable[offset].bodydefined and
-                 (procmap[offset].addr <> undefinedaddr) and
-                 (n^.operandcost < long) then writeStr ('(PC)');
-              end
-            else
-              begin { not external call }
-              writeCh ('P');
-              writeInt (offset);
-
-              if offset1 <> 0 then
-                begin
-                writeInt (offset1);
-                if odd(offset1) or (offset1 > 0) then puterror(badoffset);
-                end;
-
-              if n^.operandcost < long then writeStr ('(PC)');
-              end;
-            end; {usercall}
-
-          pic_own_immed:
-              { In PIC mode this can only occur for the code to load A3
-                at the beginning of each procedure.
-              }
-            begin
-            writeStr ('#G-');
-            supname(loophole(libroutines, libown), s);
-            WriteSymbolName(s);
-            end;
-
-          pic_splat_pcrel:
-
-            { For 68000 24-bit PIC only.  Generates "#<offset>+*(PC)".
-            }
-            begin
-            writeInt (offset);
-            writeStr ('+*');
-            writeStr ('(PC)');
-            end;
-
-          pic_usercall:
-
-            { For 68000 24-bit PIC only.  Generates "#<name>-<offset>-*".
-            }
-            begin
-            writeCh ('#');
-
-            if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
-              writeprocname(offset, linknameused) {maintains column counter}
-            else
-              begin { not external call }
-              writeCh ('P');
-              writeInt (offset);
-              end;
-
-            writeCh ('-');
-            writeInt (offset1);
-            writeStr ('-*');
-            end;
-
-          pic_supportcall:
-
-            { For 68000 24-bit PIC only.  Generates "#<suppt_call>-<offset>-*".
-            }
-            begin
-            writeCh ('#');
-            supname(loophole(libroutines, offset), s);
-            WriteSymbolName(s);
-            writeCh ('-');
-            writeInt (offset1);
-            writeStr ('-*');
-            end;
-
-          pic_branch:
-            begin
-            writeStr ('#L');
-            writeInt (offset);
-            writeCh ('-');
-            writeInt (offset1);
-            writeStr ('-*');
-            end;
-
-          pic_pcrelative:
-            begin
-            writeStr ('#L+');
-            writeInt (offset);
-            writeCh ('-');
-            writeInt (offset1);
-            writeStr ('-*');
-            end;
-          end; {case mode}
-
-  end; {writelastopnd}
-{>>>}
-{<<<}
-procedure writeopnd;
-
-  begin
-    if sharedPtr^.switcheverplus[outputmacro] then
-      begin
-      writelastopnd;
-      writeCh (',');
-      end;
-  end;
-{>>>}
-{<<<}
-function computedistance: addressrange;
-{ The current node contains a (signed) number of instructions to branch
-  over.  The current instruction is either a branch or a decrement-and-
-  branch.  If the latter, the value returned is relative to the 2nd word
-  of the instruction.
-}
-  var
-    tempnode: nodeindex; { so we don't screw up currnode }
-    instcount: integer; { number of instructions to skip over }
-    bytecount: integer; { accumulates the byte offset }
-    i: integer; { induction var for counting instructions }
-
-  begin
-    tempnode := currnode;
-    instcount := n^.distance;
-
-    repeat { find current instruction node }
-      tempnode := tempnode - 1;
-      p := ref(bignodetable[tempnode]);
-    until p^.kind = instnode;
-
-    bytecount := - 2; { the opcode is at (PC-2) regardless of length! }
-
-    if instcount < 0 then { backward scan }
-      for i := - 2 downto instcount do
-        begin
-        repeat { find previous instruction node }
-          tempnode := tempnode - 1;
-          p := ref(bignodetable[tempnode]);
-        until p^.kind = instnode;
-
-        bytecount := bytecount - p^.computed_length {instlength(tempnode)}
-        end
-
-    else { instcount > 0 } { forward scan }
-      for i := 0 to instcount do
-        begin
-        bytecount := bytecount + p^.computed_length {instlength(tempnode)} ;
-
-        repeat { find next instruction node }
-          tempnode := tempnode + 1;
-          p := ref(bignodetable[tempnode]);
-        until p^.kind = instnode;
-        end;
-
-    computedistance := bytecount
-  end; { computedistance }
-{>>>}
-
-{<<<}
-procedure writelabels;
-
-  begin { write all labels which refer to this node }
-    if column <> 1 then writeLine; { a previous label may be "open" if a nop
-                                     node has intervened }
-    writeCh ('L');
-    writeInt (labeltable[currlabel].labno);
-    writeCh (':');
-    currlabel := currlabel + 1;
-
-    while currnode = labeltable[currlabel].nodelink do
-      begin { write additional labels on separate lines }
-      writeLine;
-      writeCh ('L');
-      writeInt (labeltable[currlabel].labno);
-      writeCh (':');
-      currlabel := currlabel + 1;
-      end; { write additional labels }
-
-  end; { write all labels }
-{>>>}
-{<<<}
-procedure doblocklabel;
-{ Print a label in the assembler file to mark the start of a procedure }
-
-  begin
-    writeCh ('*');
-    writeLine;
-    writeStr ('*  [');
-    write (macFile, currentpc: - 4);
-    write (macFile, ']  ');
-
-    if sharedPtr^.blockref = 0 then write (macFile, 'Main Body:')
-    else
-      begin
-      writeprocname(sharedPtr^.blockref, 100);
-      end;
-    writeLine;
-    writeCh ('*');
-    writeLine;
-  end; {doblocklabel}
-{>>>}
-{<<<}
-procedure DoBlockEntryCode;
-
-  var
-    lscan: labelindex;
-
-  begin
-    procmap[sharedPtr^.blockref].addr := currentpc; { update procedure address table }
-
-    if  (level = 1)
-    and (  (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = pascal2call)
-        or (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = modulebody))
-    then
-      if sharedPtr^.switchcounters[mainbody] > 0 then
-        begin { process main body of program }
-        if sharedPtr^.switcheverplus[outputmacro] then writeStr ('BEGIN$:');
-
-        startaddress := currentpc;
-        end { switchcounters[mainbody] > 0 }
-      else
-        begin { level=1 and nomainbody }
-        if sharedPtr^.switcheverplus[outputmacro] then
-          begin
-          writeCh ('*');
-          writeLine;
-          end;
-        end
-
-    else
-      begin { block other than main }
-
-      { test for external procedure (body is obviously defined) }
-      if sharedPtr^.proctable[sharedPtr^.blockref].externallinkage
-      or (   (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = implementationbody)
-         and (level = 1))
-      then
-        with newESD do
-          begin { prepare a new table entry }
-          ESDkind := ESDentry;
-          exproc := sharedPtr^.blockref;
-          insertnewESD;
-          end; { table entry }
-
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        if sharedPtr^.proctable[sharedPtr^.blockref].externallinkage
-        or (   (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = implementationbody)
-           and (level = 1))
-        then
-          begin
-          writeprocname(sharedPtr^.blockref, linknameused);
-          writeCh (':');
-          writeLine;
-          end
-        else
-          begin { not external }
-          writeCh ('P');
-          writeInt (sharedPtr^.blockref);
-          writech (':');
-          end;
-        end {macro output for block entry} ;
-      end; { block other than main }
-
-
-{ Service the fixup list with new label definitions, and possibly the
-  current procedure address, if it was declared forward.
-}
-
-    fixp := fixuphead;
-    while fixp <> nil do
-      begin
-      with fixp^ do { examine the node }
-        if fixupkind = fixupproc then { compare proc numbers }
-
-          if fixupprocno = sharedPtr^.blockref then
-            fixupaddr := currentpc { this is the forward target }
-          else { maybe next time }
-
-        else { fixupkind = fixuplabel }
-          for lscan := 1 to nextlabel do
-            if labeltable[lscan].labno = fixuplabno then
-              fixupaddr := labeltable[lscan].address;
-
-      fixp := fixp^.fixuplink;
-      end;
-  end; { DoBlockEntryCode }
-{>>>}
-
-{<<<}
-procedure buildbranches;
-{ Code to build a branch instruction.  This is pulled out of buildinstruction so the compiler can handle it }
-
-  var
-    labeldelta: integer; {for signed comparisons}
-    isforward: integer; {true if forward reference}
-
-  begin
-    if n^.kind = labelnode then
-      begin
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        writeCh ('L');
-        writeInt (n^.labelno);
-        end;
-
-      findlabelpc(n^.labelno, isforward); { find or compute target's addr }
-
-      if n^.labelcost = long then { 68020 and pic only }
-        begin
-        op := 16#FF + op;
-        insertobj((labelpc - currentpc) div 16#10000);
-        insertobj((labelpc - currentpc + 2) mod 16#10000);
-
-        if isforward <> 0 then
-          begin
-          objtype[objctr - 1] := objlong;
-          allocfixup; { generate a new fixupnode }
-          fixups[objctr - 1] := fixuptail;
-          with fixuptail^ do
-            begin
-            fixupkind := fixuplabel;
-            fixuplen := long;
-            fixuplabno := n^.labelno;
-            fixupobjpc := fixupobjpc - 4;
-            end;
-          end;
-        end
-      else
-      if n^.labelcost = word then
-        begin { word branch }
-        insertobj(labelpc - currentpc); { this bumps pc by 2 }
-        if isforward <> 0 then
-          begin
-          write ('Forward BRA illegal');
-          abort(inconsistent);
-          end;
-        end { long branch }
-
-      else
-        begin { short branch }
-        labeldelta := labelpc - currentpc;
-
-          { This is a signed test on unsigned operands
-          }
-        if (labeldelta > 127) or (labeldelta < - 128) then
-          puterror(badoperand);
-
-        op := (labeldelta and 377B) + op;
-        end { short branch }
-      end {labelnode}
-
-    else if n^.kind = relnode then
-      begin { relnodes are short, unlabeled offsets }
-      distancetemp := computedistance;
-      op := (distancetemp and 255) + op;
-
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        writeCh ('*');
-        if distancetemp < 0 then writeInt (distancetemp)
-        else
-          begin
-          writeCh ('+');
-          writeInt (distancetemp + word);
-          end;
-        end;
-      end
-    else puterror(nolabelnode);
-  end; {buildbranches}
-{>>>}
-{<<<}
-procedure buildfpbranches;
-{ Code to build a 68881 branch instruction }
-
-  var
-    isforward: integer; {true if forward reference}
-
-  begin
-    if n^.kind = labelnode then
-      begin
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        writeCh ('L');
-        writeInt (n^.labelno);
-        end;
-
-      findlabelpc(n^.labelno, isforward); { find or compute target's addr }
-      distancetemp := labelpc - currentpc; { bump pc by 2 }
-
-      if n^.labelcost = long then { 32 bit branch }
-        begin
-        op := op + 100B; { set size bit }
-        insertobj(distancetemp div 16#10000);
-        insertobj(distancetemp mod 16#10000);
-
-        if isforward <> 0 then
-          begin
-          objtype[objctr - 1] := objlong;
-          allocfixup; { generate a new fixupnode }
-          fixups[objctr - 1] := fixuptail;
-          with fixuptail^ do
-            begin
-            fixupkind := fixuplabel;
-            fixuplen := long;
-            fixuplabno := n^.labelno;
-            fixupobjpc := fixupobjpc - 4;
-            end;
-          end;
-        end
-      else { 16 bit branch } insertobj(distancetemp);
-      end {labelnode}
-    else if n^.kind = relnode then
-      begin { relnodes are short, unlabeled branches. }
-      distancetemp := computedistance;
-
-      insertobj(distancetemp);
-
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        writeCh ('*');
-        if distancetemp < 0 then writeInt (distancetemp)
-        else
-          begin
-          writeCh ('+');
-          writeInt (distancetemp + word);
-          end;
-        end;
-      end
-    else puterror(nolabelnode);
-  end; {buildfpbranches}
-{>>>}
-{<<<}
-procedure builddbxx;
-
-  var
-    isforward: integer; {true if forward reference}
-
-  begin
-    if n^.oprnd.m <> dreg then puterror(badsource);
-    op := op + n^.oprnd.reg;
-    writeopnd;
-    getnextnode;
-
-    if n^.kind = labelnode then
-      begin { process the label }
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        writeCh ('L');
-        writeInt (n^.labelno);
-        end;
-
-      findlabelpc(n^.labelno, isforward); { find or compute target's addr }
-      insertobj(labelpc - currentpc); { this bumps pc by 2 }
-      if isforward <> 0 then abort(inconsistent);
-      end
-    else if n^.kind = relnode then
-      begin
-      distancetemp := computedistance;
-      insertobj(labelpc - currentpc);
-
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        writeCh ('*');
-        if distancetemp < 0 then writeInt (distancetemp)
-        else
-          begin
-          writeCh ('+');
-          writeInt (distancetemp + word);
-          end;
-        end;
-      end
-    else puterror(nolabelnode);
-  end; {builddbxx}
-{>>>}
-{<<<}
-procedure buildmovem (gen_fmovem: boolean);
-
-  var
-    i: 0..7;
-
-  begin
-    if n^.oprnd.m = immediate then
-      begin { save registers }
-      datasize := word; {mask is only 16 bits long}
-
-      if not gen_fmovem then setmodeonly; { process the register mask }
-
-      if sharedPtr^.switcheverplus[outputmacro] then
-      begin
-      mask := 1;
-      first := true;
-
-      if gen_fmovem then
-        for i := 0 to 7 do
-          begin
-          if n^.oprnd.offset and mask <> 0 then
-            begin
-            if not first then writeCh ('/');
-            writeStr ('FP');
-            writeCh (chr(i + ord('0')));
-            first := false;
-            end;
-          mask := mask * 2;
-          end
-      else
-        begin
-        for i := 7 downto 0 do
-          begin
-          if n^.oprnd.offset and mask <> 0 then
-            begin
-            if not first then writeCh ('/');
-            writeCh ('A');
-            writeCh (chr(i + ord('0')));
-            first := false;
-            end;
-          mask := mask * 2;
-          end;
-
-        for i := 7 downto 0 do
-          begin
-          if n^.oprnd.offset and mask <> 0 then
-            begin
-            if not first then writeCh ('/');
-            writeCh ('D');
-            writeCh (chr(i + ord('0')));
-            first := false;
-            end;
-          mask := mask * 2;
-          end;
-        end;
-      writeCh (',');
-      end;
-      if gen_fmovem then
-        begin { mode 00 is static list, -(An) }
-        op2 := op2 + 20000B { indicate direction mem-to-reg }
-               + n^.oprnd.offset; { glue in list }
-        insertobj(op2);
-        end;
-
-      getoperand;
-      if not (n^.oprnd.m in [relative, autod]) then puterror(baddestination);
-      seteffective; { autodec mode and register }
-      writelastopnd;
-      end
-    else if n^.oprnd.m = autoi then
-      begin { restore registers }
-      writeopnd;
-      seteffective;
-      getoperand;
-
-      if gen_fmovem then
-        begin
-        op2 := op2 + 2 * 4000B { mode 10 is static list, (An)+ }
-               + n^.oprnd.offset; { glue in list }
-        insertobj(op2);
-        end
-      else op := op + 2000B; { indicate direction mem-to-reg }
-
-      datasize := word; { mask is only 16 bits long }
-
-      if not gen_fmovem then setmodeonly; { append register mask }
-
-      if n^.oprnd.m <> immediate then puterror(baddestination);
-      if sharedPtr^.switcheverplus[outputmacro] then
-      begin
-      mask := 1;
-      first := true;
-
-      if gen_fmovem then
-        for i := 7 downto 0 do
-          begin
-          if n^.oprnd.offset and mask <> 0 then
-            begin
-            if not first then writeCh ('/');
-            writeStr ('FP');
-            writeCh (chr(i + ord('0')));
-            first := false;
-            end;
-          mask := mask * 2;
-          end
-      else
-        begin
-        for i := 0 to 7 do
-          begin
-          if n^.oprnd.offset and mask <> 0 then
-            begin
-            if not first then writeCh ('/');
-            writeCh ('D');
-            writeCh (chr(i + ord('0')));
-            first := false;
-            end;
-          mask := mask * 2;
-          end;
-
-        for i := 0 to 7 do
-          begin
-          if n^.oprnd.offset and mask <> 0 then
-            begin
-            if not first then writeCh ('/');
-            writeCh ('A');
-            writeCh (chr(i + ord('0')));
-            first := false;
-            end;
-          mask := mask * 2;
-          end;
-        end;
-      end;
-      end
-    else puterror(badsource);
-
-    if not gen_fmovem then op := op + 100B; { preinitialized for word; change
-                                              to long }
-
-  end; {buildmovem}
-{>>>}
-{<<<}
-procedure BuildInstruction;
-
-  var
-    i: 0..7;
-    offset1: integer;
-    register: regindex;
-    memory: boolean; { used for 68881 instructions }
-    n1: nodeptr;
-    isforward: integer;
-
-  {<<<}
-  procedure output_fp_creg;
-
-    { Output the 68881 control register name for the FMOVE system control
-      register instruction.
-    }
-
-
-    begin
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        case n^.oprnd.offset of
-          1: writeStr ('FPIAR');
-          2: writeStr ('FPSR');
-          4: writeStr ('FPCR');
-          end;
-        end
-    end; {output_fp_creg}
-  {>>>}
-
-  begin {BuildInstruction}
-    {branches are pulled out to let this fit through the 11 compiler}
-
-    if currinst in branches then buildbranches
-    else if currinst in fpbranches then buildfpbranches
-    else if currinst in
-            [dbra, dbeq, dbge, dbgt, dbhi, dbhs, dble, dblo, dbls, dblt, dbmi,
-            dbpl, dbne, dbvc, dbvs] then
-      builddbxx
-    else
-      case currinst of
-
-          { 68881 instructions
-          }
-
-        fabs, facos, fadd, fasin, fatan, fatanh, fcos, fcosh, fetox, fetoxm1,
-        fgetexp, fgetman, fint, fintrz, flog10, flog2, flogn, flognp1, fmod,
-        fmul, fneg, frem, fscale, fsglmul, fsin, fsinh, fsqrt, ftan, ftanh,
-        ftentox, ftrap, ftwotox:
-          begin
-          if n^.oprnd.m <> fpreg then
-            begin
-            memory := true;
-            register := fp_src_spec;
-            writeopnd;
-            getoperand;
-            end
-          else
-            begin
-            memory := false;
-            register := n^.oprnd.reg;
-            getoperand;
-
-            { Suppress duplicate registers
-            }
-            if (register = n^.oprnd.reg) and
-               not (currinst in [fadd, fmul, fsglmul, frem, fmod, fscale]) then
-              {suppress}
-            else
-              begin
-              getprevoperand(1);
-              writeopnd;
-              currnode := currnode - 1; { Get back in sync }
-              getoperand;
-              end;
-            end;
-
-          writelastopnd;
-          insertobj(op2 + ord(memory) * 40000B + register * 2000B +
-                    n^.oprnd.reg * 200B);
-
-          if memory then
-            begin
-            getprevoperand(1);
-            seteffective;
-            end;
-          end;
-
-        fsincos:
-          begin
-          if n^.oprnd.m <> fpreg then
-            begin
-            memory := true;
-            register := fp_src_spec;
-            end
-          else
-            begin
-            memory := false;
-            register := n^.oprnd.reg;
-            end;
-
-          writeopnd;
-          getoperand;
-          writelastopnd;
-          insertobj(op2 + ord(memory) * 40000B + register * 2000B +
-                    n^.oprnd.indxr * 200B + n^.oprnd.reg);
-          if memory then
-            begin
-            getprevoperand(1);
-            seteffective;
-            end;
-          end;
-
-        ftst:
-          begin
-          if n^.oprnd.m <> fpreg then
-            begin
-            memory := true;
-            register := fp_src_spec;
-            end
-          else
-            begin
-            memory := false;
-            register := n^.oprnd.reg;
-            end;
-
-          writelastopnd;
-          insertobj(op2 + ord(memory) * 40000B + register * 2000B);
-          if memory then seteffective;
-          end;
-
-        fcmp, fsub, fdiv, fsgldiv:
-
-          { These sometimes have reversed operands in the assembler source.
-          }
-          begin
-          if n^.oprnd.m = fpreg then
-            begin
-            memory := false;
-            register := n^.oprnd.reg;
-            end
-          else
-            begin
-            memory := true;
-            register := fp_src_spec;
-            end;
-
-            begin { put out funny Motorola assembler form }
-            writeopnd;
-            getoperand;
-            writelastopnd;
-            insertobj(op2 + ord(memory) * 40000B + register * 2000B +
-                      n^.oprnd.reg * 200B);
-            if memory then
-              begin
-              getprevoperand(1);
-              seteffective;
-              end;
-            end;
-          end;
-
-        fmove:
-          begin
-          memory := n^.oprnd.m <> fpreg;
-          writeopnd;
-          register := n^.oprnd.reg;
-          getoperand;
-          writelastopnd;
-
-          if n^.oprnd.m = fpreg then { memory-to-register form (includes
-                                      register-to-register) }
-            if memory then
-              begin
-              insertobj(ord(memory) * 40000B + fp_src_spec * 2000B +
-                        n^.oprnd.reg * 200B);
-              getprevoperand(1);
-              seteffective;
-              end
-            else { fpreg-to-fpreg }
-              insertobj(register * 2000B + n^.oprnd.reg * 200B)
-          else { register-to-memory form }
-            begin
-            insertobj(60000B + fp_src_spec * 2000B + register * 200B);
-            seteffective;
-            end;
-          end;
-
-        fnop:
-          begin
-          insertobj(op2);
-          end;
-
-        fmove_from_fpcr:
-
-          { Move from system control register.
-          }
-          begin
-          offset1 := n^.oprnd.offset;
-          output_fp_creg;
-          if sharedPtr^.switcheverplus[outputmacro] then writeCh (',');
-          getoperand;
-          writelastopnd;
-          insertobj(op2 + 20000B + offset1 * 2000B);
-          seteffective;
-          end;
-
-        fmove_to_fpcr:
-
-          { Move to system control register.
-          }
-          begin
-          writeopnd;
-          getoperand;
-          output_fp_creg;
-          insertobj(op2 + n^.oprnd.offset * 2000B);
-          getprevoperand(1);
-          seteffective;
-          end;
-
-        fmovecr:
-
-          { Move from 68881 constant rom.
-          }
-          begin
-          offset1 := n^.oprnd.offset;
-          writeopnd;
-          getoperand;
-          writelastopnd;
-          insertobj(op2 + n^.oprnd.reg * 200B + offset1);
-          end;
-
-        fmovem: buildmovem(true);
-
-          { 68000 and 68020 instructions
-          }
-
-        movea, move:
-          begin
-          writeopnd;
-          seteffective;
-          getoperand;
-          writelastopnd;
-          setmodeonly;
-          if currinst = movea then
-            if datasize = byte then puterror(badsize)
-            else if n^.oprnd.m <> areg then puterror(missingAreg);
-          op := ((((mode and 7B) * 100B + mode) * 10B) and 7700B) + op;
-          end;
-
-        move_to_ccr:
-          begin
-          writeopnd;
-          seteffective;
-          if sharedPtr^.switcheverplus[outputmacro] then writeStr ('CCR');
-          end;
-
-        moveq:
-          begin
-          if not (n^.oprnd.m in [immediatelong, immediate]) or
-             (n^.oprnd.offset > 127) or (n^.oprnd.offset < - 128) then
-            puterror(badoperand);
-          datasize := byte; { just in case }
-          writeopnd;
-          op := (n^.oprnd.offset and 377B) + op;
-          getoperand;
-          writelastopnd;
-          if n^.oprnd.m <> dreg then puterror(badoperand);
-          op := n^.oprnd.reg * 1000B + op;
-          end;
-
-        add, cmp, sub, andinst, orinst:
-          begin
-          if datasize = word then op := op + 100B
-          else if datasize = long then op := op + 200B;
-
-            begin
-            writeopnd;
-
-            lookahead(1); { Check destination for d-reg first! If it is, then
-                           emit "<Dn> op <EA> --> <Dn>" form only }
-            if (n^.oprnd.m = dreg) and (p^.oprnd.m <> dreg) then
-              begin
-              op := op + 400B; { indicate direction }
-              if currinst = cmp then puterror(badsource); {cmp is one-way}
-              insertreghi;
-              getoperand;
-              seteffective;
-              end
-            else
-              begin { must be "<EA> to Dn" form }
-              seteffective;
-              getoperand;
-              if n^.oprnd.m <> dreg then puterror(missingDreg);
-              insertreghi;
-              end;
-            writelastopnd;
-            end;
-          end;
-
-        addq, subq:
-          begin
-          if (n^.oprnd.m <> immediate) or (n^.oprnd.offset < 1) or
-             (n^.oprnd.offset > 8) then
-            puterror(badoperand);
-          if n^.oprnd.offset < 8 then { value 8 == bit pattern 0 }
-            op := n^.oprnd.offset * 1000B + op;
-          insertsize;
-          datasize := byte;
-          writeopnd;
-          getoperand;
-          writelastopnd;
-          seteffective;
-          end;
-
-        adda, cmpa, suba: { address register destination }
-          begin
-            begin
-            seteffective;
-            writeopnd;
-            getoperand;
-            writelastopnd;
-            if n^.oprnd.m <> areg then puterror(missingAreg);
-            insertreghi;
-            if datasize = word then op := op + 300B
-            else if datasize = long then op := op + 700B
-            else puterror(badoperand); { no byte mode }
-            end;
-          end;
-
-        addi, cmpi, subi, andi, eori, ori: { immediate source }
-          begin
-          if (n^.oprnd.m <> immediate) and (n^.oprnd.m <> immediatelong) then
-            puterror(badoperand);
-            begin
-            insertsize;
-            setmodeonly; { processes the immediate data }
-            writeopnd;
-            getoperand;
-            writelastopnd;
-            seteffective;
-            end;
-          end;
-
-        eor: { exclusive or -- differs from other logicals }
-          begin
-          if n^.oprnd.m <> dreg then puterror(missingDreg);
-
-          if datasize = word then op := op + 500B
-          else if datasize = long then op := op + 600B
-          else op := op + 400B;
-
-          writeopnd;
-          insertreghi;
-          getoperand;
-          writelastopnd;
-          if n^.oprnd.m = areg then puterror(badoperand);
-          seteffective;
-          end;
-
-        asl, asr, lsl, lsr, rol, ror, roxl, roxr: { shift group }
-          begin
-          if n^.oprnd.m = immediate then
-            begin
-            if (n^.oprnd.offset < 1) or (n^.oprnd.offset > 8) then
-              puterror(badoperand);
-            lookahead(1); { check for single bit memory shifts }
-            if p^.kind <> oprndnode then puterror(missingoperand);
-
-            if p^.oprnd.m = dreg then
-              begin { immediate/register }
-              if n^.oprnd.offset < 8 then { shift 8 == bit pattern 0 }
-                op := n^.oprnd.offset * 1000B + op;
-              insertsize;
-              datasize := word;
-              writeopnd;
-              getoperand;
-              op := n^.oprnd.reg + op;
-              end { immediate/register }
-
-            else
-              begin { immediate/memory -- enforce shift count = 1 }
-              if n^.oprnd.offset <> 1 then puterror(badsource)
-              else
-                op := (op and 30B) * 100B { relocate subtype }
-                      + (op and 400B) { save direction bit }
-                      + 160300B; { size of 3 decodes to memory shift! }
-              if datasize <> word then puterror(badsize);
-              getoperand; { do not write out the shift count! }
-              seteffective;
-              end; { immediate/memory }
-            end { immediate (or implied) shift count form }
-
-          else { register/register form -- instruction needs correction }
-            begin
-            op := op + 40B;
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            insertreghi; { this reg has the shift count }
-            insertsize; { all sizes are permissible }
-            writeopnd;
-            getoperand;
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            op := n^.oprnd.reg + op;
-            end;
-
-          writelastopnd;
-          end;
-
-        bchg, bclr, bset, btst: { bit manipulation group }
-          begin
-          if (n^.oprnd.m <> dreg) and (n^.oprnd.m <> immediate) then
-            puterror(badsource);
-          if n^.oprnd.m = dreg then
-            begin { bit number dynamic mode }
-            op := op + 400B;
-            insertreghi; { register containing bit number }
-            end
-          else
-            begin { bit number static mode }
-            op := op + 4000B;
-            setmodeonly; { process the immediate data }
-            end;
-          writeopnd;
-          getoperand;
-          writelastopnd;
-          seteffective;
-          end;
-
-        bfclr, bfset, bftst:
-          begin
-          writelastopnd; { The effective address }
-          getoperand;
-
-          if n^.oprnd.m = bit_field_const then
-            begin
-              { "Len" is the length in bits, "offset1" is the offset in bits.
-              }
-            insertobj(((n^.oprnd.offset1 and 37B) * 100B) + (datasize and 37B));
-            writebitfield( - 1, n^.oprnd.offset1, datasize);
-            end
-          else
-            begin
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            insertobj(4000B + ((n^.oprnd.reg and 37B) * 100B) + (datasize and
-                      37B));
-            writebitfield(n^.oprnd.reg, 0, datasize);
-            end;
-
-          getprevoperand(1);
-          seteffective;
-          end;
-
-        bfexts, bfextu:
-          begin
-          writelastopnd; { The effective address (leave off comma) }
-          getoperand;
-
-          if n^.oprnd.m = bit_field_const then
-            begin
-              { "Len" is the length in bits, "offset1" is the offset in bits,
-                "reg" is the source register.
-              }
-            offset1 := n^.oprnd.offset1;
-            getoperand;
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            insertobj(((n^.oprnd.reg and 7B) * 10000B) + ((offset1 and
-                      37B) * 100B) + (datasize and 37B));
-            writebitfield( - 1, offset1, datasize);
-            end
-          else
-            begin
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            register := n^.oprnd.reg;
-            getoperand;
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            insertobj(((n^.oprnd.reg and 7B) * 10000B) + 4000B + ((register and
-                      37B) * 100B) + (datasize and 37B));
-            writebitfield(register, 0, datasize);
-            end;
-
-          if sharedPtr^.switcheverplus[outputmacro] then writeCh (',');
-          writelastopnd; { The register }
-
-            { Back up two operands and output the effective address
-              field to the object file. This is neccessary because the effective
-              address is the source field in the assembler output, but any
-              effect address descriptor words must follow the second word
-              of the instruction.
-            }
-          getprevoperand(2);
-          seteffective;
-          end;
-
-        bfins:
-          begin
-          if n^.oprnd.m <> dreg then puterror(missingDreg);
-          writeopnd; { The register }
-          register := n^.oprnd.reg;
-          getoperand;
-          writelastopnd; { The effective address }
-          getoperand;
-
-          if n^.oprnd.m = bit_field_const then
-            begin
-              { "Len" is the length in bits, "offset1" is the offset in bits,
-                "reg" is the source register.
-              }
-            insertobj(((register and 7B) * 10000B) + ((n^.oprnd.offset1 and
-                      37B) * 100B) + (datasize and 37B));
-            writebitfield( - 1, n^.oprnd.offset1, datasize);
-            end
-          else
-            begin
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            insertobj(((register and 7B) * 10000B) + 4000B + ((n^.oprnd.reg and
-                      37B) * 100B) + (datasize and 37B));
-            writebitfield(n^.oprnd.reg, 0, datasize);
-            end;
-          getprevoperand(1);
-          seteffective;
-          end;
-
-        chk:
-          begin
-          seteffective;
-          writeopnd;
-          getoperand;
-          if n^.oprnd.m <> dreg then puterror(missingDreg);
-          writelastopnd;
-          insertreghi;
-          end;
-
-        clr, neg, negx, notinst, tst:
-          begin
-          insertsize;
-          seteffective;
-          writelastopnd;
-          end;
-
-        cmpm:
-          begin
-          if n^.oprnd.m <> autoi then puterror(badsource);
-            begin
-            insertsize;
-            op := (n^.oprnd.reg and 7B) + op;
-            writeopnd;
-            getoperand;
-            writelastopnd;
-            if n^.oprnd.m <> autoi then puterror(badoperand);
-            insertreghi;
-            end;
-          end;
-
-        divs, divu:
-          begin
-          if datasize <> word then puterror(badsize);
-          seteffective;
-          writeopnd;
-          getoperand;
-          writelastopnd;
-          if n^.oprnd.m <> dreg then puterror(missingDreg);
-          insertreghi;
-          end;
-
-        divsl, divul:
-          begin
-          if datasize <> long then puterror(badsize);
-          writeopnd;
-          getoperand;
-          writelastopnd;
-
-            { reg is the quotient register and indxr is the remainder
-              register.  Note: If the quotient and remainder registers
-              are the same then only a 32 bit quotient will be generated.
-            }
-          if n^.oprnd.m = twodregs then
-            insertobj((((n^.oprnd.reg and
-                      7B) * 10000B) + ord(currinst =
-                      divsl) * 4000B) + n^.oprnd.indxr)
-          else
-            insertobj((((n^.oprnd.reg and
-                      7B) * 10000B) + ord(currinst =
-                      divsl) * 4000B) + n^.oprnd.reg);
-
-            { Back up one operand and output the effective address field
-              to the opject file. This is neccessary because the effective
-              address is the source field in the assembler output, but any
-              effect address descriptor words must follow the second word
-              of the instruction.
-            }
-          getprevoperand(1);
-          seteffective;
-          end;
-
-        exg:
-          begin
-{**note: genblk fix
-            if datasize <> long then puterror(badsize);
-}
-          writeopnd;
-          insertreghi; { assume that this is ok }
-          if n^.oprnd.m = dreg then
-            begin
-            getoperand;
-            if (n^.oprnd.m <> dreg) and (n^.oprnd.m <> areg) then
-              puterror(baddestination);
-            if n^.oprnd.m = dreg then op := op + 100B
-            else op := op + 210B;
-            insertreglo;
-            end
-          else
-            begin
-            if n^.oprnd.m <> areg then puterror(badsource);
-            getoperand;
-            if n^.oprnd.m = areg then
-              begin
-              op := op + 110B;
-              insertreglo;
-              end
-            else if n^.oprnd.m = dreg then
-              begin
-              op := ((op and 7000B) div 1000B {remove high reg}
-                    + op + 210B) and 170777B; {put it in lowend}
-              insertreghi;
-              end
-            else puterror(baddestination);
-            end;
-          writelastopnd;
-          end;
-
-        ext, extb:
-          begin
-          if n^.oprnd.m <> dreg then puterror(missingDreg);
-          if datasize = byte then puterror(badsize);
-
-            { The mask is setup for a word to long, if the instruction is
-              an EXTB (68020 only) or if this is an extend word to long set
-              the correct bits.
-            }
-          if currinst = extb then
-            op := op + 500B { change to byte-to-long form }
-          else if datasize = long then op := op + 100B; { change to
-                                                          word-to-long form }
-          insertreglo;
-          writelastopnd;
-          end;
-
-        jmp, jsr: { special operands }
-          begin
-          if n^.kind = oprndnode then
-            begin
-            writelastopnd;
-            if (n^.oprnd.m = usercall) and sharedPtr^.switcheverplus[outputmacro] then
-              begin
-              reposition(procnamecolumn);
-              writeprocname(n^.oprnd.offset, 100); {write procedure name}
-              end;
-            seteffective;
-            end
-          else {must be a labelnode}
-            begin
-            if sharedPtr^.switcheverplus[outputmacro] then
-              begin
-              writeCh ('L');
-              writeInt (n^.labelno);
-              end;
-
-            mode := 71B; {absolute long}
-            op := op + mode;
-            insertobj(54B * 256 + sectionno[codesect] + 1);
-            objtype[objctr] := objforw;
-            currentpc := currentpc - 2; {this stuff's longer than code}
-            findlabelpc(n^.labelno, isforward);
-            relocn[objctr] := true;
-
-            insertobj(labelpc div 16#10000); {high order}
-            objtype[objctr] := objoff;
-            insertobj(labelpc mod 16#10000); {low order}
-
-            if isforward <> 0 then
-              begin
-              allocfixup; { generate a new fixupnode }
-              fixups[objctr - 1] := fixuptail;
-              with fixuptail^ do
-                begin
-                fixupkind := fixuplabel;
-                fixuplen := long;
-                fixuplabno := n^.labelno;
-                fixupobjpc := fixupobjpc - 4;
-                end;
-              end;
-            objtype[objctr] := objoff;
-            end;
-          end;
-
-        lea:
-          begin
-          n1 := nil;
-          if n^.kind = oprndnode then
-            begin
-            seteffective;
-            if n^.oprnd.m = usercall then {caused by stuffregisters} n1 := n;
-            if n^.oprnd.m in
-               [areg, dreg, autoi, autod, immediate, immediatelong] then
-              puterror(badoperand);
-            writeopnd;
-            end
-          else
-            begin {must be relnode, used only for initial call}
-            distancetemp := computedistance;
-            op := op + 72B;
-            insertobj(distancetemp);
-
-            if sharedPtr^.switcheverplus[outputmacro] then
-              begin
-              writeCh ('*');
-              writeCh ('+');
-              writeInt (distancetemp + word);
-              writeStr ('(PC)');
-              writeCh (',');
-              end;
-            end;
-          getoperand;
-          writelastopnd;
-          if (n1 <> nil) and sharedPtr^.switcheverplus[outputmacro] then
-            begin
-            reposition(procnamecolumn);
-            writeprocname(n1^.oprnd.offset, 100); {write procedure name}
-            end;
-          if n^.oprnd.m <> areg then puterror(missingAreg);
-{**note: genblk fix
-            if datasize <> long then puterror(badsize);
-}
-          insertreghi;
-          end;
-
-        link:
-          begin
-          if n^.oprnd.m <> areg then puterror(missingAreg);
-          insertreglo; { dynamic link register }
-          writeopnd;
-          getoperand;
-
-          if not mc68020 then datasize := word; {size operand is only 16 bits
-                                                  long}
-
-          writelastopnd; { 68020 long is written here }
-          if n^.oprnd.m <> immediate then puterror(baddestination)
-          else if n^.oprnd.offset > 0 then puterror(badoffset);
-          setmodeonly;
-          end;
-
-        movem: buildmovem(false);
-
-        muls, mulu:
-          begin
-          if mc68020 and (datasize = long) then
-            begin
-            writeopnd;
-            getoperand;
-            writelastopnd;
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-
-            insertobj(((n^.oprnd.reg and
-                      7B) * 10000B) + ord(currinst = muls) * 4000B);
-
-              { Back up one operand and output the effective address field
-                to the opject file. This is neccessary because the effective
-                address is the source field in the assembler output, but any
-                effect address descriptor words must follow the second word
-                of the instruction.
-              }
-            getprevoperand(1);
-            seteffective;
-            end
-          else if datasize = word then
-            begin
-            seteffective;
-            writeopnd;
-            getoperand;
-            writelastopnd;
-            if n^.oprnd.m <> dreg then puterror(missingDreg);
-            insertreghi;
-            end
-          else puterror(badsize);
-          end;
-
-        pea:
-          begin {* * * add control mode only checks * * *}
-{**note: genblk fix
-            if datasize <> long then puterror(badsize);
-}
-          seteffective;
-          writelastopnd;
-          end;
-
-        swap:
-          begin
-          if n^.oprnd.m <> dreg then puterror(badoperand);
-          insertreglo;
-          writelastopnd;
-          end;
-
-        rte, rts, trapcc, trapv:
-        { remember, we did no "getoperand" for these guys } ;
-
-        trap:
-          begin
-          if (n^.oprnd.m <> immediate) or (n^.oprnd.offset < 0) or
-             (n^.oprnd.offset > 15) then
-            puterror(badoperand);
-          op := op + n^.oprnd.offset;
-          writelastopnd;
-          end;
-
-        unlk:
-          begin
-          if n^.oprnd.m <> areg then puterror(missingAreg);
-          insertreglo;
-          writelastopnd;
-          end
-
-        otherwise puterror(unknowninst)
-        end; {case inst}
-  end {BuildInstruction} ;
-{>>>}
-
-{<<<}
-procedure PutCode;
-{ Output a block of either (or both) macro code or object code.  This simply
-  scans the nodes and writes the instructions out.  It is basically a large
-  case statement which does the formatting necessary for any unusual
-  instructions (of which there are an unfortunate number).
-}
-var
-  i, j: integer;
-  s: longname;
-  swbegkludgecount: unsignedint; {Do we need to put out obnoxious 'swbeg' assembly pseudo-op? Non-zero value = 'yes'}
-
-begin
-  newsection(codesect);
-  currentpc := highcode;
-  lastobjpc := highcode;
-
-  currnode := 0; { initialize node counter for code generation scan }
-  relocn[1] := false; { opcodes do not get relocated }
-  fixups[1] := nil;
-  currlabel := 1;
-  if sharedPtr^.switcheverplus[outputmacro] then doblocklabel;
-
-  while currnode < lastnode do
-    begin
-    getnextnode;
-    lineerrors := 0;
-    instindex := currnode;
-    instpc := currentpc;
-
-    if currnode = blocklabelnode then DoBlockEntryCode;
-
-    if sharedPtr^.switcheverplus[outputmacro] then
-      if currnode = labeltable[currlabel].nodelink then writelabels;
-
-    objctr := 0;
-    with n^ do
-      if kind <> instnode then
-        if kind = labeldeltanode then
-          begin
-          findlabelpc(targetlabel, isforward); {can't be forward}
-          labelpctemp := labelpc;
-          findlabelpc(tablebase, isforward); {can't be forward}
-          insertobj(labelpctemp - labelpc);
-          if sharedPtr^.switcheverplus[outputmacro] then
-            begin
-            reposition(opcolumn);
-            writeStr ('DC.W');
-            reposition(opndcolumn);
-            writeCh ('L');
-            writeInt (targetlabel);
-            writeStr ('-L');
-            writeInt (tablebase);
-            end;
-
-          writeobjline;
-          currinst := nop; { to flush nodes to next inst }
-          end { labeldeltanode}
-
-        else
-          begin
-          if kind = stmtref then
-            begin
-            i := stmtno;
-            if i <> 0 then i := i - firststmt + 1;
-            if sharedPtr^.switcheverplus[outputmacro] then
-              begin
-              if column > 1 then writeLine;
-
-              writeln(macFile, '* Line: ', sourceline - lineoffset: 1,
-                      ', Stmt: ', i: 1);
-              end;
-            end
-
-          else if kind = datanode then { insert constant data for 68881 }
-            begin
-            putdata(data div 16#10000);
-            putdata(data mod 16#10000);
-
-            if sharedPtr^.switcheverplus[outputmacro] then
-              begin
-              reposition(opcolumn);
-              writeStr ('DC.W');
-              reposition(opndcolumn);
-              writeCh ('$');
-              writeHex (data div 16#10000);
-              writeCh (',');
-              writeCh ('$');
-              writeHex (data mod 16#10000);
-              writeLine;
-              end
-            end
-
-          else if kind <> errornode then
-            begin { HINT: prologuelength may be too small }
-            puterror(missinginst);
-            if sharedPtr^.switcheverplus[outputmacro] then dumperrors; { if any }
-            end;
-          currinst := nop { to flush nodes to next inst }
-          end
-
-      else
-        begin { save instruction }
-        currinst := inst;
-        opcount := oprndcount;
-        datasize := oprndlength;
-        computed_len := computed_length;
-        end; { save instruction }
-
-    swbegkludgecount := 0;
-    if currinst <> nop then
-      begin
-      writeinst(currinst);
-      if opcount = 0 then { check mnemonic }
-        if not (currinst in [rte, rts, trapcc, trapv]) then
-          puterror(badopcount)
-        else { no operands required }
-      else
-        begin
-        getnextnode;
-        if (n^.kind = oprndnode) and (n^.oprnd.m = pcindexed)
-        then swbegkludgecount := n^.oprnd.offset2;
-        end;
-
-      mode := 0;
-      BuildInstruction;
-
-      if computed_len <> (currentpc - instpc) then
-        begin
-        writeln ('Instruction length mismatch, PC=', instpc: - 4, ', pass1=',
-                 computed_len: 1, ', pass2=', currentpc - instpc: 1);
-        abort (inconsistent);
-        end;
-
-      {update op value: may have changed due to operand modes}
-      object[1] := op;
-      writeobjline;
-      end; {inst <> nop}
-    end; {while currnode}
-
-  sectionpc[codesect] := currentpc;
-  if nowdiagnosing then
-    put_diags;
-  highcode := sectionpc[codesect];
-
-end;
-{>>>}
+                         {<<<}
+
+                         fpreg:
+                           begin
+                           writeStr ('FP');
+                           writeInt (reg);
+                           end;
+
+                         {>>>}
+                         twofpregs:
+                             { This is currently only for 68881 fsincos instruction.
+                               Reg is the cosine register and indxr is the sine.  The
+                               format is FPc:FPs (cosine:sine).
+                             }
+
+                           begin
+                           writeStr ('FP');
+                           writeInt (reg);
+                           writeCh (':');
+                           writeStr ('FP');
+                           writeInt (indxr);
+                           end; {twofpregs}
+
+                         indr:
+                           begin
+                           if reg = 7 then writeStr ('(SP)')
+                           else
+                             begin
+                             writeStr ('(A');
+                             writeInt (reg);
+                             writeCh (')');
+                             end;
+                           end; {indr}
+
+                         autoi:
+                           begin
+                           if reg = 7 then writeStr ('(SP)+')
+                           else
+                             begin
+                             writeStr ('(A');
+                             writeInt (reg);
+                             writeStr (')+');
+                             end;
+                           end; {autoi}
+
+                         autod:
+                           begin
+                           if reg = 7 then writeStr ('-(SP)')
+                           else
+                             begin
+                             writeStr ('-(A');
+                             writeInt (reg);
+                             writeCh (')');
+                             end;
+                           end; {autod}
+
+                         relative:
+                           begin
+                           if mc68020 and ((offset > 32767) or (offset < -32768)) then
+                             begin
+                             writeCh ('(');
+                             writeInt (offset);
+                             writeCh (',');
+                             end
+                           else
+                             begin
+                             writeInt (offset);
+                             writeCh ('(');
+                             end;
+
+                           if reg = 7 then
+                             begin
+                             writeStr ('SP)');
+                             if offset < 0 then puterror(negativesp)
+                             end
+                           else
+                             begin
+                             writeCh ('A');
+                             writeInt (reg);
+                             writeCh (')');
+                             end;
+                           end; {relative}
+
+                         indexed:
+                           begin
+                           if not mc68020 and ((offset > 127) or (offset < - 128)) then
+                             puterror(baddisplacement);
+                           if mc68020 then
+                             begin
+                             writeCh ('(');
+                             writeInt (offset);
+                             writeCh (',');
+                             end
+                           else
+                             begin
+                             writeInt (offset);
+                             writeCh ('(');
+                             end;
+
+                           writeCh ('A');
+                           writeInt (reg);
+                           writeStr (',D');
+                           writeInt (indxr);
+                           if indxlong then writeStr ('.L')
+                           else writeStr ('.W');
+                           write_scale;
+                           writeCh (')');
+                           end; {indexed}
+
+                         bitindexed:
+                           begin
+                           puterror(bitindexmode);
+                           end; {bitindexed}
+
+                         absshort:
+                           begin
+                           writeInt (offset);
+                           end; {absshort}
+
+                         abslong:
+                           begin
+                           writeCh ('$');
+                           kluge.l := offset;
+                             { the next two lines assume that "reversebytes" implies that
+                               words are also reversed. }
+                           writeHex (kluge.w[reversebytes]);
+                           writeHex (kluge.w[not reversebytes]);
+                           end; {abslong}
+
+                         immediate, special_immediate:
+                           begin
+                           writeCh ('#');
+                           if datasize <= word then writeInt (offset)
+                           else
+                             begin
+                             writeCh ('$');
+                             if hostintsize <= word then
+                               begin
+                               if offset < 0 then writeHex ( - 1)
+                               else writeHex (0);
+                               writeHex (offset);
+                               end
+                             else
+                               begin
+                               kluge.l := offset;
+                                 { the next two lines assume that "reversebytes" implies that
+                                   words are also reversed. }
+                               writeHex (kluge.w[reversebytes]);
+                               writeHex (kluge.w[not reversebytes]);
+                               end;
+                             end;
+                           end; {immediate}
+
+                         immediatelong:
+                           begin
+                           writeCh ('#');
+
+                             { Floating point constants in hex in 68881 instructions must
+                               be prefixed by a ":" instead of a "$" -- Strange!
+                             }
+                           if (currinst in [fp_first..fp_last]) then writeCh (':')
+                           else writeCh ('$');
+
+                           writeHex (offset1);
+                           writeHex (offset);
+                           end; { immediatelong }
+
+                         immediatequad:
+                           begin
+                           writeCh ('#');
+
+                             { Floating point constants in hex in 68881 instructions must
+                               be prefixed by a ":" instead of a "$" -- Strange!
+                             }
+                           if (currinst in [fp_first..fp_last]) then writeCh (':')
+                           else writeCh ('$');
+
+                           writeHexLong (offset1);
+                           writeHexLong (offset);
+                           end; { immediatequad }
+
+                         immediate_extended:
+                           begin
+                           writeCh ('#');
+
+                             { Floating point constants in hex in 68881 instructions must
+                               be prefixed by a ":" instead of a "$" -- Strange!
+                             }
+                           if (currinst in [fp_first..fp_last]) then writeCh (':')
+                           else writeCh ('$');
+
+                           writeHexLong (offset2);
+                           writeHexLong (offset1);
+                           writeHexLong (offset);
+                           end; { immediate_extended }
+
+                         commonlong:
+                           begin
+                           if commonlong_reloc < 0 then writeCh ('G');
+                           if commonlong_reloc > 0 then
+                             begin
+                             vtptr := getvartableptr(commonlong_reloc);
+                             with vtptr^ do
+                               begin
+               {                n^.oprnd.offset := n^.oprnd.offset + offset;}
+                                 { Add in psect offset for Versados define'd var }
+                               if $pic and (extvaralloc = sharedalloc) then
+                                 begin
+                                 writeCh ('#');
+                                 WriteSymbolName(get_from_sfile(charindex, charlen, true));
+                                 writeCh ('-');
+                                 supname(loophole(libroutines, libown), s);
+                                 WriteSymbolName(s);
+                                 end
+                               else WriteSymbolName(get_from_sfile(charindex, charlen,
+                                                    not aliased));
+                               end;
+                             end;
+
+                           if offset <> 0 then
+                             begin
+                             if offset >= 0 then writeCh ('+');
+                             writeInt (offset);
+                             end;
+                           end; {commonlong}
+
+                         pcrelative:
+                           begin
+                           writeCh ('L');
+                           if offset >= 0 then writeCh ('+');
+                           writeInt (offset);
+                           if (n^.operandcost < long) or $pic then writeStr ('(PC)');
+                           end; {pcrelative}
+
+                         pcindexed:
+                           begin
+                           if not mc68020 and ((offset > 127) or (offset < - 128)) then
+                             puterror(baddisplacement);
+                           if mc68020 then
+                             begin
+                             writeStr ('(*');
+                             {??? how much bias is needed for 68020 ???}
+                             if offset + word >= 0 then writeCh ('+');
+                             writeInt (offset + word);
+                             writeCh (',');
+                             end
+                           else
+                             begin
+                             writeCh ('*');
+                             if offset + word >= 0 then writeCh ('+');
+                             writeInt (offset + word);
+                             writeCh ('(');
+                             end;
+                           writeStr ('PC,D');
+                           writeInt (indxr);
+                           writeStr ('.W');
+                           write_scale;
+                           writeCh (')');
+                           end; {pcindexed}
+
+                         supportcall:
+                           begin
+                           if (offset < ord(first_call)) or (offset > ord(last_call)) then
+                             puterror(badsupportcall);
+
+                           supname(loophole(libroutines, offset), s);
+
+                           if $pic then
+                             if mc68020 then
+                               begin { must use 68020 32 bit form }
+                               writeCh ('(');
+                               WriteSymbolName(s);
+                               writeStr (',PC)');
+                               end
+                             else
+                               begin { use 68000 16 bit form }
+                               WriteSymbolName(s);
+                               writeStr ('(PC)');
+                               end
+                           else WriteSymbolName(s); { non pic -- use absolute form }
+                           end; {supportcall}
+
+                         usercall:
+                           begin
+                           if $pic then
+                             if mc68020 and ((sharedPtr^.proctable[offset].externallinkage and
+                                not sharedPtr^.proctable[offset].bodydefined) or
+                                (procmap[offset].addr = undefinedaddr) or
+                                (n^.operandcost >= long)) then
+                               begin { must use 68020 32 bit form }
+                               writeCh ('(');
+                               if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
+                                 writeProcName (offset, linknameused) {maintains col counter}
+                               else
+                                 begin
+                                 writeCh ('P');
+                                 writeInt (offset);
+                                 end;
+
+                               if offset1 <> 0 then
+                                 begin
+                                 writeInt (offset1);
+                                 if odd(offset1) or (offset1 > 0) then puterror(badoffset);
+                                 end;
+
+                               writeStr (',PC)');
+                               end
+                             else
+                               begin { use 68000 16 bit form }
+                               if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
+                                 writeProcName(offset, linknameused) {maintains col counter}
+                               else
+                                 begin
+                                 writeCh ('P');
+                                 writeInt (offset);
+                                 end;
+
+                               if offset1 <> 0 then
+                                 begin
+                                 writeInt (offset1);
+                                 if odd(offset1) or (offset1 > 0) then puterror(badoffset);
+                                 end;
+
+                               writeStr ('(PC)');
+                               end
+                           else if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
+                             begin
+                             writeProcName(offset, linknameused); {maintains column counter}
+
+                             if sharedPtr^.proctable[offset].bodydefined and
+                                (procmap[offset].addr <> undefinedaddr) and
+                                (n^.operandcost < long) then writeStr ('(PC)');
+                             end
+                           else
+                             begin { not external call }
+                             writeCh ('P');
+                             writeInt (offset);
+
+                             if offset1 <> 0 then
+                               begin
+                               writeInt (offset1);
+                               if odd(offset1) or (offset1 > 0) then puterror(badoffset);
+                               end;
+
+                             if n^.operandcost < long then writeStr ('(PC)');
+                             end;
+                           end; {usercall}
+
+                         pic_own_immed:
+                             { In PIC mode this can only occur for the code to load A3
+                               at the beginning of each procedure.
+                             }
+                           begin
+                           writeStr ('#G-');
+                           supname(loophole(libroutines, libown), s);
+                           WriteSymbolName(s);
+                           end;
+
+                         pic_splat_pcrel:
+
+                           { For 68000 24-bit PIC only.  Generates "#<offset>+*(PC)".
+                           }
+                           begin
+                           writeInt (offset);
+                           writeStr ('+*');
+                           writeStr ('(PC)');
+                           end;
+
+                         pic_usercall:
+
+                           { For 68000 24-bit PIC only.  Generates "#<name>-<offset>-*".
+                           }
+                           begin
+                           writeCh ('#');
+
+                           if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
+                             writeProcName (offset, linknameused) {maintains column counter}
+                           else
+                             begin { not external call }
+                             writeCh ('P');
+                             writeInt (offset);
+                             end;
+
+                           writeCh ('-');
+                           writeInt (offset1);
+                           writeStr ('-*');
+                           end;
+
+                         pic_supportcall:
+
+                           { For 68000 24-bit PIC only.  Generates "#<suppt_call>-<offset>-*".
+                           }
+                           begin
+                           writeCh ('#');
+                           supname(loophole(libroutines, offset), s);
+                           WriteSymbolName(s);
+                           writeCh ('-');
+                           writeInt (offset1);
+                           writeStr ('-*');
+                           end;
+
+                         pic_branch:
+                           begin
+                           writeStr ('#L');
+                           writeInt (offset);
+                           writeCh ('-');
+                           writeInt (offset1);
+                           writeStr ('-*');
+                           end;
+
+                         pic_pcrelative:
+                           begin
+                           writeStr ('#L+');
+                           writeInt (offset);
+                           writeCh ('-');
+                           writeInt (offset1);
+                           writeStr ('-*');
+                           end;
+                         end; {case mode}
+
+                 end; {writelastopnd}
+               {>>>}
+               {<<<}
+               procedure writeopnd;
+
+                 begin
+                   if sharedPtr^.switcheverplus[outputmacro] then
+                     begin
+                     writelastopnd;
+                     writeCh (',');
+                     end;
+                 end;
+               {>>>}
+               {<<<}
+               function computedistance: addressrange;
+               { The current node contains a (signed) number of instructions to branch
+                 over.  The current instruction is either a branch or a decrement-and-
+                 branch.  If the latter, the value returned is relative to the 2nd word
+                 of the instruction.
+               }
+                 var
+                   tempnode: nodeindex; { so we don't screw up currnode }
+                   instcount: integer; { number of instructions to skip over }
+                   bytecount: integer; { accumulates the byte offset }
+                   i: integer; { induction var for counting instructions }
+
+                 begin
+                   tempnode := currnode;
+                   instcount := n^.distance;
+
+                   repeat { find current instruction node }
+                     tempnode := tempnode - 1;
+                     p := ref(bignodetable[tempnode]);
+                   until p^.kind = instnode;
+
+                   bytecount := - 2; { the opcode is at (PC-2) regardless of length! }
+
+                   if instcount < 0 then { backward scan }
+                     for i := - 2 downto instcount do
+                       begin
+                       repeat { find previous instruction node }
+                         tempnode := tempnode - 1;
+                         p := ref(bignodetable[tempnode]);
+                       until p^.kind = instnode;
+
+                       bytecount := bytecount - p^.computed_length {instlength(tempnode)}
+                       end
+
+                   else { instcount > 0 } { forward scan }
+                     for i := 0 to instcount do
+                       begin
+                       bytecount := bytecount + p^.computed_length {instlength(tempnode)} ;
+
+                       repeat { find next instruction node }
+                         tempnode := tempnode + 1;
+                         p := ref(bignodetable[tempnode]);
+                       until p^.kind = instnode;
+                       end;
+
+                   computedistance := bytecount
+                 end; { computedistance }
+               {>>>}
+
+               {<<<}
+               procedure writelabels;
+
+                 begin { write all labels which refer to this node }
+                   if column <> 1 then writeLine; { a previous label may be "open" if a nop
+                                                    node has intervened }
+                   writeCh ('L');
+                   writeInt (labeltable[currlabel].labno);
+                   writeCh (':');
+                   currlabel := currlabel + 1;
+
+                   while currnode = labeltable[currlabel].nodelink do
+                     begin { write additional labels on separate lines }
+                     writeLine;
+                     writeCh ('L');
+                     writeInt (labeltable[currlabel].labno);
+                     writeCh (':');
+                     currlabel := currlabel + 1;
+                     end; { write additional labels }
+
+                 end; { write all labels }
+               {>>>}
+               {<<<}
+               procedure doblocklabel;
+               { Print a label in the assembler file to mark the start of a procedure }
+
+                 begin
+                   writeCh ('*');
+                   writeLine;
+                   writeStr ('*  [');
+                   write (macFile, currentpc: - 4);
+                   write (macFile, ']  ');
+
+                   if sharedPtr^.blockref = 0 then write (macFile, 'Main Body:')
+                   else
+                     begin
+                     writeProcName (sharedPtr^.blockref, 100);
+                     end;
+                   writeLine;
+                   writeCh ('*');
+                   writeLine;
+                 end; {doblocklabel}
+               {>>>}
+               {<<<}
+               procedure DoBlockEntryCode;
+
+                 var
+                   lscan: labelindex;
+
+                 begin
+                   procmap[sharedPtr^.blockref].addr := currentpc; { update procedure address table }
+
+                   if  (level = 1)
+                   and (  (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = pascal2call)
+                       or (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = modulebody))
+                   then
+                     if sharedPtr^.switchcounters[mainbody] > 0 then
+                       begin { process main body of program }
+                       if sharedPtr^.switcheverplus[outputmacro] then writeStr ('BEGIN$:');
+
+                       startaddress := currentpc;
+                       end { switchcounters[mainbody] > 0 }
+                     else
+                       begin { level=1 and nomainbody }
+                       if sharedPtr^.switcheverplus[outputmacro] then
+                         begin
+                         writeCh ('*');
+                         writeLine;
+                         end;
+                       end
+
+                   else
+                     begin { block other than main }
+
+                     { test for external procedure (body is obviously defined) }
+                     if sharedPtr^.proctable[sharedPtr^.blockref].externallinkage
+                     or (   (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = implementationbody)
+                        and (level = 1))
+                     then
+                       with newESD do
+                         begin { prepare a new table entry }
+                         ESDkind := ESDentry;
+                         exproc := sharedPtr^.blockref;
+                         insertnewESD;
+                         end; { table entry }
+
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       if sharedPtr^.proctable[sharedPtr^.blockref].externallinkage
+                       or (   (sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = implementationbody)
+                          and (level = 1))
+                       then
+                         begin
+                         writeProcName (sharedPtr^.blockref, linknameused);
+                         writeCh (':');
+                         writeLine;
+                         end
+                       else
+                         begin { not external }
+                         writeCh ('P');
+                         writeInt (sharedPtr^.blockref);
+                         writech (':');
+                         end;
+                       end {macro output for block entry} ;
+                     end; { block other than main }
+
+
+               { Service the fixup list with new label definitions, and possibly the
+                 current procedure address, if it was declared forward.
+               }
+
+                   fixp := fixuphead;
+                   while fixp <> nil do
+                     begin
+                     with fixp^ do { examine the node }
+                       if fixupkind = fixupproc then { compare proc numbers }
+
+                         if fixupprocno = sharedPtr^.blockref then
+                           fixupaddr := currentpc { this is the forward target }
+                         else { maybe next time }
+
+                       else { fixupkind = fixuplabel }
+                         for lscan := 1 to nextlabel do
+                           if labeltable[lscan].labno = fixuplabno then
+                             fixupaddr := labeltable[lscan].address;
+
+                     fixp := fixp^.fixuplink;
+                     end;
+                 end; { DoBlockEntryCode }
+               {>>>}
+
+               {<<<}
+               procedure buildbranches;
+               { Code to build a branch instruction.  This is pulled out of buildinstruction so the compiler can handle it }
+
+                 var
+                   labeldelta: integer; {for signed comparisons}
+                   isforward: integer; {true if forward reference}
+
+                 begin
+                   if n^.kind = labelnode then
+                     begin
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       writeCh ('L');
+                       writeInt (n^.labelno);
+                       end;
+
+                     findlabelpc(n^.labelno, isforward); { find or compute target's addr }
+
+                     if n^.labelcost = long then { 68020 and pic only }
+                       begin
+                       op := 16#FF + op;
+                       insertobj((labelpc - currentpc) div 16#10000);
+                       insertobj((labelpc - currentpc + 2) mod 16#10000);
+
+                       if isforward <> 0 then
+                         begin
+                         objtype[objctr - 1] := objlong;
+                         allocfixup; { generate a new fixupnode }
+                         fixups[objctr - 1] := fixuptail;
+                         with fixuptail^ do
+                           begin
+                           fixupkind := fixuplabel;
+                           fixuplen := long;
+                           fixuplabno := n^.labelno;
+                           fixupobjpc := fixupobjpc - 4;
+                           end;
+                         end;
+                       end
+                     else
+                     if n^.labelcost = word then
+                       begin { word branch }
+                       insertobj(labelpc - currentpc); { this bumps pc by 2 }
+                       if isforward <> 0 then
+                         begin
+                         write ('Forward BRA illegal');
+                         abort(inconsistent);
+                         end;
+                       end { long branch }
+
+                     else
+                       begin { short branch }
+                       labeldelta := labelpc - currentpc;
+
+                         { This is a signed test on unsigned operands
+                         }
+                       if (labeldelta > 127) or (labeldelta < - 128) then
+                         puterror(badoperand);
+
+                       op := (labeldelta and 377B) + op;
+                       end { short branch }
+                     end {labelnode}
+
+                   else if n^.kind = relnode then
+                     begin { relnodes are short, unlabeled offsets }
+                     distancetemp := computedistance;
+                     op := (distancetemp and 255) + op;
+
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       writeCh ('*');
+                       if distancetemp < 0 then writeInt (distancetemp)
+                       else
+                         begin
+                         writeCh ('+');
+                         writeInt (distancetemp + word);
+                         end;
+                       end;
+                     end
+                   else puterror(nolabelnode);
+                 end; {buildbranches}
+               {>>>}
+               {<<<}
+               procedure buildfpbranches;
+               { Code to build a 68881 branch instruction }
+
+                 var
+                   isforward: integer; {true if forward reference}
+
+                 begin
+                   if n^.kind = labelnode then
+                     begin
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       writeCh ('L');
+                       writeInt (n^.labelno);
+                       end;
+
+                     findlabelpc(n^.labelno, isforward); { find or compute target's addr }
+                     distancetemp := labelpc - currentpc; { bump pc by 2 }
+
+                     if n^.labelcost = long then { 32 bit branch }
+                       begin
+                       op := op + 100B; { set size bit }
+                       insertobj(distancetemp div 16#10000);
+                       insertobj(distancetemp mod 16#10000);
+
+                       if isforward <> 0 then
+                         begin
+                         objtype[objctr - 1] := objlong;
+                         allocfixup; { generate a new fixupnode }
+                         fixups[objctr - 1] := fixuptail;
+                         with fixuptail^ do
+                           begin
+                           fixupkind := fixuplabel;
+                           fixuplen := long;
+                           fixuplabno := n^.labelno;
+                           fixupobjpc := fixupobjpc - 4;
+                           end;
+                         end;
+                       end
+                     else { 16 bit branch } insertobj(distancetemp);
+                     end {labelnode}
+                   else if n^.kind = relnode then
+                     begin { relnodes are short, unlabeled branches. }
+                     distancetemp := computedistance;
+
+                     insertobj(distancetemp);
+
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       writeCh ('*');
+                       if distancetemp < 0 then writeInt (distancetemp)
+                       else
+                         begin
+                         writeCh ('+');
+                         writeInt (distancetemp + word);
+                         end;
+                       end;
+                     end
+                   else puterror(nolabelnode);
+                 end; {buildfpbranches}
+               {>>>}
+               {<<<}
+               procedure builddbxx;
+
+                 var
+                   isforward: integer; {true if forward reference}
+
+                 begin
+                   if n^.oprnd.m <> dreg then puterror(badsource);
+                   op := op + n^.oprnd.reg;
+                   writeopnd;
+                   getnextnode;
+
+                   if n^.kind = labelnode then
+                     begin { process the label }
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       writeCh ('L');
+                       writeInt (n^.labelno);
+                       end;
+
+                     findlabelpc(n^.labelno, isforward); { find or compute target's addr }
+                     insertobj(labelpc - currentpc); { this bumps pc by 2 }
+                     if isforward <> 0 then abort(inconsistent);
+                     end
+                   else if n^.kind = relnode then
+                     begin
+                     distancetemp := computedistance;
+                     insertobj(labelpc - currentpc);
+
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       writeCh ('*');
+                       if distancetemp < 0 then writeInt (distancetemp)
+                       else
+                         begin
+                         writeCh ('+');
+                         writeInt (distancetemp + word);
+                         end;
+                       end;
+                     end
+                   else puterror(nolabelnode);
+                 end; {builddbxx}
+               {>>>}
+               {<<<}
+               procedure buildmovem (gen_fmovem: boolean);
+
+                 var
+                   i: 0..7;
+
+                 begin
+                   if n^.oprnd.m = immediate then
+                     begin { save registers }
+                     datasize := word; {mask is only 16 bits long}
+
+                     if not gen_fmovem then setmodeonly; { process the register mask }
+
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                     begin
+                     mask := 1;
+                     first := true;
+
+                     if gen_fmovem then
+                       for i := 0 to 7 do
+                         begin
+                         if n^.oprnd.offset and mask <> 0 then
+                           begin
+                           if not first then writeCh ('/');
+                           writeStr ('FP');
+                           writeCh (chr(i + ord('0')));
+                           first := false;
+                           end;
+                         mask := mask * 2;
+                         end
+                     else
+                       begin
+                       for i := 7 downto 0 do
+                         begin
+                         if n^.oprnd.offset and mask <> 0 then
+                           begin
+                           if not first then writeCh ('/');
+                           writeCh ('A');
+                           writeCh (chr(i + ord('0')));
+                           first := false;
+                           end;
+                         mask := mask * 2;
+                         end;
+
+                       for i := 7 downto 0 do
+                         begin
+                         if n^.oprnd.offset and mask <> 0 then
+                           begin
+                           if not first then writeCh ('/');
+                           writeCh ('D');
+                           writeCh (chr(i + ord('0')));
+                           first := false;
+                           end;
+                         mask := mask * 2;
+                         end;
+                       end;
+                     writeCh (',');
+                     end;
+                     if gen_fmovem then
+                       begin { mode 00 is static list, -(An) }
+                       op2 := op2 + 20000B { indicate direction mem-to-reg }
+                              + n^.oprnd.offset; { glue in list }
+                       insertobj(op2);
+                       end;
+
+                     getoperand;
+                     if not (n^.oprnd.m in [relative, autod]) then puterror(baddestination);
+                     seteffective; { autodec mode and register }
+                     writelastopnd;
+                     end
+                   else if n^.oprnd.m = autoi then
+                     begin { restore registers }
+                     writeopnd;
+                     seteffective;
+                     getoperand;
+
+                     if gen_fmovem then
+                       begin
+                       op2 := op2 + 2 * 4000B { mode 10 is static list, (An)+ }
+                              + n^.oprnd.offset; { glue in list }
+                       insertobj(op2);
+                       end
+                     else op := op + 2000B; { indicate direction mem-to-reg }
+
+                     datasize := word; { mask is only 16 bits long }
+
+                     if not gen_fmovem then setmodeonly; { append register mask }
+
+                     if n^.oprnd.m <> immediate then puterror(baddestination);
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                     begin
+                     mask := 1;
+                     first := true;
+
+                     if gen_fmovem then
+                       for i := 7 downto 0 do
+                         begin
+                         if n^.oprnd.offset and mask <> 0 then
+                           begin
+                           if not first then writeCh ('/');
+                           writeStr ('FP');
+                           writeCh (chr(i + ord('0')));
+                           first := false;
+                           end;
+                         mask := mask * 2;
+                         end
+                     else
+                       begin
+                       for i := 0 to 7 do
+                         begin
+                         if n^.oprnd.offset and mask <> 0 then
+                           begin
+                           if not first then writeCh ('/');
+                           writeCh ('D');
+                           writeCh (chr(i + ord('0')));
+                           first := false;
+                           end;
+                         mask := mask * 2;
+                         end;
+
+                       for i := 0 to 7 do
+                         begin
+                         if n^.oprnd.offset and mask <> 0 then
+                           begin
+                           if not first then writeCh ('/');
+                           writeCh ('A');
+                           writeCh (chr(i + ord('0')));
+                           first := false;
+                           end;
+                         mask := mask * 2;
+                         end;
+                       end;
+                     end;
+                     end
+                   else puterror(badsource);
+
+                   if not gen_fmovem then op := op + 100B; { preinitialized for word; change
+                                                             to long }
+
+                 end; {buildmovem}
+               {>>>}
+               {<<<}
+               procedure BuildInstruction;
+
+                 var
+                   i: 0..7;
+                   offset1: integer;
+                   register: regindex;
+                   memory: boolean; { used for 68881 instructions }
+                   n1: nodeptr;
+                   isforward: integer;
+
+                 {<<<}
+                 procedure output_fp_creg;
+
+                   { Output the 68881 control register name for the FMOVE system control
+                     register instruction.
+                   }
+
+
+                   begin
+                     if sharedPtr^.switcheverplus[outputmacro] then
+                       begin
+                       case n^.oprnd.offset of
+                         1: writeStr ('FPIAR');
+                         2: writeStr ('FPSR');
+                         4: writeStr ('FPCR');
+                         end;
+                       end
+                   end; {output_fp_creg}
+                 {>>>}
+
+                 begin {BuildInstruction}
+                   {branches are pulled out to let this fit through the 11 compiler}
+
+                   if currinst in branches then buildbranches
+                   else if currinst in fpbranches then buildfpbranches
+                   else if currinst in
+                           [dbra, dbeq, dbge, dbgt, dbhi, dbhs, dble, dblo, dbls, dblt, dbmi,
+                           dbpl, dbne, dbvc, dbvs] then
+                     builddbxx
+                   else
+                     case currinst of
+                       { 68881 instructions }
+                       fabs, facos, fadd, fasin, fatan, fatanh, fcos, fcosh, fetox, fetoxm1,
+                       fgetexp, fgetman, fint, fintrz, flog10, flog2, flogn, flognp1, fmod,
+                       fmul, fneg, frem, fscale, fsglmul, fsin, fsinh, fsqrt, ftan, ftanh,
+                       ftentox, ftrap, ftwotox:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> fpreg then
+                           begin
+                           memory := true;
+                           register := fp_src_spec;
+                           writeopnd;
+                           getoperand;
+                           end
+                         else
+                           begin
+                           memory := false;
+                           register := n^.oprnd.reg;
+                           getoperand;
+
+                           { Suppress duplicate registers
+                           }
+                           if (register = n^.oprnd.reg) and
+                              not (currinst in [fadd, fmul, fsglmul, frem, fmod, fscale]) then
+                             {suppress}
+                           else
+                             begin
+                             getprevoperand(1);
+                             writeopnd;
+                             currnode := currnode - 1; { Get back in sync }
+                             getoperand;
+                             end;
+                           end;
+
+                         writelastopnd;
+                         insertobj(op2 + ord(memory) * 40000B + register * 2000B +
+                                   n^.oprnd.reg * 200B);
+
+                         if memory then
+                           begin
+                           getprevoperand(1);
+                           seteffective;
+                           end;
+                         end;
+                         {>>>}
+
+                       fsincos:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> fpreg then
+                           begin
+                           memory := true;
+                           register := fp_src_spec;
+                           end
+                         else
+                           begin
+                           memory := false;
+                           register := n^.oprnd.reg;
+                           end;
+
+                         writeopnd;
+                         getoperand;
+                         writelastopnd;
+                         insertobj(op2 + ord(memory) * 40000B + register * 2000B +
+                                   n^.oprnd.indxr * 200B + n^.oprnd.reg);
+                         if memory then
+                           begin
+                           getprevoperand(1);
+                           seteffective;
+                           end;
+                         end;
+                         {>>>}
+
+                       ftst:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> fpreg then
+                           begin
+                           memory := true;
+                           register := fp_src_spec;
+                           end
+                         else
+                           begin
+                           memory := false;
+                           register := n^.oprnd.reg;
+                           end;
+
+                         writelastopnd;
+                         insertobj(op2 + ord(memory) * 40000B + register * 2000B);
+                         if memory then seteffective;
+                         end;
+                         {>>>}
+
+                       fcmp, fsub, fdiv, fsgldiv:
+                         {<<<}
+                         { These sometimes have reversed operands in the assembler source }
+                         begin
+                         if n^.oprnd.m = fpreg then
+                           begin
+                           memory := false;
+                           register := n^.oprnd.reg;
+                           end
+                         else
+                           begin
+                           memory := true;
+                           register := fp_src_spec;
+                           end;
+
+                           begin { put out funny Motorola assembler form }
+                           writeopnd;
+                           getoperand;
+                           writelastopnd;
+                           insertobj(op2 + ord(memory) * 40000B + register * 2000B +
+                                     n^.oprnd.reg * 200B);
+                           if memory then
+                             begin
+                             getprevoperand(1);
+                             seteffective;
+                             end;
+                           end;
+                         end;
+                         {>>>}
+
+                       fmove:
+                         {<<<}
+                         begin
+                         memory := n^.oprnd.m <> fpreg;
+                         writeopnd;
+                         register := n^.oprnd.reg;
+                         getoperand;
+                         writelastopnd;
+
+                         if n^.oprnd.m = fpreg then { memory-to-register form (includes
+                                                     register-to-register) }
+                           if memory then
+                             begin
+                             insertobj(ord(memory) * 40000B + fp_src_spec * 2000B +
+                                       n^.oprnd.reg * 200B);
+                             getprevoperand(1);
+                             seteffective;
+                             end
+                           else { fpreg-to-fpreg }
+                             insertobj(register * 2000B + n^.oprnd.reg * 200B)
+                         else { register-to-memory form }
+                           begin
+                           insertobj(60000B + fp_src_spec * 2000B + register * 200B);
+                           seteffective;
+                           end;
+                         end;
+                         {>>>}
+
+                       fnop:
+                         {<<<}
+                         begin
+                         insertobj(op2);
+                         end;
+                         {>>>}
+
+                       fmove_from_fpcr:
+                         {<<<}
+                         { Move from system control register }
+                         begin
+                         offset1 := n^.oprnd.offset;
+                         output_fp_creg;
+                         if sharedPtr^.switcheverplus[outputmacro] then writeCh (',');
+                         getoperand;
+                         writelastopnd;
+                         insertobj(op2 + 20000B + offset1 * 2000B);
+                         seteffective;
+                         end;
+
+                         {>>>}
+                       fmove_to_fpcr:
+                         {<<<}
+                         { Move to system control register. }
+                         begin
+                         writeopnd;
+                         getoperand;
+                         output_fp_creg;
+                         insertobj(op2 + n^.oprnd.offset * 2000B);
+                         getprevoperand(1);
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       fmovecr:
+                         {<<<}
+                         { Move from 68881 constant rom.
+                         }
+                         begin
+                         offset1 := n^.oprnd.offset;
+                         writeopnd;
+                         getoperand;
+                         writelastopnd;
+                         insertobj(op2 + n^.oprnd.reg * 200B + offset1);
+                         end;
+                         {>>>}
+
+                       fmovem:
+                         {<<<}
+                         buildmovem(true);
+                         { 68000 and 68020 instructions
+                         }
+                         {>>>}
+
+                       movea, move:
+                         {<<<}
+                         begin
+                         writeopnd;
+                         seteffective;
+                         getoperand;
+                         writelastopnd;
+                         setmodeonly;
+                         if currinst = movea then
+                           if datasize = byte then puterror(badsize)
+                           else if n^.oprnd.m <> areg then puterror(missingAreg);
+                         op := ((((mode and 7B) * 100B + mode) * 10B) and 7700B) + op;
+                         end;
+                         {>>>}
+
+                       move_to_ccr:
+                         {<<<}
+                         begin
+                         writeopnd;
+                         seteffective;
+                         if sharedPtr^.switcheverplus[outputmacro] then writeStr ('CCR');
+                         end;
+                         {>>>}
+
+                       moveq:
+                         {<<<}
+                         begin
+                         if not (n^.oprnd.m in [immediatelong, immediate]) or
+                            (n^.oprnd.offset > 127) or (n^.oprnd.offset < - 128) then
+                           puterror(badoperand);
+                         datasize := byte; { just in case }
+                         writeopnd;
+                         op := (n^.oprnd.offset and 377B) + op;
+                         getoperand;
+                         writelastopnd;
+                         if n^.oprnd.m <> dreg then puterror(badoperand);
+                         op := n^.oprnd.reg * 1000B + op;
+                         end;
+                         {>>>}
+
+                       add, cmp, sub, andinst, orinst:
+                         {<<<}
+                         begin
+                         if datasize = word then op := op + 100B
+                         else if datasize = long then op := op + 200B;
+
+                           begin
+                           writeopnd;
+
+                           lookahead(1); { Check destination for d-reg first! If it is, then
+                                          emit "<Dn> op <EA> --> <Dn>" form only }
+                           if (n^.oprnd.m = dreg) and (p^.oprnd.m <> dreg) then
+                             begin
+                             op := op + 400B; { indicate direction }
+                             if currinst = cmp then puterror(badsource); {cmp is one-way}
+                             insertreghi;
+                             getoperand;
+                             seteffective;
+                             end
+                           else
+                             begin { must be "<EA> to Dn" form }
+                             seteffective;
+                             getoperand;
+                             if n^.oprnd.m <> dreg then puterror(missingDreg);
+                             insertreghi;
+                             end;
+                           writelastopnd;
+                           end;
+                         end;
+                         {>>>}
+
+                       addq, subq:
+                         {<<<}
+                         begin
+                         if (n^.oprnd.m <> immediate) or (n^.oprnd.offset < 1) or
+                            (n^.oprnd.offset > 8) then
+                           puterror(badoperand);
+                         if n^.oprnd.offset < 8 then { value 8 == bit pattern 0 }
+                           op := n^.oprnd.offset * 1000B + op;
+                         insertsize;
+                         datasize := byte;
+                         writeopnd;
+                         getoperand;
+                         writelastopnd;
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       adda, cmpa, suba: { address register destination }
+                         {<<<}
+                         begin
+                           begin
+                           seteffective;
+                           writeopnd;
+                           getoperand;
+                           writelastopnd;
+                           if n^.oprnd.m <> areg then puterror(missingAreg);
+                           insertreghi;
+                           if datasize = word then op := op + 300B
+                           else if datasize = long then op := op + 700B
+                           else puterror(badoperand); { no byte mode }
+                           end;
+                         end;
+                         {>>>}
+
+                       addi, cmpi, subi, andi, eori, ori: { immediate source }
+                         {<<<}
+                         begin
+                         if (n^.oprnd.m <> immediate) and (n^.oprnd.m <> immediatelong) then
+                           puterror(badoperand);
+                           begin
+                           insertsize;
+                           setmodeonly; { processes the immediate data }
+                           writeopnd;
+                           getoperand;
+                           writelastopnd;
+                           seteffective;
+                           end;
+                         end;
+                         {>>>}
+
+                       eor: { exclusive or -- differs from other logicals }
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> dreg then puterror(missingDreg);
+
+                         if datasize = word then op := op + 500B
+                         else if datasize = long then op := op + 600B
+                         else op := op + 400B;
+
+                         writeopnd;
+                         insertreghi;
+                         getoperand;
+                         writelastopnd;
+                         if n^.oprnd.m = areg then puterror(badoperand);
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       asl, asr, lsl, lsr, rol, ror, roxl, roxr: { shift group }
+                         {<<<}
+                         begin
+                         if n^.oprnd.m = immediate then
+                           begin
+                           if (n^.oprnd.offset < 1) or (n^.oprnd.offset > 8) then
+                             puterror(badoperand);
+                           lookahead(1); { check for single bit memory shifts }
+                           if p^.kind <> oprndnode then puterror(missingoperand);
+
+                           if p^.oprnd.m = dreg then
+                             begin { immediate/register }
+                             if n^.oprnd.offset < 8 then { shift 8 == bit pattern 0 }
+                               op := n^.oprnd.offset * 1000B + op;
+                             insertsize;
+                             datasize := word;
+                             writeopnd;
+                             getoperand;
+                             op := n^.oprnd.reg + op;
+                             end { immediate/register }
+
+                           else
+                             begin { immediate/memory -- enforce shift count = 1 }
+                             if n^.oprnd.offset <> 1 then puterror(badsource)
+                             else
+                               op := (op and 30B) * 100B { relocate subtype }
+                                     + (op and 400B) { save direction bit }
+                                     + 160300B; { size of 3 decodes to memory shift! }
+                             if datasize <> word then puterror(badsize);
+                             getoperand; { do not write out the shift count! }
+                             seteffective;
+                             end; { immediate/memory }
+                           end { immediate (or implied) shift count form }
+
+                         else { register/register form -- instruction needs correction }
+                           begin
+                           op := op + 40B;
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           insertreghi; { this reg has the shift count }
+                           insertsize; { all sizes are permissible }
+                           writeopnd;
+                           getoperand;
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           op := n^.oprnd.reg + op;
+                           end;
+
+                         writelastopnd;
+                         end;
+                         {>>>}
+
+                       bchg, bclr, bset, btst: { bit manipulation group }
+                         {<<<}
+                         begin
+                         if (n^.oprnd.m <> dreg) and (n^.oprnd.m <> immediate) then
+                           puterror(badsource);
+                         if n^.oprnd.m = dreg then
+                           begin { bit number dynamic mode }
+                           op := op + 400B;
+                           insertreghi; { register containing bit number }
+                           end
+                         else
+                           begin { bit number static mode }
+                           op := op + 4000B;
+                           setmodeonly; { process the immediate data }
+                           end;
+                         writeopnd;
+                         getoperand;
+                         writelastopnd;
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       bfclr, bfset, bftst:
+                         {<<<}
+                         begin
+                         writelastopnd; { The effective address }
+                         getoperand;
+
+                         if n^.oprnd.m = bit_field_const then
+                           begin
+                             { "Len" is the length in bits, "offset1" is the offset in bits.
+                             }
+                           insertobj(((n^.oprnd.offset1 and 37B) * 100B) + (datasize and 37B));
+                           writebitfield( - 1, n^.oprnd.offset1, datasize);
+                           end
+                         else
+                           begin
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           insertobj(4000B + ((n^.oprnd.reg and 37B) * 100B) + (datasize and
+                                     37B));
+                           writebitfield(n^.oprnd.reg, 0, datasize);
+                           end;
+
+                         getprevoperand(1);
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       bfexts, bfextu:
+                         {<<<}
+                         begin
+                         writelastopnd; { The effective address (leave off comma) }
+                         getoperand;
+
+                         if n^.oprnd.m = bit_field_const then
+                           begin
+                             { "Len" is the length in bits, "offset1" is the offset in bits,
+                               "reg" is the source register.
+                             }
+                           offset1 := n^.oprnd.offset1;
+                           getoperand;
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           insertobj(((n^.oprnd.reg and 7B) * 10000B) + ((offset1 and
+                                     37B) * 100B) + (datasize and 37B));
+                           writebitfield( - 1, offset1, datasize);
+                           end
+                         else
+                           begin
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           register := n^.oprnd.reg;
+                           getoperand;
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           insertobj(((n^.oprnd.reg and 7B) * 10000B) + 4000B + ((register and
+                                     37B) * 100B) + (datasize and 37B));
+                           writebitfield(register, 0, datasize);
+                           end;
+
+                         if sharedPtr^.switcheverplus[outputmacro] then writeCh (',');
+                         writelastopnd; { The register }
+
+                           { Back up two operands and output the effective address
+                             field to the object file. This is neccessary because the effective
+                             address is the source field in the assembler output, but any
+                             effect address descriptor words must follow the second word
+                             of the instruction.
+                           }
+                         getprevoperand(2);
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       bfins:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> dreg then puterror(missingDreg);
+                         writeopnd; { The register }
+                         register := n^.oprnd.reg;
+                         getoperand;
+                         writelastopnd; { The effective address }
+                         getoperand;
+
+                         if n^.oprnd.m = bit_field_const then
+                           begin
+                             { "Len" is the length in bits, "offset1" is the offset in bits,
+                               "reg" is the source register.
+                             }
+                           insertobj(((register and 7B) * 10000B) + ((n^.oprnd.offset1 and
+                                     37B) * 100B) + (datasize and 37B));
+                           writebitfield( - 1, n^.oprnd.offset1, datasize);
+                           end
+                         else
+                           begin
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           insertobj(((register and 7B) * 10000B) + 4000B + ((n^.oprnd.reg and
+                                     37B) * 100B) + (datasize and 37B));
+                           writebitfield(n^.oprnd.reg, 0, datasize);
+                           end;
+                         getprevoperand(1);
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       chk:
+                         {<<<}
+                         begin
+                         seteffective;
+                         writeopnd;
+                         getoperand;
+                         if n^.oprnd.m <> dreg then puterror(missingDreg);
+                         writelastopnd;
+                         insertreghi;
+                         end;
+                         {>>>}
+
+                       clr, neg, negx, notinst, tst:
+                         {<<<}
+                         begin
+                         insertsize;
+                         seteffective;
+                         writelastopnd;
+                         end;
+                         {>>>}
+
+                       cmpm:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> autoi then puterror(badsource);
+                           begin
+                           insertsize;
+                           op := (n^.oprnd.reg and 7B) + op;
+                           writeopnd;
+                           getoperand;
+                           writelastopnd;
+                           if n^.oprnd.m <> autoi then puterror(badoperand);
+                           insertreghi;
+                           end;
+                         end;
+                         {>>>}
+
+                       divs, divu:
+                         {<<<}
+                         begin
+                         if datasize <> word then puterror(badsize);
+                         seteffective;
+                         writeopnd;
+                         getoperand;
+                         writelastopnd;
+                         if n^.oprnd.m <> dreg then puterror(missingDreg);
+                         insertreghi;
+                         end;
+                         {>>>}
+
+                       divsl, divul:
+                         {<<<}
+                         begin
+                         if datasize <> long then puterror(badsize);
+                         writeopnd;
+                         getoperand;
+                         writelastopnd;
+
+                           { reg is the quotient register and indxr is the remainder
+                             register.  Note: If the quotient and remainder registers
+                             are the same then only a 32 bit quotient will be generated.
+                           }
+                         if n^.oprnd.m = twodregs then
+                           insertobj((((n^.oprnd.reg and
+                                     7B) * 10000B) + ord(currinst =
+                                     divsl) * 4000B) + n^.oprnd.indxr)
+                         else
+                           insertobj((((n^.oprnd.reg and
+                                     7B) * 10000B) + ord(currinst =
+                                     divsl) * 4000B) + n^.oprnd.reg);
+
+                           { Back up one operand and output the effective address field
+                             to the opject file. This is neccessary because the effective
+                             address is the source field in the assembler output, but any
+                             effect address descriptor words must follow the second word
+                             of the instruction.
+                           }
+                         getprevoperand(1);
+                         seteffective;
+                         end;
+                         {>>>}
+
+                       exg:
+                         {<<<}
+                         begin
+                         {**note: genblk fix
+                          if datasize <> long then puterror(badsize);
+                         }
+                         writeopnd;
+                         insertreghi; { assume that this is ok }
+                         if n^.oprnd.m = dreg then
+                           begin
+                           getoperand;
+                           if (n^.oprnd.m <> dreg) and (n^.oprnd.m <> areg) then
+                             puterror (baddestination);
+                           if n^.oprnd.m = dreg then
+                             op := op + 100B
+                           else
+                             op := op + 210B;
+                           insertreglo;
+                           end
+                         else
+                           begin
+                           if n^.oprnd.m <> areg then
+                             puterror(badsource);
+                           getoperand;
+                           if n^.oprnd.m = areg then
+                             begin
+                             op := op + 110B;
+                             insertreglo;
+                             end
+                           else if n^.oprnd.m = dreg then
+                             begin
+                             op := ((op and 7000B) div 1000B {remove high reg}
+                                   + op + 210B) and 170777B; {put it in lowend}
+                             insertreghi;
+                             end
+                           else
+                             puterror(baddestination);
+                           end;
+                         writelastopnd;
+                         end;
+                         {>>>}
+
+                       ext, extb:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> dreg then
+                           puterror(missingDreg);
+                         if datasize = byte then
+                           puterror(badsize);
+
+                         { The mask is setup for a word to long, if the instruction is
+                           an EXTB (68020 only) or if this is an extend word to long set the correct bits }
+                         if currinst = extb then
+                           op := op + 500B { change to byte-to-long form }
+                         else if datasize = long then
+                           op := op + 100B; { change to word-to-long form }
+                         insertreglo;
+                         writelastopnd;
+                         end;
+                         {>>>}
+
+                       jmp, jsr: { special operands }
+                         {<<<}
+                         begin
+                         if n^.kind = oprndnode then
+                           begin
+                           writelastopnd;
+                           if (n^.oprnd.m = usercall) and sharedPtr^.switcheverplus[outputmacro] then
+                             begin
+                             reposition (procnamecolumn);
+                             writeProcName (n^.oprnd.offset, 100); {write procedure name}
+                             end;
+                           seteffective;
+                           end
+                         else {must be a labelnode}
+                           begin
+                           if sharedPtr^.switcheverplus[outputmacro] then
+                             begin
+                             writeCh ('L');
+                             writeInt (n^.labelno);
+                             end;
+
+                           mode := 71B; {absolute long}
+                           op := op + mode;
+                           insertobj(54B * 256 + sectionno[codesect] + 1);
+                           objtype[objctr] := objforw;
+                           currentpc := currentpc - 2; {this stuff's longer than code}
+                           findlabelpc(n^.labelno, isforward);
+                           relocn[objctr] := true;
+
+                           insertobj(labelpc div 16#10000); {high order}
+                           objtype[objctr] := objoff;
+                           insertobj(labelpc mod 16#10000); {low order}
+
+                           if isforward <> 0 then
+                             begin
+                             allocfixup; { generate a new fixupnode }
+                             fixups[objctr - 1] := fixuptail;
+                             with fixuptail^ do
+                               begin
+                               fixupkind := fixuplabel;
+                               fixuplen := long;
+                               fixuplabno := n^.labelno;
+                               fixupobjpc := fixupobjpc - 4;
+                               end;
+                             end;
+                           objtype[objctr] := objoff;
+                           end;
+                         end;
+                         {>>>}
+
+                       lea:
+                         {<<<}
+                         begin
+                         n1 := nil;
+                         if n^.kind = oprndnode then
+                           begin
+                           seteffective;
+                           if n^.oprnd.m = usercall then {caused by stuffregisters} n1 := n;
+                           if n^.oprnd.m in
+                              [areg, dreg, autoi, autod, immediate, immediatelong] then
+                             puterror(badoperand);
+                           writeopnd;
+                           end
+                         else
+                           begin {must be relnode, used only for initial call}
+                           distancetemp := computedistance;
+                           op := op + 72B;
+                           insertobj(distancetemp);
+
+                           if sharedPtr^.switcheverplus[outputmacro] then
+                             begin
+                             writeCh ('*');
+                             writeCh ('+');
+                             writeInt (distancetemp + word);
+                             writeStr ('(PC)');
+                             writeCh (',');
+                             end;
+                           end;
+                         getoperand;
+                         writelastopnd;
+                         if (n1 <> nil) and sharedPtr^.switcheverplus[outputmacro] then
+                           begin
+                           reposition (procnamecolumn);
+                           writeProcName (n1^.oprnd.offset, 100); {write procedure name}
+                           end;
+                         if n^.oprnd.m <> areg then puterror(missingAreg);
+                         {**note: genblk fix
+                           if datasize <> long then puterror(badsize);
+                         }
+                         insertreghi;
+                         end;
+                         {>>>}
+
+                       link:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> areg then puterror(missingAreg);
+                         insertreglo; { dynamic link register }
+                         writeopnd;
+                         getoperand;
+
+                         if not mc68020 then datasize := word; {size operand is only 16 bits
+                                                                 long}
+
+                         writelastopnd; { 68020 long is written here }
+                         if n^.oprnd.m <> immediate then
+                           puterror(baddestination)
+                         else if n^.oprnd.offset > 0 then
+                           puterror(badoffset);
+                         setmodeonly;
+                         end;
+                         {>>>}
+
+                       movem:
+                         buildmovem (false);
+
+                       muls, mulu:
+                         {<<<}
+                         begin
+                         if mc68020 and (datasize = long) then
+                           begin
+                           writeopnd;
+                           getoperand;
+                           writelastopnd;
+                           if n^.oprnd.m <> dreg then
+                             puterror(missingDreg);
+
+                           insertobj (((n^.oprnd.reg and 7B) * 10000B) + ord(currinst = muls) * 4000B);
+                           { Back up one operand and output the effective address field
+                             to the opject file. This is neccessary because the effective
+                             address is the source field in the assembler output, but any
+                             effect address descriptor words must follow the second word of the instruction }
+                           getprevoperand (1);
+                           seteffective;
+                           end
+                         else if datasize = word then
+                           begin
+                           seteffective;
+                           writeopnd;
+                           getoperand;
+                           writelastopnd;
+                           if n^.oprnd.m <> dreg then puterror(missingDreg);
+                           insertreghi;
+                           end
+                         else
+                           puterror(badsize);
+                         end;
+                         {>>>}
+
+                       pea:
+                         {<<<}
+                         begin {* * * add control mode only checks * * *}
+                         {**note: genblk fix
+                           if datasize <> long then puterror(badsize);
+                         }
+                         seteffective;
+                         writelastopnd;
+                         end;
+                         {>>>}
+
+                       swap:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> dreg then puterror(badoperand);
+                         insertreglo;
+                         writelastopnd;
+                         end;
+                         {>>>}
+
+                       rte, rts, trapcc, trapv:
+                       { remember, we did no "getoperand" for these guys } ;
+
+                       trap:
+                         {<<<}
+                         begin
+                         if (n^.oprnd.m <> immediate) or (n^.oprnd.offset < 0) or (n^.oprnd.offset > 15) then
+                           puterror (badoperand);
+                         op := op + n^.oprnd.offset;
+                         writelastopnd;
+                         end;
+                         {>>>}
+
+                       unlk:
+                         {<<<}
+                         begin
+                         if n^.oprnd.m <> areg then
+                           puterror (missingAreg);
+                         insertreglo;
+                         writelastopnd;
+                         end
+                         {>>>}
+
+                       otherwise
+                         puterror(unknowninst)
+                       end; {case inst}
+                 end {BuildInstruction} ;
+               {>>>}
+
+               {<<<}
+               procedure PutCode;
+               { Output a block of either (or both) macro code or object code.  This simply
+                 scans the nodes and writes the instructions out.  It is basically a large
+                 case statement which does the formatting necessary for any unusual
+                 instructions (of which there are an unfortunate number).
+               }
+               var
+                 i, j: integer;
+                 s: longname;
+                 swbegkludgecount: unsignedint; {Do we need to put out obnoxious 'swbeg' assembly pseudo-op? Non-zero value = 'yes'}
+
+               begin
+                 newsection(codesect);
+                 currentpc := highcode;
+                 lastobjpc := highcode;
+
+                 currnode := 0; { initialize node counter for code generation scan }
+                 relocn[1] := false; { opcodes do not get relocated }
+                 fixups[1] := nil;
+                 currlabel := 1;
+                 if sharedPtr^.switcheverplus[outputmacro] then doblocklabel;
+
+                 while currnode < lastnode do
+                   begin
+                   getnextnode;
+                   lineerrors := 0;
+                   instindex := currnode;
+                   instpc := currentpc;
+
+                   if currnode = blocklabelnode then DoBlockEntryCode;
+
+                   if sharedPtr^.switcheverplus[outputmacro] then
+                     if currnode = labeltable[currlabel].nodelink then writelabels;
+
+                   objctr := 0;
+                   with n^ do
+                     if kind <> instnode then
+                       if kind = labeldeltanode then
+                         begin
+                         findlabelpc(targetlabel, isforward); {can't be forward}
+                         labelpctemp := labelpc;
+                         findlabelpc(tablebase, isforward); {can't be forward}
+                         insertobj(labelpctemp - labelpc);
+                         if sharedPtr^.switcheverplus[outputmacro] then
+                           begin
+                           reposition(opcolumn);
+                           writeStr ('DC.W');
+                           reposition(opndcolumn);
+                           writeCh ('L');
+                           writeInt (targetlabel);
+                           writeStr ('-L');
+                           writeInt (tablebase);
+                           end;
+
+                         writeobjline;
+                         currinst := nop; { to flush nodes to next inst }
+                         end { labeldeltanode}
+
+                       else
+                         begin
+                         if kind = stmtref then
+                           begin
+                           i := stmtno;
+                           if i <> 0 then i := i - firststmt + 1;
+                           if sharedPtr^.switcheverplus[outputmacro] then
+                             begin
+                             if column > 1 then writeLine;
+
+                             writeln(macFile, '* Line: ', sourceline - lineoffset: 1,
+                                     ', Stmt: ', i: 1);
+                             end;
+                           end
+
+                         else if kind = datanode then { insert constant data for 68881 }
+                           begin
+                           putdata(data div 16#10000);
+                           putdata(data mod 16#10000);
+
+                           if sharedPtr^.switcheverplus[outputmacro] then
+                             begin
+                             reposition(opcolumn);
+                             writeStr ('DC.W');
+                             reposition(opndcolumn);
+                             writeCh ('$');
+                             writeHex (data div 16#10000);
+                             writeCh (',');
+                             writeCh ('$');
+                             writeHex (data mod 16#10000);
+                             writeLine;
+                             end
+                           end
+
+                         else if kind <> errornode then
+                           begin { HINT: prologuelength may be too small }
+                           puterror(missinginst);
+                           if sharedPtr^.switcheverplus[outputmacro] then dumperrors; { if any }
+                           end;
+                         currinst := nop { to flush nodes to next inst }
+                         end
+
+                     else
+                       begin { save instruction }
+                       currinst := inst;
+                       opcount := oprndcount;
+                       datasize := oprndlength;
+                       computed_len := computed_length;
+                       end; { save instruction }
+
+                   swbegkludgecount := 0;
+                   if currinst <> nop then
+                     begin
+                     writeinst(currinst);
+                     if opcount = 0 then { check mnemonic }
+                       if not (currinst in [rte, rts, trapcc, trapv]) then
+                         puterror(badopcount)
+                       else { no operands required }
+                     else
+                       begin
+                       getnextnode;
+                       if (n^.kind = oprndnode) and (n^.oprnd.m = pcindexed)
+                       then swbegkludgecount := n^.oprnd.offset2;
+                       end;
+
+                     mode := 0;
+                     BuildInstruction;
+
+                     if computed_len <> (currentpc - instpc) then
+                       begin
+                       writeln ('Instruction length mismatch, PC=', instpc: - 4, ', pass1=',
+                                computed_len: 1, ', pass2=', currentpc - instpc: 1);
+                       abort (inconsistent);
+                       end;
+
+                     {update op value: may have changed due to operand modes}
+                     object[1] := op;
+                     writeobjline;
+                     end; {inst <> nop}
+                   end; {while currnode}
+
+                 sectionpc[codesect] := currentpc;
+                 if nowdiagnosing then
+                   put_diags;
+                 highcode := sectionpc[codesect];
+
+               end;
+               {>>>}
+               {>>>}
 {>>>}
 {<<<  externals}
-procedure fmtx; external;
-procedure closerangex; external;
-procedure setfilex; external;
-procedure setbinfilex; external;
-procedure copystackx; external;
-procedure definelazyx; external;
-procedure rdxstrx; external;
-procedure rdintcharx(libroutine: libroutines; {support routine to call} length: datarange); external;
-procedure wrrealx; external;
+procedure fmtx; forward;
+procedure closerangex; forward;
+procedure setfilex; forward;
+procedure setbinfilex; forward;
+procedure copystackx; forward;
+procedure definelazyx; forward;
+procedure rdxstrx; forward;
+procedure rdintcharx(libroutine: libroutines; {support routine to call} length: datarange); forward;
+procedure wrrealx; forward;
 procedure wrcommon(libroutine: libroutines; {formatting routine to call}
-                   deffmt: integer {default width if needed} ); external;
-procedure wrstx(stdstring: boolean {true if packed array[1..n] kind} ); external;
-procedure clearcontext; external;
+                   deffmt: integer {default width if needed} ); forward;
+procedure wrstx(stdstring: boolean {true if packed array[1..n] kind} ); forward;
+procedure clearcontext; forward;
 procedure initloop(src: keyindex; {main source operand}
                    src1: keyindex; {secondary source operand}
                    dst: keyindex; {destination operand}
                    maxsize: integer; {max size of an operand}
                    maxpieces: integer; {max pieces to generate inline}
                    var loop: boolean; {set if an actual loop is generated}
-                   var pieces: integer {number of inline operations to gen} ); external;
+                   var pieces: integer {number of inline operations to gen} ); forward;
 procedure bumploop(dbinst: insttype; {inst to finish loop}
-                   var loop: boolean {value returned by initloop} ); external;
-procedure finishloop; external;
-procedure onlyreference(k: keyindex {loop address counter} ); external;
+                   var loop: boolean {value returned by initloop} ); forward;
+procedure finishloop; forward;
+procedure onlyreference(k: keyindex {loop address counter} ); forward;
 procedure arithcommon(commute: boolean; {commutative operation?}
                       kill_d4: boolean; {controls killing of d4}
                       kill_d3: boolean; {controls killing of d3}
                       libentry_s: libroutines; {support routine for signed}
-                      libentry_u: libroutines {support routine for unsigned} ); external;
+                      libentry_u: libroutines {support routine for unsigned} ); forward;
 procedure realarithmeticx(commute: boolean; {commutative operation?}
                           realentry: libroutines; {support routine if single}
                           doubentry: libroutines; {support routine if double}
-                          mc68881_inst: insttype); {68881 inst} external;
-procedure movrealx; external;
+                          mc68881_inst: insttype); {68881 inst} forward;
+procedure movrealx; forward;
 procedure cmprealx(brinst: insttype; {true branch}
                    double_call: libroutines; {routine numbers}
-                   mc68881_inst: insttype); external;
+                   mc68881_inst: insttype); forward;
 procedure cmplitrealx(brinst: insttype; {true branch}
                       double_call: libroutines; {routine numbers}
-                      mc68881_inst: insttype); external;
-procedure postrealx; external;
-procedure fltx; external;
-procedure incdec(inst: insttype; {add or sub} negflag: boolean {true if preliminary "neg" desired} ); external;
-procedure cvtrdx; external;
-procedure cvtdrx; external;
-procedure castrealx; external;
-procedure castrealintx; external;
-procedure sysroutinex; external;
-procedure loopholefnx; external;
-procedure sysfnstringx; external;
-procedure sysfnintx; external;
-procedure negrealx; external;
-procedure sysfnrealx; external;
-procedure address(var k: keyindex); external;
-procedure addressboth; external;
-procedure adjustregcount(k: keyindex; {operand to adjust} delta: integer {amount to adjust count by} ); external;
-function bestareg(reg: regindex {address reg to check} ): boolean; external;
-procedure callandpop(entry: libroutines; args: integer); external;
-procedure dereference(k: keyindex {operand} ); external;
-function fix_effective_addr(k: keyindex): keyindex; external;
+                      mc68881_inst: insttype); forward;
+procedure postrealx; forward;
+procedure fltx; forward;
+procedure incdec(inst: insttype; {add or sub} negflag: boolean {true if preliminary "neg" desired} ); forward;
+procedure cvtrdx; forward;
+procedure cvtdrx; forward;
+procedure castrealx; forward;
+procedure castrealintx; forward;
+procedure sysroutinex; forward;
+procedure loopholefnx; forward;
+procedure sysfnstringx; forward;
+procedure sysfnintx; forward;
+procedure negrealx; forward;
+procedure sysfnrealx; forward;
+procedure address(var k: keyindex); forward;
+procedure addressboth; forward;
+procedure adjustregcount(k: keyindex; {operand to adjust} delta: integer {amount to adjust count by} ); forward;
+function bestareg(reg: regindex {address reg to check} ): boolean; forward;
+procedure callandpop(entry: libroutines; args: integer); forward;
+procedure dereference(k: keyindex {operand} ); forward;
+function fix_effective_addr(k: keyindex): keyindex; forward;
 procedure forcerelative(var k: keyindex; {force key to be of relative mode}
                         needareg: boolean; {true if a-reg based mode needed}
                         indexedok: boolean; {true if indexed mode will suffice}
                         offsetbias: integer; {amount which will bias offset}
-                        shortoffset: boolean {true if need an 8-bit offset} ); external;
-function getdreg: regindex; external;
-function is_sp(r: regindex): boolean; external;
+                        shortoffset: boolean {true if need an 8-bit offset} ); forward;
+function getdreg: regindex; forward;
+function is_sp(r: regindex): boolean; forward;
 procedure loaddreg(src: keyindex; {operand to load}
                    other: keyindex; {other operand to avoid}
-                   regneeded: boolean {set if must be in register} ); external;
-procedure lock(k: keyindex {operand to lock} ); external;
-procedure makeaddressable(var k: keyindex); external;
-procedure markdreg(r: regindex {register to clobber} ); external;
-procedure markfpreg(r: regindex {register to clobber} ); external;
+                   regneeded: boolean {set if must be in register} ); forward;
+procedure lock(k: keyindex {operand to lock} ); forward;
+procedure makeaddressable(var k: keyindex); forward;
+procedure markdreg(r: regindex {register to clobber} ); forward;
+procedure markfpreg(r: regindex {register to clobber} ); forward;
 procedure movx(packedleft: boolean; {true if bits get packed from left end
                                      of word, not right end}
                regmode: modes; {should be "areg" or "dreg"}
-               function getreg: regindex {routine used to allocate a reg} ); external;
-function popping(k: keyindex {expression to check} ): boolean; external;
-procedure pshx; external;
-procedure reserve_dreg(k: keyindex; { key to check } r: regindex  { register needed } ); external;
-procedure saveactivekeys; external;
-function savefpreg(r: regindex {register to save} ): keyindex; external;
-procedure savekey(k: keyindex {operand to save} ); external;
-procedure setallfields(k: keyindex); external;
-procedure setkeyvalue(k: keyindex); external;
+               function getreg: regindex {routine used to allocate a reg} ); forward;
+function popping(k: keyindex {expression to check} ): boolean; forward;
+procedure pshx; forward;
+procedure reserve_dreg(k: keyindex; { key to check } r: regindex  { register needed } ); forward;
+procedure saveactivekeys; forward;
+function savefpreg(r: regindex {register to save} ): keyindex; forward;
+procedure savekey(k: keyindex {operand to save} ); forward;
+procedure setallfields(k: keyindex); forward;
+procedure setkeyvalue(k: keyindex); forward;
 procedure setvalue(m: modes; {hardware operand mode}
                    reg: regindex; {register field, if any}
                    indxr: regindex; {index register field, if any}
                    indxlong: boolean; {true if index register is long}
                    offset: addressrange; {immediate operand or fixed offset}
                    offset1: addressrange {extension for 32 bit fixed operand} );
-  external;
-procedure unlock(k: keyindex {operand to unlock} ); external;
-procedure unpack(var k: keyindex; {operand to unpack} finallen: integer {length desired} ); external;
-procedure unpackshrink(var k: keyindex; {keytable reference} len: integer {desired length} ); external;
-function bytelength(k: keyindex {operand to examine} ): datarange; external;
-procedure extend(var k: keyindex; {operand to be sign extended} newlen: addressrange {desired length} ); external;
-procedure fpmovx; external;
+  forward;
+procedure unlock(k: keyindex {operand to unlock} ); forward;
+procedure unpack(var k: keyindex; {operand to unpack} finallen: integer {length desired} ); forward;
+procedure unpackshrink(var k: keyindex; {keytable reference} len: integer {desired length} ); forward;
+function bytelength(k: keyindex {operand to examine} ): datarange; forward;
+procedure extend(var k: keyindex; {operand to be sign extended} newlen: addressrange {desired length} ); forward;
+procedure fpmovx; forward;
 procedure genblockmove(src, dst: keyindex {move operands} ;
-                       minpiecesize: integer {minimum size chunk to move} ); external;
-procedure genfpmove(src, dst: keyindex {move src to dst} ); external;
-function getfpreg: regindex; external;
+                       minpiecesize: integer {minimum size chunk to move} ); forward;
+procedure genfpmove(src, dst: keyindex {move src to dst} ); forward;
+function getfpreg: regindex; forward;
 procedure loadareg(src: keyindex; {operand to load}
                    other: keyindex; {other operand to avoid}
-                   regneeded: boolean {set if must be in register} ); external;
+                   regneeded: boolean {set if must be in register} ); forward;
 function loadeddreg(k: keyindex; {operand to check}
-                    regneeded: boolean {must be in a register} ): boolean; external;
+                    regneeded: boolean {must be in a register} ): boolean; forward;
 procedure loadfpreg(src: keyindex; {operand to load}
                     other: keyindex; {other operand to avoid}
-                    regneeded: boolean {set if must be in register} ); external;
-procedure makestacktarget; external;
-procedure pushboth(commute: boolean {true if operands can be commuted} ); external;
-function pushing(k: keyindex {expression to check} ): boolean; external;
-procedure pushone(k: keyindex {operand to push} ); external;
-procedure setbr(inst: insttype {branch instruction used} ); external;
-procedure setd4result; external;
-procedure setlongvalue(i:integer); external;
-procedure settos(args: integer {original number of arguments} ); external;
-function signedoprnds: boolean; external;
-procedure clearsp(n: integer {words to clear} ); external;
-procedure popstack(n: integer {number of items to physically pop} ); external;
+                    regneeded: boolean {set if must be in register} ); forward;
+procedure makestacktarget; forward;
+procedure pushboth(commute: boolean {true if operands can be commuted} ); forward;
+function pushing(k: keyindex {expression to check} ): boolean; forward;
+procedure pushone(k: keyindex {operand to push} ); forward;
+procedure setbr(inst: insttype {branch instruction used} ); forward;
+procedure setd4result; forward;
+procedure setlongvalue(i:integer); forward;
+procedure settos(args: integer {original number of arguments} ); forward;
+function signedoprnds: boolean; forward;
+procedure clearsp(n: integer {words to clear} ); forward;
+procedure popstack(n: integer {number of items to physically pop} ); forward;
 procedure fixaccess(oprndlen: datarange; {instruction operand length} k: keyindex; {key holding operand}
-                    var oprnd: operand {operand to change} ); external;
-procedure stmtbrkx; external;
-procedure pascallabelx; external;
-procedure pascalgotox; external;
-procedure casebranchx; external;
-procedure caseeltx; external;
-procedure caseerrx; external;
-procedure addstrx; external;
-procedure makeroomx; external;
-procedure callroutinex(s: boolean {signed function value} ); external;
+                    var oprnd: operand {operand to change} ); forward;
+procedure stmtbrkx; forward;
+procedure pascallabelx; forward;
+procedure pascalgotox; forward;
+procedure casebranchx; forward;
+procedure caseeltx; forward;
+procedure caseerrx; forward;
+procedure addstrx; forward;
+procedure makeroomx; forward;
+procedure callroutinex(s: boolean {signed function value} ); forward;
 procedure jumpx(lab: integer; {label to jump to}
-                picbr: boolean {if true generate 68000 pic branch} ); external;
-procedure jumpcond(inv: boolean {invert the sense of the branch} ); external;
-procedure dummyargx; external;
-procedure dummyarg2x; external;
-procedure openarrayx; external;
-function equivaddr(l, r: keyindex): boolean; external;
+                picbr: boolean {if true generate 68000 pic branch} ); forward;
+procedure jumpcond(inv: boolean {invert the sense of the branch} ); forward;
+procedure dummyargx; forward;
+procedure dummyarg2x; forward;
+procedure openarrayx; forward;
+function equivaddr(l, r: keyindex): boolean; forward;
 procedure forcebranch(k: keyindex; {operand to test}
                       newsignedbr: insttype; {branch to generate}
-                      newunsignedbr: insttype {unless operand is unsigned} ); external;
-procedure loadstack(src: keyindex {operand to load} ); external;
+                      newunsignedbr: insttype {unless operand is unsigned} ); forward;
+procedure loadstack(src: keyindex {operand to load} ); forward;
 function loadedfpreg(k: keyindex; {operand to check}
-                     regneeded: boolean {must be in a register} ): boolean; external;
+                     regneeded: boolean {must be in a register} ): boolean; forward;
 {>>>}
 {<<<  forwards}
 procedure defforindexx(sgn, { true if signed induction var }
