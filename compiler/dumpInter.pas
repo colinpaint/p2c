@@ -791,6 +791,7 @@ begin
   while (not eof (interSharedPtr^.interFile)) and
         (interSharedPtr^.interFile^.block[nextintcode].s <> endall) do
     statement;
+  writeln ('endall');
 
   close (interSharedPtr^.interFile);
   writeln ('------- end of dumpInter -------');

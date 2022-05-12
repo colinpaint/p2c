@@ -169,7 +169,6 @@ var
 
 begin
   writeln;
-
   write (msg: errormsglength {+ 1});
   if class = ioerror then
     begin
@@ -182,14 +181,13 @@ begin
   else
     write (' ', userpc: - 1);
   writeln;
-
 end;
 {>>>}
 {<<<}
 procedure panic;
 { Panic exit from analys, code or travrs.
-  Assumes current procedure reference is stored in 'blockref', and that string file is still open }
-
+  Assumes current procedure reference is stored in 'blockref', and that string file is still open
+}
 var
   i: integer;
   nextstringfile: 0..diskbufsize; { index into buffer }
@@ -206,17 +204,21 @@ begin
     manyplabels:     write ('Too many Pascal labels');
     manytemps:       write ('Code too complex');
     manynodes:       write ('Too many nodes');
-    builderror: ;
     manykeys:        write ('Too many keys');
-    walkerror: ;
     interntemp:      write ('Internal temp error');
     badadjust:       write ('Bad adjustoffset value');
-    inconsistent: ;
     manyexterns:     write ('Too many external references');
     badrelfile:      write ('Bad relocation file');
     manynonlocals:   write ('Too many non-locals');
     perposdump:      write ('Block too long');
+    builderror: ;
+    walkerror: ;
+    inconsistent: ;
     end;
+
+  Write ('- panic - ', sharedPtr^.abortmsg);
+  Writeln ('- looping for debug');
+  while true do {}
 
   if sharedPtr^.abortmsg in [undeltemps, builderror, walkerror, interntemp, badadjust, inconsistent, badrelfile] then
     begin

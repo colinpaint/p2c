@@ -147,20 +147,19 @@ const
   worddiskbufsize = 255;            { number of words in a disk buffer }
   keysize = 500;                    { number of concurrent active nodes in travrs/code tree}
 
-  realfolding = false; {turns on real folding}
-  rangetracking = true; {turns on range tracking}
-  maxparambytes = maxaddr {defaultptrsize}; {value params longer than this are passed by reference rather than copied}
-  optimizeinvariants = true; {turns on removal of invariants from loops}
+  realfolding = false;       { turn on real folding }
+  rangetracking = true;      { turn on range tracking }
+  optimizeinvariants = true; { turn on removal of invariants from loops }
+  maxparambytes = maxaddr;   { defaultptrsize, value params longer than this are passed by reference rather than copied}
 
   maxstringblks = 400;    { max number of string blocks}
 
-  tablesize = 16383;      { max number of types and names}
-  tnodetablesize = 12000; { maximum nodes in tree}
-  cnodetablesize = 16383; { max number of nodes per block}
-
-  bigtablesize = tablesize;           { minimum is 1}
-  bigtnodetablesize = tnodetablesize; { minimum is 1}
-  bigcnodetablesize = cnodetablesize; { minimum is 4}
+  tablesize = 16383;                  { max number of types and names}
+  bigtablesize = tablesize;
+  tnodetablesize = 12000;             { maximum nodes in tree}
+  bigtnodetablesize = tnodetablesize;
+  cnodetablesize = 16383;             { max number of nodes per block}
+  bigcnodetablesize = cnodetablesize;
 
   {<<<}
   { Number of nodes per virtual memory block for each pass:  These

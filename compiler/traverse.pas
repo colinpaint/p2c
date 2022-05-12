@@ -100,7 +100,9 @@
 const { convert back to commandLine quals }
   dumpPseudo = true;
   dumpFiles = true;
-  dumpDetails = true;
+  dumpDetails = false;
+  traceGetIntFile = false;
+  traceBlock = false;
 
 {<<<}
 const
@@ -861,7 +863,7 @@ begin
   i := 1;
   while rsize > 0 do
     begin
-    genpseudo(o, l, n, r, c, kludge.i[i], kludge.i[i + 1], kludge.i[i + 2]);
+    genpseudo (o, l, n, r, c, kludge.i[i], kludge.i[i + 1], kludge.i[i + 2]);
     i := i + 3;
     rsize := rsize - 3 * size(integer);
     end;
@@ -1868,7 +1870,7 @@ var
           end;
 
         mapkey;
-        genpseudo(p, len, key, refcount, copycount, lkey, offset, third);
+        genpseudo (p, len, key, refcount, copycount, lkey, offset, third);
 
       end {vindxnode} ;
     {>>>}
@@ -1879,8 +1881,8 @@ var
 
       begin {openarraynode}
 
-        genpseudo(openarray, len, 0, 0 {refcount} , 0 {copycount} ,
-                  rootp^.oprnds[1] {offset} , rootp^.oprnds[2], 0);
+        genpseudo (openarray, len, 0, 0 {refcount} , 0 {copycount} ,
+                   rootp^.oprnds[1] {offset} , rootp^.oprnds[2], 0);
 
       end {openarraynode} ;
     {>>>}
@@ -1899,8 +1901,7 @@ var
         walkvalue(r, rkey, 0);
         walkvalue(l, lkey, 0);
         mapkey;
-        genpseudo(map[op, form], len, key, refcount, copycount, lkey, rkey,
-                  targetkey);
+        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, targetkey);
       end {orderednode} ;
     {>>>}
     {<<<}
@@ -1923,8 +1924,7 @@ var
       begin
         oldtarget := targetkey;
         walkboth;
-        genpseudo(map[op, form], len, key, refcount, copycount, lkey, rkey,
-                  oldtarget);
+        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
       end {binarynode} ;
     {>>>}
     {<<<}
@@ -1942,8 +1942,7 @@ var
       begin
         if op3 >= 0 then op3 := targetkey;
         walkboth;
-        genpseudo(map[op, form], len, key, refcount, copycount, lkey, rkey,
-                  op3);
+        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, op3);
       end {incnode} ;
     {>>>}
     {<<<}
@@ -1974,21 +1973,21 @@ var
         llen := lp^.len;
         lform := loophole(types, rootp^.oprnds[3]);
         walknode(l, lkey, 0, true);
-        genpseudo(startreflex, 0, 0, 0, 0, 0, 0, 0);
+        genpseudo (startreflex, 0, 0, 0, 0, 0, 0, 0);
         use_casts := (lform <> form) or (lform = reals) and (llen <> len);
         if use_casts then
           begin
           ckey := newkey;
           context[contextsp].high := ckey;
           keytable[ckey] := 0;
-          genpseudo(castmap[form, lform], len, ckey, 1, 0, lkey, 0, 0);
+          genpseudo (castmap[form, lform], len, ckey, 1, 0, lkey, 0, 0);
           end
         else ckey := lkey;
         walkvalue(r, rkey, 0);
         tkey := newkey;
         context[contextsp].high := tkey;
         keytable[tkey] := 0;
-        genpseudo(map[op, form], len, tkey, 1, 0, ckey, rkey, ckey);
+        genpseudo (map[op, form], len, tkey, 1, 0, ckey, rkey, ckey);
         if use_casts then
           begin
           ckey := newkey;
@@ -1998,9 +1997,8 @@ var
           end
         else ckey := tkey;
         mapkey;
-        genpseudo(map[moveop, lform], llen, key, refcount, copycount, lkey,
-                  ckey, targetkey);
-        genpseudo(endreflex, 0, 0, 0, 0, 0, 0, 0);
+        genpseudo (map[moveop, lform], llen, key, refcount, copycount, lkey, ckey, targetkey);
+        genpseudo (endreflex, 0, 0, 0, 0, 0, 0, 0);
       end; {reflexivenode}
     {>>>}
     {<<<}
@@ -2021,21 +2019,20 @@ var
           begin
           target := 0;
           walknode(l, lkey, target, true);
-          genpseudo(startreflex, 0, 0, 0, 0, 0, 0, 0);
+          genpseudo (startreflex, 0, 0, 0, 0, 0, 0, 0);
           target := 0;
           walkvalue(r, rkey, target);
           tdkey := newkey;
           context[contextsp].high := tdkey;
           keytable[tdkey] := 0;
-          genpseudo(divint, len, tdkey, 1, 0, lkey, rkey, lkey);
+          genpseudo (divint, len, tdkey, 1, 0, lkey, rkey, lkey);
           tkey := newkey;
           context[contextsp].high := tkey;
           keytable[tkey] := 0;
-          genpseudo(map[op, ints], len, tkey, 1, 0, tdkey, 0, lkey);
+          genpseudo (map[op, ints], len, tkey, 1, 0, tdkey, 0, lkey);
           mapkey;
-          genpseudo(movint, len, key, refcount, copycount, lkey, tkey,
-                    targetkey);
-          genpseudo(endreflex, 0, 0, 0, 0, 0, 0, 0);
+          genpseudo (movint, len, key, refcount, copycount, lkey, tkey, targetkey);
+          genpseudo (endreflex, 0, 0, 0, 0, 0, 0, 0);
           end
         else reflexivenode(op, form);
       end; {reflexdivnodes}
@@ -2053,11 +2050,13 @@ var
       begin
         target := 0;
         deref := rootp^.refcount > 0;
-        walknode(l, lkey, target, false);
-        if deref then walkvalue(r, rkey, targetkey)
-        else walknode(r, rkey, targetkey, false);
+        walknode (l, lkey, target, false);
+        if deref then
+          walkvalue (r, rkey, targetkey)
+        else
+          walknode (r, rkey, targetkey, false);
         mapkey;
-        genpseudo(commafake, len, key, refcount, copycount, rkey, 0, 0);
+        genpseudo (commafake, len, key, refcount, copycount, rkey, 0, 0);
       end; {commanode}
     {>>>}
     {<<<}
@@ -2075,8 +2074,7 @@ var
       begin
         walkvalue(l, lkey, targetkey);
         mapkey;
-        genpseudo(map[op, form], len, key, refcount, copycount, lkey, r,
-                  targetkey);
+        genpseudo (map[op, form], len, key, refcount, copycount, lkey, r, targetkey);
       end {litopnode} ;
     {>>>}
     {<<<}
@@ -2089,7 +2087,7 @@ var
       begin
         walkvalue(l, lkey, targetkey);
         mapkey;
-          genpseudo(map[movelit, form], len, key, 0, 0, lkey, r, targetkey);
+          genpseudo (map[movelit, form], len, key, 0, 0, lkey, r, targetkey);
       end {movelitnode} ;
     {>>>}
     {<<<}
@@ -2103,8 +2101,7 @@ var
       begin
         oldtarget := targetkey;
         walkboth;
-        genpseudo(map[mulop, form], len, key, refcount, copycount, lkey, rkey,
-                  oldtarget);
+        genpseudo (map[mulop, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
       end {mulintnode} ;
     {>>>}
     {<<<}
@@ -2119,8 +2116,7 @@ var
       begin
         oldtarget := targetkey;
         walkboth;
-        genpseudo(map[op, form], len, key, refcount, copycount, lkey, rkey,
-                  oldtarget);
+        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
       end {divintnode} ;
     {>>>}
     {<<<}
@@ -2132,10 +2128,9 @@ var
 
 
       begin
-        walknode(l, lkey, targetkey, true);
+        walknode (l, lkey, targetkey, true);
         mapkey;
-        genpseudo(map[op, ints], len, key, refcount, copycount, lkey, 0,
-                  targetkey);
+        genpseudo (map[op, ints], len, key, refcount, copycount, lkey, 0, targetkey);
       end {unaryaddrnode} ;
     {>>>}
     {<<<}
@@ -2145,10 +2140,9 @@ var
 
 
       begin
-        walkvalue(l, lkey, targetkey);
+        walkvalue (l, lkey, targetkey);
         mapkey;
-        genpseudo(map[op, form], len, key, refcount, copycount, lkey, 0,
-                  targetkey);
+        genpseudo (map[op, form], len, key, refcount, copycount, lkey, 0, targetkey);
       end {unarynode} ;
     {>>>}
     {<<<}
@@ -2158,10 +2152,9 @@ var
       the value being cast while the right is a flag for an unsigned result.
     }
       begin {castnode};
-        walkvalue(l, lkey, targetkey);
+        walkvalue (l, lkey, targetkey);
         mapkey;
-        genpseudo(map[op, form], len, key, refcount, copycount, lkey, r,
-                  targetkey);
+        genpseudo (map[op, form], len, key, refcount, copycount, lkey, r, targetkey);
       end {castnode};
     {>>>}
     {<<<}
@@ -2191,8 +2184,7 @@ var
         shortvisit(l, true);
         walkvalue(l, lkey, targetkey);
         mapkey;
-        genpseudo(setbinfile, len, key, refcount, copycount, lkey, 0,
-                  targetkey);
+        genpseudo (setbinfile, len, key, refcount, copycount, lkey, 0, targetkey);
       end {unarynode} ;
     {>>>}
     {<<<}
@@ -2205,7 +2197,7 @@ var
 
       begin {unmappedunarynode}
         walkvalue(l, lkey, targetkey);
-        genpseudo(map[op, form], len, 0, 0, 0, lkey, 0, targetkey);
+        genpseudo (map[op, form], len, 0, 0, 0, lkey, 0, targetkey);
       end {unmappedunarynode} ;
     {>>>}
     {<<<}
@@ -2219,9 +2211,10 @@ var
 
 
       begin
-        walkvalue(l, key, targetkey);
-        if len <> 0 then genpseudo(makeroom, len, 0, 0, 0, 0, 0, 0);
-        genpseudo(copystack, 0, 0, 0, 0, 0, 0, 0);
+        walkvalue (l, key, targetkey);
+        if len <> 0 then
+          genpseudo (makeroom, len, 0, 0, 0, 0, 0, 0);
+        genpseudo (copystack, 0, 0, 0, 0, 0, 0, 0);
       end {copystacknode} ;
     {>>>}
     {<<<}
@@ -2250,8 +2243,7 @@ var
           high := highkey;
           end;
         mapkey;
-        genpseudo(map[op, ints], len, key, refcount, copycount, lkey, low,
-                  high);
+        genpseudo (map[op, ints], len, key, refcount, copycount, lkey, low, high);
       end {checknode} ;
     {>>>}
     {<<<}
@@ -2274,7 +2266,7 @@ var
         if op = cmoveop then walkvalue(size, skey, 0)
         else skey := 0;
         mapkey;
-          genpseudo(map[op, form], len, key, 0, 0, lkey, rkey, skey);
+        genpseudo (map[op, form], len, key, 0, 0, lkey, rkey, skey);
       end {movenode} ;
     {>>>}
     {<<<}
@@ -2290,12 +2282,10 @@ var
         mapkey;
         with rootp^ do
           begin
-          genpseudo(map[op, ints], len, key, refcount, copycount, oprnds[1],
-                    oprnds[2], oprnds[3]);
+          genpseudo (map[op, ints], len, key, refcount, copycount, oprnds[1], oprnds[2], oprnds[3]);
           if op = fptrop then
             if newtravrsinterface then
-              sharedPtr^.new_proctable[oprnds[1] div (pts + 1)]^[oprnds[1] mod (pts +
-               1)].referenced := true
+              sharedPtr^.new_proctable[oprnds[1] div (pts + 1)]^[oprnds[1] mod (pts + 1)].referenced := true
             else sharedPtr^.proctable[oprnds[1]].referenced := true;
           end;
       end {literalnode} ;
@@ -2345,7 +2335,7 @@ var
         repeat
           with nextp^ do
             begin
-            genpseudo(doreal, l, key, refc, copy, oprnds[1], oprnds[2], piece);
+            genpseudo (doreal, l, key, refc, copy, oprnds[1], oprnds[2], piece);
             action := revisit;
             nextpiece := oprnds[3];
             end;
@@ -2365,7 +2355,7 @@ var
 
       begin {ownnode}
         mapkey;
-        genpseudo(doown, sharedPtr^.ptrsize, key, refcount, copycount, 0, 0, 0);
+        genpseudo (doown, sharedPtr^.ptrsize, key, refcount, copycount, 0, 0, 0);
         if newtravrsinterface then
           sharedPtr^.new_proctable[sharedPtr^.blockref div (pts + 1)]^[sharedPtr^.blockref mod (pts +
            1)].ownused := true
@@ -2385,7 +2375,7 @@ var
         with rootp^ do
           begin
           mapkey;
-          genpseudo(doext, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], 0, 0);
+          genpseudo (doext, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], 0, 0);
           end;
       end; {extnode}
     {>>>}
@@ -2400,7 +2390,7 @@ var
         with rootp^ do
           begin
           mapkey;
-          genpseudo(o, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], 0, 0);
+          genpseudo (o, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], 0, 0);
           end;
       end {originsegnode} ;
     {>>>}
@@ -2418,8 +2408,7 @@ var
           if (oprnds[1] = 0) or (oprnds[1] = level) then rkey := 0
           else walknode(oprnds[3], rkey, 0, true);
           mapkey;
-          genpseudo(dolevel, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1],
-                    oprnds[2], rkey);
+          genpseudo (dolevel, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], oprnds[2], rkey);
           end;
       end {levnode} ;
     {>>>}
@@ -2442,15 +2431,16 @@ var
         mapkey;
         rootp := ref(bignodetable[root]) ;
         if op = unscall then
-          genpseudo(unscallroutine, len, key, refcount, copycount,
-                    rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form))
+          genpseudo (unscallroutine, len, key, refcount, copycount,
+                     rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form))
         else
-          genpseudo(callroutine, len, key, refcount, copycount,
-                    rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form));
+          genpseudo (callroutine, len, key, refcount, copycount,
+                     rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form));
         p := rootp^.oprnds[1];
         if newtravrsinterface then
           sharedPtr^.new_proctable[p div (pts + 1)]^[p mod (pts + 1)].referenced := true
-        else sharedPtr^.proctable[p].referenced := true;
+        else
+          sharedPtr^.proctable[p].referenced := true;
         clearkeys;
       end {callnode} ;
     {>>>}
@@ -2469,11 +2459,9 @@ var
         mapkey;
         rootp := ref(bignodetable[root]);
         if op = unscallparam then
-          genpseudo(unscallroutine, len, key, refcount, copycount, lkey,
-                    rootp^.oprnds[3], ord(rootp^.form))
+          genpseudo (unscallroutine, len, key, refcount, copycount, lkey, rootp^.oprnds[3], ord(rootp^.form))
         else
-          genpseudo(callroutine, len, key, refcount, copycount, lkey,
-                    rootp^.oprnds[3], ord(rootp^.form));
+          genpseudo (callroutine, len, key, refcount, copycount, lkey, rootp^.oprnds[3], ord(rootp^.form));
         clearkeys;
       end {callparamnode} ;
     {>>>}
@@ -2486,10 +2474,10 @@ var
 
 
       begin
-        walknode(l, lkey, 0, true);
-        walknode(r, rkey, key, true);
+        walknode (l, lkey, 0, true);
+        walknode (r, rkey, key, true);
         mapkey;
-        genpseudo(map[op, form], len, key, refcount, copycount, rkey, 0, 0);
+        genpseudo (map[op, form], len, key, refcount, copycount, rkey, 0, 0);
       end {linkednode} ;
     {>>>}
     {<<<}
@@ -2502,9 +2490,9 @@ var
 
       begin
         mapkey;
-        genpseudo(stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        walkvalue(l, lkey, key);
-        genpseudo(pshint, len, key, refcount, copycount, lkey, 0, 0);
+        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+        walkvalue (l, lkey, key);
+        genpseudo (pshint, len, key, refcount, copycount, lkey, 0, 0);
       end {pushfinalnode} ;
     {>>>}
     {<<<}
@@ -2520,13 +2508,13 @@ var
         third := rootp^.oprnds[3];
         walknode(l, lkey, 0, true);
         mapkey;
-        genpseudo(stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        walknode(r, rkey, 0, true);
-        genpseudo(pshproc, len, key, 0, 0, rkey, third, 0);
+        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+        walknode (r, rkey, 0, true);
+        genpseudo (pshproc, len, key, 0, 0, rkey, third, 0);
         if newtravrsinterface then
-          sharedPtr^.new_proctable[third div (pts + 1)]^[third mod (pts +
-           1)].referenced := true
-        else sharedPtr^.proctable[third].referenced := true;
+          sharedPtr^.new_proctable[third div (pts + 1)]^[third mod (pts + 1)].referenced := true
+        else
+          sharedPtr^.proctable[third].referenced := true;
       end {pushprocnode} ;
     {>>>}
     {<<<}
@@ -2537,9 +2525,8 @@ var
       begin
         walkvalue(l, lkey, targetkey);
         mapkey;
-        genpseudo(stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        genpseudo(map[pushcvalue, form], len, key, refcount, copycount, lkey, 0,
-                  0);
+        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+        genpseudo (map[pushcvalue, form], len, key, refcount, copycount, lkey, 0, 0);
       end; {pushcvaluenode}
     {>>>}
     {<<<}
@@ -2550,9 +2537,9 @@ var
       begin
         walknode(l, lkey, 0, true);
         mapkey;
-        genpseudo(ptrtemp, len, key, refcount, copycount, 0, 0, - 2);
-        walkvalue(r, rkey, key);
-        genpseudo(map[pushret, ptrs], len, key, 0, 0, rkey, 0, 0);
+        genpseudo (ptrtemp, len, key, refcount, copycount, 0, 0, - 2);
+        walkvalue (r, rkey, key);
+        genpseudo (map[pushret, ptrs], len, key, 0, 0, rkey, 0, 0);
       end; {pushretnode}
     {>>>}
     {<<<}
@@ -2566,13 +2553,13 @@ var
       begin {stacknode}
         walknode(l, lkey, 0, true);
         mapkey;
-        genpseudo(stacktarget, len, key, refcount, copycount, 0, 0, 0);
+        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
         if op in [pushlitvalue, pushfptr] then
-          genpseudo(map[op, form], len, key, 0, 0, r, 0, 0)
+          genpseudo (map[op, form], len, key, 0, 0, r, 0, 0)
         else
           begin
-          walkvalue(r, rkey, key);
-          genpseudo(map[op, form], len, key, 0, 0, rkey, 0, 0);
+          walkvalue (r, rkey, key);
+          genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
           end;
 
         clearkeys;
@@ -2599,9 +2586,10 @@ var
                      (form = strings);
         if walkfirst then walkvalue(r, rkey, key);
         mapkey;
-        genpseudo(stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        if not walkfirst then walkvalue(r, rkey, key);
-        genpseudo(map[op, form], len, key, 0, 0, rkey, 0, 0);
+        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+        if not walkfirst then
+          walkvalue (r, rkey, key);
+        genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
         clearkeys;
       end {pushaddrnode} ;
     {>>>}
@@ -2614,10 +2602,10 @@ var
 
 
       begin
-        walknode(l, lkey, 0, true);
-        walkvalue(r, rkey, 0);
+        walknode (l, lkey, 0, true);
+        walkvalue (r, rkey, 0);
         mapkey;
-        genpseudo(map[op, form], len, key, 0, 0, rkey, 0, 0);
+        genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
         clearkeys;
       end {dummyargnode} ;
     {>>>}
@@ -2630,11 +2618,10 @@ var
       code operator is used for both single and paired set elements.
     }
 
-
       begin
-        walknode(l, lkey, targetkey, true);
-        walkvalue(r, rkey, 0);
-        genpseudo(setinsert, len, 0, 0, 0, rkey, 0, targetkey);
+        walknode (l, lkey, targetkey, true);
+        walkvalue (r, rkey, 0);
+        genpseudo (setinsert, len, 0, 0, 0, rkey, 0, targetkey);
         clearkeys;
       end {seteltnode} ;
     {>>>}
@@ -2643,10 +2630,10 @@ var
     { Walk and generate code for a set pair element.  This is very similar to the previous procedure }
 
       begin
-        walknode(l, lkey, targetkey, true);
-        walkvalue(r, lkey, 0);
-        walkvalue(rootp^.oprnds[3], rkey, 0);
-        genpseudo(setinsert, len, 0, 0, 0, lkey, rkey, targetkey);
+        walknode (l, lkey, targetkey, true);
+        walkvalue (r, lkey, 0);
+        walkvalue (rootp^.oprnds[3], rkey, 0);
+        genpseudo (setinsert, len, 0, 0, 0, lkey, rkey, targetkey);
         clearkeys;
       end {setpairnode} ;
     {>>>}
@@ -2661,9 +2648,10 @@ var
         unnestsets(l);
         walknode(r, rkey, 0, true);
         mapkey;
-        if walkdepth > 2 then targetkey := 0;
-        genpseudo(doset, len, key, refcount, copycount, rkey, 0, targetkey);
-        walknode(l, lkey, key, true);
+        if walkdepth > 2 then
+          targetkey := 0;
+        genpseudo (doset, len, key, refcount, copycount, rkey, 0, targetkey);
+        walknode (l, lkey, key, true);
         clearkeys;
       end {bldsetnode} ;
     {>>>}
@@ -2697,8 +2685,7 @@ var
           walknode(r, rkey, 0, true);
           mapkey;
           rootp := ref(bignodetable[root]);
-          genpseudo(map[rd, rootp^.form], len, key, refcount, copycount, rkey,
-                    0, 0);
+          genpseudo (map[rd, rootp^.form], len, key, refcount, copycount, rkey, 0, 0);
           end;
         clearkeys;
       end {rdnode} ;
@@ -2712,7 +2699,7 @@ var
       begin
         mapkey;
         with rootp^ do
-          genpseudo(makeroom, oprnds[1], key, 0, 0, oprnds[2], oprnds[3], 0);
+          genpseudo (makeroom, oprnds[1], key, 0, 0, oprnds[2], oprnds[3], 0);
       end {reservenode} ;
     {>>>}
     {<<<}
@@ -2727,8 +2714,7 @@ var
       begin
         mapkey;
         with rootp^ do
-              genpseudo(map[op, form], len, key, refcount, copycount, 0, 0,
-                        - oprnds[1]);
+              genpseudo (map[op, form], len, key, refcount, copycount, 0, 0, - oprnds[1]);
       end; {tempnode}
     {>>>}
     {<<<}
@@ -2743,9 +2729,9 @@ var
 
 
       begin
-        walknode(rootp^.oprnds[3], threekey, 0, true);
+        walknode (rootp^.oprnds[3], threekey, 0, true);
         mapkey;
-        genpseudo(psop, len, key, refcount, copycount, threekey, 0, 0);
+        genpseudo (psop, len, key, refcount, copycount, threekey, 0, 0);
       end {varnode} ;
     {>>>}
     {<<<}
@@ -2776,13 +2762,13 @@ var
            logid])) then
           begin
           rp := ref(bignodetable[r]);
-          if form <> rp^.form then targetkey := 0;
+          if form <> rp^.form then
+            targetkey := 0;
           end;
 
-        walkvalue(r, rkey, 0);
+        walkvalue (r, rkey, 0);
         mapkey;
-        genpseudo(map[op, form], len, key, refcount, copycount, rkey,
-                  rootp^.oprnds[1], targetkey);
+        genpseudo (map[op, form], len, key, refcount, copycount, rkey, rootp^.oprnds[1], targetkey);
 
       end {sysfnnode} ;
     {>>>}
@@ -2816,8 +2802,8 @@ var
 
           mapkey;
 
-          genpseudo(map[op, ints], len, key, refcount, copycount, initialvalue,
-                    varkey, ord((oprnds[1] = 0) or nowdebugging or nowwalking));
+          genpseudo (map[op, ints], len, key, refcount, copycount, initialvalue,
+                     varkey, ord((oprnds[1] = 0) or nowdebugging or nowwalking));
 
           end;
       end {defforindexnode} ;
@@ -2879,10 +2865,11 @@ var
           k := newkey;
           context[contextsp].high := k;
           keytable[k] := 0;
-          genpseudo(createtemp, len, k, 3, 0, ord(form), 0, targetkey);
+          genpseudo (createtemp, len, k, 3, 0, ord(form), 0, targetkey);
           end;
-        walkboolean(cond, key, tlabel, flabel);
-        definelabel(tlabel);
+
+        walkboolean (cond, key, tlabel, flabel);
+        definelabel (tlabel);
         targ := k;
         if val_used then
           begin
@@ -2890,26 +2877,28 @@ var
           tk := newkey;
           context[contextsp].high := tk;
           keytable[tk] := 0;
-          genpseudo(map[moveop, form], len, tk, 0, 0, k, lkey, k);
+          genpseudo (map[moveop, form], len, tk, 0, 0, k, lkey, k);
           end
-        else walknode(l, lkey, 0, false);
-        genpseudo(jump, 0, 0, 0, 0, jlabel, 0, 0);
-        definelabel(flabel);
+        else
+          walknode(l, lkey, 0, false);
+
+        genpseudo (jump, 0, 0, 0, 0, jlabel, 0, 0);
+        definelabel (flabel);
         targ := k;
         if val_used then
           begin
-          walkvalue(r, rkey, targ);
+          walkvalue (r, rkey, targ);
           tk := newkey;
           context[contextsp].high := tk;
           keytable[tk] := 0;
-          genpseudo(map[moveop, form], len, tk, 0, 0, k, rkey, k);
+          genpseudo (map[moveop, form], len, tk, 0, 0, k, rkey, k);
           end
         else walknode(r, rkey, 0, false);
         definelabel(jlabel);
         if val_used then
           begin
           mapkey;
-          genpseudo(jointemp, len, key, refcount, copycount, k, ord(form), 0);
+          genpseudo (jointemp, len, key, refcount, copycount, k, ord(form), 0);
           end;
         inverted := oldinv;
         truelabel := oldt;
@@ -2966,8 +2955,10 @@ var
         oldinv := inverted;
         shortvisit(r, false);
         walknode(l, lkey, 0, true);
-        if inverted then genpseudo(jumpt, 0, 0, 0, 0, falselabel, lkey, 0)
-        else genpseudo(jumpf, 0, 0, 0, 0, falselabel, lkey, 0);
+        if inverted then
+          genpseudo (jumpt, 0, 0, 0, 0, falselabel, lkey, 0)
+        else
+          genpseudo (jumpf, 0, 0, 0, 0, falselabel, lkey, 0);
         inverted := oldinv;
         truelabel := t;
         if trueused then definelabel(nextlabel);
@@ -3003,8 +2994,10 @@ var
         oldinv := inverted;
         shortvisit(r, false);
         walknode(l, lkey, 0, true);
-        if inverted then genpseudo(jumpf, 0, 0, 0, 0, truelabel, lkey, 0)
-        else genpseudo(jumpt, 0, 0, 0, 0, truelabel, lkey, 0);
+        if inverted then
+          genpseudo (jumpf, 0, 0, 0, 0, truelabel, lkey, 0)
+        else
+          genpseudo (jumpt, 0, 0, 0, 0, truelabel, lkey, 0);
         inverted := oldinv;
         if falseused then definelabel(nextlabel);
         falseused := oldused;
@@ -3455,49 +3448,48 @@ var
              (lp^.caselabellow = lp^.caselabelhigh) and
              (fp^.orderedlink = lastlab)) then
             begin
-            genpseudo(eqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey,
-                      fp^.caselabellow, 0);
+            genpseudo (eqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey, fp^.caselabellow, 0);
 
-            genpseudo(jumpt, 0, 0, 0, 0, fp^.stmtlabel, reskey, 0);
+            genpseudo (jumpt, 0, 0, 0, 0, fp^.stmtlabel, reskey, 0);
             if fp^.caselabellow <> lp^.caselabelhigh then
               begin
-              genpseudo(eqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey,
-                        lp^.caselabelhigh, 0);
-              genpseudo(jumpt, 0, 0, 0, 0, lp^.stmtlabel, reskey, 0);
+              genpseudo (eqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey, lp^.caselabelhigh, 0);
+              genpseudo (jumpt, 0, 0, 0, 0, lp^.stmtlabel, reskey, 0);
               end;
-            if errordefault then genpseudo(caseerr, 0, 0, 0, 0, 0, 0, 0)
-            else genpseudo(jump, 0, 0, 0, 0, default, 0, 0);
+            if errordefault then
+              genpseudo(caseerr, 0, 0, 0, 0, 0, 0, 0)
+            else
+              genpseudo (jump, 0, 0, 0, 0, default, 0, 0);
             end
           else if ordered then
             begin
             locdefault := newlabel;
-            genpseudo(lsslitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey,
-                      fp^.caselabellow, 0);
-            genpseudo(jumpt, 0, 0, 0, 0, locdefault, reskey, 0);
-            genpseudo(leqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey,
-                      lp^.caselabelhigh, 0);
-            genpseudo(jumpt, 0, 0, 0, 0, lp^.stmtlabel, reskey, 0);
-            definelabel(locdefault);
-            if errordefault then genpseudo(caseerr, 0, 0, 0, 0, 0, 0, 0)
-            else genpseudo(jump, 0, 0, 0, 0, default, 0, 0);
+            genpseudo (lsslitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey, fp^.caselabellow, 0);
+            genpseudo (jumpt, 0, 0, 0, 0, locdefault, reskey, 0);
+            genpseudo (leqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey, lp^.caselabelhigh, 0);
+            genpseudo (jumpt, 0, 0, 0, 0, lp^.stmtlabel, reskey, 0);
+            definelabel (locdefault);
+            if errordefault then
+              genpseudo (caseerr, 0, 0, 0, 0, 0, 0, 0)
+            else
+              genpseudo (jump, 0, 0, 0, 0, default, 0, 0);
             end
           else
             begin
-            if errordefault then locdefault := newlabel
-            else locdefault := default;
-            genpseudo(casebranch, locdefault, 0, ord(errordefault), 0,
-                      fp^.caselabellow, lp^.caselabelhigh, casekey);
+            if errordefault then
+              locdefault := newlabel
+            else
+              locdefault := default;
+            genpseudo (casebranch, locdefault, 0, ord(errordefault), 0, fp^.caselabellow, lp^.caselabelhigh, casekey);
             thislab := firstlab;
             p := fp;
             repeat
               p1 := ref(bignodetable[p^.orderedlink]);
-              genpseudo(caseelt, 0, 0, 0, 0, p^.stmtlabel,
-                        p^.caselabelhigh - p^.caselabellow + 1, 0);
+              genpseudo (caseelt, 0, 0, 0, 0, p^.stmtlabel, p^.caselabelhigh - p^.caselabellow + 1, 0);
               done := thislab = lastlab;
               if not done then
                 if p1^.caselabellow - p^.caselabelhigh > 1 then
-                  genpseudo(caseelt, 0, 0, 0, 0, locdefault,
-                            p1^.caselabellow - p^.caselabelhigh - 1, 0);
+                  genpseudo (caseelt, 0, 0, 0, 0, locdefault, p1^.caselabellow - p^.caselabelhigh - 1, 0);
               thislab := p^.orderedlink;
               p := p1;
             until done;
@@ -3539,28 +3531,27 @@ var
             hp := ref(bignodetable[p^.highestlabel]);
             hp := ref(bignodetable[hp^.orderedlink]);
             lastlabel := newlabel;
-            genpseudo(geqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey,
-                      hp^.caselabelhigh, 0);
-            genpseudo(jumpt, 0, 0, 0, 0, lastlabel, reskey, 0);
+            genpseudo (geqlitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey, hp^.caselabelhigh, 0);
+            genpseudo (jumpt, 0, 0, 0, 0, lastlabel, reskey, 0);
             end;
           if middle > first then
             begin {there is a left-hand branch}
             lp := ref(bignodetable[p^.lowestlabel]);
             firstlabel := newlabel;
-            genpseudo(lsslitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey,
-                      lp^.caselabellow, 0);
-            genpseudo(jumpt, 0, 0, 0, 0, firstlabel, reskey, 0);
+            genpseudo (lsslitint, sharedPtr^.targetintsize, reskey, 1, 0, casekey, lp^.caselabellow, 0);
+            genpseudo (jumpt, 0, 0, 0, 0, firstlabel, reskey, 0);
             end;
-          with p^ do genjumptable(lowestlabel, highestlabel, ordered);
+          with p^ do
+            genjumptable (lowestlabel, highestlabel, ordered);
           if middle < last then
             begin
-            definelabel(lastlabel);
-            casesplit(middle + 1, last);
+            definelabel (lastlabel);
+            casesplit (middle + 1, last);
             end;
           if middle > first then
             begin
-            definelabel(firstlabel);
-            casesplit(first, middle - 1);
+            definelabel (firstlabel);
+            casesplit (first, middle - 1);
             end;
         end; {casesplit}
       {>>>}
@@ -3669,15 +3660,13 @@ var
                (initialvalue < 0) and (finalvalue >= 0)) or unsigned and
                (initialvalue >= 0) and (finalvalue < 0)) then
               begin {no chance of a zero trip loop}
-              genpseudo(foruptop, forstepsize, 0, 0, 0, exitlabel(trueblock),
-                        0, 0);
+              genpseudo (foruptop, forstepsize, 0, 0, 0, exitlabel(trueblock), 0, 0);
               improved := true;
               downloop := false;
               end
             else
               begin
-              genpseudo(foruptop, forstepsize, 0, 0, 0, exitlabel(trueblock),
-                        exitlabel(falseblock), expr1key);
+              genpseudo (foruptop, forstepsize, 0, 0, 0, exitlabel(trueblock), exitlabel(falseblock), expr1key);
               improved := false;
               downloop := false;
               end;
@@ -3689,15 +3678,13 @@ var
                (initialvalue >= 0) and (finalvalue < 0)) or unsigned and
                (initialvalue < 0) and (finalvalue >= 0)) then
               begin {no chance of a zero trip loop}
-              genpseudo(fordntop, forstepsize, 0, 0, 0, exitlabel(trueblock),
-                        0, 0);
+              genpseudo (fordntop, forstepsize, 0, 0, 0, exitlabel(trueblock), 0, 0);
               improved := true;
               downloop := true;
               end
             else
               begin
-              genpseudo(fordntop, forstepsize, 0, 0, 0, exitlabel(trueblock),
-                        exitlabel(falseblock), expr1key);
+              genpseudo (fordntop, forstepsize, 0, 0, 0, exitlabel(trueblock), exitlabel(falseblock), expr1key);
               improved := false;
               downloop := true;
               end;
@@ -3722,20 +3709,16 @@ var
         if improved then
           begin
           if downloop then
-            genpseudo(fordnimproved, forstepsize, 0, 0, 0,
-                      exitlabel(trueblock), exitlabel(falseblock), forkey1)
+            genpseudo (fordnimproved, forstepsize, 0, 0, 0, exitlabel(trueblock), exitlabel(falseblock), forkey1)
           else
-            genpseudo(forupimproved, forstepsize, 0, 0, 0,
-                      exitlabel(trueblock), exitlabel(falseblock), forkey1);
+            genpseudo (forupimproved, forstepsize, 0, 0, 0, exitlabel(trueblock), exitlabel(falseblock), forkey1);
           end
         else
           begin
           if downloop then
-            genpseudo(fordnbottom, forstepsize, 0, 0, 0, exitlabel(trueblock),
-                      exitlabel(falseblock), forkey1)
+            genpseudo (fordnbottom, forstepsize, 0, 0, 0, exitlabel(trueblock), exitlabel(falseblock), forkey1)
           else
-            genpseudo(forupbottom, forstepsize, 0, 0, 0, exitlabel(trueblock),
-                      exitlabel(falseblock), forkey1);
+            genpseudo (forupbottom, forstepsize, 0, 0, 0, exitlabel(trueblock), exitlabel(falseblock), forkey1);
           end;
           { this is a kludge to prevent the exit block from being labelled
             twice, once by forbottom in genblk and once by normal block
@@ -3763,11 +3746,13 @@ var
         walknode(expr1, dummykey, 0, false);
         clearkeys;
         if trueblock^.clearop then
-          genpseudo(restoreloop, 0, 0, 0, 0, 0, 0, 0);
+          genpseudo (restoreloop, 0, 0, 0, 0, 0, 0, 0);
         if trueblock^.looplabel = 0 then
-          genpseudo(jump, 0, 0, 0, 0, getlabel(trueblock), level, 0)
-        else genpseudo(jump, 0, 0, 0, 0, trueblock^.looplabel, level, 0);
-        if has_break then genpseudo(pascallabel, 0, 0, 0, 0, 0, 0, 0);
+          genpseudo (jump, 0, 0, 0, 0, getlabel(trueblock), level, 0)
+        else
+          genpseudo (jump, 0, 0, 0, 0, trueblock^.looplabel, level, 0);
+        if has_break then
+          genpseudo (pascallabel, 0, 0, 0, 0, 0, 0, 0);
         end;
     end; {walkcforbot}
     {>>>}
@@ -3939,15 +3924,13 @@ var
           {<<<}
           begin
           if currentstmt.looptop^.clearop then
-            genpseudo(restoreloop, 0, 0, 0, 0, 0, 0, 0);
+            genpseudo (restoreloop, 0, 0, 0, 0, 0, 0, 0);
             { looplabel is below any hoisting in the loop which is where
               we want to go if present }
           if currentstmt.looptop^.looplabel = 0 then
-            genpseudo(jump, 0, 0, 0, 0, getlabel(currentstmt.looptop), level,
-                      0)
+            genpseudo (jump, 0, 0, 0, 0, getlabel(currentstmt.looptop), level, 0)
           else
-            genpseudo(jump, 0, 0, 0, 0, currentstmt.looptop^.looplabel, level,
-                      0);
+            genpseudo (jump, 0, 0, 0, 0, currentstmt.looptop^.looplabel, level, 0);
           if has_break then genpseudo(pascallabel, 0, 0, 0, 0, 0, 0, 0);
           end;
           {>>>}
@@ -4506,75 +4489,59 @@ var
     initexpr: nodeindex; { index of for index variable }
     dominating: boolean; { true if current block dominates loopblks exit and loopblk executes }
 
+    procedure examineexpression(expression: nodeindex; hoistsubtrees: boolean); forward;
     {<<<}
-    procedure definecontext(outerblk, innerblk: basicblockptr);
-    {
-    Purpose:
-      Find the context stack of the basicblock "innerblk".
-
-    Inputs:
-      outerblk : the basic block defining the outermost context
-      innerblk : the basic block we wish to find the context for.
-
-    Outputs:
-      none : just side effects
-
-    Algorithm:
+    procedure definecontext (outerblk, innerblk: basicblockptr);
+    { Find the context stack of the basicblock "innerblk".
       Starting at outerblk, we walk dfolist until we reach innerblock.
       At each saveop we increment the context stack and save the block
       pointer. At each restoreop we decrement the context stack.
-
-    Sideeffects:
-      modifies context[1]..context[n] for use by hoistit.
-
-    Last Modified: 11/26/86
-
     }
 
-      var
-        overflow: shortint; { depth of context overflow }
+    var
+      overflow: shortint; { depth of context overflow }
 
+    begin
+      contextsp := 0;
+      overflow := 0;
+      context[0].firstblock := outerblk;
 
-      begin {definecontext}
-        contextsp := 0;
-        overflow := 0;
-        context[0].firstblock := outerblk;
-
-        repeat
-          if outerblk^.restoreop then
+      repeat
+        if outerblk^.restoreop then
+          begin
+          if overflow = 0 then
+            contextsp := contextsp - 1
+          else
+            overflow := overflow - 1;
+          end;
+        if outerblk^.saveop then
+          begin
+          if contextsp = contextdepth then
+            overflow := overflow + 1
+          else
             begin
-            if overflow = 0 then contextsp := contextsp - 1
-            else overflow := overflow - 1;
+            contextsp := contextsp + 1;
+            context[contextsp].firstblock := outerblk;
             end;
-          if outerblk^.saveop then
-            begin
-            if contextsp = contextdepth then overflow := overflow + 1
-            else
-              begin
-              contextsp := contextsp + 1;
-              context[contextsp].firstblock := outerblk;
-              end;
-            end;
-          outerblk := outerblk^.dfolist;
-        until outerblk = innerblk^.dfolist;
-
-      end; {definecontext}
+          end;
+        outerblk := outerblk^.dfolist;
+      until outerblk = innerblk^.dfolist;
+    end;
     {>>>}
     {<<<}
-    procedure hoistit(expr: nodeindex);
+    procedure hoistit (expr: nodeindex);
     { Link expression into the precode chain of loopblk and mark all of
       the graph below it as hoisted by loopblk.
       If a copy is present must search the subgraph for the nodes which point
       to copies and make them point directly to the copied expression.
     }
-
-      var
-        ptr: nodeptr; { for access to node }
-        copied: nodeptr; { for building copy node }
-        lastcopy: nodeindex; { previous copynode in copy chain }
-        refc, copyc: refcountrange; { ref count of hoisted expression }
-        newexpr: nodeindex; { the node to hoist if copies needed }
-        sp: contextindex; { induction var }
+    var
+      ptr: nodeptr; { for access to node }
+      copied: nodeptr; { for building copy node }
+      lastcopy: nodeindex; { previous copynode in copy chain }
+      refc, copyc: refcountrange; { ref count of hoisted expression }
+      newexpr: nodeindex; { the node to hoist if copies needed }
+      sp: contextindex; { induction var }
 
       {<<<}
       procedure flood(expr: nodeindex; forceflood: boolean);
@@ -4692,151 +4659,136 @@ var
         end {onecopy} ;
       {>>>}
 
-      begin {hoistit}
-        ptr := ref(bignodetable[expr]);
+    begin
+      ptr := ref(bignodetable[expr]);
 
-        { first see if it's been hoisted already or not a true invariant }
+      { first see if it's been hoisted already or not a true invariant }
+      if not ((ptr^.action = visit) and
+         (ptr^.op in [defforlitindexop, defforindexop, forindexop, endexpr, defunsforlitindexop, defunsforindexop])) and
+         (secondlevel or (ptr^.hoistedby = nil)) then
+        begin
+        { Two complications arise here. First we must walk the expression
+          to remove the references to the
+          copy operations since now the expression will be higher in the
+          graph than the copy. In this case we should also search the
+          precode chain for an expression that matches this one otherwise
+          we can produce much slower "optimized" code.
+          Second if the block being hoisted out of is a nested context
+          we must replace the original node with a copy operation }
+        if contextsp > 0 then
+          removecopies(contextsp, expr);
 
-        if not ((ptr^.action = visit) and
-           (ptr^.op in
-           [defforlitindexop, defforindexop, forindexop, endexpr, defunsforlitindexop,
-           defunsforindexop])) and (secondlevel or (ptr^.hoistedby = nil)) then
+        { expr must be hooked to the precode of loopblk. If we are within
+          nested context(s) we must build the proper copy chains. We then
+          convert the original node to a copy and build a new node as the actual expression }
+        if contextsp > 0 then
           begin
-            { Two complications arise here. First we must walk the expression
-              to remove the references to the
-              copy operations since now the expression will be higher in the
-              graph than the copy. In this case we should also search the
-              precode chain for an expression that matches this one otherwise
-              we can produce much slower "optimized" code.
+          { Build a duplicate of expr, this is the node we will hoist }
+          if lastnode + contextsp >= tnodetablesize then
+            abort (manynodes);
 
-              Second if the block being hoisted out of is a nested context
-              we must replace the original node with a copy operation.
-            }
-          if contextsp > 0 then removecopies(contextsp, expr);
+          lastnode := lastnode + 1;
+          newexpr := lastnode;
 
-            { expr must be hooked to the precode of loopblk. If we are within
-              nested context(s) we must build the proper copy chains. We then
-              convert the original node to a copy and build a new node as the
-              actual expression.
-            }
-          if contextsp > 0 then
+          copied := ref(bignodetable[newexpr]);
+
+          copied^ := ptr^;
+          copied^.prelink := 0;
+          lastcopy := newexpr;
+          refc := ptr^.refcount;
+          copyc := ptr^.copycount;
+
+          for sp := 1 to contextsp - 1 do
             begin
-
-            { Build a duplicate of expr, this is the node we will hoist }
-
-            if lastnode + contextsp >= tnodetablesize then abort(manynodes);
-
             lastnode := lastnode + 1;
-            newexpr := lastnode;
-
-            copied := ref(bignodetable[newexpr]);
-
-            copied^ := ptr^;
-            copied^.prelink := 0;
-            lastcopy := newexpr;
-            refc := ptr^.refcount;
-            copyc := ptr^.copycount;
-
-            for sp := 1 to contextsp - 1 do
-              begin
-              lastnode := lastnode + 1;
-              onecopy(sp, lastnode);
-              end;
-            onecopy(contextsp, expr);
-            expr := newexpr;
-            end; {contextsp > 0}
-
-          if lasthoist = 0 then loopblk^.precode := expr
-          else
-            begin
-            ptr := ref(bignodetable[lasthoist]);
-            ptr^.prelink := expr;
+            onecopy(sp, lastnode);
             end;
-          lasthoist := expr;
-
-          { count the number of hoists that occur }
-          if dumpFiles then
-            begin
-            ptr := ref (bignodetable[expr]);
-            if not anyinvars then
-              anyinvars := true;
-            end;
-          hoistone := hoistone + 1;
+          onecopy(contextsp, expr);
+          expr := newexpr;
           end;
 
-        { now mark all nodes in expression as hoisted }
+        if lasthoist = 0 then
+          loopblk^.precode := expr
+        else
+          begin
+          ptr := ref(bignodetable[lasthoist]);
+          ptr^.prelink := expr;
+          end;
+        lasthoist := expr;
 
-        flood(expr, true);
-      end; {hoistit}
+        { count the number of hoists that occur }
+        if dumpFiles then
+          begin
+          ptr := ref (bignodetable[expr]);
+          if not anyinvars then
+            anyinvars := true;
+          end;
+        hoistone := hoistone + 1;
+        end;
+
+      { now mark all nodes in expression as hoisted }
+      flood(expr, true);
+    end;
     {>>>}
     {<<<}
-    function simpleinvar(oprnd: nodeindex; {pushfinal's oprnd}
-                         other: nodeindex {deffor... op} ): boolean;
+    function simpleinvar (oprnd: nodeindex; other: nodeindex): boolean;
     { Examine the expression indexed by oprnd and see if it is a simple
-      variable which is invariant in the current loop, but is NOT the
-      loop variable.
+      variable which is invariant in the current loop, but is NOT the loop variable.
       Examine the writes for the current loop.
     }
+    var
+      ptr: nodeptr; { for access to nodes }
+      varlev: levelindex; { level of var op }
+      off: addressrange; { where in frame of var }
+      written: boolean; { true if found on write list }
 
-      var
-        ptr: nodeptr; { for access to nodes }
-        varlev: levelindex; { level of var op }
-        off: addressrange; { where in frame of var }
-        written: boolean; { true if found on write list }
-
-
-      begin {simpleinvar}
-        simpleinvar := false;
+    begin
+      simpleinvar := false;
+      ptr := ref(bignodetable[oprnd]);
+      if ptr^.action = copy then
+        begin
+        { Point to the real operand }
+        oprnd := ptr^.directlink;
         ptr := ref(bignodetable[oprnd]);
-        if ptr^.action = copy then
-          begin
-          { Point to the real operand }
-          oprnd := ptr^.directlink;
-          ptr := ref(bignodetable[oprnd]);
-          end {copy} ;
-        if ((ptr^.op = varop) or (ptr^.op = unsvarop)) and
-           not loopblk^.deadlevels[ptr^.oprnds[1]] then
-          begin
-          varlev := ptr^.oprnds[1];
-          off := ptr^.oprnds[2];
-            { A simple variable points to an indxop, which points
-              to a levop}
-          ptr := ref(bignodetable[ptr^.oprnds[3]]);
-          if ptr^.op in [indxop, vindxop] then
-            begin
-            ptr := ref(bignodetable[ptr^.oprnds[1]]);
-              { Globalop's and localop's are converted to levop's
-                by buildexpr }
-            if (ptr^.op = levop) then
-              begin
-              { First, check to see if this is the loop variable }
-              ptr := ref(bignodetable[other]);
-              if (level <> varlev) or (ptr^.oprnds[2] <> off) then
-                begin
-                  { It isn't the loop variable, so now check to see
-                    if it's written within the loop }
-                p := loopblk^.writes;
-                written := false;
-                while not written and (p <> 0) and (p <> finalwrite) do
-                  begin
-                  ptr := ref(bignodetable[p]);
-                  if (ptr^.oprnds[1] = varlev) and (ptr^.oprnds[2] = off) then
-                    written := true;
-                  p := ptr^.looplink;
-                  end {while} ;
-                simpleinvar := not written;
-                end {not loop var} ;
-              end {levop} ;
-            end {indxop} ;
-          end {varop} ;
-      end {simpleinvar} ;
-    {>>>}
+        end {copy} ;
 
-    procedure examineexpression(expression: nodeindex; hoistsubtrees: boolean); forward;
+      if ((ptr^.op = varop) or (ptr^.op = unsvarop)) and
+         not loopblk^.deadlevels[ptr^.oprnds[1]] then
+        begin
+        varlev := ptr^.oprnds[1];
+        off := ptr^.oprnds[2];
+
+        { A simple variable points to an indxop, which points to a levop}
+        ptr := ref(bignodetable[ptr^.oprnds[3]]);
+        if ptr^.op in [indxop, vindxop] then
+          begin
+          ptr := ref(bignodetable[ptr^.oprnds[1]]);
+            { Globalop's and localop's are converted to levop's by buildexpr }
+          if (ptr^.op = levop) then
+            begin
+            { First, check to see if this is the loop variable }
+            ptr := ref(bignodetable[other]);
+            if (level <> varlev) or (ptr^.oprnds[2] <> off) then
+              begin
+              { It isn't the loop variable, so now check to see if it's written within the loop }
+              p := loopblk^.writes;
+              written := false;
+              while not written and (p <> 0) and (p <> finalwrite) do
+                begin
+                ptr := ref(bignodetable[p]);
+                if (ptr^.oprnds[1] = varlev) and (ptr^.oprnds[2] = off) then
+                  written := true;
+                p := ptr^.looplink;
+                end {while} ;
+              simpleinvar := not written;
+              end {not loop var} ;
+            end {levop} ;
+          end {indxop} ;
+        end {varop} ;
+    end;
+    {>>>}
     {<<<}
-    function invariantoprnd(oprnd: nodeindex;
-                            var worthit: boolean;
-                            hoistsubtrees: boolean): boolean;
+    function invariantoprnd (oprnd: nodeindex; var worthit: boolean; hoistsubtrees: boolean): boolean;
     { Examine the oprnd indexed by oprnd and see if it is invariant in
       the current loop context.
       And hoistable.
@@ -4845,20 +4797,18 @@ var
       examines each operand of the node "oprnd" if all of it's
       subexpressions are invariant then returns true.
      }
-
-      var
-        i: 0..contextdepth; {induction var }
-        ptr: nodeptr; { for node access }
-        operands: operandarray; { local copy of oprnd field }
-        nodeoperands: nodeoperandarray; { local copy of nodeoprnd field }
-        copyfound: boolean; {true if this node was a copy node}
-        musthoist: boolean; {true if we must hoist common subexpression}
-        invar: boolean; { true if oprnd is invariant }
-        isvar: boolean; { true if op is var/unsvar }
-        blockhoist: boolean; {true if intermediate copies block hoisting}
-        hoist: array [1..3] of boolean; { true if subexpression hoistable}
-        aindxkludge: boolean; { true if aindx should be hoisted anyway}
-
+    var
+      i: 0..contextdepth; {induction var }
+      ptr: nodeptr; { for node access }
+      operands: operandarray; { local copy of oprnd field }
+      nodeoperands: nodeoperandarray; { local copy of nodeoprnd field }
+      copyfound: boolean; {true if this node was a copy node}
+      musthoist: boolean; {true if we must hoist common subexpression}
+      invar: boolean; { true if oprnd is invariant }
+      isvar: boolean; { true if op is var/unsvar }
+      blockhoist: boolean; {true if intermediate copies block hoisting}
+      hoist: array [1..3] of boolean; { true if subexpression hoistable}
+      aindxkludge: boolean; { true if aindx should be hoisted anyway}
 
       {<<<}
       function varisinvar: boolean;
@@ -4907,139 +4857,127 @@ var
         end {varisinvar} ;
       {>>>}
 
+    begin
+      ptr := ref(bignodetable[oprnd]);
 
-      begin {invariantoprnd}
+      worthit := false;
+      aindxkludge := false;
+      copyfound := false;
 
+      i := contextsp;
+      while (i > 0) and (ptr^.action = copy) do
+        begin
+        copyfound := true; {a few redundant assignments here won't hurt}
+        oprnd := ptr^.oldlink;
         ptr := ref(bignodetable[oprnd]);
+        i := i - 1;
+        end;
 
-        worthit := false;
-        aindxkludge := false;
-        copyfound := false;
+      invar := ptr^.action = copy;
+      blockhoist := copyfound and (ptr^.refcount > ptr^.copycount);
+      musthoist := hoistsubtrees and not copyfound and (contextsp > 0) and
+                   (ptr^.hoistedby <> loopblk) and (ptr^.refcount > 1);
 
-        i := contextsp;
-        while (i > 0) and (ptr^.action = copy) do
+      if ptr^.action = visit then
+        begin
+        if ((ptr^.op = paindxop) or (ptr^.op = aindxop)) and
+           not dominating and (oprnd <> currenthoist) then
           begin
-          copyfound := true; {a few redundant assignments here won't hurt}
-          oprnd := ptr^.oldlink;
-          ptr := ref(bignodetable[oprnd]);
-          i := i - 1;
+          { this is a kludge, it is ok to hoist array indexing as long as we make sure that the possible bad address is
+            not used until the actual reference point.
+            That is for "invarop" + array[invar] the addition operator cannot be hoisted but both operands can }
+          aindxkludge := true;
           end;
 
-        invar := ptr^.action = copy;
-        blockhoist := copyfound and (ptr^.refcount > ptr^.copycount);
-        musthoist := hoistsubtrees and not copyfound and (contextsp > 0) and
-                     (ptr^.hoistedby <> loopblk) and (ptr^.refcount > 1);
-
-        if ptr^.action = visit then
-          begin
-          if ((ptr^.op = paindxop) or (ptr^.op = aindxop)) and
-             not dominating and (oprnd <> currenthoist) then
-            begin
-                { this is a kludge, it is ok to hoist array indexing as
-                  long as we make sure that the possible bad address is
-                  not used until the actual reference point. That is for
-                  "invarop" + array[invar] the addition operator cannot
-                  be hoisted but both operands can.
-                }
-            aindxkludge := true;
-            end;
-
-          { see if this expression is not a hoistable type or unsafe }
-
-          if {was not ptr^.local and -- I don't know what this was supposed to
-              fix, but I know what it breaks; you really cannot hoist those.
-              a.o. no backend propagates correctly a key with a branchaccess
-              (see copyaccess); hoisting a call also seems kind of peculiar. }
+        { see if this expression is not a hoistable type or unsafe }
+        if {was not ptr^.local and -- I don't know what this was supposed to
+            fix, but I know what it breaks; you really cannot hoist those.
+            a.o. no backend propagates correctly a key with a branchaccess
+            (see copyaccess); hoisting a call also seems kind of peculiar. }
            (((ptr^.form = bools) and ptr^.relation) or
-           (ptr^.op in
-           [forindexop, forupchkop, fordnchkop, forerrchkop, moveop, cmoveop, movelit, lssop, leqop, neqop, eqop, gtrop,
-           geqop, lsslit, leqlit, eqlit, neqlit, gtrlit, geqlit, withop,
-           setfileop, setfileaddrop, setinput, newset, ptrchkop,
-                  { could do this if travrs kept better track get/put don't
-                   mark var as written }
-                  { could do bldset, setelt, setpair if genblk would make
-                    sure stack temp not popped during loop, someday... }
-           bldset, setelt, setpair, bldnil, bldfmt, inop, pushaddr, pushvalue,
-           pushcvalue, pushfinal, pushlitvalue, call, unscall, callparam,
-           copystackop, unscallparam, reserve, pushproc, rd, wr, switchstack,
-           closerangeop, definelazyop, filebufindrop, setbinfileop,
-           setbinfileop, sysfn, dummyargop]) or
-           (ptr^.op in [rangechkop, indxchkop]) and (nowwalking or
-           nowdebugging) or not dominating and
-           (ptr^.op in
-           [divop, stddivop, remop, quoop, kwoop, modop, stdmodop, rangechkop, indxchkop]) or
-           (sharedPtr^.switcheverplus[pic] and
-           (ptr^.op in [extop]))) then
-            examineexpression(oprnd, hoistsubtrees and not copyfound)
+           (ptr^.op in [forindexop, forupchkop, fordnchkop, forerrchkop, moveop,
+                        cmoveop, movelit, lssop, leqop, neqop, eqop, gtrop,
+                        geqop, lsslit, leqlit, eqlit, neqlit, gtrlit, geqlit, withop,
+                        setfileop, setfileaddrop, setinput, newset, ptrchkop,
+                        { could do this if travrs kept better track get/put don't mark var as written }
+                        { could do bldset, setelt, setpair if genblk would make sure stack temp not popped during loop, someday... }
+                        bldset, setelt, setpair, bldnil, bldfmt, inop, pushaddr, pushvalue,
+                        pushcvalue, pushfinal, pushlitvalue, call, unscall, callparam,
+                        copystackop, unscallparam, reserve, pushproc, rd, wr, switchstack,
+                        closerangeop, definelazyop, filebufindrop, setbinfileop,
+                        setbinfileop, sysfn, dummyargop]) or
+           (ptr^.op in [rangechkop, indxchkop]) and (nowwalking or nowdebugging) or not dominating and
+           (ptr^.op in [divop, stddivop, remop, quoop, kwoop, modop, stdmodop, rangechkop, indxchkop]) or
+           (sharedPtr^.switcheverplus[pic] and (ptr^.op in [extop]))) then
+          examineexpression (oprnd, hoistsubtrees and not copyfound)
+        else
+          begin
+          if (ptr^.hoistedby = loopblk) or (ptr^.hoistedby = root) then
+            invar := true
           else
-            begin
-            if (ptr^.hoistedby = loopblk) or (ptr^.hoistedby = root) then
-              invar := true
-            else
-              begin {must check}
-              if ptr^.op in [defforindexop, defforlitindexop, defunsforindexop,
-                 defunsforlitindexop] then
-                begin
-                { must determine if we are in this for loop or deeper }
-                ptr := ref(bignodetable[loopblk^.beginstmt]);
-                invar := ptr^.expr2 <> oprnd;
+            begin {must check}
+            if ptr^.op in [defforindexop, defforlitindexop, defunsforindexop,
+               defunsforlitindexop] then
+              begin
+              { must determine if we are in this for loop or deeper }
+              ptr := ref(bignodetable[loopblk^.beginstmt]);
+              invar := ptr^.expr2 <> oprnd;
+              end
+            else {ordinary operator}
+              begin
+              operands := ptr^.oprnds;
+              nodeoperands := ptr^.nodeoprnd;
+              isvar := (ptr^.op = varop) or (ptr^.op = unsvarop);
+              if not dominating and (ptr^.op = indrop) then
+                begin {uservar^ can't be invariant, internal indrs can be}
+                ptr := ref(bignodetable[ptr^.oprnds[1]]);
+                invar := (ptr^.action = visit) and (ptr^.op <> unsvarop);
                 end
-              else {ordinary operator}
+              else invar := true;
+              for i := 1 to 3 do
                 begin
-                operands := ptr^.oprnds;
-                nodeoperands := ptr^.nodeoprnd;
-                isvar := (ptr^.op = varop) or (ptr^.op = unsvarop);
-                if not dominating and (ptr^.op = indrop) then
-                  begin {uservar^ can't be invariant, internal indrs can be}
-                  ptr := ref(bignodetable[ptr^.oprnds[1]]);
-                  invar := (ptr^.action = visit) and (ptr^.op <> unsvarop);
-                  end
-                else invar := true;
-                for i := 1 to 3 do
+                hoist[i] := false;
+                if nodeoperands[i] then
                   begin
-                  hoist[i] := false;
-                  if nodeoperands[i] then
-                    begin
-                    if not invariantoprnd(operands[i], hoist[i],
-                                          hoistsubtrees and not copyfound) then
-                      invar := false;
-                    end;
+                  if not invariantoprnd(operands[i], hoist[i],
+                                        hoistsubtrees and not copyfound) then
+                    invar := false;
                   end;
+                end;
 
               { Varop's require additional checking to determine invariantness }
+              if invar and isvar then
+                invar := varisinvar;
 
-                if invar and isvar then invar := varisinvar;
-                    {
-                      If entire expression wasn't hoistable, hoist worthwhile
-                      invariant subexpressions.
-                    }
-                if hoistsubtrees and not copyfound then
-                  if not invar then
-                    begin
-                    for i := 1 to 3 do if hoist[i] then hoistit(operands[i]);
-                    end
-                  else if aindxkludge or musthoist then
-                    begin
-                    { can't let this go any further }
-                    invar := not aindxkludge;
-                    hoistit(oprnd);
-                    end;
-                worthit := invar and not (copyfound or musthoist);
-                end; {ordinary operator}
-              end; {else must check}
-            end; {hoistable}
-          end; {action = visit}
-        invariantoprnd := invar and not blockhoist;
-      end {invariantoprnd} ;
+              { If entire expression wasn't hoistable, hoist worthwhile invariant subexpressions }
+              if hoistsubtrees and not copyfound then
+                if not invar then
+                  begin
+                  for i := 1 to 3 do if hoist[i] then
+                    hoistit(operands[i]);
+                  end
+                else if aindxkludge or musthoist then
+                  begin
+                  { can't let this go any further }
+                  invar := not aindxkludge;
+                  hoistit (oprnd);
+                  end;
+              worthit := invar and not (copyfound or musthoist);
+              end; {ordinary operator}
+            end; {else must check}
+          end; {hoistable}
+        end; {action = visit}
+      invariantoprnd := invar and not blockhoist;
+    end;
     {>>>}
     {<<<}
     procedure examineexpression {expression: nodeindex} ;
-     { Examine the oprnd indexed by expression and find any invariant
-       subexpressions it contains and hoist them.
-       Examines each operand of the node "expression". For each
-       invariant it finds it hoists it. If the expressions has sequential
-       expressions connected to it each of those expressions are examined.
-     }
+    { Examine the oprnd indexed by expression and find any invariant
+      subexpressions it contains and hoist them.
+      Examines each operand of the node "expression". For each
+      invariant it finds it hoists it. If the expressions has sequential
+      expressions connected to it each of those expressions are examined.
+    }
     var
       i: 1..3; {induction var }
       ptr: nodeptr; { for node access }
@@ -5047,96 +4985,76 @@ var
       nodeoperands: nodeoperandarray; { local copy of nodeoprnd field }
       valuable: boolean; { true if invariant worth hoisting }
 
-    begin {examineexpression}
+    begin
       repeat
         ptr := ref(bignodetable[expression]);
         if ptr^.action = visit then
           begin
-
           operands := ptr^.oprnds;
           nodeoperands := ptr^.nodeoprnd;
-            {
-              this expression may contain several parallel expressions
-              which should be examined also
-            }
-          if ptr^.op < intop then expression := ptr^.slink
-          else expression := 0;
+
+          { this expression may contain several parallel expressions which should be examined also }
+          if ptr^.op < intop then
+            expression := ptr^.slink
+          else
+            expression := 0;
+
           for i := 1 to 3 do
-              {
-                Examine each operand to determine if expression is
-                invariant.  If it is hoist it.
-              }
+            { Examine each operand to determine if expression is invariant.  If it is hoist it }
             if nodeoperands[i] then
               begin
-              if invariantoprnd(operands[i], valuable, hoistsubtrees) then
-                if valuable and hoistsubtrees then hoistit(operands[i]);
+              if invariantoprnd (operands[i], valuable, hoistsubtrees) then
+                if valuable and hoistsubtrees then
+                  hoistit (operands[i]);
               end;
           end
-        else expression := 0;
+        else
+          expression := 0;
       until expression = 0;
-    end {examineexpression} ;
+    end;
     {>>>}
     {<<<}
-    procedure examineinvariant(var expression: nodeindex;
-                               previous: nodeindex);
-    {
-    Purpose:
-      Examine an expression found to be invariant in an inner loop and
+    procedure examineinvariant (var expression: nodeindex; previous: nodeindex);
+    { Examine an expression found to be invariant in an inner loop and
       hoist any part of it found to be invariant in this loop.
-
-    Inputs:
-      expression : invariant expression to be examined.
-      previous : index of previous invariant on precode list.
-
-    Outputs:
-      expression : 0 if entire expression was found to be invariant
-        otherwise unchanged.
-
-    Algorithm:
       Examine expression to determine if it is invariant. If entire
       expression is invariant insert in precode chain of loopblk,
       remove from precode chain of hoistedby and replace it with a
       copy operator.
       Otherwise link any invariant subexpressions found onto loopblk's
       precode list and insert the appropriate copy operations.
-
-    Sideeffects:
-      modified graph.
     }
+    var
+      ptr: nodeptr; { for access to node }
+      valuable: boolean;
 
-      var
-        ptr: nodeptr; { for access to node }
-        valuable: boolean;
-
-
-      begin {examineinvariantoprnd}
-
-        ptr := ref(bignodetable[expression]);
-        secondlevel := true;
-        if (ptr^.hoistedby = innerloop) and invariantoprnd(expression, valuable,
-                                                           false) then
+    begin
+      ptr := ref(bignodetable[expression]);
+      secondlevel := true;
+      if (ptr^.hoistedby = innerloop) and invariantoprnd (expression, valuable, false) then
+        begin
+        if valuable then
           begin
-          if valuable then
+          if previoushoist = 0 then
+            innerloop^.precode := nexthoist
+          else
             begin
-            if previoushoist = 0 then innerloop^.precode := nexthoist
-            else
-              begin
-              ptr := ref(bignodetable[previoushoist]);
-              ptr^.prelink := nexthoist;
-              end;
-            ptr := ref(bignodetable[expression]);
-            ptr^.prelink := 0;
-            hoistit(expression);
-            expression := 0;
-            end
-          end;
+            ptr := ref(bignodetable[previoushoist]);
+            ptr^.prelink := nexthoist;
+            end;
 
-        if expression <> 0 then {try to hoist bits of it, at least}
-          examineexpression(expression, true);
+          ptr := ref(bignodetable[expression]);
+          ptr^.prelink := 0;
+          hoistit (expression);
+          expression := 0;
+          end
+        end;
 
-        secondlevel := false;
+      if expression <> 0 then {try to hoist bits of it, at least}
+        examineexpression (expression, true);
 
-      end {examineinvariantoprnd} ;
+      secondlevel := false;
+    end;
     {>>>}
 
   begin
@@ -5596,9 +5514,10 @@ var
 
 begin
   if dumpFiles then
-    Writeln ('--- dumpTree ---');
     if dumpDetails and conditionsmatch then
       begin
+      Writeln ('--- dumpTree ---');
+
       { first dump from root to tail }
       blockp := root;
       while blockp <> nil do
@@ -5662,16 +5581,21 @@ procedure getintfile;
   groups all switches changed in a procedure to the front of that
   procedure.
 }
-
 begin
+  if (traceGetIntFile) then
+    writeln ('getintfile ', nextintcode:3, ' ', diskbufsize:3);
+
   while (sharedPtr^.currentswitch <= sharedPtr^.lastswitch) and
         (sharedPtr^.switches[sharedPtr^.currentswitch].mlow <= sharedPtr^.getlow) do
+    begin
     with sharedPtr^.switches[sharedPtr^.currentswitch] do
       begin
       sharedPtr^.switchcounters[s] := sharedPtr^.switchcounters[s] + v;
       mlow := sharedPtr^.putlow;
       sharedPtr^.currentswitch := sharedPtr^.currentswitch + 1;
       end;
+    end;
+
   sharedPtr^.getlow := sharedPtr^.getlow + 1;
 
   if nextintcode = diskbufsize then
@@ -5806,7 +5730,7 @@ begin
         end;
       {>>>}
       end;
-    genpseudo(map[this_op, none], len, 0, 0, 0, op1, op2, 0);
+    genpseudo (map[this_op, none], len, 0, 0, 0, op1, op2, 0);
 
     if newtravrsinterface then
       begin
@@ -5824,13 +5748,16 @@ procedure passdata;
 
 begin
   getintfile;
+
   while interSharedPtr^.interFile^.block[nextintcode].o <> endexpr do
     begin
+    Writeln ('inside passdata skipping');
     takeDataOp;
     getintfile;
     end;
 
-  getintfile; {skip the endexpr}
+  { skip the endexpr }
+  getintfile;
 end;
 {>>>}
 {<<<}
@@ -6180,18 +6107,16 @@ var
   end {bumpvarcount} ;
   {>>>}
   {<<<}
-  procedure dodefine(varp: nodeindex);
-  {
-      If within a loop, mark the var described by varp as written. Also for
-      a local variable update it's reference count and lifetime.
-      If in a loop:
-       If procedure call has not killed all var's at this level previously,
-       search the read list and remove this var, if it is found.  Then link
-       this node into this loop's write list.
-      If a local var, update refcount and lifetime fields.
+  procedure dodefine (varp: nodeindex);
+  { If within a loop, mark the var described by varp as written. Also for
+    a local variable update it's reference count and lifetime.
+    If in a loop:
+     If procedure call has not killed all var's at this level previously,
+     search the read list and remove this var, if it is found.  Then link
+     this node into this loop's write list.
+    If a local var, update refcount and lifetime fields.
+   add a new definition of a simple var located at varoffset at local level
   }
-   { add a new definition of a simple var located at varoffset at local level }
-
   var
     ptr, ptr1: nodeptr; { for access to bit map nodes }
     varlev: levelindex; { varaible level }
@@ -6200,22 +6125,20 @@ var
     now, prev: nodeindex; { for walking read chain }
     found: boolean; { loop exit flag }
 
-  begin {dodefine}
+  begin
     ptr := ref(bignodetable[varp]);
     varlev := ptr^.oprnds[1];
     varoffset := ptr^.oprnds[2];
-    ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
 
+    ptr1 := ref(bignodetable[ptr^.oprnds[3]]);
     if ptr1^.action = copy then
       ptr1 := ref(bignodetable[ptr1^.directlink]);
-
     varisparam := (ptr1^.oprnds[1] = localparamnode);
 
     ptr^.invariant := false;
-    ptr^.regcandidate := bumpvarcount(varlev, varisparam, varoffset);
+    ptr^.regcandidate := bumpvarcount (varlev, varisparam, varoffset);
 
     { if in a loop, add this to the writes for the loop, and kill the reads }
-
     if loopdepth > 0 then
       begin
       { if procedure call has killed off all reads, it's easy }
@@ -6224,14 +6147,13 @@ var
         with loopstack[loopdepth] do
           begin
           if ptr^.looplink <> 0 then
-            writeln('write looplink <> 0 var ', varp: 1, ' block ', sharedPtr^.blockref:
-                    1);
+            writeln ('write looplink <> 0 var ', varp: 1, ' block ', sharedPtr^.blockref: 1);
           ptr^.looplink := writes;
           writes := varp;
-          if lastwrite = 0 then lastwrite := varp;
+          if lastwrite = 0 then
+            lastwrite := varp;
 
           { on this level, kill any reads of this var }
-
           prev := 0;
           now := reads;
           while (now <> 0) do
@@ -6239,7 +6161,9 @@ var
             ptr := ref(bignodetable[now]);
             if varoffset = ptr^.oprnds[2] then
               found := (varlev = ptr^.oprnds[1])
-            else found := false;
+            else
+              found := false;
+
             if found then
               begin
               ptr^.invariant := false;
@@ -6248,7 +6172,8 @@ var
                 ptr1 := ref(bignodetable[prev]);
                 ptr1^.looplink := ptr^.looplink;
                 end
-              else reads := ptr^.looplink;
+              else
+                reads := ptr^.looplink;
               now := ptr^.looplink;
               { isolate the node }
               ptr^.looplink := 0;
@@ -6262,7 +6187,7 @@ var
           end; {with}
         end;
       end;
-  end; {dodefine}
+  end;
   {>>>}
   {<<<}
   procedure doreference(varp: nodeindex);
@@ -6479,9 +6404,9 @@ var
   end; {addpredsuccs}
   {>>>}
   {<<<}
-  procedure newblock(var b: basicblockptr; {resulting block node}
-                     predblock: basicblockptr; { predecessor block }
-                     largeblock: boolean { true if loophdr is possible} );
+  procedure newblock (var b: basicblockptr; {resulting block node}
+                      predblock: basicblockptr; { predecessor block }
+                      largeblock: boolean { true if loophdr is possible} );
   {<<<}
   { Make a new basic block node. The fields are all given default values.
     Since this is a new context "firstblock" in this context level is
@@ -6493,14 +6418,13 @@ var
   {>>>}
 
   var
-    l: levelindex; { induction var }
-
+    l: levelindex;
 
   begin
     if largeblock then
-      new(b, true)
+      new (b, true)
     else
-      new(b, false);
+      new (b, false);
 
     { default is that code will dominate if context dominates }
     b^.dominates := context[contextsp].dominates;
@@ -6508,7 +6432,6 @@ var
     currentblock := b;
 
     { now initialize to something reasonable ( re-init if dead ) }
-
     with b^ do
       begin
       bigblock := largeblock;
@@ -6527,6 +6450,7 @@ var
       successor := nil;
       predeccessor := nil;
       blocklabel := 0;
+
       if largeblock then
         begin
         willexecute := false;
@@ -6537,31 +6461,36 @@ var
         lastwrite := 0;
         for l := 0 to maxlevel do deadlevels[l] := false;
         end;
-      end; {with}
+      end;
 
-    if (predblock <> nil) then addpredsuccs(predblock, currentblock);
-  end {newblock} ;
+    if (predblock <> nil) then
+      addpredsuccs (predblock, currentblock);
+  end;
   {>>>}
   {<<<}
-  procedure newstmt(var p: nodeindex; {resulting statement node}
-                    s: stmthdrtype {type of node to make} );
+  procedure newstmt (var p: nodeindex; {resulting statement node}
+                     s: stmthdrtype {type of node to make} );
+  {<<<}
   { Make a new statement node of type "s".  The fields are initialized
     appropriately.  If this is the first statement in a new context
     level, the pointer "prestmt" in the context record is set to it
     to provide a place to link preconditions for the statement sequence
     in this context.
   }
+  {>>>}
   var
     ptr, ptr1: nodeptr; {used for access to node}
 
-  begin {newstmt}
-    if lastnode = tnodetablesize then abort(manynodes)
+  begin
+    if lastnode = tnodetablesize then
+      abort (manynodes)
     else
       begin
       lastnode := lastnode + 1;
       laststmtnode := lastnode;
       if lastnode > maxnodes then maxnodes := lastnode;
       p := lastnode;
+
       { if this is the first stmt for this basic block link it in }
       if currentblock^.beginstmt = 0 then
         begin
@@ -6576,6 +6505,7 @@ var
         ptr^.nextstmt := lastnode;
         currentlaststmt := lastnode;
         end;
+
       ptr := ref(bignodetable[p]);
       with ptr^ do
         begin
@@ -6583,18 +6513,16 @@ var
         srcfileindx := 0;
         nextstmt := 0;
         stmtkind := s;
-        if s in
-           [whilehdr, rpthdr, ifhdr, foruphdr, fordnhdr, withhdr, casehdr,
-           loophdr, simplehdr, syscallhdr, gotohdr, cforhdr, loopbrkhdr,
-           cswbrkhdr, loopconthdr, returnhdr] then
+        if s in [whilehdr, rpthdr, ifhdr, foruphdr, fordnhdr, withhdr, casehdr, loophdr,
+                 simplehdr, syscallhdr, gotohdr, cforhdr, loopbrkhdr, cswbrkhdr, loopconthdr, returnhdr] then
           begin
-
           getintfile;
           srcfileindx := getintfileint;
 
           laststmt := laststmt + 1;
           stmtno := laststmt;
 
+          {<<<}
           { This little hack is needed if the entire procedure body is
             deadcoded out and if the first statement of the procedure
             has the source file index, then the index will be lost.
@@ -6618,6 +6546,7 @@ var
             the first statement of a block is a simple statement, the
             entire body won't be removed.
           }
+          {>>>}
           if s <> simplehdr then
             begin
             ptr1 := ref(bignodetable[p - 1]);
@@ -6635,6 +6564,7 @@ var
 
         case s of
           blkhdr:
+            {<<<}
             begin
             stmtno := laststmt;
             laststmt := laststmt + 1;
@@ -6663,7 +6593,9 @@ var
               intlevelrefs := sharedPtr^.proctable[procref].intlevelrefs;
               end;
             end;
+            {>>>}
           casehdr:
+            {<<<}
             begin
             selector := 0;
             casedefptr := nil;
@@ -6672,7 +6604,9 @@ var
             lowestlabel := 0;
             highestlabel := 0;
             end;
+            {>>>}
           caselabhdr:
+            {<<<}
             begin
             caselabellow := 0;
             caselabelhigh := 0;
@@ -6680,8 +6614,10 @@ var
             stmtlabel := 0;
             orderedlink := 0;
             end;
+            {>>>}
           whilehdr, rpthdr, ifhdr, foruphdr, fordnhdr, withhdr, simplehdr,
           syscallhdr, untilhdr, cforhdr, cforbothdr, nohdr:
+            {<<<}
             begin
             expr1 := 0;
             expr2 := 0;
@@ -6689,18 +6625,21 @@ var
             trueblock := nil;
             falseblock := nil;
             end;
+            {>>>}
           loopbrkhdr, loopconthdr, swbrkhdr, cswbrkhdr: targblock := nil;
           gotohdr, labelhdr:
+            {<<<}
             begin
             labelno := 0;
             nonlocalref := false;
             labellevel := 0;
             end;
-          otherwise
-          end {case}
-        end; {else}
-      end; {with}
-  end {newstmt} ;
+            {>>>}
+          otherwise;
+          end
+        end;
+      end;
+  end;
   {>>>}
   {<<<}
   procedure newexprnode(var n: nodeindex {resulting new node} );
@@ -6710,7 +6649,8 @@ var
     p: nodeptr; {used for access to node}
 
   begin
-    if lastnode = tnodetablesize then abort(manynodes)
+    if lastnode = tnodetablesize then
+      abort(manynodes)
     else
       begin
       lastnode := lastnode + 1;
@@ -7270,28 +7210,29 @@ var
     i: 0..contextdepth; {induction var on context levels}
 
     {<<<}
-    procedure clobber(n: nodeindex {start of node chain} );
+    procedure clobber (n: nodeindex {start of node chain} );
     { Scan the chain of nodes beginning with "n" and invalidate any with the "mustinvalidate" flag set }
 
-      var
-        p: nodeptr; {used for access to nodes}
+    var
+      p: nodeptr; {used for access to nodes}
 
-      begin
-        while n <> 0 do
+    begin
+      while n <> 0 do
+        begin
+        p := ref(bignodetable[n]);
+        with p^ do
           begin
-          p := ref(bignodetable[n]);
-          with p^ do
+          if valid and mustinvalidate then
             begin
-            if valid and mustinvalidate then
-              begin
-              if deepestvalid > contextsp then deepestvalid := contextsp;
-              valid := false;
-              mustinvalidate := false;
-              end;
-            n := slink;
+            if deepestvalid > contextsp then
+              deepestvalid := contextsp;
+            valid := false;
+            mustinvalidate := false;
             end;
+          n := slink;
           end;
-      end {clobber} ;
+        end;
+    end;
     {>>>}
 
   begin
@@ -7372,17 +7313,17 @@ var
   }
     {<<<}
     procedure buildstmt;
-    { Build a single statement and link it on the list defined by
-      currentblock^.beginstmt and currentlaststmt.
-      "beginstmt" is intialized to zero prior to the first
-      call to this procedure, and will be left pointing to the first
-      statement built.  "currentlaststmt" will always point to the last
-      statement added to the list, to simplify adding statements to the end.
+    { Build a single statement and link it on the list defined by currentblock^.beginstmt and currentlaststmt.
+      "beginstmt" is intialized to zero prior to the first call to this procedure,
+      and will be left pointing to the first statement built.
+      "currentlaststmt" will always point to the last statement added to the list,
+      to simplify adding statements to the end.
 
-      The first statement in the intfile is examined, the proper internal
-      procedure called to build that statement type, and the result is
-      linked on the list.  This set of procedures is, of course, highly recursive }
-
+      The first statement in the intfile is examined,
+      the proper internal procedure called to build that statement type,
+      and the result is linked on the list.
+      This set of procedures is, of course, highly recursive
+    }
     var
       thisstmt: nodeindex; {statement being built}
       ptr: nodeptr; { for access to statement node }
@@ -8641,61 +8582,54 @@ var
       { Build a node for a variable reference.  The length of the variable is
         read from the file, then level and displacement are read and made into
         operands 1 and 2.  These are used as an identification for the
-        variable when specific variables need to be invalidated, or for checking
-        for the target.
-
+        variable when specific variables need to be invalidated, or for checking for the target.
         If the variable is the same as the target, it is marked as a target node
-        and the "mustinvalidate" bit is set to invalidate this node at the next
-        update time.
-        If the variable has a known value we substitute a reference to it's
-        value which is much cheaper.
+        and the "mustinvalidate" bit is set to invalidate this node at the next update time.
+        If the variable has a known value we substitute a reference to it's value which is much cheaper.
       }
+      var
+        stackp: nodeptr; {used to access top of stack node}
+        i: oprndindex; { induction var }
 
-        var
-          stackp: nodeptr; {used to access top of stack node}
-          i: oprndindex; { induction var }
+      begin
+        getintfile;
+        n.len := getintfileint;
+        buildintoprnds(2);
+        n.oprndlist[3] := stack[sp];
 
+        getintfile;
+        unique := false;
+        n.ownvar := loophole(boolean, getintfileint);
+        sp := sp - 1;
+        insertnormal;
+        stackp := ref(bignodetable[stack[sp].p]);
 
-        begin {buildvar}
-          getintfile;
-          n.len := getintfileint;
-          buildintoprnds(2);
-          n.oprndlist[3] := stack[sp];
-          getintfile;
-          unique := false;
-          n.ownvar := loophole(boolean, getintfileint);
-          sp := sp - 1;
-          insertnormal;
-          stackp := ref(bignodetable[stack[sp].p]);
-
-          { if the var has a value assigned use that instead }
-          {travrs does not yet handle extended range variables...}
-          if stackp^.hasvalue and ((n.op = varop) or
-             (stackp^.value > 0)) then
+        { if the var has a value assigned use that instead }
+        {travrs does not yet handle extended range variables...}
+        if stackp^.hasvalue and ((n.op = varop) or (stackp^.value > 0)) then
+          begin
+          { should tell some one that operand is now a literal and can be folded. Future plans... }
+          n.op := intop;
+          n.len := sharedPtr^.targetintsize;
+          n.oprndlist[1].i := stackp^.value;
+          n.oprndlist[2].i := 0;
+          n.oprndlist[3].i := 0;
+          for i := 1 to 3 do
             begin
-            { should tell some one that operand is now a literal
-              and can be folded. Future plans...
-            }
-            n.op := intop;
-            n.len := sharedPtr^.targetintsize;
-            n.oprndlist[1].i := stackp^.value;
-            n.oprndlist[2].i := 0;
-            n.oprndlist[3].i := 0;
-            for i := 1 to 3 do
-              begin
-              n.oprndlist[i].litflag := true;
-              n.oprndlist[i].relation := false;
-              end;
-            sp := sp - 1;
-            insertnode(1);
-            end
-          else
-            begin
-            unique := n.oprndlist[3].uniqueoprnd;
-            if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
-              doreference(stack[sp].p);
+            n.oprndlist[i].litflag := true;
+            n.oprndlist[i].relation := false;
             end;
-        end {buildvarnode} ;
+          sp := sp - 1;
+          insertnode(1);
+          end
+
+        else
+          begin
+          unique := n.oprndlist[3].uniqueoprnd;
+          if not (deadcode and (removedeadcode in sharedPtr^.genset)) then
+            doreference (stack[sp].p);
+          end;
+      end;
       {>>>}
       {<<<}
       procedure buildnewvarnode;
@@ -8703,17 +8637,14 @@ var
         to the tree builder that this is going to be an assignment target,
         and will be changed to a "varop" at the next update time.  In the mean
         time, references to the variable of the same name can be optimized.
-
         All variables which match in level and displacement will have their
         "mustinvalidate" flag set so they will become invalid at the
         next update.
       }
-
-        var
-          j: contextindex; {induction var on levels}
-          stackp: nodeptr; {used to access top of stack node}
-          p: nodeptr; { for access to nodes }
-
+      var
+        j: contextindex; {induction var on levels}
+        stackp: nodeptr; {used to access top of stack node}
+        p: nodeptr; { for access to nodes }
 
         {<<<}
         procedure clobber(n1: nodeindex {start of chain} );
@@ -8747,30 +8678,34 @@ var
           end {clobber} ;
         {>>>}
 
-        begin
-          { if dead part of tree don't recognize this }
-          if (deadcode and (removedeadcode in sharedPtr^.genset)) then
-            begin
-            n.op := varop;
-            buildvarnode;
-            end
-          else
-            begin
-            getintfile;
-            n.len := getintfileint;
-            buildintoprnds(2);
-            n.oprndlist[3] := stack[sp];
-            getintfile;
-            unique := false;
-            n.ownvar := loophole(boolean, getintfileint);
-            sp := sp - 1;
-            insertnormal;
-            dodefine(stack[sp].p);
-            for j := contextsp downto context[contextsp].searchlevel do
-              clobber(context[j].opmap[0]);
-            newvarcount := newvarcount + 1;
-            end;
-        end {buildnewvarnode} ;
+      begin
+        { if dead part of tree don't recognize this }
+        if (deadcode and (removedeadcode in sharedPtr^.genset)) then
+          begin
+          n.op := varop;
+          buildvarnode;
+          end
+        else
+          begin
+          getintfile;
+          n.len := getintfileint;
+          buildintoprnds (2);
+          n.oprndlist[3] := stack[sp];
+
+          getintfile;
+          unique := false;
+          n.ownvar := loophole (boolean, getintfileint);
+
+          sp := sp - 1;
+          insertnormal;
+          dodefine (stack[sp].p);
+
+          for j := contextsp downto context[contextsp].searchlevel do
+            clobber (context[j].opmap[0]);
+
+          newvarcount := newvarcount + 1;
+          end;
+      end;
       {>>>}
       {<<<}
       procedure builddeffor;
@@ -9640,9 +9575,13 @@ var
       begin
         with this_case^ do
           begin
-          if lastnode = tnodetablesize then abort(manynodes)
-          else lastnode := lastnode + 1;
-          if lastnode > maxnodes then maxnodes := lastnode;
+          if lastnode = tnodetablesize then
+            abort (manynodes)
+          else
+            lastnode := lastnode + 1;
+          if lastnode > maxnodes then
+            maxnodes := lastnode;
+
           ptr := ref(bignodetable[lastnode]);
           with ptr^ do
             begin
@@ -9966,7 +9905,8 @@ var
               incref(caseexpr, 1);
             end;
 
-          if lastnode = tnodetablesize then abort(manynodes)
+          if lastnode = tnodetablesize then
+            abort (manynodes)
           else
             begin
             lastnode := lastnode + 1;
@@ -11200,17 +11140,23 @@ var
         switchbreak: buildsbreak;
         begdata: passdata;
         blksize:
+          {<<<}
           begin
           while deadcode do decr_deadcount;
+
           getintfile;
           final_block_size := getintfileint;
           getintfile;
+
           end;
+          {>>>}
         otherwise
+          {<<<}
           begin
           writeln ('travrs: unhandled stmt operator #', ord(interSharedPtr^.interFile^.block[nextintcode].s): 0);
           abort (builderror);
           end;
+          {>>>}
         end;
     end;
     {>>>}
@@ -11247,6 +11193,7 @@ var
 
   begin
     rootnode^.visited := visitstate;
+
     succnode := rootnode^.successor;
     while succnode <> nil do
       begin
@@ -11254,6 +11201,7 @@ var
         searchdfo (succnode^.suc, prevblock);
       succnode := succnode^.snext;
       end;
+
     rootnode^.dfolist := prevblock;
     prevblock := rootnode;
   end;
@@ -11265,13 +11213,13 @@ begin
 
   { tail is allocated large since it is handed out when newblock
     sees that we are building a deadblock therefore it must be full size }
-  newblock(tail, nil, true);
-  newblock(retblock, nil, false);
+  newblock (tail, nil, true);
+  newblock (retblock, nil, false);
   retblock^.blocklabel := newlabel;
-  newblock(root, nil, false);
-  newstmt(temp, blkhdr);
-  buildstmtlist(endblk, retblock);
-  addpredsuccs(retblock, tail);
+  newblock (root, nil, false);
+  newstmt (temp, blkhdr);
+  buildstmtlist (endblk, retblock);
+  addpredsuccs (retblock, tail);
 
   { kill any stmts from deadcode hooked to tail }
   with tail^ do
@@ -11297,11 +11245,13 @@ begin
   { reverse the state of visited blocks }
   visitstate := not visitstate; { true}
   retblock^.visited := visitstate;
-  searchdfo(root, lastblock);
+  searchdfo (root, lastblock);
   tail^.visited := visitstate;
   retblock^.dfolist := tail;
+
   b := root;
-  while b^.dfolist <> nil do b := b^.dfolist;
+  while b^.dfolist <> nil do
+    b := b^.dfolist;
   b^.dfolist := retblock;
 
   { reverse the state of visited blocks }
@@ -11313,7 +11263,7 @@ begin
     begin
     templink := locallabels;
     locallabels := locallabels^.link;
-    dispose(templink);
+    dispose (templink);
     end;
 end;
 {>>>}
@@ -11678,8 +11628,14 @@ begin
 
   while interSharedPtr^.interFile^.block[nextintcode].s <> endall do
     begin
+    if (traceBlock) then
+      Writeln ('start of block');
     while interSharedPtr^.interFile^.block[nextintcode].s = begdata do
+      begin
+      if (traceBlock) then
+        Writeln ('passdata skipping');
       passdata;
+      end;
 
     if interSharedPtr^.interFile^.block[nextintcode].s <> endall then
       begin
@@ -11691,7 +11647,13 @@ begin
         dumptree;
       walk;
       end;
+
+    if (traceBlock) then
+      Writeln ('end of block');
     end;
+
+  if (traceBlock) then
+    Writeln ('end of blocks');
 
   if dumpPseudo then
     {<<<  close pseudo file}

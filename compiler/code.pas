@@ -55,8 +55,6 @@
 }
 {>>>}
 {$nomain}
-const
-  targetopsys = vdos;
 {<<<  includes}
 %include 'common.def';
 %include 'pseudo.def';
@@ -64,6 +62,10 @@ const
 %include 'main.def';
 %include 'code.def';
 {>>>}
+const
+  targetopsys = vdos;
+  traceNode = false;
+
 {<<<}
 const
   nodesperblock = codemaxnodeinblock; {nodes per physical file block - 1}
@@ -497,8 +499,8 @@ type
     See the Program Logic Manual for an explanation of the uses of these fields
   }
   {>>>}
-  nodeindex = 0..cnodetablesize; {used to reference a node by number}
-  nodeptr = ^node; {used to reference the node contents}
+  nodeindex = 0..cnodetablesize; { used to reference a node by number}
+  nodeptr = ^node;               { used to reference the node contents}
   {<<<}
   nodekinds = (instnode, oprndnode, labelnode, labeldeltanode, relnode,
                adconnode {Apollo only}, sectionnode {Apollo only}, errornode,
@@ -1185,12 +1187,21 @@ end;
 {<<<}
 procedure newnode;
 { Increment "lastnode", checking for instruction table overflow.  Sets
-"lastptr" using cwriteaccess, to allow caller to easily fill in the node.
+  "lastptr" using cwriteaccess, to allow caller to easily fill in the node
 }
-begin {newnode}
+begin
   lastnode := lastnode + 1;
+
+  if (traceNode)
+    writeln ('newnode ', lastnode);
+  {
   if lastnode = cnodetablesize then
-    abort (manynodes)
+  }
+  if lastnode >= 1500 then
+    begin
+    writeln ('too many node ', lastnode);
+    abort (manynodes);
+    end
   else
     lastptr := ref(bignodetable[lastnode]);
 end;
@@ -1316,7 +1327,7 @@ procedure geninst (i: insttype; l: operandrange; olen: datarange);
   All other fields not specified are cleared to zero, and will normally be
   filled in by the calling procedure.  In particular, tempcount is set to zero
 }
-begin {geninst}
+begin
   newnode;
   with lastptr^ do
     begin
@@ -1328,7 +1339,7 @@ begin {geninst}
     oprndcount := l;
     oprndlength := olen;
     end;
-end {geninst} ;
+end;
 {>>>}
 {<<<}
 procedure genoprnd (o: operand);
@@ -1344,8 +1355,8 @@ begin
 
   if o.m = bitindexed then
     begin
-    write('bitindexed operand at node ', lastnode: 1);
-    abort(inconsistent);
+    write ('bitindexed operand at node ', lastnode: 1);
+    abort (inconsistent);
     end;
 
   with lastptr^ do
@@ -1411,7 +1422,7 @@ end;
 procedure genlabel (l: integer);
 {generate a labelnode to label "l" }
 
-begin {genlabel}
+begin
   newnode;
   with lastptr^ do
     begin
@@ -1423,7 +1434,7 @@ begin {genlabel}
     brnodelink := 0;
     proclabel := false;
     end;
-end {genlabel} ;
+end;
 {>>>}
 {<<<}
 procedure genbr (inst: insttype; l: integer);
@@ -1449,8 +1460,9 @@ procedure genrelbr (inst: insttype; reladd: integer);
   The relative argument is the number of instructions to skip over,
   not nodes, to simplify peephole optimization routines.
 }
-begin {genrelbr}
+begin
   geninst(inst, 1, 0);
+
   newnode;
   with lastptr^ do
     begin
@@ -1458,7 +1470,7 @@ begin {genrelbr}
     kind := relnode;
     distance := reladd;
     end;
-end {genrelbr} ;
+end;
 {>>>}
 {<<<}
 procedure gendb (i: insttype; regkey: keyindex; l: integer);
@@ -1945,11 +1957,16 @@ begin
     if nextlabel = labeltablesize then abort(manylabels)
     else nextlabel := nextlabel + 1;
     t := nextlabel;
+
     labelnextnode := true;
     labeltable[0].nodelink := 0;
-    while labeltable[t - 1].nodelink > lastnode do t := t - 1;
+
+    while labeltable[t - 1].nodelink > lastnode do
+      t := t - 1;
+
     for t1 := nextlabel downto t + 1 do
       labeltable[t1] := labeltable[t1 - 1];
+
     with labeltable[t] do
       begin
       labno := l;
@@ -2742,6 +2759,9 @@ begin
       write ('unexpected end of stringtable ');
       abort (inconsistent);
       end;
+
+    { return result, even though we are never reached }
+    getstringfile := 0;
     end
   else
     getstringfile := sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile];
@@ -4502,18 +4522,18 @@ procedure getnextnode;
       currnode := currnode + 1;
       n := ref(bignodetable[currnode]);
       end
-  end; {getnextnode}
+  end;
 {>>>}
 {<<<}
 procedure lookahead (n: integer);
 { Return with "p" pointing "n" nodes away.  Similar to "getnextnode" }
 
-  begin {lookahead}
-    if currnode + n > lastnode then
-      puterror(endofnodes)
-    else
-      p := ref(bignodetable[currnode + n]);
-  end; {lookahead}
+begin
+  if currnode + n > lastnode then
+    puterror (endofnodes)
+  else
+    p := ref(bignodetable[currnode + n]);
+end;
 {>>>}
 {<<<}
 procedure getoperand;
@@ -8918,12 +8938,10 @@ procedure PutCode;
   case statement which does the formatting necessary for any unusual
   instructions (of which there are an unfortunate number).
 }
-
 var
   i, j: integer;
   s: longname;
-  swbegkludgecount: unsignedint; {Do we need to put out obnoxious 'swbeg'
-                                  assembly pseudo-op? Non-zero value = 'yes'}
+  swbegkludgecount: unsignedint; {Do we need to put out obnoxious 'swbeg' assembly pseudo-op? Non-zero value = 'yes'}
 
 begin
   newsection(codesect);
@@ -14150,83 +14168,83 @@ procedure cmpsetinclusion(left, right: keyindex {operands} );
 {>>>}
 {<<<}
 procedure cmpstructx(brinst: insttype {branch condition} );
-
 { Generate code for structured variable comparison.  Only strings may be
   compared for other than equality, but at this level we don't care.
 }
+var
+  loop: boolean; {true if loop actually generated}
+  pieces: integer; {number of loop cores to generate inline}
+  i: integer; {induction var for building inline code}
+  lab: integer; {exit label for the loop}
+  b: insttype; {computed brinst, possibly reverse[brinst]}
+  oldlastbranch: nodeindex; {old value of context[contextsp].lastbranch}
 
-  var
-    loop: boolean; {true if loop actually generated}
-    pieces: integer; {number of loop cores to generate inline}
-    i: integer; {induction var for building inline code}
-    lab: integer; {exit label for the loop}
-    b: insttype; {computed brinst, possibly reverse[brinst]}
-    oldlastbranch: nodeindex; {old value of context[contextsp].lastbranch}
-
-
+  {<<<}
   procedure onecmp;
 
-
-    begin
-      if keytable[loopsrc].oprnd.m = dreg then
-        gen2(cmp, piecesize, loopdst, loopsrc)
-      else if keytable[loopdst].oprnd.m = dreg then
-        begin
-        gen2(cmp, piecesize, loopsrc, loopdst);
-        b := reverse[brinst];
-        end
-      else if keytable[loopsrc].oprnd.m <> autoi then
-        begin
-        gen2(move, piecesize, loopsrc, tempkey);
-        gen2(cmp, piecesize, loopdst, tempkey);
-        end
-      else if keytable[loopdst].oprnd.m <> autoi then
-        begin
-        gen2(move, piecesize, loopdst, tempkey);
-        gen2(cmp, piecesize, loopsrc, tempkey);
-        b := reverse[brinst];
-        end
-      else gen2(cmpm, piecesize, loopdst, loopsrc);
-    end {onecmp} ;
-
-
-  begin {cmpstructx}
-    unpackboth(1);
-    len := min(keytable[left].len, keytable[right].len);
-    b := brinst;
-    lab := sharedPtr^.lastlabel;
-    sharedPtr^.lastlabel := sharedPtr^.lastlabel - 1;
-    oldlastbranch := context[contextsp].lastbranch;
-    context[contextsp].lastbranch := cnodetablesize;
-    initloop(left, right, right, pseudoSharedPtr^.pseudoinst.len, 2, loop, pieces);
-    context[contextsp].lastbranch := lastnode + 1;
-
-    if not ((keytable[loopsrc].oprnd.m = autoi) and
-            (keytable[loopdst].oprnd.m = autoi)) and
-       not ((keytable[loopsrc].oprnd.m = dreg) or
-            (keytable[loopdst].oprnd.m = dreg)) then
-      settempdreg(piecesize, getdreg);
-
-    onlyreference(loopsrc);
-    onlyreference(loopdst);
-    onecmp;
-
-    for i := 2 to pieces do
+  begin
+    if keytable[loopsrc].oprnd.m = dreg then
+      gen2(cmp, piecesize, loopdst, loopsrc)
+    else if keytable[loopdst].oprnd.m = dreg then
       begin
-      genbr(bne, lab);
-      bumploop(dbne, loop);
-      onecmp;
-      end;
+      gen2(cmp, piecesize, loopsrc, loopdst);
+      b := reverse[brinst];
+      end
+    else if keytable[loopsrc].oprnd.m <> autoi then
+      begin
+      gen2(move, piecesize, loopsrc, tempkey);
+      gen2(cmp, piecesize, loopdst, tempkey);
+      end
+    else if keytable[loopdst].oprnd.m <> autoi then
+      begin
+      gen2(move, piecesize, loopdst, tempkey);
+      gen2(cmp, piecesize, loopsrc, tempkey);
+      b := reverse[brinst];
+      end
+    else gen2(cmpm, piecesize, loopdst, loopsrc);
+  end;
+  {>>>}
 
-    if pieces = 1 then bumploop(dbne, loop);
+begin
+  unpackboth(1);
+  len := min(keytable[left].len, keytable[right].len);
+  b := brinst;
+  lab := sharedPtr^.lastlabel;
 
-    finishloop;
+  sharedPtr^.lastlabel := sharedPtr^.lastlabel - 1;
 
-    if pieces > 1 then definelabel(lab);
+  oldlastbranch := context[contextsp].lastbranch;
+  context[contextsp].lastbranch := cnodetablesize;
 
-    context[contextsp].lastbranch := oldlastbranch;
-    setbr(b);
-  end {cmpstructx} ;
+  initloop (left, right, right, pseudoSharedPtr^.pseudoinst.len, 2, loop, pieces);
+  context[contextsp].lastbranch := lastnode + 1;
+
+  if not ((keytable[loopsrc].oprnd.m = autoi) and (keytable[loopdst].oprnd.m = autoi)) and
+     not ((keytable[loopsrc].oprnd.m = dreg) or (keytable[loopdst].oprnd.m = dreg)) then
+    settempdreg (piecesize, getdreg);
+
+  onlyreference (loopsrc);
+  onlyreference (loopdst);
+  onecmp;
+
+  for i := 2 to pieces do
+    begin
+    genbr (bne, lab);
+    bumploop (dbne, loop);
+    onecmp;
+    end;
+
+  if pieces = 1 then
+    bumploop (dbne, loop);
+
+  finishloop;
+
+  if pieces > 1 then
+    definelabel (lab);
+
+  context[contextsp].lastbranch := oldlastbranch;
+  setbr(b);
+end;
 {>>>}
 
 {<<<}
@@ -14816,20 +14834,21 @@ procedure jumpx{lab: integer; (label to jump to)
 {>>>}
 {<<<}
 procedure jumpcond{inv: boolean (invert the sense of the branch) };
-
 { Used to generate a jump true or jump false on a condition.  If the key is
   not already a condition, it is forced to a "bne", as it is a boolean
   variable.
 }
+begin
+  forcebranch (right, bne, bne);
 
+  if inv then
+    genbr(invert[keytable[key].brinst], pseudoSharedPtr^.pseudoinst.oprnds[1])
+  else
+    genbr(keytable[key].brinst, pseudoSharedPtr^.pseudoinst.oprnds[1]);
 
-  begin
-    forcebranch(right, bne, bne);
-    if inv then genbr(invert[keytable[key].brinst], pseudoSharedPtr^.pseudoinst.oprnds[1])
-    else genbr(keytable[key].brinst, pseudoSharedPtr^.pseudoinst.oprnds[1]);
-    if findlabel(pseudoSharedPtr^.pseudoinst.oprnds[1]) = 0 then
-      context[contextsp].lastbranch := lastnode;
-  end {jumpcond} ;
+  if findlabel(pseudoSharedPtr^.pseudoinst.oprnds[1]) = 0 then
+    context[contextsp].lastbranch := lastnode;
+end;
 {>>>}
 {>>>}
 {<<<  Pascal label and goto routines}
@@ -16431,7 +16450,7 @@ procedure clearcontext;
 
     context[contextsp].clearflag := true;
     context[contextsp].lastbranch := lastnode;
-  end {clearcontext} ;
+  end;
 {>>>}
 {<<<}
 procedure enterloop;
@@ -16521,8 +16540,7 @@ procedure enterloop;
         end; {with loopstack}
       context[contextsp].clearflag := true;
       context[contextsp].lastbranch := lastnode;
-      context[contextsp].firstnode := lastnode; { prevent popping stack
-                                                  in loop }
+      context[contextsp].firstnode := lastnode; { prevent popping stack in loop }
       end
     else
       begin
@@ -19708,30 +19726,32 @@ procedure sysfnrealx;
   procedure callrealfn(libroutine: libroutines {system routine number} );
   { Call a system real arithmetic function }
 
-    begin {callrealfn}
-      makestacktarget;
-      aligntemps;
-      address(left);
-      newtemp(len);
-      genblockmove(left, stackcounter, long);
+  begin
+    makestacktarget;
+    aligntemps;
 
-      if len = quad then
-        case libroutine of
-          libarctan: libroutine := libdarctan;
-          libcos: libroutine := libdcos;
-          libexp: libroutine := libdexp;
-          libln: libroutine := libdln;
-          libsin: libroutine := libdsin;
-          libsqrt: libroutine := libdsqrt;
-          end;
-      callandpop(libroutine, 1);
+    address (left);
+    newtemp (len);
+    genblockmove (left, stackcounter, long);
 
-      with keytable[stackcounter] do
-        begin
-        tempflag := true;
-        instmark := lastnode + 1;
+    if len = quad then
+      case libroutine of
+        libarctan: libroutine := libdarctan;
+        libcos: libroutine := libdcos;
+        libexp: libroutine := libdexp;
+        libln: libroutine := libdln;
+        libsin: libroutine := libdsin;
+        libsqrt: libroutine := libdsqrt;
         end;
-    end {callrealfn} ;
+    callandpop (libroutine, 1);
+
+    with keytable[stackcounter] do
+      begin
+      tempflag := true;
+      instmark := lastnode + 1;
+      end;
+
+  end;
   {>>>}
   {<<<}
   procedure square_real;
@@ -19844,56 +19864,59 @@ procedure sysfnrealx;
     end; {fsincospt2}
   {>>>}
 
-  begin {sysfnrealx}
-    if mc68881 then
-      case loophole(standardids, pseudoSharedPtr^.pseudoinst.oprnds[2]) of
-        fsincos2id: fsincos2fn;
-        sinid, cosid: fsincospt2;
-        absid: fpfunction(fabs);
-        expid: fpfunction(fetox);
-        lnid: fpfunction(flogn);
-        sqrtid: fpfunction(fsqrt);
-        arctanid: fpfunction(fatan);
-        sqrid: square_real;
-        timeid: timefn;
+ begin
+   if mc68881 then
+     case loophole(standardids, pseudoSharedPtr^.pseudoinst.oprnds[2]) of
+       fsincos2id: fsincos2fn;
+       sinid, cosid: fsincospt2;
+       absid: fpfunction(fabs);
+       expid: fpfunction(fetox);
+       lnid: fpfunction(flogn);
+       sqrtid: fpfunction(fsqrt);
+       arctanid: fpfunction(fatan);
+       sqrid: square_real;
+       timeid: timefn;
 
-        facosid: fpfunction(facos);
-        fasinid: fpfunction(fasin);
-        fatanid: fpfunction(fatan);
-        fatanhid: fpfunction(fatanh);
-        fcoshid: fpfunction(fcosh);
-        fetoxm1id: fpfunction(fetoxm1);
-        fgetexpid: fpfunction(fgetexp);
-        fgetmanid: fpfunction(fgetman);
-        flog10id: fpfunction(flog10);
-        flog2id: fpfunction(flog2);
-        flognp1id: fpfunction(flognp1);
-        fsinhid: fpfunction(fsinh);
-        ftanid: fpfunction(ftan);
-        ftanhid: fpfunction(ftanh);
-        ftentoxid: fpfunction(ftentox);
-        ftwotoxid: fpfunction(ftwotox);
-        fmovecrid: fmovecrfn;
+       facosid: fpfunction(facos);
+       fasinid: fpfunction(fasin);
+       fatanid: fpfunction(fatan);
+       fatanhid: fpfunction(fatanh);
+       fcoshid: fpfunction(fcosh);
+       fetoxm1id: fpfunction(fetoxm1);
+       fgetexpid: fpfunction(fgetexp);
+       fgetmanid: fpfunction(fgetman);
+       flog10id: fpfunction(flog10);
+       flog2id: fpfunction(flog2);
+       flognp1id: fpfunction(flognp1);
+       fsinhid: fpfunction(fsinh);
+       ftanid: fpfunction(ftan);
+       ftanhid: fpfunction(ftanh);
+       ftentoxid: fpfunction(ftentox);
+       ftwotoxid: fpfunction(ftwotox);
+       fmovecrid: fmovecrfn;
 
-        fmodid, fremid, fscaleid, fsgldivid, fsglmulid:
-          fpfunc2(loophole(standardids, pseudoSharedPtr^.pseudoinst.oprnds[2]));
-        end
-    else
-      begin
-      if sharedPtr^.switcheverplus[sharecode] then saveactivekeys;
-      case loophole(standardids, pseudoSharedPtr^.pseudoinst.oprnds[2]) of
-        absid: unaryrealx(bclr);
-        sinid: callrealfn(libsin);
-        cosid: callrealfn(libcos);
-        expid: callrealfn(libexp);
-        lnid: callrealfn(libln);
-        sqrtid: callrealfn(libsqrt);
-        arctanid: callrealfn(libarctan);
-        sqrid: square_real;
-        timeid: timefn;
-        end {case} ;
-      end;
-  end {sysfnrealx} ;
+       fmodid, fremid, fscaleid, fsgldivid, fsglmulid:
+         fpfunc2(loophole(standardids, pseudoSharedPtr^.pseudoinst.oprnds[2]));
+       end
+
+   else
+     begin
+     if sharedPtr^.switcheverplus[sharecode] then
+       saveactivekeys;
+
+     case loophole(standardids, pseudoSharedPtr^.pseudoinst.oprnds[2]) of
+       absid:    unaryrealx (bclr);
+       sinid:    callrealfn (libsin);
+       cosid:    callrealfn (libcos);
+       expid:    callrealfn (libexp);
+       lnid:     callrealfn (libln);
+       sqrtid:   callrealfn (libsqrt);
+       arctanid: callrealfn (libarctan);
+       sqrid:    square_real;
+       timeid:   timefn;
+       end {case} ;
+     end;
+ end;
 {>>>}
 {>>>}
 {<<<}
@@ -20278,13 +20301,15 @@ begin
 
       { and finally move the nodes }
       for t := lastnode downto i do
-        movenode(t, t + n)
+        movenode (t, t + n)
       end
     else
       n := 0;
     end;
 
   lastsaved := lastnode + n;
+
+  Writeln ('insert lastnode was :', lastnode:3, ' restored to m:', m:3, ' lastsaved:', lastsaved:3);
   lastnode := m;
 end;
 {>>>}
@@ -21618,50 +21643,50 @@ var
   procedure loadregisters;
   { Load the free registers with addresses and operands from the address and operand lists }
 
-    var
-      i: operandtableindex; {induction for scanning address list}
-      regoprnd: operand; {operand describing register to load}
+  var
+    i: operandtableindex; {induction for scanning address list}
+    regoprnd: operand; {operand describing register to load}
 
+  begin
+    insert (stuffreginst, (lastaddr + lastoprnd) * 3);
+    with regoprnd do
+      begin
+      indxr := 0;
+      offset := 0;
+      offset1 := 0;
+      end;
 
-    begin
-      insert(stuffreginst, (lastaddr + lastoprnd) * 3);
-      with regoprnd do
+    regoprnd.m := areg;
+    for i := 1 to lastaddr do
+      with addresses[i] do
         begin
-        indxr := 0;
-        offset := 0;
-        offset1 := 0;
+        geninst (lea, 2, long);
+        genoprnd (oprnd);
+        regoprnd.reg := newreg;
+        genoprnd (regoprnd);
         end;
 
-      regoprnd.m := areg;
-      for i := 1 to lastaddr do
-        with addresses[i] do
+    regoprnd.m := dreg;
+    for i := 1 to lastoprnd do
+      with operands[i], oprnd do
+        begin
+        if (offset >= - 128) and (offset <= 127) and
+           ((m <> immediatelong) or (offset < 0) and (offset1 = - 1) or (offset >= 0) and (offset1 = 0)) then
           begin
-          geninst(lea, 2, long);
-          genoprnd(oprnd);
-          regoprnd.reg := newreg;
-          genoprnd(regoprnd);
-          end;
+          geninst (moveq, 2, byte);
+          m := immediate;
+          end
+        else
+          geninst (move, 2, oprndlength);
 
-      regoprnd.m := dreg;
-      for i := 1 to lastoprnd do
-        with operands[i], oprnd do
-          begin
-          if (offset >= - 128) and (offset <= 127) and
-             ((m <> immediatelong) or (offset < 0) and (offset1 = - 1) or
-             (offset >= 0) and (offset1 = 0)) then
-            begin
-            geninst(moveq, 2, byte);
-            m := immediate;
-            end
-          else
-            geninst(move, 2, oprndlength);
-          genoprnd(oprnd);
-          regoprnd.reg := newreg;
-          genoprnd(regoprnd);
-          end;
+        genoprnd (oprnd);
+        regoprnd.reg := newreg;
+        genoprnd (regoprnd);
+        end;
 
-      lastnode := lastsaved;
-    end {loadregisters} ;
+    Writeln ('loadregisters lastnode was :', lastnode:3, ' restored to ', lastsaved:3);
+    lastnode := lastsaved;
+  end;
   {>>>}
 
 begin
@@ -21742,15 +21767,20 @@ begin
             n^.inst := bra;
             addednodes := addednodes + 2; {we will add an extra branch}
             end;
-          insert(t - 1, addednodes);
+
+          insert (t - 1, addednodes);
           if addednodes > 3 then
-            genrelbr(tempinst, 2);
-          settempimmediate(word, abs(stackadj));
+            genrelbr (tempinst, 2);
+
+          settempimmediate (word, abs(stackadj));
           settempareg(sp);
+
           if stackadj < 0 then
             gen2(sub, word, tempkey + 1, tempkey)
           else
             gen2(add, word, tempkey + 1, tempkey);
+
+          Writeln ('fixstack lastnode was :', lastnode:3, ' restored to ', lastsaved:3);
           lastnode := lastsaved;
           t := t + addednodes + 1;
           end;
@@ -21962,14 +21992,19 @@ begin
               n := ref(bignodetable[t - 1]);
               currentpc := currentpc + instlength(t - 1);
               bias := 6; { ADDA is 6 bytes long; new LEA same length as old }
+
+
+              Writeln ('fixaddressing lastnode was :', lastnode:3, ' restored to ', lastsaved:3);
               lastnode := lastsaved;
               t := t + 3; { Advance past new instruction }
               end
+
             else if mc68020 and $pic then
               begin
               n^.operandcost := long + word; { 8 bytes total }
               bias := long;
               end
+
             else
               begin
               n^.operandcost := long; { 6 bytes total }
@@ -22048,49 +22083,53 @@ var
   }
   {>>>}
 
-    var
-      p, p1: nodeptr; {used to access nodes}
-      labelpassed: boolean; {true if a label has been passed by t1}
-      lastpassed: boolean; {used to provide delay in setting labelpassed}
-      count: integer; {number of instructions that matched}
-      killcount: integer; {number of instructions to be deleted}
-      t0: nodeindex; {start of the first branch tail}
+  var
+    p, p1: nodeptr; {used to access nodes}
+    labelpassed: boolean; {true if a label has been passed by t1}
+    lastpassed: boolean; {used to provide delay in setting labelpassed}
+    count: integer; {number of instructions that matched}
+    killcount: integer; {number of instructions to be deleted}
+    t0: nodeindex; {start of the first branch tail}
 
+  begin
+    count := - 1;
+    killcount := - 1;
+    lastpassed := false;
+    t0 := min(t, t1);
 
-    begin {matchtails}
-      count := - 1;
-      killcount := - 1;
-      lastpassed := false;
-      t0 := min(t, t1);
+    repeat
+      labelpassed := lastpassed;
+      count := count + 1;
+      killcount := killcount + 1;
+
       repeat
-        labelpassed := lastpassed;
-        count := count + 1;
-        killcount := killcount + 1;
-        repeat
-          {skip nop's to the prior instruction on t1 tail}
-          t1 := t1 - 1;
-          p1 := ref(bignodetable[t1]);
-          if (p1^.kind = instnode) and (p1^.inst = nop) and
-             not p1^.labelled or (p1^.kind = stmtref) then
-            killcount := killcount + 1;
-        until ((p1^.kind = instnode) and ((p1^.inst <> nop) or
-              p1^.labelled)) or (p1^.kind = errornode);
-        lastpassed := p1^.labelled;
-        repeat
-          {go to prior instruction on the t tail}
-          t := t - 1;
-          p := ref(bignodetable[t]);
-        until ((p^.kind = instnode) and (p^.inst <> nop)) or
-              (p^.kind = errornode);
-      until labelpassed or (t = t1) or not eqinst(t, t1);
-      if (count >= longestcount) and (t0 <= max(t, t1)) then
-        begin {we have the longest chain so far}
-        longestcount := count;
-        longestkillcount := killcount;
-        longestmatch := t;
-        longestkill := t1;
-        end;
-    end {matchtails} ;
+        {skip nop's to the prior instruction on t1 tail}
+        t1 := t1 - 1;
+        p1 := ref(bignodetable[t1]);
+        if (p1^.kind = instnode) and (p1^.inst = nop) and
+           not p1^.labelled or (p1^.kind = stmtref) then
+          killcount := killcount + 1;
+      until ((p1^.kind = instnode) and ((p1^.inst <> nop) or
+            p1^.labelled)) or (p1^.kind = errornode);
+
+      lastpassed := p1^.labelled;
+
+      repeat
+        {go to prior instruction on the t tail}
+        t := t - 1;
+        p := ref(bignodetable[t]);
+      until ((p^.kind = instnode) and (p^.inst <> nop)) or
+            (p^.kind = errornode);
+    until labelpassed or (t = t1) or not eqinst(t, t1);
+
+    if (count >= longestcount) and (t0 <= max(t, t1)) then
+      begin {we have the longest chain so far}
+      longestcount := count;
+      longestkillcount := killcount;
+      longestmatch := t;
+      longestkill := t1;
+      end;
+  end;
   {>>>}
 
 begin
@@ -22126,17 +22165,18 @@ begin
       p1 := ref(bignodetable[firstbr^.n + 1]);
       if (l <> 0) and (labeltable[l].stackdepth = p1^.stackdepth) and
          not p^.labelled then
-        matchtails(labeltable[l].nodelink, firstbr^.n);
+        matchtails (labeltable[l].nodelink, firstbr^.n);
 
       if longestcount > 0 then
         begin {adjust the branch and delete extra instructions}
         t := lastnode;
+        Writeln ('mergebranchdetails lastnode was :', lastnode:3, ' restored to ', longestmatch:3);
         lastnode := longestmatch;
         repeat
           lastnode := lastnode + 1;
           p := ref(bignodetable[lastnode]);
-        until ((p^.kind = instnode) and (p^.inst <> nop)) or
-              (p^.kind = errornode);
+        until ((p^.kind = instnode) and (p^.inst <> nop)) or (p^.kind = errornode);
+
         l := nextlabel;
         labeltable[0].nodelink := lastnode;
         labeltable[0].labno := sharedPtr^.lastlabel;
@@ -22150,23 +22190,26 @@ begin
           p^.labelled := true;
           definelastlabel;
           end;
+
         p := ref(bignodetable[firstbr^.n + 1]);
         p^.labelno := labeltable[l].labno;
         p^.stackdepth := labeltable[l].stackdepth;
         lastnode := t;
+
         t := longestkill;
         repeat
           t := t + 1;
           p := ref(bignodetable[t]);
-        until (p^.kind = instnode) or (p^.kind = stmtref) or
-              (p^.kind = errornode);
+        until (p^.kind = instnode) or (p^.kind = stmtref) or (p^.kind = errornode);
         deleteInstructions (t, longestkillcount);
         end;
+
       p := ref(bignodetable[firstbr^.n + 1]);
       firstbr^.n := p^.brnodelink
       end;
+
     cp := firstbr^.nextbr;
-    dispose(firstbr);
+    dispose (firstbr);
     firstbr := cp;
     end;
 end;
@@ -22346,25 +22389,22 @@ begin {proctrailer}
       geninst(trapv, 0, 0);
       end;
 
-    { Now remove what we will push on later.
-    }
-    settempimmediate(long, blockcost); {kludge value, prevent inst deletion}
+    { Now remove what we will push on later }
+    settempimmediate (long, blockcost); {kludge value, prevent inst deletion}
     if blockcost > 32767 then
-      gen2(adda, long, tempkey, sptemp)
+      gen2 (adda, long, tempkey, sptemp)
     else
-      gen2(adda, word, tempkey, sptemp);
+      gen2 (adda, word, tempkey, sptemp);
     tempkey := tempkey + 3;
     end;
-  lastnode := lastsaved;
 
-  { Adjust stack offsets to reflect actual space required by saved registers.
-  }
+    Writeln ('proctrailer lastnode was :', lastnode:3, ' restored to ', lastsaved:3);
+   lastnode := lastsaved;
 
-  adjustoffsets(savereginst, true);
+  { Adjust stack offsets to reflect actual space required by saved registers }
+  adjustoffsets (savereginst, true);
 
-  { Update save mask and prepare to generate restore instruction.
-  }
-
+  { Update save mask and prepare to generate restore instruction }
   if restoremask = 0 then
     deleteInstructions (savereginst, 1)
   else
@@ -22384,41 +22424,41 @@ begin {proctrailer}
 
   if sharedPtr^.proctable[sharedPtr^.blockref].opensfile then
     begin
-    settemp(long, relative, sp, 0, false, (fpregcost - 96) * ord(mc68881) +
-            regcost - 13 * long, 0, 1, unknown);
-    gen1(pea, long, tempkey);
+    settemp (long, relative, sp, 0, false, (fpregcost - 96) * ord(mc68881) + regcost - 13 * long, 0, 1, unknown);
+    gen1 (pea, long, tempkey);
     tempkey := tempkey + 1;
-    settempimmediate(long, blksize);
-    settempreg(long, autod, sp);
-    gen2(move, long, tempkey + 1, tempkey);
+    settempimmediate (long, blksize);
+    settempreg (long, autod, sp);
+    gen2 (move, long, tempkey + 1, tempkey);
+
     tempkey := tempkey + 2;
-    callsupport(libcloseinrange);
-    settempimmediate(word, 8);  { Clean up stack }
-    settempareg(sp);
-    gen2(adda, word, tempkey + 1, tempkey);
+    callsupport (libcloseinrange);
+    settempimmediate (word, 8);  { Clean up stack }
+    settempareg (sp);
+    gen2 (adda, word, tempkey + 1, tempkey);
     end;
+
   if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
     begin
     saveregptr := ref(bignodetable[savedebinst + 1]);
     saveregptr^.oprnd.offset := left;
-    callsupport(libdebugger_exit) {debugger procedure exit}
+    callsupport (libdebugger_exit) {debugger procedure exit}
     end;
 
-  { The register restore has been moved here because of PIC.
-  }
+  { The register restore has been moved here because of PIC }
   if mc68881 and (fprestoremask <> 0) then
     begin
-    settempimmediate(word, fprestoremask);
-    settempreg(long, autoi, sp);
-    fpgendouble(fmovem, tempkey, tempkey + 1);
+    settempimmediate (word, fprestoremask);
+    settempreg (long, autoi, sp);
+    fpgendouble (fmovem, tempkey, tempkey + 1);
     tempkey := tempkey + 2;
     end;
 
   if restoremask <> 0 then
     begin
-    settempimmediate(word, restoremask);
-    settempreg(long, autoi, sp);
-    gen2(movem, long, tempkey, tempkey + 1);
+    settempimmediate (word, restoremask);
+    settempreg (long, autoi, sp);
+    gen2 (movem, long, tempkey, tempkey + 1);
     tempkey := tempkey + 2;
     end;
 
@@ -22432,25 +22472,28 @@ begin {proctrailer}
       noframe_size := word;
       if total_frame_size > 32767 then
         noframe_size := long;
-      settempareg(sp);
-      settempimmediate(noframe_size, total_frame_size);
-      gen2(noframe_instr, noframe_size, tempkey, tempkey + 1);
+
+      settempareg (sp);
+      settempimmediate (noframe_size, total_frame_size);
+      gen2 (noframe_instr, noframe_size, tempkey, tempkey + 1);
+
       tempkey := tempkey + 2;
       end
     end
   else
     begin {generate exit code}
-    settempareg(fp);
-    gen1(unlk, long, tempkey);
+    settempareg (fp);
+    gen1 (unlk, long, tempkey);
     tempkey := tempkey + 1;
     end;
 
-  { Put out an RTE instead of an RTS if this is an interrupt procedure.
-  }
-  if sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = interruptcall then geninst(rte, 0, 0)
-  else geninst(rts, 0, 0);
+  { Put out an RTE instead of an RTS if this is an interrupt procedure }
+  if sharedPtr^.proctable[sharedPtr^.blockref].calllinkage = interruptcall then
+    geninst(rte, 0, 0)
+  else
+    geninst(rts, 0, 0);
 
-end {proctrailer} ;
+end;
 {>>>}
 {<<<}
 procedure maintrailer;
@@ -22834,7 +22877,8 @@ var
         newesd.esdkind := esdbegin;  {Make an XDEF BEGIN$ in the object file}
         insertnewesd;
         startaddress := currentpc;
-        geninst(lea, 2, 4);
+        geninst (lea, 2, 4);
+
         newnode;
         with lastptr^ do
           begin
@@ -22843,11 +22887,15 @@ var
           if $pic and not mc68020 then distance := 3
           else distance := 1;
           end;
-        settempareg(sp);
-        genoprnd(keytable[tempkey].oprnd);
-        if sharedPtr^.switcheverplus[debugging] then initcall := libdebugger_init
-        else if sharedPtr^.switcheverplus[profiling] then initcall := libprofilerinit
-        else initcall := libinitialize;
+
+        settempareg (sp);
+        genoprnd (keytable[tempkey].oprnd);
+        if sharedPtr^.switcheverplus[debugging] then
+          initcall := libdebugger_init
+        else if sharedPtr^.switcheverplus[profiling] then
+          initcall := libprofilerinit
+        else
+          initcall := libinitialize;
 
         if $pic and not mc68020 then
           begin
@@ -23298,6 +23346,8 @@ begin
 
   lastblocksin := i - 1;
   thrashing := false;
+
+  Writeln ('initcode init lastnode');
   lastnode := 0;
 
   testing := sharedPtr^.switcheverplus[test] and sharedPtr^.switcheverplus[outputmacro];

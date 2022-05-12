@@ -4,7 +4,7 @@ type
   upperCase = array [char] of char;
 
 var
-  i: integer;
+  i: 0..20;
   j: integer;
   uc: upperCase;
   ch: char;
