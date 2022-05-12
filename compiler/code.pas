@@ -1990,10 +1990,10 @@ procedure definelastlabel;
   defined from "maxint" down, while labels emitted by travrs are defined
   from 1 up.
 }
-begin {definelastlabel}
+begin 
   definelabel(sharedPtr^.lastlabel);
   sharedPtr^.lastlabel := sharedPtr^.lastlabel - 1;
-end {definelastlabel} ;
+end;
 {>>>}
 {<<<}
 function findlabel (labno: integer) : labelindex;
@@ -2207,7 +2207,7 @@ begin {supname}
     libdeletestr:     t := 'p_delstr  ';
     otherwise
       begin
-      write('Unexpected library name (', ord(libroutine):1, ')');
+      write ('Unexpected library name (', ord(libroutine):1, ')');
       abort(inconsistent);
       end;
     end;
@@ -2233,7 +2233,7 @@ var
   i: operandrange; { induction var for stepping thru operands }
   format: mc68881_source_specifiers;
 
-begin {instlength}
+begin
   p := ref(bignodetable[n]);
   if p^.kind <> instnode then { filter the pretenders }
     if (p^.kind = stmtref) or (p^.kind = errornode) or
@@ -2374,29 +2374,32 @@ end;
 {>>>}
 {<<<  commc2 utils}
 {<<<}
-procedure writech (ch: char);
+procedure writeCh (ch: char);
 
 begin
   write (macFile, ch);
   column := column + 1;
-end {writech};
+end;
 {>>>}
 {<<<}
-procedure writestr (s: packed array[low..high: integer] of char);
+procedure writeStr (s: packed array[low..high: integer] of char);
 
 var
   i, j: integer;
 
 begin
   j := high;
-  while (j > 0) and (s[j] = ' ') do j := j - 1;
+  while (j > 0) and (s[j] = ' ') do
+    j := j - 1;
+
   column := column + j;
+
   for i := low to j do
     write (macFile, s[i]);
 end;
 {>>>}
 {<<<}
-procedure writeint (v: integer);
+procedure writeInt (v: integer);
 
 var
   bufptr: 0..9;
@@ -2405,8 +2408,9 @@ var
 
 begin
   bufptr := 0;
+
   if v < 0 then
-    writech('-');
+    writeCh ('-');
   u := abs(v);
 
   repeat
@@ -2416,7 +2420,7 @@ begin
   until u = 0;
 
   repeat
-    writech(buffer[bufptr]);
+    writeCh (buffer[bufptr]);
     bufptr := bufptr - 1;
   until bufptr = 0;
 end;
@@ -2429,9 +2433,9 @@ const
   maxhex = 4;
 
 var
+  i: 1..maxhex;
+  j: 0..15;
   hexbuf: packed array [1..maxhex] of char;
-  i: 1..maxhex;    { induction var for filling hexbuf }
-  j: 0..15;        { numeric value of one hex digit }
 
 begin
   v := v and 65535; {** a kludge **}
@@ -2440,8 +2444,10 @@ begin
     v := v div 16;
     if j <= 9 then
       hexbuf[i] := chr(ord('0') + j)
-    else hexbuf[i] := chr(ord('A') + j - 10);
-    end; { for i }
+    else
+      hexbuf[i] := chr(ord('A') + j - 10);
+    end;
+
   write (macFile, hexbuf);
   column := column + 4;
 end;
@@ -2454,9 +2460,9 @@ const
   maxhex = 8;
 
 var
-  hexbuf: packed array [1..maxhex] of char;
   i: 1..maxhex;    { induction var for filling hexbuf }
   j: 0..15;        { numeric value of one hex digit }
+  hexbuf: packed array [1..maxhex] of char;
 
 begin
   for i := maxhex downto 1 do begin
@@ -2464,8 +2470,10 @@ begin
     v := v div 16;
     if j <= 9 then
       hexbuf[i] := chr(ord('0') + j)
-    else hexbuf[i] := chr(ord('A') + j - 10);
-    end; { for i }
+    else
+      hexbuf[i] := chr(ord('A') + j - 10);
+    end;
+
   write (macFile, hexbuf);
   column := column + 4;
 end;
@@ -2476,248 +2484,241 @@ procedure reposition (col: columnrange);
 
 begin
   if (column >= col) then {we're at or past the desired column}
-    writech(' ');  { emit one space at least }
+    writeCh (' ');  { emit one space at least }
 
   while column < col do
     writech (' ');
 end;
 {>>>}
 {<<<}
-procedure writeline;
+procedure writeLine;
 
-  begin
-    writeln (macFile);
-    column := 1;
-  end {writeline};
+begin
+  writeln (macFile);
+  column := 1;
+end;
 {>>>}
 
 {<<<}
 function uppercase (ch: char): char;
 
-  begin
-    if (ch >= 'a') and (ch <= 'z') then
-      uppercase := chr(ord(ch) - ord('a') + ord('A'))
-    else uppercase := ch;
-  end; {uppercase}
+begin
+  if (ch >= 'a') and (ch <= 'z') then
+    uppercase := chr(ord(ch) - ord('a') + ord('A'))
+  else
+    uppercase := ch;
+end;
 {>>>}
 
 {<<<}
 procedure allocfixup;
 
-  begin
-    if fixuphead = nil then begin { first time }
-      new(fixuphead);
-      fixuptail := fixuphead;
-      end
+begin
+  if fixuphead = nil then begin { first time }
+    new(fixuphead);
+    fixuptail := fixuphead;
+    end
 
-    else begin { tack new node on end of list }
-      new(fixuptail^.fixuplink);
-      fixuptail := fixuptail^.fixuplink;
-      end;  { tack new node }
+  else begin { tack new node on end of list }
+    new(fixuptail^.fixuplink);
+    fixuptail := fixuptail^.fixuplink;
+    end;  { tack new node }
 
-    with fixuptail^ do begin
-      fixuplink := nil;  { new end of list }
-      fixupaddr := undefinedaddr;
-      fixupobjpc := currentpc;  { this data is only required by the test
-                                  dumper }
-      end;
-  end;  { allocfixup }
+  with fixuptail^ do begin
+    fixuplink := nil;  { new end of list }
+    fixupaddr := undefinedaddr;
+    fixupobjpc := currentpc;  { this data is only required by the test dumper }
+    end;
+end;
 {>>>}
 {<<<}
-  procedure absfixup (var ref: fixupptr; len: integer);
-
+procedure absfixup (var ref: fixupptr; len: integer);
 { Generate a fixup record for an absolute fixup.  This is expected to
   be called just before the word is generated, and "ref" will be used
   to provide the absolute value at some later time
 }
-
-  begin
-    allocfixup;
-    ref := fixuptail;
-    with ref^ do
-      begin
-      fixupkind := fixupabs;
-      fixupfileloc := tempfilesize + nexttempbuffer + 4;
-      fixupobjpc := currentpc;
-      fixuplen := len;
-      end;
-  end; {absfixup}
+begin
+  allocfixup;
+  ref := fixuptail;
+  with ref^ do
+    begin
+    fixupkind := fixupabs;
+    fixupfileloc := tempfilesize + nexttempbuffer + 4;
+    fixupobjpc := currentpc;
+    fixuplen := len;
+    end;
+end;
 {>>>}
 
 {<<<}
   procedure insertnewESD;
-
 { The global variable "newESD" is to be inserted into the ESDtable.
   Additionally, we must check for table overflow (abort if so).
 }
-    begin
-      if nextESD = lastESD then abort(manyexterns);
+begin
+  if nextESD = lastESD then
+    abort(manyexterns);
 
-      ESDtable[nextESD] := newESD;  { that's easy enough }
-      nextESD := nextESD + 1;   { may actually be beyond linker's range }
-    end;  { insertnewESD }
+  ESDtable[nextESD] := newESD;  { that's easy enough }
+  nextESD := nextESD + 1;   { may actually be beyond linker's range }
+end;
 {>>>}
 {<<<}
 procedure findESDid;
-
 { Compute the ESDid for the given entry.  If not found, insert it.
-
   Note that the ESDid is not just the index into the ESDtable because
   XDEF's and "standard load sections" (for instance) are not assigned ESDid's.
 }
-  var
-    ESD: ESDrange;
+var
+  ESD: ESDrange;
 
-  begin
-    ESD := firstESD;
-    ESDid := firstESD;
-    found := false;
+begin
+  ESD := firstESD;
+  ESDid := firstESD;
+  found := false;
 
-    while (ESD < nextESD) and not found do begin
+  while (ESD < nextESD) and not found do begin
+    with ESDtable[ESD] do
+      if ESDkind = ESDsupport then
 
-      with ESDtable[ESD] do
-        if ESDkind = ESDsupport then
+        if (newESD.ESDkind = ESDsupport) and
+           (newESD.suppno = suppno) then
+          found := true
+        else ESDid := ESDid + 1
 
-          if (newESD.ESDkind = ESDsupport) and
-             (newESD.suppno = suppno) then
-            found := true
-          else ESDid := ESDid + 1
+      else if ESDkind = ESDexternal then
 
-        else if ESDkind = ESDexternal then
+        if (newESD.ESDkind = ESDexternal) and
+           (newESD.exproc = exproc) then
+          found := true
+        else ESDid := ESDid + 1
 
-          if (newESD.ESDkind = ESDexternal) and
-             (newESD.exproc = exproc) then
-            found := true
-          else ESDid := ESDid + 1
+      else if ESDkind = ESDdefine then
+        begin
+        { ESDdefine is odd because there is no ESDid assigned, but the check
+          is here so xdefs are not added to the table more than once }
+        if (newESD.ESDkind = ESDdefine) and
+           (newESD.vartabindex = vartabindex) then
+          found := true
+        end
 
-        else if ESDkind = ESDdefine then
-          begin
-          { ESDdefine is odd because there is no ESDid assigned, but the check
-            is here so xdefs are not added to the table more than once.
-          }
-          if (newESD.ESDkind = ESDdefine) and
-             (newESD.vartabindex = vartabindex) then
-            found := true
-          end
+      else if ESDkind in [ESDuse, ESDshrvar] then
 
-        else if ESDkind in [ESDuse, ESDshrvar] then
+        if (newESD.ESDkind = ESDkind) and
+           (newESD.vartabindex = vartabindex) then
+          found := true
+        else ESDid := ESDid + 1
 
-          if (newESD.ESDkind = ESDkind) and
-             (newESD.vartabindex = vartabindex) then
-            found := true
-          else ESDid := ESDid + 1
+      else if ESDkind in [ESDcommon, ESDdiag] then
+        if newESD.ESDkind = ESDkind then found := true
+        else ESDid := ESDid + 1;
 
-        else if ESDkind in [ESDcommon, ESDdiag] then
-          if newESD.ESDkind = ESDkind then found := true
-          else ESDid := ESDid + 1;
+    ESD := ESD + 1;
+    end; {while}
 
-      ESD := ESD + 1;
-      end; {while}
-
-    if not found then
-      insertnewESD;   { nextESD bumps, but not ESDid }
-  end; { findESDid }
+  if not found then
+    insertnewESD;   { nextESD bumps, but not ESDid }
+end;
 {>>>}
 
 {<<<}
 procedure putrelfile (data: unsigned);
 
-  begin
-    if nextrelfile = maxrelfile then begin
-      put (relfile);
-      nextrelfile := 0;
-      end
-    else
-      nextrelfile := nextrelfile + 1;
-    relfile^.block[nextrelfile] := data;
-  end; {puttemp}
+begin
+  if nextrelfile = maxrelfile then begin
+    put (relfile);
+    nextrelfile := 0;
+    end
+  else
+    nextrelfile := nextrelfile + 1;
+  relfile^.block[nextrelfile] := data;
+end;
 {>>>}
 {<<<}
 procedure flushtempbuffer;
-
 { Write the current contents of the tempbuffer to the temporary object
   file.
 }
-  var
-    i : 0..31;  { induction var for buffer copying }
-    packbits: unsigned;  { pseudo packed array of boolean }
+var
+  i : 0..31;  { induction var for buffer copying }
+  packbits: unsigned;  { pseudo packed array of boolean }
 
-
-  begin
-    if nexttempbuffer > 0 then
-      begin
-      putrelfile ((sectionno[currentsect] + 1) * 256 + nexttempbuffer);
-      for i := nexttemprelocn to 31 do temprelocn[i] := false;
-      packbits := 0;
-      for i := 0 to 15 do begin
-        packbits := packbits * 2;
-        if temprelocn[i] then
-          packbits := packbits + 1;
-        end;
-      putrelfile (packbits);
-
-      packbits := 0;
-      for i := 16 to 31 do begin
-        packbits := packbits * 2;
-        if temprelocn[i] then
-          packbits := packbits + 1;
-        end;
-      putrelfile (packbits);
-
-      for i := 0 to nexttempbuffer - 1 do
-        putrelfile(tempbuffer[i]);
-
-      tempfilesize := tempfilesize + nexttempbuffer + 3;
-      nexttempbuffer := 0;
-      nexttemprelocn:= 0;
+begin
+  if nexttempbuffer > 0 then
+    begin
+    putrelfile ((sectionno[currentsect] + 1) * 256 + nexttempbuffer);
+    for i := nexttemprelocn to 31 do temprelocn[i] := false;
+    packbits := 0;
+    for i := 0 to 15 do begin
+      packbits := packbits * 2;
+      if temprelocn[i] then
+        packbits := packbits + 1;
       end;
-  end; {flushtempbuffer}
+    putrelfile (packbits);
+
+    packbits := 0;
+    for i := 16 to 31 do begin
+      packbits := packbits * 2;
+      if temprelocn[i] then
+        packbits := packbits + 1;
+      end;
+    putrelfile (packbits);
+
+    for i := 0 to nexttempbuffer - 1 do
+      putrelfile (tempbuffer[i]);
+
+    tempfilesize := tempfilesize + nexttempbuffer + 3;
+    nexttempbuffer := 0;
+    nexttemprelocn:= 0;
+    end;
+end; 
 {>>>}
 
 {<<<}
 procedure putdata (data: unsigned);
 
-  begin
-    tempbuffer[nexttempbuffer] := data and 65535;
-    nexttempbuffer := nexttempbuffer + 1;
-    if nexttempbuffer >= maxtempbuffer then flushtempbuffer;
-  end;
+begin
+  tempbuffer[nexttempbuffer] := data and 65535;
+  nexttempbuffer := nexttempbuffer + 1;
+  if nexttempbuffer >= maxtempbuffer then 
+    flushtempbuffer;
+end;
 {>>>}
 {<<<}
 procedure putbuffer (data: unsigned; reloc: boolean);
 
-  begin
-    temprelocn[nexttemprelocn] := reloc;
-    nexttemprelocn := nexttemprelocn + 1;
-    putdata(data);
-  end;  {putbuffer}
+begin
+  temprelocn[nexttemprelocn] := reloc;
+  nexttemprelocn := nexttemprelocn + 1;
+  putdata(data);
+end;
 {>>>}
 
 {<<<}
 procedure newsection (newsect: section {section to switch to} );
-
 { Change sections to "newsect".  If there is any data accumulated for the
   object file, that buffer is written.
 }
-
-  begin
-    if newsect <> currentsect then
+begin
+  if newsect <> currentsect then
+    begin
+    if sharedPtr^.switcheverplus[outputmacro] then
       begin
-      if sharedPtr^.switcheverplus[outputmacro] then
-        begin
-        reposition(opcolumn);
-        writestr('SECTION');
-        if newsect = codesect then writestr(sectiontail);
-        reposition(opndcolumn);
-        writeint(sectionno[newsect]);
-        writeline;
-        end;
-      if sharedPtr^.switcheverplus[outputobj] then flushtempbuffer;
-      sectionpc[currentsect] := currentpc;
-      currentsect := newsect;
-      currentpc := sectionpc[currentsect];
+      reposition(opcolumn);
+      writeStr ('SECTION');
+      if newsect = codesect then 
+        writeStr (sectiontail);
+      reposition (opndcolumn);
+      writeInt (sectionno[newsect]);
+      writeLine;
       end;
-  end; {newsection}
+    if sharedPtr^.switcheverplus[outputobj] then 
+      flushtempbuffer;
+    sectionpc[currentsect] := currentpc;
+    currentsect := newsect;
+    currentpc := sectionpc[currentsect];
+    end;
+end;
 {>>>}
 
 {<<<}
@@ -2725,24 +2726,23 @@ procedure seekstringfile (n: integer {byte to access});
 { Do the equivalent of a "seek" on the string file.  This sets the
   file and "nextstringfile" to access byte "n" of the stringfile.
 }
+var
+  newblock: 1..maxstringblks; { block to which seeking }
 
-  var
-    newblock: 1..maxstringblks; { block to which seeking }
-
-  begin {seekstringfile}
-    newblock := n div (diskbufsize + 1) + 1;
-    if newblock <> sharedPtr^.curstringblock then
+begin 
+  newblock := n div (diskbufsize + 1) + 1;
+  if newblock <> sharedPtr^.curstringblock then
+    begin
+    sharedPtr^.curstringblock := newblock;
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
+    if sharedPtr^.stringblkptr = nil then
       begin
-      sharedPtr^.curstringblock := newblock;
-      sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[newblock];
-      if sharedPtr^.stringblkptr = nil then
-        begin
-        write ('unexpected end of stringtable ');
-        abort (inconsistent);
-        end;
+      write ('unexpected end of stringtable ');
+      abort (inconsistent);
       end;
-    sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
-  end {seekstringfile} ;
+    end;
+  sharedPtr^.nextstringfile := n mod (diskbufsize + 1);
+end;
 {>>>}
 {<<<}
 function getstringfile: hostfilebyte;
@@ -2782,7 +2782,7 @@ begin
   sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
   sharedPtr^.nextstringfile := (sharedPtr^.stringfilecount + sharedPtr^.proctable[procn].charindex - 1) mod (diskbufsize + 1);
   for i := 1 to min(len, sharedPtr^.proctable[procn].charlen) do
-  writech (uppercase(chr(getstringfile)))
+    writeCh (uppercase(chr(getstringfile)))
 end;
 {>>>}
 
@@ -2805,141 +2805,135 @@ end;
 {>>>}
 {<<<}
 procedure diag_word (value: unsigned {value to put} );
-
 { Put a single word of diagnostic data to the macro and object files.
   At the moment it is formatted with one value per line.  This is
   subject to change to make the file look prettier.
 }
+begin
+  newsection(diagsect);
+  if sharedPtr^.switcheverplus[outputmacro] then
+    begin
+    reposition (opcolumn);
+    writeStr ('DC.W');
+    reposition (opndcolumn);
+    writeCh ('$');
+    writeHex (value);
+    writeLine;
+    end;
 
-
-  begin
-    newsection(diagsect);
-    if sharedPtr^.switcheverplus[outputmacro] then
-      begin
-      reposition(opcolumn);
-      writestr('DC.W');
-      reposition(opndcolumn);
-      writech('$');
-      writehex(value);
-      writeline;
-      end;
-
-    if sharedPtr^.switcheverplus[outputobj] then
-      putbuffer(value, false);
-    currentpc := currentpc + 2;
-  end; {diag_word}
+  if sharedPtr^.switcheverplus[outputobj] then
+    putbuffer (value, false);
+  currentpc := currentpc + 2;
+end; 
 {>>>}
 {<<<}
 procedure diag_bits (value: unsigned; {value to generate}
                     length: bits {number of bits in value} );
+{ Put "length" bits of "value" to the diagnostic bit stream. }
 
-{ Put "length" bits of "value" to the diagnostic bit stream.
-}
+var
+  i: bits; {induction var}
+  bit: array [bits] of 0..1; {each bit}
 
-  var
-    i: bits; {induction var}
-    bit: array [bits] of 0..1; {each bit}
+begin
+  for i := 0 to length - 1 do
+    begin
+    bit[i] := value mod 2;
+    value := value div 2;
+    end;
 
-
-  begin
-    for i := 0 to length - 1 do
+  for i := length - 1 downto 0 do
+    begin
+    diagbitbuffer := diagbitbuffer * 2 + bit[i];
+    if nextdiagbit = 15 then
       begin
-      bit[i] := value mod 2;
-      value := value div 2;
-      end;
-
-    for i := length - 1 downto 0 do
-      begin
-      diagbitbuffer := diagbitbuffer * 2 + bit[i];
-      if nextdiagbit = 15 then
-        begin
-        diag_word(diagbitbuffer);
-        diagbitbuffer := 0;
-        nextdiagbit := 0;
-        end
-      else
-        nextdiagbit := nextdiagbit + 1;
-      end;
-  end; {diag_bits}
+      diag_word(diagbitbuffer);
+      diagbitbuffer := 0;
+      nextdiagbit := 0;
+      end
+    else
+      nextdiagbit := nextdiagbit + 1;
+    end;
+end;
 {>>>}
 {<<<}
 procedure initdiags;
+{ Initialize the diagnostic code, called only if diagnostics are going to be generated }
 
-{ Initialize the diagnostic code, called only if diagnostics are
-  going to be generated.
-}
+var 
+  kludge: integer; {to get around a purposeful range error}
 
-var kludge: integer; {to get around a purposeful range error}
+begin
+  everdiagnosing := true;
+  nextdiagbit := 0;
+  diagbitbuffer := 0;
 
-  begin
-    everdiagnosing := true;
-    nextdiagbit := 0;
-    diagbitbuffer := 0;
+  if sharedPtr^.switcheverplus[outputmacro] then
+    begin
+    writeln (macFile, 'P_DIAG', 'SECTION': opcolumn + 6 - 6, ' ': opndcolumn - opcolumn - 7, sectionno[diagsect]:1);
+    newsection (diagsect);
 
-    if sharedPtr^.switcheverplus[outputmacro] then
-      begin
-      writeln (macFile, 'P_DIAG', 'SECTION': opcolumn + 6 - 6,
-               ' ': opndcolumn - opcolumn - 7, sectionno[diagsect]:1);
-      newsection(diagsect);
-      writeln(macFile, 'STDIAG', 'DC.W': opcolumn + 3 - 6,
-              'ENDIAG-STDIAG': opndcolumn - opcolumn - 4 + 13);
-      writeln(macFile, 'DC.L': opcolumn + 3,
-              'L': opndcolumn - opcolumn - 4 + 1);
-      writeln(macFile, 'DC.L': opcolumn + 3, 'LAST-L':
-              opndcolumn - opcolumn - 4 + 6);
-      if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-        begin
-        writeln (macFile, 'DC.B': opcolumn+3, '''':opndcolumn - opcolumn - 4, sharedPtr^.outputname: 8, '''');
-        write (macFile, 'DC.L':opcolumn + 3, ' ':opndcolumn - opcolumn - 4);
-        if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
-          writeln (macFile, 'G')
-        else
-          writeln (macFile, '0');
-        end;
-      end;
-
-    if sharedPtr^.switcheverplus[outputobj] then
-      begin
-      newsection(diagsect);
-      absfixup(diaglenfix, word);
-      putbuffer(0, false);
-      putbuffer(50B * 256 + sectionno[codesect] + 1, true);
-      currentpc := 6; {needed for absfixup diagnostic}
-      absfixup(codelenfix, long);
-      putbuffer(0, false);
-      putbuffer(0, false);
-
-      if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-        begin
-        putbuffer (ord(sharedPtr^.outputname[1]) * 256 + ord(sharedPtr^.outputname[2]), false);
-        putbuffer (ord(sharedPtr^.outputname[3]) * 256 + ord(sharedPtr^.outputname[4]), false);
-        putbuffer (ord(sharedPtr^.outputname[5]) * 256 + ord(sharedPtr^.outputname[6]), false);
-        putbuffer( ord(sharedPtr^.outputname[7]) * 256 + ord(sharedPtr^.outputname[8]), false);
-
-        if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
-          putbuffer(50B * 256, true)
-        else
-          begin
-          putbuffer(0, false);
-          putbuffer(0, false);
-          end;
-        end;
-      end;
+    writeln (macFile, 'STDIAG', 'DC.W': opcolumn + 3 - 6, 'ENDIAG-STDIAG': opndcolumn - opcolumn - 4 + 13);
+    writeln (macFile, 'DC.L': opcolumn + 3, 'L': opndcolumn - opcolumn - 4 + 1);
+    writeln (macFile, 'DC.L': opcolumn + 3, 'LAST-L': opndcolumn - opcolumn - 4 + 6);
 
     if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-      currentpc := 22
-    else currentpc := 10; {length of header data}
-  end; {initdiags}
+      begin
+      writeln (macFile, 'DC.B': opcolumn+3, '''':opndcolumn - opcolumn - 4, sharedPtr^.outputname: 8, '''');
+      write (macFile, 'DC.L':opcolumn + 3, ' ':opndcolumn - opcolumn - 4);
+      if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
+        writeln (macFile, 'G')
+      else
+        writeln (macFile, '0');
+      end;
+    end;
+
+  if sharedPtr^.switcheverplus[outputobj] then
+    begin
+    newsection (diagsect);
+    absfixup (diaglenfix, word);
+    putbuffer (0, false);
+    putbuffer (50B * 256 + sectionno[codesect] + 1, true);
+    currentpc := 6; {needed for absfixup diagnostic}
+    absfixup (codelenfix, long);
+    putbuffer (0, false);
+    putbuffer (0, false);
+
+    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
+      begin
+      putbuffer (ord(sharedPtr^.outputname[1]) * 256 + ord(sharedPtr^.outputname[2]), false);
+      putbuffer (ord(sharedPtr^.outputname[3]) * 256 + ord(sharedPtr^.outputname[4]), false);
+      putbuffer (ord(sharedPtr^.outputname[5]) * 256 + ord(sharedPtr^.outputname[6]), false);
+      putbuffer( ord(sharedPtr^.outputname[7]) * 256 + ord(sharedPtr^.outputname[8]), false);
+
+      if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
+        putbuffer (50B * 256, true)
+      else
+        begin
+        putbuffer (0, false);
+        putbuffer (0, false);
+        end;
+      end;
+    end;
+
+  if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
+    currentpc := 22
+  else 
+    currentpc := 10; {length of header data}
+end; 
 {>>>}
 {<<<}
 procedure WriteSymbolName (name: packed array[m..n: integer] of char);
 { Write a symbol name string to the macro file. }
-var i: 0..maxprocnamelen;
+
+var 
+  i: 0..maxprocnamelen;
+
 begin
   i := 0;
   while (i < n) and (name[i + 1] <> ' ') do begin
     i := i + 1;
-    writech(uppercase(name[i]))
+    writeCh (uppercase(name[i]))
     end;
 end;
 {>>>}
@@ -3007,14 +3001,14 @@ procedure CopySFile;
     while i > 0 do
       begin
       reposition(opcolumn);
-      writestr('DC.W');
+      writeStr ('DC.W');
       reposition(opndcolumn);
       old_i := i;
 
       for k := 1 to min(wordsperline, (i + 1) div 2) do
         begin
         if k > 1 then { separate words with commas }
-          writech(',');
+          writeCh (',');
         v := getstringfile * 256;
         i := i - 1;
 
@@ -3024,8 +3018,8 @@ procedure CopySFile;
           i := i - 1;
           end;
 
-        Writech('$');
-        WriteHex(v);
+        writeCh ('$');
+        writeHex (v);
 
         ch := chr(v div 256);
 
@@ -3041,9 +3035,9 @@ procedure CopySFile;
       reposition(nodecolumn);
 
       for k := 1 to min(charsperline, old_i) do
-        writech(buffer[k]);
+        writeCh (buffer[k]);
 
-      writeline;
+      writeLine;
       end;
     end; {write_constants}
 
@@ -3056,13 +3050,13 @@ procedure CopySFile;
     { first write the string table as fixed length character strings }
     i := sharedPtr^.stringfilecount;
     if i > 0 then begin
-      writech('*');
-      writeline;
+      writeCh ('*');
+      writeLine;
       writeln(macFile, '*  String Constants:');
-      writech('*');
-      writeline;
-      writech('L'); { the label associated with string constants }
-      writech(':');
+      writeCh ('*');
+      writeLine;
+      writeCh ('L'); { the label associated with string constants }
+      writeCh (':');
       end;
 
     write_constants(i);
@@ -3078,16 +3072,16 @@ procedure CopySFile;
 
     if i > 0 then
       begin
-      writech('*');
-      writeline;
+      writeCh ('*');
+      writeLine;
       writeln(macFile, '*  Structured Constants:');
-      writech('*');
-      writeline;
+      writeCh ('*');
+      writeLine;
 
       if currentpc = 0 then
         begin
-        writech('L'); { the label associated with structured constants }
-        writech(':');
+        writeCh ('L'); { the label associated with structured constants }
+        writeCh (':');
         end;
 
       currentpc := currentpc + i;
@@ -3101,12 +3095,12 @@ procedure CopySFile;
 
     if currentpc = 0 then
       begin
-      writech('L');
+      writeCh ('L');
       reposition(opcolumn);
-      writestr('EQU');
+      writeStr ('EQU');
       reposition(opndcolumn);
-      writech('*');
-      writeline;
+      writeCh ('*');
+      writeLine;
       end;
   end {CopySFile} ;
 {>>>}
@@ -3134,7 +3128,7 @@ procedure InitMac;
       begin
       write (macFile, '68020');
       if mc68881 then
-        write(macFile, '68881');
+        write (macFile, '68881');
       writeln (macFile);
       end
     else
@@ -3142,13 +3136,13 @@ procedure InitMac;
 
     write (macFile, '*  File:  ');
     writesymbolname (sharedPtr^.outputname);
-    writeline;
+    writeLine;
     writech ('*');
-    writeline;
+    writeLine;
 
     writesymbolname (sharedPtr^.outputname);
     reposition (opcolumn);
-    writestr('IDNT');
+    writeStr ('IDNT');
 
     reposition(opndcolumn);
     writeint (sharedPtr^.objversion);
@@ -3164,7 +3158,7 @@ procedure InitMac;
       for i := 1 to sharedPtr^.ident_strlength do
         writech (chr (getstringfile));
       end;
-    writeline;
+    writeLine;
 
     { Tell the assembler this is 68020 code }
     if mc68020 then
@@ -3176,14 +3170,14 @@ procedure InitMac;
       if mc68881 then
         begin
         writestr ('/68881');
-        writeline;
+        writeLine;
         reposition (opcolumn);
         writestr ('FOPT');
         reposition (opndcolumn);
         writestr ('ID=');
         writeint (coprocessor_id);
         end;
-      writeline;
+      writeLine;
       end;
 
     reposition (opcolumn);
@@ -3191,8 +3185,8 @@ procedure InitMac;
     writestr (sectiontail);
 
     reposition (opndcolumn);
-    writeint(sectionno[codesect]);
-    writeline;
+    writeInt (sectionno[codesect]);
+    writeLine;
 
     CopySFile; { emit string and structured constants }
     highcode := currentpc; { initialize code address }
@@ -3286,8 +3280,8 @@ var
   vtptr: vartablerecptr;
 
 begin
-  writech('*');
-  writeline;
+  writeCh ('*');
+  writeLine;
 
   for suppcall := first_call to last_call do support[suppcall] := false;
 
@@ -3302,26 +3296,26 @@ begin
           begin
           reposition(opcolumn);
           if esdkind = esdentry then
-            writestr('XDEF')
-          else writestr('XREF');
+            writeStr ('XDEF')
+          else writeStr ('XREF');
           reposition(opndcolumn);
           writeprocname(exproc, linknameused);
-          writeline;
+          writeLine;
           end;
 
         esdglobal:
           begin
           reposition(opcolumn);
-          writestr('XDEF');
+          writeStr ('XDEF');
           reposition(opndcolumn);
-          writestr('GLOBAL$$');
-          writeline;
-          writestr('GLOBAL$$');
+          writeStr ('GLOBAL$$');
+          writeLine;
+          writeStr ('GLOBAL$$');
           reposition(opcolumn);
-          writestr('EQU');
+          writeStr ('EQU');
           reposition(opndcolumn);
-          writeint(glbsize);
-          writeline;
+          writeInt (glbsize);
+          writeLine;
           end;
 
         esddiag, esdload, esdcommon: { ignore this one };
@@ -3332,12 +3326,12 @@ begin
     if support[suppcall] then
       begin
       reposition(opcolumn);
-      writestr('XREF');
-      if not sharedPtr^.switcheverplus[longlib] then writestr('.S');
+      writeStr ('XREF');
+      if not sharedPtr^.switcheverplus[longlib] then writeStr ('.S');
       reposition(opndcolumn);
       supname(suppcall, s);
       WriteSymbolName(s);
-      writeline;
+      writeLine;
       end;
 
   if sharedPtr^.ownsize > 0 then
@@ -3353,27 +3347,27 @@ begin
       writeprocname (0, linknameused); {use program name}
 
     reposition(opcolumn);
-    writestr('SECTION');
+    writeStr ('SECTION');
 
     reposition(opndcolumn);
-    writeint(sharedPtr^.datasection);
-    writeline;
-    writech('G');
+    writeInt (sharedPtr^.datasection);
+    writeLine;
+    writeCh ('G');
 
     reposition(opcolumn);
-    writestr('EQU');
+    writeStr ('EQU');
 
     reposition(opndcolumn);
-    writech('*');
-    writeline;
+    writeCh ('*');
+    writeLine;
 
     reposition(opcolumn);
-    writestr('DS.B');
+    writeStr ('DS.B');
 
     reposition(opndcolumn);
-    writech('$');
-    write(macFile, sharedPtr^.ownsize: -4);
-    writeline;
+    writeCh ('$');
+    write (macFile, sharedPtr^.ownsize: -4);
+    writeLine;
     end;
 
 
@@ -3382,8 +3376,8 @@ begin
   }
   if sharedPtr^.lastvartableentry > 0 then
     begin
-    writech('*');
-    writeline;
+    writeCh ('*');
+    writeLine;
 
     if sharedPtr^.definesize > 0 then
       begin
@@ -3402,11 +3396,11 @@ begin
         if referenced and (extvaralloc = usealloc) then
           begin
           reposition(opcolumn);
-          writestr('XREF');
+          writeStr ('XREF');
           reposition(opndcolumn);
           linkname := get_from_sfile(charindex, charlen, not aliased);
           WriteSymbolName(linkname);
-          writeline;
+          writeLine;
           end
         else if extvaralloc = definealloc then
           begin
@@ -3415,48 +3409,48 @@ begin
           if running_offset < offset then
             begin
             reposition(opcolumn);
-            writestr('DS.B');
+            writeStr ('DS.B');
             reposition(opndcolumn);
-            writech('$');
-            write(macFile, offset - running_offset: -4);
-            writeline;
+            writeCh ('$');
+            write (macFile, offset - running_offset: -4);
+            writeLine;
             running_offset := offset + size;
             end
           else running_offset := running_offset + size;
 
           reposition(opcolumn);
-          writestr('XDEF');
+          writeStr ('XDEF');
           reposition(opndcolumn);
           linkname := get_from_sfile(charindex, charlen, not aliased);
           WriteSymbolName(linkname);
-          writeline;
+          writeLine;
           WriteSymbolName(linkname);
-          writech(':');
+          writeCh (':');
           reposition(opcolumn);
-          writestr('DS.B');
+          writeStr ('DS.B');
           reposition(opndcolumn);
-          writech('$');
-          write(macFile, size: -4);
-          writeline;
+          writeCh ('$');
+          write (macFile, size: -4);
+          writeLine;
           end
         else if referenced then { shared_var }
           begin
           linkname := get_from_sfile(charindex, charlen, true);
           WriteSymbolName(linkname);
           reposition(opcolumn);
-          writestr('SECTION');
+          writeStr ('SECTION');
           reposition(opndcolumn);
-          writeint(sharedPtr^.datasection);
-          writeline;
+          writeInt (sharedPtr^.datasection);
+          writeLine;
 
           WriteSymbolName(linkname);
-          writech(':');
+          writeCh (':');
           reposition(opcolumn);
-          writestr('DS.B');
+          writeStr ('DS.B');
           reposition(opndcolumn);
-          writech('$');
-          write(macFile, size + ord(odd(size)): -4);
-          writeline;
+          writeCh ('$');
+          write (macFile, size + ord(odd(size)): -4);
+          writeLine;
           end;
         end; {with}
       end; {for}
@@ -3466,19 +3460,19 @@ begin
     if odd(sharedPtr^.definesize) then
       begin
       reposition(opcolumn);
-      writestr('DS.B');
+      writeStr ('DS.B');
       reposition(opndcolumn);
-      writech('$');
-      write(macFile, 1: 1);
-      writeline;
+      writeCh ('$');
+      write (macFile, 1: 1);
+      writeLine;
       end;
     end; {lastvartableentry > 0}
 
   if testing and (fixuphead <> nil) then
     begin
     fixp := fixuphead;
-    writech('*');
-    writeline;
+    writeCh ('*');
+    writeLine;
     while fixp <> nil do
       with fixp^ do
         begin
@@ -3489,8 +3483,8 @@ begin
         end; { with }
     end {if testing};
 
-  writech('*');
-  writeline;
+  writeCh ('*');
+  writeLine;
 
   if totalputerr > 0 then
     begin
@@ -3509,27 +3503,27 @@ begin
       writeln(macFile, '*  [', sectionpc[diagsect]: -4, ']  ',
               sectionpc[diagsect]:1, ' diagnostic bytes generated');
       end;
-    writech('*');
-    writeline;
+    writeCh ('*');
+    writeLine;
 
     { Oasys assembler likes to know where begin$ is }
     if startaddress <> undefinedaddr then
       begin
       reposition(opcolumn);
-      writestr('XDEF');
+      writeStr ('XDEF');
       reposition(opndcolumn);
-      writestr('BEGIN$');
-      writeline;
+      writeStr ('BEGIN$');
+      writeLine;
       end;
 
     reposition(opcolumn);
-    writestr('END');
+    writeStr ('END');
     if startaddress <> undefinedaddr then
       begin
       reposition(opndcolumn);
-      writestr('BEGIN$');
+      writeStr ('BEGIN$');
       end;
-    writeline;
+    writeLine;
     end;
 end;
 {>>>}
@@ -4479,7 +4473,7 @@ procedure dumperrors;
   begin
     for i := 1 to lineerrors do
       begin
-      write(macFile, stars);
+      write (macFile, stars);
 
       case pcerrortable[i] of
         endofnodes: writeln(macFile, 'end of nodes');
@@ -4612,29 +4606,29 @@ procedure writeobjline;
       begin
       if column >= nodecolumn then
         begin
-        writeline;
-        writech('*');
+        writeLine;
+        writeCh ('*');
         end;
 
       reposition(nodecolumn);
-      { "column" has served its purpose and is ignored until the next "writeline" }
+      { "column" has served its purpose and is ignored until the next "writeLine" }
 
       { pc when opcode was scanned }
-      write(macFile, '(', instindex: 3, ')   ', lastobjpc: - 4, '  ');
-      WriteHex(object[1]); { write opcode in hexadecimal }
+      write (macFile, '(', instindex: 3, ')   ', lastobjpc: - 4, '  ');
+      writeHex (object[1]); { write opcode in hexadecimal }
 
       for i := 2 to objctr do
         begin
         if not (objtype[i] in [objcom, objforw, objpic, objign]) then
-          writech(' ');
+          writeCh (' ');
         case objtype[i] of
-          objnorm, objoff, objlong: WriteHex(object[i]);
-          objext: write(macFile, 'xxxx xxxx');
+          objnorm, objoff, objlong: writeHex (object[i]);
+          objext: write (macFile, 'xxxx xxxx');
           objforw: ;
           objsup:
             begin
-            write(macFile, 'ssss');
-            if sharedPtr^.switcheverplus[longlib] then write(macFile, ' ssss');
+            write (macFile, 'ssss');
+            if sharedPtr^.switcheverplus[longlib] then write (macFile, ' ssss');
             end;
           objcom: ;
           end;
@@ -4645,7 +4639,7 @@ procedure writeobjline;
 
     if sharedPtr^.switcheverplus[outputmacro] then
       begin
-      writeline;
+      writeLine;
       dumperrors; { if any }
       end;
   end; { writeobjline }
@@ -4680,9 +4674,9 @@ begin {dump_externals}
   if sharedPtr^.switcheverplus[outputmacro] then
     begin
     reposition(opcolumn);
-    writestr('DC.L');
+    writeStr ('DC.L');
     reposition(opndcolumn);
-    writeint(ctr);
+    writeInt (ctr);
     end;
 
   writeobjline;
@@ -4759,13 +4753,13 @@ begin {dump_externals}
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
         reposition(opcolumn);
-        writestr('DC.L');
+        writeStr ('DC.L');
         reposition(opndcolumn);
 
         with vtptr^ do
           if referenced or (extvaralloc = definealloc) then
             WriteSymbolName(get_from_sfile(charindex, charlen, not aliased))
-          else writech('0');
+          else writeCh ('0');
         end;
 
       writeobjline;
@@ -5478,7 +5472,7 @@ procedure setmodeonly;
                   end
                 else
                   begin
-                  write('Reference too long for 16-bit PIC');
+                  write ('Reference too long for 16-bit PIC');
                   abort(inconsistent);
                   end;
                 end
@@ -5791,14 +5785,14 @@ procedure writeinst (inst: insttype);
         lookahead(1);
         if p^.oprnd.m = supportcall then
           begin
-          writech('.');
-          if sharedPtr^.switcheverplus[longlib] then writech(long_ext)
-          else writech(short_ext);
+          writeCh ('.');
+          if sharedPtr^.switcheverplus[longlib] then writeCh (long_ext)
+          else writeCh (short_ext);
           end
         else if (p^.oprnd.m = usercall) and (p^.operandcost > word) then
           begin
-          writech('.');
-          writech(long_ext); {external, forward, or far away procedure}
+          writeCh ('.');
+          writeCh (long_ext); {external, forward, or far away procedure}
           end;
         end {inst = jsr}
       else if inst = jmp then
@@ -5808,59 +5802,59 @@ procedure writeinst (inst: insttype);
           begin
           if p^.oprnd.m = supportcall then
             begin
-            writech('.');
-            if sharedPtr^.switcheverplus[longlib] then writech(long_ext)
-            else writech(short_ext);
+            writeCh ('.');
+            if sharedPtr^.switcheverplus[longlib] then writeCh (long_ext)
+            else writeCh (short_ext);
             end;
           end
         else {must be a labelnode}
           begin
-          writech('.');
-          writech(long_ext);
+          writeCh ('.');
+          writeCh (long_ext);
           end;
         end
     { several names were too long to fill "mnemonic",
       so a post-correction will be applied }
 
-      else if inst = movea then writech('A')
-      else if inst = movem then writech('M')
-      else if inst = moveq then writech('Q');
+      else if inst = movea then writeCh ('A')
+      else if inst = movem then writeCh ('M')
+      else if inst = moveq then writeCh ('Q');
       if inst in qualifiedinsts then
         begin
-        writech('.');
+        writeCh ('.');
 
         case datasize of
-          byte: writech('B');
-          word: writech('W');
-          long: writech('L');
+          byte: writeCh ('B');
+          word: writeCh ('W');
+          long: writeCh ('L');
           otherwise puterror(badoprndlength)
           end {case oprndlength}
         end {qualifiedinsts}
 
       else if (inst in [fp_first..fp_last]) and not (inst in fpbranches) then
         begin
-        writech('.');
+        writeCh ('.');
         case n^.fp_format of
-          single_real: writech('S');
-          double_real: writech('D');
-          extended_real: writech('X');
-          byte_integer: writech('B');
-          word_integer: writech('W');
-          long_integer: writech('L');
+          single_real: writeCh ('S');
+          double_real: writeCh ('D');
+          extended_real: writeCh ('X');
+          byte_integer: writeCh ('B');
+          word_integer: writeCh ('W');
+          long_integer: writeCh ('L');
           end;
         end
       else if (inst in branches) or (inst in fpbranches) then
         begin
-        writech('.');
+        writeCh ('.');
         lookahead(1);
         if p^.kind = relnode then
-          writech(branch_byte_ext)
+          writeCh (branch_byte_ext)
         else if p^.kind = labelnode then
           begin
-          if p^.labelcost = 0 then writech(branch_byte_ext)
-          else if p^.labelcost = word then writech(branch_word_ext)
+          if p^.labelcost = 0 then writeCh (branch_byte_ext)
+          else if p^.labelcost = word then writeCh (branch_word_ext)
           else if p^.labelcost = long then
-            writech(branch_long_ext)
+            writeCh (branch_long_ext)
             { ^^^ 68020 and pic only }
           end
         else puterror(missingoperand);
@@ -7049,7 +7043,7 @@ procedure writeinst (inst: insttype);
       { print mnemonic to macro file, suppressing trailing blanks }
       reposition(opcolumn);
 
-      for i := 1 to ord(mnemonic[0]) do writech(uppercase(mnemonic[i]));
+      for i := 1 to ord(mnemonic[0]) do writeCh (uppercase(mnemonic[i]));
 
       postcorrect;
 
@@ -7066,20 +7060,20 @@ procedure writebitfield (reg, offset, width: integer);
   begin
     if sharedPtr^.switcheverplus[outputmacro] then
       begin
-      writech('{');
+      writeCh ('{');
       if reg <> - 1 then
         begin
-        writech('D');
-        writeint(reg);
+        writeCh ('D');
+        writeInt (reg);
         end
       else
         begin
-        writeint(offset);
+        writeInt (offset);
         end;
 
-      writech(':');
-      writeint(width);
-      writech('}');
+      writeCh (':');
+      writeInt (width);
+      writeCh ('}');
       end;
   end;
 {>>>}
@@ -7116,8 +7110,8 @@ procedure writelastopnd;
         with n^.oprnd do
           if scale <> 1 then
             begin
-            writech('*');
-            writeint(scale);
+            writeCh ('*');
+            writeInt (scale);
             end;
     end;
   {>>>}
@@ -7131,8 +7125,8 @@ procedure writelastopnd;
 
           dreg:
             begin
-            writech('D');
-            writeint(reg);
+            writeCh ('D');
+            writeInt (reg);
             end; {dreg}
 
           twodregs:
@@ -7145,31 +7139,31 @@ procedure writelastopnd;
               }
 
             begin
-            writech('D');
-            writeint(indxr);
+            writeCh ('D');
+            writeInt (indxr);
 
             if reg <> indxr then
               begin
-              writech(':');
-              writech('D');
-              writeint(reg);
+              writeCh (':');
+              writeCh ('D');
+              writeInt (reg);
               end;
             end; {twodregs}
 
           areg:
             begin
-            if reg = 7 then writestr('SP')
+            if reg = 7 then writeStr ('SP')
             else
               begin
-              writech('A');
-              writeint(reg);
+              writeCh ('A');
+              writeInt (reg);
               end;
             end; {areg}
 
           fpreg:
             begin
-            writestr('FP');
-            writeint(reg);
+            writeStr ('FP');
+            writeInt (reg);
             end;
 
           twofpregs:
@@ -7179,43 +7173,43 @@ procedure writelastopnd;
               }
 
             begin
-            writestr('FP');
-            writeint(reg);
-            writech(':');
-            writestr('FP');
-            writeint(indxr);
+            writeStr ('FP');
+            writeInt (reg);
+            writeCh (':');
+            writeStr ('FP');
+            writeInt (indxr);
             end; {twofpregs}
 
           indr:
             begin
-            if reg = 7 then writestr('(SP)')
+            if reg = 7 then writeStr ('(SP)')
             else
               begin
-              writestr('(A');
-              writeint(reg);
-              writech(')');
+              writeStr ('(A');
+              writeInt (reg);
+              writeCh (')');
               end;
             end; {indr}
 
           autoi:
             begin
-            if reg = 7 then writestr('(SP)+')
+            if reg = 7 then writeStr ('(SP)+')
             else
               begin
-              writestr('(A');
-              writeint(reg);
-              writestr(')+');
+              writeStr ('(A');
+              writeInt (reg);
+              writeStr (')+');
               end;
             end; {autoi}
 
           autod:
             begin
-            if reg = 7 then writestr('-(SP)')
+            if reg = 7 then writeStr ('-(SP)')
             else
               begin
-              writestr('-(A');
-              writeint(reg);
-              writech(')');
+              writeStr ('-(A');
+              writeInt (reg);
+              writeCh (')');
               end;
             end; {autod}
 
@@ -7223,26 +7217,26 @@ procedure writelastopnd;
             begin
             if mc68020 and ((offset > 32767) or (offset < -32768)) then
               begin
-              writech('(');
-              writeint(offset);
-              writech(',');
+              writeCh ('(');
+              writeInt (offset);
+              writeCh (',');
               end
             else
               begin
-              writeint(offset);
-              writech('(');
+              writeInt (offset);
+              writeCh ('(');
               end;
 
             if reg = 7 then
               begin
-              writestr('SP)');
+              writeStr ('SP)');
               if offset < 0 then puterror(negativesp)
               end
             else
               begin
-              writech('A');
-              writeint(reg);
-              writech(')');
+              writeCh ('A');
+              writeInt (reg);
+              writeCh (')');
               end;
             end; {relative}
 
@@ -7252,24 +7246,24 @@ procedure writelastopnd;
               puterror(baddisplacement);
             if mc68020 then
               begin
-              writech('(');
-              writeint(offset);
-              writech(',');
+              writeCh ('(');
+              writeInt (offset);
+              writeCh (',');
               end
             else
               begin
-              writeint(offset);
-              writech('(');
+              writeInt (offset);
+              writeCh ('(');
               end;
 
-            writech('A');
-            writeint(reg);
-            writestr(',D');
-            writeint(indxr);
-            if indxlong then writestr('.L')
-            else writestr('.W');
+            writeCh ('A');
+            writeInt (reg);
+            writeStr (',D');
+            writeInt (indxr);
+            if indxlong then writeStr ('.L')
+            else writeStr ('.W');
             write_scale;
-            writech(')');
+            writeCh (')');
             end; {indexed}
 
           bitindexed:
@@ -7279,89 +7273,89 @@ procedure writelastopnd;
 
           absshort:
             begin
-            writeint(offset);
+            writeInt (offset);
             end; {absshort}
 
           abslong:
             begin
-            writech('$');
+            writeCh ('$');
             kluge.l := offset;
               { the next two lines assume that "reversebytes" implies that
                 words are also reversed. }
-            WriteHex(kluge.w[reversebytes]);
-            WriteHex(kluge.w[not reversebytes]);
+            writeHex (kluge.w[reversebytes]);
+            writeHex (kluge.w[not reversebytes]);
             end; {abslong}
 
           immediate, special_immediate:
             begin
-            writech('#');
-            if datasize <= word then writeint(offset)
+            writeCh ('#');
+            if datasize <= word then writeInt (offset)
             else
               begin
-              writech('$');
+              writeCh ('$');
               if hostintsize <= word then
                 begin
-                if offset < 0 then WriteHex( - 1)
-                else WriteHex(0);
-                WriteHex(offset);
+                if offset < 0 then writeHex ( - 1)
+                else writeHex (0);
+                writeHex (offset);
                 end
               else
                 begin
                 kluge.l := offset;
                   { the next two lines assume that "reversebytes" implies that
                     words are also reversed. }
-                WriteHex(kluge.w[reversebytes]);
-                WriteHex(kluge.w[not reversebytes]);
+                writeHex (kluge.w[reversebytes]);
+                writeHex (kluge.w[not reversebytes]);
                 end;
               end;
             end; {immediate}
 
           immediatelong:
             begin
-            writech('#');
+            writeCh ('#');
 
               { Floating point constants in hex in 68881 instructions must
                 be prefixed by a ":" instead of a "$" -- Strange!
               }
-            if (currinst in [fp_first..fp_last]) then writech(':')
-            else writech('$');
+            if (currinst in [fp_first..fp_last]) then writeCh (':')
+            else writeCh ('$');
 
-            WriteHex(offset1);
-            WriteHex(offset);
+            writeHex (offset1);
+            writeHex (offset);
             end; { immediatelong }
 
           immediatequad:
             begin
-            writech('#');
+            writeCh ('#');
 
               { Floating point constants in hex in 68881 instructions must
                 be prefixed by a ":" instead of a "$" -- Strange!
               }
-            if (currinst in [fp_first..fp_last]) then writech(':')
-            else writech('$');
+            if (currinst in [fp_first..fp_last]) then writeCh (':')
+            else writeCh ('$');
 
-            WriteHexLong(offset1);
-            WriteHexLong(offset);
+            writeHexLong (offset1);
+            writeHexLong (offset);
             end; { immediatequad }
 
           immediate_extended:
             begin
-            writech('#');
+            writeCh ('#');
 
               { Floating point constants in hex in 68881 instructions must
                 be prefixed by a ":" instead of a "$" -- Strange!
               }
-            if (currinst in [fp_first..fp_last]) then writech(':')
-            else writech('$');
+            if (currinst in [fp_first..fp_last]) then writeCh (':')
+            else writeCh ('$');
 
-            WriteHexLong(offset2);
-            WriteHexLong(offset1);
-            WriteHexLong(offset);
+            writeHexLong (offset2);
+            writeHexLong (offset1);
+            writeHexLong (offset);
             end; { immediate_extended }
 
           commonlong:
             begin
-            if commonlong_reloc < 0 then writech('G');
+            if commonlong_reloc < 0 then writeCh ('G');
             if commonlong_reloc > 0 then
               begin
               vtptr := getvartableptr(commonlong_reloc);
@@ -7371,9 +7365,9 @@ procedure writelastopnd;
                   { Add in psect offset for Versados define'd var }
                 if $pic and (extvaralloc = sharedalloc) then
                   begin
-                  writech('#');
+                  writeCh ('#');
                   WriteSymbolName(get_from_sfile(charindex, charlen, true));
-                  writech('-');
+                  writeCh ('-');
                   supname(loophole(libroutines, libown), s);
                   WriteSymbolName(s);
                   end
@@ -7384,17 +7378,17 @@ procedure writelastopnd;
 
             if offset <> 0 then
               begin
-              if offset >= 0 then writech('+');
-              writeint(offset);
+              if offset >= 0 then writeCh ('+');
+              writeInt (offset);
               end;
             end; {commonlong}
 
           pcrelative:
             begin
-            writech('L');
-            if offset >= 0 then writech('+');
-            writeint(offset);
-            if (n^.operandcost < long) or $pic then writestr('(PC)');
+            writeCh ('L');
+            if offset >= 0 then writeCh ('+');
+            writeInt (offset);
+            if (n^.operandcost < long) or $pic then writeStr ('(PC)');
             end; {pcrelative}
 
           pcindexed:
@@ -7403,24 +7397,24 @@ procedure writelastopnd;
               puterror(baddisplacement);
             if mc68020 then
               begin
-              writestr('(*');
+              writeStr ('(*');
               {??? how much bias is needed for 68020 ???}
-              if offset + word >= 0 then writech('+');
-              writeint(offset + word);
-              writech(',');
+              if offset + word >= 0 then writeCh ('+');
+              writeInt (offset + word);
+              writeCh (',');
               end
             else
               begin
-              writech('*');
-              if offset + word >= 0 then writech('+');
-              writeint(offset + word);
-              writech('(');
+              writeCh ('*');
+              if offset + word >= 0 then writeCh ('+');
+              writeInt (offset + word);
+              writeCh ('(');
               end;
-            writestr('PC,D');
-            writeint(indxr);
-            writestr('.W');
+            writeStr ('PC,D');
+            writeInt (indxr);
+            writeStr ('.W');
             write_scale;
-            writech(')');
+            writeCh (')');
             end; {pcindexed}
 
           supportcall:
@@ -7433,14 +7427,14 @@ procedure writelastopnd;
             if $pic then
               if mc68020 then
                 begin { must use 68020 32 bit form }
-                writech('(');
+                writeCh ('(');
                 WriteSymbolName(s);
-                writestr(',PC)');
+                writeStr (',PC)');
                 end
               else
                 begin { use 68000 16 bit form }
                 WriteSymbolName(s);
-                writestr('(PC)');
+                writeStr ('(PC)');
                 end
             else WriteSymbolName(s); { non pic -- use absolute form }
             end; {supportcall}
@@ -7453,22 +7447,22 @@ procedure writelastopnd;
                  (procmap[offset].addr = undefinedaddr) or
                  (n^.operandcost >= long)) then
                 begin { must use 68020 32 bit form }
-                writech('(');
+                writeCh ('(');
                 if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
                   writeprocname(offset, linknameused) {maintains col counter}
                 else
                   begin
-                  writech('P');
-                  writeint(offset);
+                  writeCh ('P');
+                  writeInt (offset);
                   end;
 
                 if offset1 <> 0 then
                   begin
-                  writeint(offset1);
+                  writeInt (offset1);
                   if odd(offset1) or (offset1 > 0) then puterror(badoffset);
                   end;
 
-                writestr(',PC)');
+                writeStr (',PC)');
                 end
               else
                 begin { use 68000 16 bit form }
@@ -7476,17 +7470,17 @@ procedure writelastopnd;
                   writeprocname(offset, linknameused) {maintains col counter}
                 else
                   begin
-                  writech('P');
-                  writeint(offset);
+                  writeCh ('P');
+                  writeInt (offset);
                   end;
 
                 if offset1 <> 0 then
                   begin
-                  writeint(offset1);
+                  writeInt (offset1);
                   if odd(offset1) or (offset1 > 0) then puterror(badoffset);
                   end;
 
-                writestr('(PC)');
+                writeStr ('(PC)');
                 end
             else if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
               begin
@@ -7494,20 +7488,20 @@ procedure writelastopnd;
 
               if sharedPtr^.proctable[offset].bodydefined and
                  (procmap[offset].addr <> undefinedaddr) and
-                 (n^.operandcost < long) then writestr('(PC)');
+                 (n^.operandcost < long) then writeStr ('(PC)');
               end
             else
               begin { not external call }
-              writech('P');
-              writeint(offset);
+              writeCh ('P');
+              writeInt (offset);
 
               if offset1 <> 0 then
                 begin
-                writeint(offset1);
+                writeInt (offset1);
                 if odd(offset1) or (offset1 > 0) then puterror(badoffset);
                 end;
 
-              if n^.operandcost < long then writestr('(PC)');
+              if n^.operandcost < long then writeStr ('(PC)');
               end;
             end; {usercall}
 
@@ -7516,7 +7510,7 @@ procedure writelastopnd;
                 at the beginning of each procedure.
               }
             begin
-            writestr('#G-');
+            writeStr ('#G-');
             supname(loophole(libroutines, libown), s);
             WriteSymbolName(s);
             end;
@@ -7526,9 +7520,9 @@ procedure writelastopnd;
             { For 68000 24-bit PIC only.  Generates "#<offset>+*(PC)".
             }
             begin
-            writeint(offset);
-            writestr('+*');
-            writestr('(PC)');
+            writeInt (offset);
+            writeStr ('+*');
+            writeStr ('(PC)');
             end;
 
           pic_usercall:
@@ -7536,19 +7530,19 @@ procedure writelastopnd;
             { For 68000 24-bit PIC only.  Generates "#<name>-<offset>-*".
             }
             begin
-            writech('#');
+            writeCh ('#');
 
             if sharedPtr^.proctable[n^.oprnd.offset].externallinkage then
               writeprocname(offset, linknameused) {maintains column counter}
             else
               begin { not external call }
-              writech('P');
-              writeint(offset);
+              writeCh ('P');
+              writeInt (offset);
               end;
 
-            writech('-');
-            writeint(offset1);
-            writestr('-*');
+            writeCh ('-');
+            writeInt (offset1);
+            writeStr ('-*');
             end;
 
           pic_supportcall:
@@ -7556,30 +7550,30 @@ procedure writelastopnd;
             { For 68000 24-bit PIC only.  Generates "#<suppt_call>-<offset>-*".
             }
             begin
-            writech('#');
+            writeCh ('#');
             supname(loophole(libroutines, offset), s);
             WriteSymbolName(s);
-            writech('-');
-            writeint(offset1);
-            writestr('-*');
+            writeCh ('-');
+            writeInt (offset1);
+            writeStr ('-*');
             end;
 
           pic_branch:
             begin
-            writestr('#L');
-            writeint(offset);
-            writech('-');
-            writeint(offset1);
-            writestr('-*');
+            writeStr ('#L');
+            writeInt (offset);
+            writeCh ('-');
+            writeInt (offset1);
+            writeStr ('-*');
             end;
 
           pic_pcrelative:
             begin
-            writestr('#L+');
-            writeint(offset);
-            writech('-');
-            writeint(offset1);
-            writestr('-*');
+            writeStr ('#L+');
+            writeInt (offset);
+            writeCh ('-');
+            writeInt (offset1);
+            writeStr ('-*');
             end;
           end; {case mode}
 
@@ -7592,7 +7586,7 @@ procedure writeopnd;
     if sharedPtr^.switcheverplus[outputmacro] then
       begin
       writelastopnd;
-      writech(',');
+      writeCh (',');
       end;
   end;
 {>>>}
@@ -7650,19 +7644,19 @@ function computedistance: addressrange;
 procedure writelabels;
 
   begin { write all labels which refer to this node }
-    if column <> 1 then writeline; { a previous label may be "open" if a nop
+    if column <> 1 then writeLine; { a previous label may be "open" if a nop
                                      node has intervened }
-    writech('L');
-    writeint(labeltable[currlabel].labno);
-    writech(':');
+    writeCh ('L');
+    writeInt (labeltable[currlabel].labno);
+    writeCh (':');
     currlabel := currlabel + 1;
 
     while currnode = labeltable[currlabel].nodelink do
       begin { write additional labels on separate lines }
-      writeline;
-      writech('L');
-      writeint(labeltable[currlabel].labno);
-      writech(':');
+      writeLine;
+      writeCh ('L');
+      writeInt (labeltable[currlabel].labno);
+      writeCh (':');
       currlabel := currlabel + 1;
       end; { write additional labels }
 
@@ -7673,20 +7667,20 @@ procedure doblocklabel;
 { Print a label in the assembler file to mark the start of a procedure }
 
   begin
-    writech('*');
-    writeline;
-    writestr('*  [');
-    write(macFile, currentpc: - 4);
-    write(macFile, ']  ');
+    writeCh ('*');
+    writeLine;
+    writeStr ('*  [');
+    write (macFile, currentpc: - 4);
+    write (macFile, ']  ');
 
-    if sharedPtr^.blockref = 0 then write(macFile, 'Main Body:')
+    if sharedPtr^.blockref = 0 then write (macFile, 'Main Body:')
     else
       begin
       writeprocname(sharedPtr^.blockref, 100);
       end;
-    writeline;
-    writech('*');
-    writeline;
+    writeLine;
+    writeCh ('*');
+    writeLine;
   end; {doblocklabel}
 {>>>}
 {<<<}
@@ -7704,7 +7698,7 @@ procedure DoBlockEntryCode;
     then
       if sharedPtr^.switchcounters[mainbody] > 0 then
         begin { process main body of program }
-        if sharedPtr^.switcheverplus[outputmacro] then writestr('BEGIN$:');
+        if sharedPtr^.switcheverplus[outputmacro] then writeStr ('BEGIN$:');
 
         startaddress := currentpc;
         end { switchcounters[mainbody] > 0 }
@@ -7712,8 +7706,8 @@ procedure DoBlockEntryCode;
         begin { level=1 and nomainbody }
         if sharedPtr^.switcheverplus[outputmacro] then
           begin
-          writech('*');
-          writeline;
+          writeCh ('*');
+          writeLine;
           end;
         end
 
@@ -7740,13 +7734,13 @@ procedure DoBlockEntryCode;
         then
           begin
           writeprocname(sharedPtr^.blockref, linknameused);
-          writech(':');
-          writeline;
+          writeCh (':');
+          writeLine;
           end
         else
           begin { not external }
-          writech('P');
-          writeint(sharedPtr^.blockref);
+          writeCh ('P');
+          writeInt (sharedPtr^.blockref);
           writech (':');
           end;
         end {macro output for block entry} ;
@@ -7790,8 +7784,8 @@ procedure buildbranches;
       begin
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
-        writech('L');
-        writeint(n^.labelno);
+        writeCh ('L');
+        writeInt (n^.labelno);
         end;
 
       findlabelpc(n^.labelno, isforward); { find or compute target's addr }
@@ -7822,7 +7816,7 @@ procedure buildbranches;
         insertobj(labelpc - currentpc); { this bumps pc by 2 }
         if isforward <> 0 then
           begin
-          write('Forward BRA illegal');
+          write ('Forward BRA illegal');
           abort(inconsistent);
           end;
         end { long branch }
@@ -7847,12 +7841,12 @@ procedure buildbranches;
 
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
-        writech('*');
-        if distancetemp < 0 then writeint(distancetemp)
+        writeCh ('*');
+        if distancetemp < 0 then writeInt (distancetemp)
         else
           begin
-          writech('+');
-          writeint(distancetemp + word);
+          writeCh ('+');
+          writeInt (distancetemp + word);
           end;
         end;
       end
@@ -7871,8 +7865,8 @@ procedure buildfpbranches;
       begin
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
-        writech('L');
-        writeint(n^.labelno);
+        writeCh ('L');
+        writeInt (n^.labelno);
         end;
 
       findlabelpc(n^.labelno, isforward); { find or compute target's addr }
@@ -7908,12 +7902,12 @@ procedure buildfpbranches;
 
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
-        writech('*');
-        if distancetemp < 0 then writeint(distancetemp)
+        writeCh ('*');
+        if distancetemp < 0 then writeInt (distancetemp)
         else
           begin
-          writech('+');
-          writeint(distancetemp + word);
+          writeCh ('+');
+          writeInt (distancetemp + word);
           end;
         end;
       end
@@ -7936,8 +7930,8 @@ procedure builddbxx;
       begin { process the label }
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
-        writech('L');
-        writeint(n^.labelno);
+        writeCh ('L');
+        writeInt (n^.labelno);
         end;
 
       findlabelpc(n^.labelno, isforward); { find or compute target's addr }
@@ -7951,12 +7945,12 @@ procedure builddbxx;
 
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
-        writech('*');
-        if distancetemp < 0 then writeint(distancetemp)
+        writeCh ('*');
+        if distancetemp < 0 then writeInt (distancetemp)
         else
           begin
-          writech('+');
-          writeint(distancetemp + word);
+          writeCh ('+');
+          writeInt (distancetemp + word);
           end;
         end;
       end
@@ -7986,9 +7980,9 @@ procedure buildmovem (gen_fmovem: boolean);
           begin
           if n^.oprnd.offset and mask <> 0 then
             begin
-            if not first then writech('/');
-            writestr('FP');
-            writech(chr(i + ord('0')));
+            if not first then writeCh ('/');
+            writeStr ('FP');
+            writeCh (chr(i + ord('0')));
             first := false;
             end;
           mask := mask * 2;
@@ -7999,9 +7993,9 @@ procedure buildmovem (gen_fmovem: boolean);
           begin
           if n^.oprnd.offset and mask <> 0 then
             begin
-            if not first then writech('/');
-            writech('A');
-            writech(chr(i + ord('0')));
+            if not first then writeCh ('/');
+            writeCh ('A');
+            writeCh (chr(i + ord('0')));
             first := false;
             end;
           mask := mask * 2;
@@ -8011,15 +8005,15 @@ procedure buildmovem (gen_fmovem: boolean);
           begin
           if n^.oprnd.offset and mask <> 0 then
             begin
-            if not first then writech('/');
-            writech('D');
-            writech(chr(i + ord('0')));
+            if not first then writeCh ('/');
+            writeCh ('D');
+            writeCh (chr(i + ord('0')));
             first := false;
             end;
           mask := mask * 2;
           end;
         end;
-      writech(',');
+      writeCh (',');
       end;
       if gen_fmovem then
         begin { mode 00 is static list, -(An) }
@@ -8062,9 +8056,9 @@ procedure buildmovem (gen_fmovem: boolean);
           begin
           if n^.oprnd.offset and mask <> 0 then
             begin
-            if not first then writech('/');
-            writestr('FP');
-            writech(chr(i + ord('0')));
+            if not first then writeCh ('/');
+            writeStr ('FP');
+            writeCh (chr(i + ord('0')));
             first := false;
             end;
           mask := mask * 2;
@@ -8075,9 +8069,9 @@ procedure buildmovem (gen_fmovem: boolean);
           begin
           if n^.oprnd.offset and mask <> 0 then
             begin
-            if not first then writech('/');
-            writech('D');
-            writech(chr(i + ord('0')));
+            if not first then writeCh ('/');
+            writeCh ('D');
+            writeCh (chr(i + ord('0')));
             first := false;
             end;
           mask := mask * 2;
@@ -8087,9 +8081,9 @@ procedure buildmovem (gen_fmovem: boolean);
           begin
           if n^.oprnd.offset and mask <> 0 then
             begin
-            if not first then writech('/');
-            writech('A');
-            writech(chr(i + ord('0')));
+            if not first then writeCh ('/');
+            writeCh ('A');
+            writeCh (chr(i + ord('0')));
             first := false;
             end;
           mask := mask * 2;
@@ -8127,9 +8121,9 @@ procedure BuildInstruction;
       if sharedPtr^.switcheverplus[outputmacro] then
         begin
         case n^.oprnd.offset of
-          1: writestr('FPIAR');
-          2: writestr('FPSR');
-          4: writestr('FPCR');
+          1: writeStr ('FPIAR');
+          2: writeStr ('FPSR');
+          4: writeStr ('FPCR');
           end;
         end
     end; {output_fp_creg}
@@ -8304,7 +8298,7 @@ procedure BuildInstruction;
           begin
           offset1 := n^.oprnd.offset;
           output_fp_creg;
-          if sharedPtr^.switcheverplus[outputmacro] then writech(',');
+          if sharedPtr^.switcheverplus[outputmacro] then writeCh (',');
           getoperand;
           writelastopnd;
           insertobj(op2 + 20000B + offset1 * 2000B);
@@ -8358,7 +8352,7 @@ procedure BuildInstruction;
           begin
           writeopnd;
           seteffective;
-          if sharedPtr^.switcheverplus[outputmacro] then writestr('CCR');
+          if sharedPtr^.switcheverplus[outputmacro] then writeStr ('CCR');
           end;
 
         moveq:
@@ -8584,7 +8578,7 @@ procedure BuildInstruction;
             writebitfield(register, 0, datasize);
             end;
 
-          if sharedPtr^.switcheverplus[outputmacro] then writech(',');
+          if sharedPtr^.switcheverplus[outputmacro] then writeCh (',');
           writelastopnd; { The register }
 
             { Back up two operands and output the effective address
@@ -8767,8 +8761,8 @@ procedure BuildInstruction;
             begin
             if sharedPtr^.switcheverplus[outputmacro] then
               begin
-              writech('L');
-              writeint(n^.labelno);
+              writeCh ('L');
+              writeInt (n^.labelno);
               end;
 
             mode := 71B; {absolute long}
@@ -8819,11 +8813,11 @@ procedure BuildInstruction;
 
             if sharedPtr^.switcheverplus[outputmacro] then
               begin
-              writech('*');
-              writech('+');
-              writeint(distancetemp + word);
-              writestr('(PC)');
-              writech(',');
+              writeCh ('*');
+              writeCh ('+');
+              writeInt (distancetemp + word);
+              writeStr ('(PC)');
+              writeCh (',');
               end;
             end;
           getoperand;
@@ -8978,12 +8972,12 @@ begin
           if sharedPtr^.switcheverplus[outputmacro] then
             begin
             reposition(opcolumn);
-            writestr('DC.W');
+            writeStr ('DC.W');
             reposition(opndcolumn);
-            writech('L');
-            writeint(targetlabel);
-            writestr('-L');
-            writeint(tablebase);
+            writeCh ('L');
+            writeInt (targetlabel);
+            writeStr ('-L');
+            writeInt (tablebase);
             end;
 
           writeobjline;
@@ -8998,7 +8992,7 @@ begin
             if i <> 0 then i := i - firststmt + 1;
             if sharedPtr^.switcheverplus[outputmacro] then
               begin
-              if column > 1 then writeline;
+              if column > 1 then writeLine;
 
               writeln(macFile, '* Line: ', sourceline - lineoffset: 1,
                       ', Stmt: ', i: 1);
@@ -9013,14 +9007,14 @@ begin
             if sharedPtr^.switcheverplus[outputmacro] then
               begin
               reposition(opcolumn);
-              writestr('DC.W');
+              writeStr ('DC.W');
               reposition(opndcolumn);
-              writech('$');
-              WriteHex(data div 16#10000);
-              writech(',');
-              writech('$');
-              WriteHex(data mod 16#10000);
-              writeline;
+              writeCh ('$');
+              writeHex (data div 16#10000);
+              writeCh (',');
+              writeCh ('$');
+              writeHex (data mod 16#10000);
+              writeLine;
               end
             end
 
@@ -9526,7 +9520,7 @@ begin {fpgendouble}
       end
     else { It's an int_float }
       begin
-      write('Illegal 68881 data type in fpgendouble');
+      write ('Illegal 68881 data type in fpgendouble');
       abort(inconsistent);
       end;
     l := dstl;
@@ -9544,7 +9538,7 @@ begin {fpgendouble}
     end
   else { It's an int_float }
     begin
-    write('Illegal 68881 data type in fpgendouble');
+    write ('Illegal 68881 data type in fpgendouble');
     abort(inconsistent);
     end;
 
@@ -9852,7 +9846,7 @@ begin
     begin
     { if dontchangevalue > 0 then
         begin
-        write('Can''t save register in a parameter list');
+        write ('Can''t save register in a parameter list');
         abort(inconsistent);
         end; }
     { We didn't pass an occurance of this register, even one that couldn't be used, so we must assume long }
@@ -9905,7 +9899,7 @@ begin
     begin
     { if dontchangevalue > 0 then
         begin
-        write('Can''t save register in a parameter list');
+        write ('Can''t save register in a parameter list');
         abort(inconsistent);
         end; }
 
@@ -9942,7 +9936,7 @@ begin {saveareg}
       begin
       { if dontchangevalue > 0 then
           begin
-          write('Can''t save register in a parameter list');
+          write ('Can''t save register in a parameter list');
           abort(inconsistent);
           end; }
       aligntemps;
@@ -11325,7 +11319,7 @@ procedure dereference{k: keyindex (operand) };
         begin
         if refcount = 0 then
           begin
-          write('DEREFERENCE, refcount < 0');
+          write ('DEREFERENCE, refcount < 0');
           abort(inconsistent);
           end;
 
@@ -13378,7 +13372,7 @@ procedure ptrtempx;
 
       if sharedPtr^.proctable[sharedPtr^.blockref].intlevelrefs then
         begin
-        write('Attempt to allocate too many ptrtemps');
+        write ('Attempt to allocate too many ptrtemps');
         abort(inconsistent);
         end;
       end
@@ -16081,10 +16075,10 @@ procedure dumpstack;
   begin {dumpstack}
     for i := stackcounter to keysize - 2 do
       with keytable[i], oprnd do begin
-        write('sp ', keysize - i - 1 : 1);
-        write(', ref ', refcount:1, ', len ', len:1);
-        write(', temp ', tempflag, ', instmark=', instmark:1);
-        write(', offset ', offset:1);
+        write ('sp ', keysize - i - 1 : 1);
+        write (', ref ', refcount:1, ', len ', len:1);
+        write (', temp ', tempflag, ', instmark=', instmark:1);
+        write (', offset ', offset:1);
         writeln;
         end;
     writeln;
@@ -17087,7 +17081,7 @@ procedure forcheckx{up: boolean (we are going up) };
 
       if keytable[key1].oprnd.m <> dreg then
         begin
-        write('for check error');
+        write ('for check error');
         abort(inconsistent);
         end;
 
@@ -19968,7 +19962,7 @@ begin {genone}
     saveactkeys: saveactivekeys;
     otherwise
       begin
-      write('Not yet implemented: ', ord(pseudoSharedPtr^.pseudoinst.op): 1);
+      write ('Not yet implemented: ', ord(pseudoSharedPtr^.pseudoinst.op): 1);
       abort(inconsistent);
       end;
     end;
@@ -21260,7 +21254,7 @@ var
           r := r + 1;
         if (r = sl) and slused then
           begin
-          write('stuffregisters screwup');
+          write ('stuffregisters screwup');
           abort(inconsistent);
           end;
         addresses[i].newreg := r;
@@ -21736,7 +21730,7 @@ begin
 
                   if $pic then
                     begin  { MC68000 24-bit pic does not allow branches in procedure longer than 32k. }
-                    write('Procedure is too large for PIC');
+                    write ('Procedure is too large for PIC');
                     abort(inconsistent);
                     end;
                   if ni^.inst = bra then
@@ -21746,7 +21740,7 @@ begin
                     end
                   else if ni^.inst in branches then
                     begin
-                    write('Fixaddressing: long conditional branch in node ',
+                    write ('Fixaddressing: long conditional branch in node ',
                           ti: 1);
                     abort(inconsistent);
                     end;
@@ -22430,8 +22424,8 @@ begin
   with pseudoSharedPtr^.pseudoinst do
     if oprnds[3] <> 1 then
       begin
-      write('Invalid real number intermediate code');
-      abort(inconsistent);
+      write ('Invalid real number intermediate code');
+      abort (inconsistent);
       end
     else with keytable[key].oprnd do
       begin
@@ -22458,7 +22452,7 @@ begin
           offset1 := 0;
           highcode := highcode + 8;
           m := pcrelative;
-}            end
+}         end
         else
           begin
           kluge.i := oprnds[1];
