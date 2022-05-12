@@ -67,5 +67,10 @@ type
                       end;
   interSharedPtrType = ^interSharedType;
 
+{ utils }
+procedure comparereal (left, right: real; var result: boolean; op: operator); external;
+procedure uscompareint (left, right: unsignedint; var result: boolean; op: operator); external;
+procedure compareint (left, right: integer; var result: boolean; op: operator); external;
+
 { interface }
 function getInterSharedPtr : interSharedPtrType; external;

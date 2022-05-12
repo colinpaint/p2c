@@ -435,6 +435,7 @@ var
 
   lastnode: - 1..tnodetablesize; { last node allocated}
   laststmtnode: - 1..tnodetablesize; { last node for stmt}
+  maxnodes: integer;
 
   stack: array [stackindex] of stackrecord; { expression stack for building}
   sp: stackindex; { top of expression stack}
@@ -476,40 +477,40 @@ var
   contextsp: contextindex; {top of context stack}
   overflowdepth: shortint; {counter for nesting > contextdepth}
 
-  shorteval: boolean; {set if short-circuit eval of and/or/not wanted}
-  inverted: boolean; {true if odd number of "nots" in short circuit eval}
-  nowdebugging: boolean; {true if this block should generate debugging code}
-  nowwalking: boolean; {true if this block should generate walkback code}
-  killinput: boolean; {if true, read/readln without file name occured}
-  irreducible: boolean; {this function has irreducible code}
+  shorteval: boolean;    { set if short-circuit eval of and/or/not wanted}
+  inverted: boolean;     { true if odd number of "nots" in short circuit eval}
+  nowdebugging: boolean; { true if this block should generate debugging code}
+  nowwalking: boolean;   { true if this block should generate walkback code}
+  killinput: boolean;    { if true, read/readln without file name occured}
+  irreducible: boolean;  { this function has irreducible code}
 
-  symbolrecord: integer; {symbol file record for this block (debugging)}
+  symbolrecord: integer; { symbol file record for this block (debugging)}
 
-  nextintcode: 0..diskbufsize; {next entry in int file block}
-  nextpseudofile: 0..diskbufsize; {next entry in pseudo file block}
+  nextintcode: 0..diskbufsize;    { next entry in int file block}
+  nextpseudofile: 0..diskbufsize; { next entry in pseudo file block}
 
   final_block_size: addressrange; {size of block as known at end of proc}
 
-  laststmt: integer; {statement number of last statement generated(debugging)}
-  controlstmt: boolean; {statement is control point (debugging)}
-  branchstmt: boolean; {statement is non-local goto (debugging)}
-  targetstmt: boolean; {statement is target of non-local goto (debugging)}
+  laststmt: integer;    { statement number of last statement generated(debugging)}
+  controlstmt: boolean; { statement is control point (debugging)}
+  branchstmt: boolean;  { statement is non-local goto (debugging)}
+  targetstmt: boolean;  { statement is target of non-local goto (debugging)}
 
-  fewestblocks, mostblocks: 0..tmaxblocksin; {monitor virtual buffers}
+  fewestblocks, mostblocks: 0..tmaxblocksin; { monitor virtual buffers }
 
-  map: packed array [operator, types] of pseudoop; {maps analys operators onto pseudoops}
-  castmap: packed array [types, types] of pseudoop; {casts from form to form}
+  map: packed array [operator, types] of pseudoop;  { maps analys operators onto pseudoops}
+  castmap: packed array [types, types] of pseudoop; { casts from form to form}
 
-  dumpFile: dumpFileType; {used to dump the tree, if needed}
-  walkdepth: shortint; {depth of progress into tree}
+  dumpFile: dumpFileType; { used to dump the tree, if needed}
+  walkdepth: shortint;    { depth of progress into tree}
 
   visitstate: boolean; { state of "visited" blocks on current search }
   regvars: array [0..regtablelimit] of simplevars; { register var hash table}
   foncount: fonrange; { flow order number }
 
-  loopfactor: shortint; { value assigned to localworth of variables }
+  loopfactor: shortint;       { value assigned to localworth of variables }
   loopdepth: 0..maxloopdepth; { current loop depth }
-  loopoverflow: shortint; { loopoverflow value }
+  loopoverflow: shortint;     { loopoverflow value }
   {<<<}
   loopstack: array [0..maxloopdepth] of
       record
@@ -525,30 +526,20 @@ var
   blockblocks: shortint; { temp for debug }
   hoistone: shortint; { count of 1st level hoists }
   hoisttwo: shortint; { count of 2nd level hoists }
-  ptr: nodeptr; { for access to basic block node }
-  needjump: boolean; { true if this block needs a jump to it's successor }
+  ptr: nodeptr;       { for access to basic block node }
+  needjump: boolean;  { true if this block needs a jump to it's successor }
   oktolabel: boolean; { true if current basic block can be labelled }
-  oktoclear: boolean; {ok to clear keys (used in walk)}
+  oktoclear: boolean; { ok to clear keys (used in walk)}
   labelnext: boolean; { true if next basic block can be labelled }
   lnk, lnk2: linkptr; { for disposing succ/pred links }
   currentblock: basicblockptr; { basic block we are walking }
-  maxnodes: integer;
 
-  localparamnode: nodeindex; {points to node describing local param levop}
-  thrashing: boolean; {set true when virt mem overflows onto disk}
-  lastblocksin: 1..tmaxblocksin; {actual number of node blocks}
-  blocksin: array [1..tmaxblocksin] of blockmap; {map of node blocks in memory}
-  blockslow: array [1..maxblockslow] of nodeblock; {fixed blocks in store}
+  localparamnode: nodeindex;      { points to node describing local param levop}
+  thrashing: boolean;             { set true when virt mem overflows onto disk}
+  lastblocksin: 1..tmaxblocksin;  { actual number of node blocks}
+  blocksin: array [1..tmaxblocksin] of blockmap;   { map of node blocks in memory}
+  blockslow: array [1..maxblockslow] of nodeblock; { fixed blocks in store}
   bignodetable: array [0..bigtnodetablesize] of node;
-  exitStmtno: integer; {save stmtno of the exit fake statement (VMS)}
-
-  { the following are only a convenience when using pdb (setting watch point on a heap based variable, ...) }
-  dbgbasicblockptr: basicblockptr;
-  dbgbasicblockptr1: basicblockptr;
-  dbgnodeptr: nodeptr;
-  dbgnodeptr1: nodeptr;
-  dbglinkptr: linkptr;
-  dbglinkptr1: linkptr;
 {>>>}
 
 {<<<  utils}
@@ -897,236 +888,8 @@ begin
     end;
 end;
 {>>>}
-
-{ foldcom }
-{<<<}
-procedure add (left, right: integer;  var result: integer; var overflow: boolean);
-{ Add two target integers.  If the operation overflows, "overflow" will
-  be set, and "result" will be set to the max value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
-}
-
-
-  begin {add}
-    overflow := ((left >= 0) = (right >= 0)) and ((left >= 0) and
-                (sharedPtr^.targetmaxint - right < left) or (left < 0) and
-                ( - sharedPtr^.targetmaxint - 1 - right > left));
-    if overflow then
-      if left >= 0 then result := sharedPtr^.targetmaxint
-      else result := - sharedPtr^.targetmaxint - 1 {two's complement}
-    else result := left + right;
-  end {add} ;
 {>>>}
-{<<<}
-procedure usadd (left, right: integer;  var result: integer; var overflow: boolean);
-{ Unsigned add of two target integers.  If the operation overflows,
-  "overflow"  is set, and "result" will be set to the max value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
-}
-
-  var
-    usleft, usright: unsignedint;
-
-
-  begin {usadd}
-    usleft := left;
-    usright := right;
-    overflow := maxusint - usleft < usright;
-    if overflow then result := maxusint
-    else result := usleft + usright;
-  end {usadd} ;
-{>>>}
-
-{<<<}
-procedure negate (operand: integer; var result: integer; var overflow: boolean);
-{ Negate a target integer.  If it overflows, the result will be set to
-  the limit at the appropriate sign.
-  ****Self hosted version
-}
-
-
-  begin {negate}
-    overflow := operand = ( - sharedPtr^.targetmaxint - 1);
-    if overflow then result := sharedPtr^.targetmaxint
-    else result := - operand;
-  end {negate} ;
-{>>>}
-{<<<}
-procedure subtract (left, right: integer; var result: integer; var overflow: boolean);
-{ Subtract two target integers.  If the operation overflows, "overflow" will
-  be set, and "result" will be set to the max value possible.
-  ****Self hosted version
- }
-
-
-  begin {subtract}
-    overflow := ((left >= 0) <> (right >= 0)) and ((left >= 0) and
-                (sharedPtr^.targetmaxint + right < left) or (left < 0) and
-                ( - sharedPtr^.targetmaxint - 1 + right > left));
-    if overflow then
-      if left >= 0 then result := sharedPtr^.targetmaxint
-      else result := - sharedPtr^.targetmaxint - 1 {two's complement}
-    else result := left - right;
-  end {subtract} ;
-{>>>}
-{<<<}
-procedure ussubtract (left, right: integer; var result: integer; var overflow: boolean);
-{ Unsigned subtract.  The result is required to be unsigned as well
-  or overflow will be set.
-  ****Self hosted version
-}
-
-  var
-    usleft, usright: unsignedint;
-
-
-  begin {ussubtract}
-    usleft := left;
-    usright := right;
-    overflow := usleft < usright;
-    if overflow then result := 0
-    else result := usleft - usright;
-  end {ussubtract} ;
-{>>>}
-
-{<<<}
-procedure multiply (left, right: integer;  var result: integer; var overflow: boolean);
-{ Multiply two target integers.  If the operation overflows, "overflow"
-  will be set and "result" will be set to the max signed value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
-}
-
-
-  begin {multiply}
-    if left = -1 then overflow := right = (- sharedPtr^.targetmaxint - 1)
-    else if right = -1 then overflow := left = (- sharedPtr^.targetmaxint - 1)
-    else if (left <> 0) and (right <> 0) then
-      overflow := ((left > 0) = (right > 0)) and ((left > 0) and
-                  (sharedPtr^.targetmaxint div left < right) or (left < 0) and
-                  (sharedPtr^.targetmaxint div left > right)) or
-                  ((left > 0) <> (right > 0)) and ((left > 0) and
-                  (( - sharedPtr^.targetmaxint - 1) div left > right) or (left < 0) and
-                  (( - sharedPtr^.targetmaxint - 1) div right > left))
-    else overflow := false;
-    if overflow then
-      if (left > 0) = (right > 0) then result := maxint
-      else result := - maxint - 1
-    else result := left * right;
-  end {multiply} ;
-{>>>}
-{<<<}
-procedure usmultiply (left, right: integer; var result: integer; var overflow: boolean);
-
-{ Unsigned equivalent of the multiply routine
-  ****self hosted version
-}
-
-  var
-    usright, usleft: unsignedint;
-
-
-  begin {usmultiply}
-    usright := right;
-    usleft := left;
-    if (usright = 0) or (usleft = 0) then overflow := false
-    else overflow := maxusint div usright < usleft;
-    if overflow then result := maxusint
-    else result := usleft * usright;
-  end {usmultiply} ;
-{>>>}
-
-{<<<}
-procedure divide (left, right: integer;  var result: integer; var overflow: boolean);
-{ Divide two target integers.  If the operation overflows, "overflow"
-  will be set and "result" will be set to the max signed value possible.
-  ****Self hosted version
-  This will have to be changed if the target integers are not the same
-  size as the host integers;
-}
-
-
-  begin {divide}
-    overflow := (right = 0) or (left = ( - sharedPtr^.targetmaxint - 1)) and
-                (right = - 1);
-    if overflow then
-      if (left > 0) or (right = - 1) then result := sharedPtr^.targetmaxint
-      else result := - sharedPtr^.targetmaxint - 1
-    else result := left div right;
-  end {divide} ;
-{>>>}
-{<<<}
-procedure usdivide (left, right: integer;  var result: integer; var overflow: boolean);
-{ Unsigned version of divide.
-  *****16 bit 68K on a PDP11.  The PDP11 doesn't really have an unsigned
-  divide instruction, so we have to fake it.
-}
-
-  var
-    usleft, usright: unsignedint;
-
-
-  begin {usdivide}
-    usleft := left;
-    usright := right;
-    overflow := usright = 0;
-    if overflow then result := maxusint
-    else if usright > sharedPtr^.targetmaxint then
-      if usright > usleft then result := 0
-      else result := 1
-    else result := usleft div usright;
-  end {usdivide} ;
-{>>>}
-
-{<<<}
-procedure remainder (left, right: integer;  var result: integer; var overflow: boolean);
-{ Take the mod for target integers;  If "right" is zero, the result
-  will be zero, and "overflow" will be set.
-  ****self hosted version
-}
-
-
-  begin {remainder}
-    overflow := right = 0;
-    if overflow or (left = ( - sharedPtr^.targetmaxint - 1)) and ((right = - 1) or
-       (right = ( - sharedPtr^.targetmaxint - 1))) then
-      result := 0
-    else if (right = ( - sharedPtr^.targetmaxint - 1)) then result := left
-    else if left < 0 then
-      if right < 0 then result := ( - left) mod ( - right)
-      else result := - ( - left) mod right
-    else if right < 0 then result := - (left mod ( - right))
-    else result := left mod right;
-    { Now that we have the arithmetic remainder, we can "correct"
-      it to conform to the Pascal definition of "mod". }
-    if true {we want the positive modulus} then
-      if result < 0 then result := result + abs(right);
-  end {remainder} ;
-{>>>}
-{<<<}
-procedure usremainder (left, right: integer;  var result: integer; var overflow: boolean);
-{ unsigned version of remainder
-  ****self hosted version
-}
-
-  var
-    usright, usleft: unsignedint;
-
-
-  begin {usremainder}
-    usright := right;
-    usleft := left;
-    overflow := usright = 0;
-    if overflow then result := 0
-    else result := usleft mod usright;
-  end {usremainder} ;
-{>>>}
-
+{<<<  inter utils}
 {<<<}
 procedure comparereal (left, right: real; var result: boolean; op: operator);
  { Fold the compare of a pair of real operands. }
@@ -6488,7 +6251,8 @@ var
       begin
       lastnode := lastnode + 1;
       laststmtnode := lastnode;
-      if lastnode > maxnodes then maxnodes := lastnode;
+      if lastnode > maxnodes then
+        maxnodes := lastnode;
       p := lastnode;
 
       { if this is the first stmt for this basic block link it in }
@@ -6654,7 +6418,8 @@ var
     else
       begin
       lastnode := lastnode + 1;
-      if lastnode > maxnodes then maxnodes := lastnode;
+      if lastnode > maxnodes then
+        maxnodes := lastnode;
       n := lastnode;
       p := ref(bignodetable[lastnode]);
       with p^ do
@@ -6802,7 +6567,6 @@ var
                     (sharedPtr^.switchcounters[profiling] > 0) or
                     sharedPtr^.switcheverplus[targdebug];
     nowwalking := (sharedPtr^.switchcounters[walkback] > 0);
-    exitStmtno := 0;
 
     { init the local var map }
     regvars[0].regid := 0;
@@ -9910,7 +9674,8 @@ var
           else
             begin
             lastnode := lastnode + 1;
-            if lastnode > maxnodes then maxnodes := lastnode;
+            if lastnode > maxnodes then
+              maxnodes := lastnode;
             p := ref(bignodetable[lastnode]);
             with p^ do
               begin

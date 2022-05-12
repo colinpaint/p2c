@@ -7,6 +7,7 @@ LibraryFile       system.imp    # Names of import-text files to search
 ElimDeadCode      0             # 1 or default=eliminate unreachable code
                                 # 2=even eliminate "if (false)" statements
                                 # 0=leave unreachable code in place
+AnonymousUnions   1             # 1=use C++ anonymous unions for variant recs
 
 # replacements
 ReplaceBefore     abort = abort1

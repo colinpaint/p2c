@@ -1990,7 +1990,7 @@ procedure definelastlabel;
   defined from "maxint" down, while labels emitted by travrs are defined
   from 1 up.
 }
-begin 
+begin
   definelabel(sharedPtr^.lastlabel);
   sharedPtr^.lastlabel := sharedPtr^.lastlabel - 1;
 end;
@@ -2671,7 +2671,7 @@ begin
     nexttempbuffer := 0;
     nexttemprelocn:= 0;
     end;
-end; 
+end;
 {>>>}
 
 {<<<}
@@ -2680,7 +2680,7 @@ procedure putdata (data: unsigned);
 begin
   tempbuffer[nexttempbuffer] := data and 65535;
   nexttempbuffer := nexttempbuffer + 1;
-  if nexttempbuffer >= maxtempbuffer then 
+  if nexttempbuffer >= maxtempbuffer then
     flushtempbuffer;
 end;
 {>>>}
@@ -2706,13 +2706,13 @@ begin
       begin
       reposition(opcolumn);
       writeStr ('SECTION');
-      if newsect = codesect then 
+      if newsect = codesect then
         writeStr (sectiontail);
       reposition (opndcolumn);
       writeInt (sectionno[newsect]);
       writeLine;
       end;
-    if sharedPtr^.switcheverplus[outputobj] then 
+    if sharedPtr^.switcheverplus[outputobj] then
       flushtempbuffer;
     sectionpc[currentsect] := currentpc;
     currentsect := newsect;
@@ -2729,7 +2729,7 @@ procedure seekstringfile (n: integer {byte to access});
 var
   newblock: 1..maxstringblks; { block to which seeking }
 
-begin 
+begin
   newblock := n div (diskbufsize + 1) + 1;
   if newblock <> sharedPtr^.curstringblock then
     begin
@@ -2824,7 +2824,7 @@ begin
   if sharedPtr^.switcheverplus[outputobj] then
     putbuffer (value, false);
   currentpc := currentpc + 2;
-end; 
+end;
 {>>>}
 {<<<}
 procedure diag_bits (value: unsigned; {value to generate}
@@ -2860,7 +2860,7 @@ end;
 procedure initdiags;
 { Initialize the diagnostic code, called only if diagnostics are going to be generated }
 
-var 
+var
   kludge: integer; {to get around a purposeful range error}
 
 begin
@@ -2918,15 +2918,15 @@ begin
 
   if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
     currentpc := 22
-  else 
+  else
     currentpc := 10; {length of header data}
-end; 
+end;
 {>>>}
 {<<<}
 procedure WriteSymbolName (name: packed array[m..n: integer] of char);
 { Write a symbol name string to the macro file. }
 
-var 
+var
   i: 0..maxprocnamelen;
 
 begin
@@ -4187,6 +4187,7 @@ const
 
 {<<<}
 procedure put_diags;
+{<<<}
 { Generate one procedure's worth of incore diagnostic tables.
   The tables are highly packed, with characters Huffman encoded and
   numbers stored in a compressed format.  They are bit packed with
@@ -4203,41 +4204,42 @@ procedure put_diags;
   statistics from a large number of Pascal programs, and take an average
   of 4.5 bits per character.
 }
+{>>>}
 
-  const
-    hm_chars = 39;
-    hm_max = 15;
+const
+  hm_chars = 39;
+  hm_max = 15;
 
-  type
-    hm_code = array [' '..'_'] of
-        record
-          length: 0..hm_max;
-          value: unsigned;
-        end;
+type
+  hm_code = array [' '..'_'] of
+      record
+        length: 0..hm_max;
+        value: unsigned;
+      end;
 
-  const
-    hm_value = hm_code((3, 5), (0, 0), (0, 0), (0, 0), (14, 4670), (0, 0),
-                       (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0),
-                       (0, 0), (0, 0), (0, 0), (12, 1166), (10, 290), (10, 295),
-                       (12, 1165), (13, 2329), (13, 2334), (14, 4656),
-                       (15, 9315), (15, 9314), (14, 4671), (0, 0), (0, 0),
-                       (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (4, 7), (6, 10),
-                       (5, 8), (5, 4), (3, 7), (6, 4), (6, 11), (6, 19), (4, 12)
-                       , (10, 294), (7, 5), (4, 13), (5, 19), (4, 5), (5, 0),
-                       (5, 18), (9, 144), (4, 6), (4, 8), (4, 3), (6, 3),
-                       (7, 37), (7, 11), (7, 4), (7, 10), (9, 146), (0, 0),
-                       (0, 0), (0, 0), (0, 0), (5, 3));
+const
+  hm_value = hm_code((3, 5), (0, 0), (0, 0), (0, 0), (14, 4670), (0, 0),
+                     (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0),
+                     (0, 0), (0, 0), (0, 0), (12, 1166), (10, 290), (10, 295),
+                     (12, 1165), (13, 2329), (13, 2334), (14, 4656),
+                     (15, 9315), (15, 9314), (14, 4671), (0, 0), (0, 0),
+                     (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (4, 7), (6, 10),
+                     (5, 8), (5, 4), (3, 7), (6, 4), (6, 11), (6, 19), (4, 12)
+                     , (10, 294), (7, 5), (4, 13), (5, 19), (4, 5), (5, 0),
+                     (5, 18), (9, 144), (4, 6), (4, 8), (4, 3), (6, 3),
+                     (7, 37), (7, 11), (7, 4), (7, 10), (9, 146), (0, 0),
+                     (0, 0), (0, 0), (0, 0), (5, 3));
 
-  var
-    i: 1..maxprocnamelen; {induction var for writing procedure names}
-    codewords: addressrange; {pc in current procedure (in words)}
-    thisnode: nodeindex; {induction var for scanning nodes}
-    n: nodeptr; {used to access thisnode}
-    firststmt: boolean; {first statement in the procedure}
-    stringfilebyte: hostfilebyte;
-    name_part: shortint;
-    ch: 0..255;
-    filenameindex: integer;
+var
+  i: 1..maxprocnamelen; {induction var for writing procedure names}
+  codewords: addressrange; {pc in current procedure (in words)}
+  thisnode: nodeindex; {induction var for scanning nodes}
+  n: nodeptr; {used to access thisnode}
+  firststmt: boolean; {first statement in the procedure}
+  stringfilebyte: hostfilebyte;
+  name_part: shortint;
+  ch: 0..255;
+  filenameindex: integer;
 
   {<<<}
   procedure diag_number(n: integer);
@@ -4314,96 +4316,101 @@ procedure put_diags;
     end; {diag_line}
   {>>>}
 
-  begin {put_diags}
-    if not everdiagnosing then initdiags;
+begin {put_diags}
+  if not everdiagnosing then
+    initdiags;
 
-    { first generate the procedure name }
-    diag_number(0); {end of lineincs}
-    diag_number(0); {end of lines, on to something else}
-    if level > 1 then
-      diag_number(diag_proc_p2) {say this is a procedure}
-    else
-      diag_number(diag_prog_p2);
-    if sharedPtr^.proctable[sharedPtr^.blockref].charindex <> 0 then
+  { first generate the procedure name }
+  diag_number (0); {end of lineincs}
+  diag_number (0); {end of lines, on to something else}
+
+  if level > 1 then
+    diag_number(diag_proc_p2) {say this is a procedure}
+  else
+    diag_number(diag_prog_p2);
+
+  if sharedPtr^.proctable[sharedPtr^.blockref].charindex <> 0 then
+    begin
+    sharedPtr^.curstringblock := (sharedPtr^.stringfilecount + sharedPtr^.proctable[sharedPtr^.blockref].charindex - 1) div (diskbufsize + 1) + 1;
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+    sharedPtr^.nextstringfile := (sharedPtr^.stringfilecount + sharedPtr^.proctable[sharedPtr^.blockref].charindex - 1) mod (diskbufsize + 1);
+    for i := 1 to sharedPtr^.proctable[sharedPtr^.blockref].charlen do
       begin
-      sharedPtr^.curstringblock := (sharedPtr^.stringfilecount + sharedPtr^.proctable[sharedPtr^.blockref].charindex - 1) div (diskbufsize + 1) + 1;
-      sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-      sharedPtr^.nextstringfile := (sharedPtr^.stringfilecount + sharedPtr^.proctable[sharedPtr^.blockref].charindex - 1) mod (diskbufsize + 1);
-      for i := 1 to sharedPtr^.proctable[sharedPtr^.blockref].charlen do
-        begin
-        stringfilebyte := getstringfile;
-        diag_bits (hm_value[uppercase(chr(stringfilebyte))].value, hm_value[uppercase(chr(stringfilebyte))].length);
-        end;
-      end
-    else
-      for i := 1 to 10 do
-        if sharedPtr^.outputname[i] <> ' ' then
-          diag_bits (hm_value[uppercase(sharedPtr^.outputname[i])].value, hm_value[uppercase(sharedPtr^.outputname[i])].length);
-
-    { mark the end with a blank }
-    diag_bits(hm_value[' '].value, hm_value[' '].length);
-
-    {Now scan the code, generating table entries for errors and lines}
-    codewords := highcode div 2;
-    thisnode := 1;
-    firststmt := true;
-    while thisnode < lastnode do
-      begin
-      n := ref(bignodetable[thisnode]);
-      with n^ do
-        if kind = instnode then
-          begin
-          codewords := codewords + n^.computed_length div 2;
-          thisnode := thisnode + oprndcount;
-          end
-        else if kind = labeldeltanode then codewords := codewords + 1
-        else if kind = errornode then
-          begin {write an error label}
-          diag_number(0); {first end lines}
-          diag_number(0);
-          diag_number(diag_error); {say it is an error}
-          diag_number(codewords - lastdiagpc); {pc increment}
-          diag_number(errorno); {actual error number}
-          end
-        else if kind = stmtref then
-          begin
-          if filename <> 0 then
-            begin
-            diag_number(0);
-            diag_number(0);
-            diag_number(0);
-            diag_number(0);
-
-            filenameindex := filename;
-            filenameindex := sharedPtr^.stringfilecount + filenameindex - 1; {skip strings}
-
-            sharedPtr^.curstringblock := filenameindex div (diskbufsize + 1) + 1;
-            sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-            sharedPtr^.nextstringfile := filenameindex mod (diskbufsize + 1);
-
-            { Pull the null terminated filename from the stringfile and
-              write it as 8 bit ascii to the diag table. }
-            ch := getstringfile;
-            name_part := 0; {dev(0):usrno(1).cat(2).fname(3).ext(4)}
-            while (ch <> 0) and (chr(ch) <> ' ') do
-              begin
-              ch := ord(uppercase(chr(ch)));
-              diag_bits(ch, 8);
-              ch := getstringfile;
-              end;
-
-            diag_bits(ord(' '), 8);
-            diag_number(sourceline - lineoffset);
-            lastdiagline := sourceline - lineoffset;
-            end
-          else if firststmt then firststmt := false
-          else diag_line(sourceline - lineoffset, codewords);
-          end;
-      thisnode := thisnode + 1;
+      stringfilebyte := getstringfile;
+      diag_bits (hm_value[uppercase(chr(stringfilebyte))].value, hm_value[uppercase(chr(stringfilebyte))].length);
       end;
-    diag_line(lastdiagline + 1, codewords);
-    newsection(codesect);
-  end; {put_diags}
+    end
+  else
+    for i := 1 to 10 do
+      if sharedPtr^.outputname[i] <> ' ' then
+        diag_bits (hm_value[uppercase(sharedPtr^.outputname[i])].value, hm_value[uppercase(sharedPtr^.outputname[i])].length);
+
+  { mark the end with a blank }
+  diag_bits(hm_value[' '].value, hm_value[' '].length);
+
+  {Now scan the code, generating table entries for errors and lines}
+  codewords := highcode div 2;
+  thisnode := 1;
+  firststmt := true;
+  while thisnode < lastnode do
+    begin
+    n := ref(bignodetable[thisnode]);
+    with n^ do
+      if kind = instnode then
+        begin
+        codewords := codewords + n^.computed_length div 2;
+        thisnode := thisnode + oprndcount;
+        end
+      else if kind = labeldeltanode then codewords := codewords + 1
+      else if kind = errornode then
+        begin {write an error label}
+        diag_number(0); {first end lines}
+        diag_number(0);
+        diag_number(diag_error); {say it is an error}
+        diag_number(codewords - lastdiagpc); {pc increment}
+        diag_number(errorno); {actual error number}
+        end
+      else if kind = stmtref then
+        begin
+        if filename <> 0 then
+          begin
+          diag_number(0);
+          diag_number(0);
+          diag_number(0);
+          diag_number(0);
+
+          filenameindex := filename;
+          filenameindex := sharedPtr^.stringfilecount + filenameindex - 1; {skip strings}
+
+          sharedPtr^.curstringblock := filenameindex div (diskbufsize + 1) + 1;
+          sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+          sharedPtr^.nextstringfile := filenameindex mod (diskbufsize + 1);
+
+          { Pull the null terminated filename from the stringfile and
+            write it as 8 bit ascii to the diag table. }
+          ch := getstringfile;
+          name_part := 0; {dev(0):usrno(1).cat(2).fname(3).ext(4)}
+          while (ch <> 0) and (chr(ch) <> ' ') do
+            begin
+            ch := ord(uppercase(chr(ch)));
+            diag_bits(ch, 8);
+            ch := getstringfile;
+            end;
+
+          diag_bits(ord(' '), 8);
+          diag_number(sourceline - lineoffset);
+          lastdiagline := sourceline - lineoffset;
+          end
+        else if firststmt then firststmt := false
+        else diag_line(sourceline - lineoffset, codewords);
+        end;
+
+    thisnode := thisnode + 1;
+    end;
+
+  diag_line(lastdiagline + 1, codewords);
+  newsection(codesect);
+end;
 {>>>}
 {<<<}
 procedure findlabelpc (labelno: integer; {label to match}
@@ -4412,95 +4419,98 @@ procedure findlabelpc (labelno: integer; {label to match}
   Return the label's address in "labelpc".  If not found the label is
   a forward non-local goto, which must be appended to the fixup list.
 }
+var
+  lscan: labelindex; { induction var for scanning label table }
+  found: boolean; { boolean to control loop escape }
 
-  var
-    lscan: labelindex; { induction var for scanning label table }
-    found: boolean; { boolean to control loop escape }
+begin
+  lscan := 1; { start with first entry in labeltable }
+  found := false;
+  forwardlab := 0;
 
-  begin
-    lscan := 1; { start with first entry in labeltable }
-    found := false;
-    forwardlab := 0;
-
-    while (lscan <= nextlabel) and not found do
-      if labeltable[lscan].labno = labelno then found := true
-      else lscan := lscan + 1;
-
-    if found then labelpc := labeltable[lscan].address
+  while (lscan <= nextlabel) and not found do
+    if labeltable[lscan].labno = labelno then
+      found := true
     else
-      begin { an entry for future fixup }
-      labelpc := 0; { don't use undefinedaddr here }
-      forwardlab := 1;
-      end;
-  end; { findlabelpc }
+      lscan := lscan + 1;
+
+  if found then
+    labelpc := labeltable[lscan].address
+  else
+    begin { an entry for future fixup }
+    labelpc := 0; { don't use undefinedaddr here }
+    forwardlab := 1;
+    end;
+end;
 {>>>}
 {<<<}
 procedure starttempgroup (length: addressrange);
 { Make sure that a group of "length" bytes will all fit in a single tempbuffer }
 
-  begin
-    if nexttempbuffer > maxtempbuffer - (length + 1) div 2 then
-      flushtempbuffer;
-  end; {starttempgroup}
+begin
+  if nexttempbuffer > maxtempbuffer - (length + 1) div 2 then
+    flushtempbuffer;
+end;
 {>>>}
 {<<<}
 procedure insertobj (data: uns_word);
 
-  begin { insertobj }
-    objctr := objctr + 1;
-    relocn[objctr] := false; { assume its not relocatable }
-    fixups[objctr] := nil;
-    object[objctr] := data;
-    objtype[objctr] := objnorm;
-    currentpc := currentpc + 2;
-  end; { insertobj }
+begin
+  objctr := objctr + 1;
+  relocn[objctr] := false; { assume its not relocatable }
+  fixups[objctr] := nil;
+  object[objctr] := data;
+  objtype[objctr] := objnorm;
+  currentpc := currentpc + 2;
+end;
 {>>>}
 {<<<}
 procedure puterror (err: puterrortype);
 
-  begin
-    if lineerrors < maxerrs then lineerrors := lineerrors + 1;
-    pcerrortable[lineerrors] := err;
-    totalputerr := totalputerr + 1;
-  end; {puterror}
+begin
+  if lineerrors < maxerrs then
+    lineerrors := lineerrors + 1;
+  pcerrortable[lineerrors] := err;
+  totalputerr := totalputerr + 1;
+end;
 {>>>}
 {<<<}
 procedure dumperrors;
 
-  var
-    i: 0..maxerrs; { to cycle thru errortable }
+var
+  i: 0..maxerrs; { to cycle thru errortable }
 
-  begin
-    for i := 1 to lineerrors do
-      begin
-      write (macFile, stars);
+begin
+  for i := 1 to lineerrors do
+    begin
+    write (macFile, stars);
 
-      case pcerrortable[i] of
-        endofnodes: writeln(macFile, 'end of nodes');
-        badrelative: writeln(macFile, 'bad relative');
-        bitindexmode: writeln(macFile, 'bit indexed mode');
-        baddisplacement: writeln(macFile, 'bad displacement');
-        nolongaddrs: writeln(macFile, 'no long addrs');
-        badsupportcall: writeln(macFile, 'bad support call');
-        missingoperand: writeln(macFile, 'missing operand');
-        missinginst: writeln(macFile, 'missing instruction');
-        badoffset: writeln(macFile, 'bad offset');
-        badoperand: writeln(macFile, 'bad operand');
-        unknowninst: writeln(macFile, 'unknown instruction');
-        badoprndlength: writeln(macFile, 'bad operand length');
-        missingDreg: writeln(macFile, 'missing D-register');
-        missingAreg: writeln(macFile, 'missing A-register');
-        badopcount: writeln(macFile, 'bad operand count');
-        badsource: writeln(macFile, 'bad source operand');
-        baddestination: writeln(macFile, 'bad destination operand');
-        nomodeoprnd: writeln(macFile, '"no mode" operand');
-        negativesp: writeln(macFile, 'negative offset to SP');
-        nolabelnode: writeln(macFile, 'missing label node');
-        badpcindexed: writeln(macFile, 'pc indexed mode disallowed');
-        badsize: writeln(macFile, 'bad data size');
-        end; {case err}
-      end; {for loop}
-  end; {dumperrors}
+    case pcerrortable[i] of
+      endofnodes: writeln(macFile, 'end of nodes');
+      badrelative: writeln(macFile, 'bad relative');
+      bitindexmode: writeln(macFile, 'bit indexed mode');
+      baddisplacement: writeln(macFile, 'bad displacement');
+      nolongaddrs: writeln(macFile, 'no long addrs');
+      badsupportcall: writeln(macFile, 'bad support call');
+      missingoperand: writeln(macFile, 'missing operand');
+      missinginst: writeln(macFile, 'missing instruction');
+      badoffset: writeln(macFile, 'bad offset');
+      badoperand: writeln(macFile, 'bad operand');
+      unknowninst: writeln(macFile, 'unknown instruction');
+      badoprndlength: writeln(macFile, 'bad operand length');
+      missingDreg: writeln(macFile, 'missing D-register');
+      missingAreg: writeln(macFile, 'missing A-register');
+      badopcount: writeln(macFile, 'bad operand count');
+      badsource: writeln(macFile, 'bad source operand');
+      baddestination: writeln(macFile, 'bad destination operand');
+      nomodeoprnd: writeln(macFile, '"no mode" operand');
+      negativesp: writeln(macFile, 'negative offset to SP');
+      nolabelnode: writeln(macFile, 'missing label node');
+      badpcindexed: writeln(macFile, 'pc indexed mode disallowed');
+      badsize: writeln(macFile, 'bad data size');
+      end; {case err}
+    end; {for loop}
+end;
 {>>>}
 
 {<<<}
@@ -4508,15 +4518,15 @@ procedure getnextnode;
 { localizes calls to "creadaccess", which accepts a nodeindex
   request and returns a node pointer result }
 
-  begin
-    if currnode >= lastnode then
-      puterror(endofnodes)
-    else
-      begin
-      currnode := currnode + 1;
-      n := ref(bignodetable[currnode]);
-      end
-  end;
+begin
+  if currnode >= lastnode then
+    puterror (endofnodes)
+  else
+    begin
+    currnode := currnode + 1;
+    n := ref(bignodetable[currnode]);
+    end
+end;
 {>>>}
 {<<<}
 procedure lookahead (n: integer);
@@ -4533,14 +4543,14 @@ end;
 procedure getoperand;
  { get another node and give error if not an operand }
 
-  begin
-    getnextnode;
-    if n^.kind <> oprndnode then
-      begin
-      puterror(missingoperand);
-      currinst := nop; { to facilitate recovery }
-      end { if }
-  end; { getoperand }
+begin
+  getnextnode;
+  if n^.kind <> oprndnode then
+    begin
+    puterror(missingoperand);
+    currinst := nop; { to facilitate recovery }
+    end { if }
+end;
 {>>>}
 {<<<}
 procedure getprevoperand (num: integer);
@@ -4556,14 +4566,14 @@ procedure getprevoperand (num: integer);
   Returns with the global "n" pointing to the node.
 }
 
-  begin { getprevoperand }
-    n := ref(bignodetable[currnode - num]);
-    if n^.kind <> oprndnode then
-      begin
-      puterror(missingoperand);
-      currinst := nop; { to facilitate recovery }
-      end { if }
-  end; { getprevoperand }
+begin { getprevoperand }
+  n := ref(bignodetable[currnode - num]);
+  if n^.kind <> oprndnode then
+    begin
+    puterror(missingoperand);
+    currinst := nop; { to facilitate recovery }
+    end { if }
+end;
 {>>>}
 {<<<}
 procedure writeobjline;
@@ -4574,75 +4584,74 @@ procedure writeobjline;
   32 element arrays.  When those buffers are filled, they in turn are trans-
   ferred to the tempobj file buffer for an eventual put to relfile.
 }
+var
+  i: 1..maxwords;
 
-  var
-    i: 1..maxwords;
-
-  begin
-    if sharedPtr^.switcheverplus[outputobj] then
-      for i := 1 to objctr do
-        begin
-        if (objtype[i] = objoff) or (objtype[i] = objign) then
-          begin
-          if fixups[i] <> nil then
-            fixups[i]^.fixupfileloc := tempfilesize + nexttempbuffer + 4;
-          putdata(object[i]);
-          end
-        else
-          begin
-          if objtype[i] = objlong then starttempgroup(4)
-          else if objtype[i] = objcom then starttempgroup(6)
-          else if objtype[i] = objforw then starttempgroup(6)
-          else if objtype[i] = objpic then starttempgroup(8);
-
-          if fixups[i] <> nil then
-            fixups[i]^.fixupfileloc := tempfilesize + nexttempbuffer + 4;
-
-          putbuffer(object[i], relocn[i]);
-          end;
-        end;
-
-    if testing and not skip_macro_details then
+begin
+  if sharedPtr^.switcheverplus[outputobj] then
+    for i := 1 to objctr do
       begin
-      if column >= nodecolumn then
+      if (objtype[i] = objoff) or (objtype[i] = objign) then
         begin
-        writeLine;
-        writeCh ('*');
-        end;
-
-      reposition(nodecolumn);
-      { "column" has served its purpose and is ignored until the next "writeLine" }
-
-      { pc when opcode was scanned }
-      write (macFile, '(', instindex: 3, ')   ', lastobjpc: - 4, '  ');
-      writeHex (object[1]); { write opcode in hexadecimal }
-
-      for i := 2 to objctr do
+        if fixups[i] <> nil then
+          fixups[i]^.fixupfileloc := tempfilesize + nexttempbuffer + 4;
+        putdata(object[i]);
+        end
+      else
         begin
-        if not (objtype[i] in [objcom, objforw, objpic, objign]) then
-          writeCh (' ');
-        case objtype[i] of
-          objnorm, objoff, objlong: writeHex (object[i]);
-          objext: write (macFile, 'xxxx xxxx');
-          objforw: ;
-          objsup:
-            begin
-            write (macFile, 'ssss');
-            if sharedPtr^.switcheverplus[longlib] then write (macFile, ' ssss');
-            end;
-          objcom: ;
-          end;
+        if objtype[i] = objlong then starttempgroup(4)
+        else if objtype[i] = objcom then starttempgroup(6)
+        else if objtype[i] = objforw then starttempgroup(6)
+        else if objtype[i] = objpic then starttempgroup(8);
+
+        if fixups[i] <> nil then
+          fixups[i]^.fixupfileloc := tempfilesize + nexttempbuffer + 4;
+
+        putbuffer(object[i], relocn[i]);
         end;
-      end; { testing dump }
+      end;
 
-    lastobjpc := currentpc;
-
-    if sharedPtr^.switcheverplus[outputmacro] then
+  if testing and not skip_macro_details then
+    begin
+    if column >= nodecolumn then
       begin
       writeLine;
-      dumperrors; { if any }
+      writeCh ('*');
       end;
-  end; { writeobjline }
+
+    reposition(nodecolumn);
+    { "column" has served its purpose and is ignored until the next "writeLine" }
+
+    { pc when opcode was scanned }
+    write (macFile, '(', instindex: 3, ')   ', lastobjpc: - 4, '  ');
+    writeHex (object[1]); { write opcode in hexadecimal }
+
+    for i := 2 to objctr do
+      begin
+      if not (objtype[i] in [objcom, objforw, objpic, objign]) then
+        writeCh (' ');
+      case objtype[i] of
+        objnorm, objoff, objlong: writeHex (object[i]);
+        objext: write (macFile, 'xxxx xxxx');
+        objforw: ;
+        objsup:
+          begin
+          write (macFile, 'ssss');
+          if sharedPtr^.switcheverplus[longlib] then write (macFile, ' ssss');
+          end;
+        objcom: ;
+        end;
+      end;
+    end; { testing dump }
+
+  lastobjpc := currentpc;
+
+  if sharedPtr^.switcheverplus[outputmacro] then
+    begin
+    writeLine;
+    dumperrors; { if any }
+    end;
+end;
 {>>>}
 {<<<}
 function dump_externals: integer;
@@ -4767,826 +4776,602 @@ begin {dump_externals}
     end; { lastvartableentry > 0 }
 
   dump_externals := ctr;  { used by unix }
-end; {dump_externals}
+end;
 {>>>}
 
 {<<<}
 procedure setmodeonly;
 { scan the current operand node pointed to by "n" and set "mode" to
   the appropriate mode and register pair (six bits)
-}
-{ 68020 scale factor encoding }
+  68020 scale factor encoding }
 
-  type
-    scale_factor_type = array [1..8] of integer;
+type
+  scale_factor_type = array [1..8] of integer;
 
-  const {  scale factor in bytes --> 1  2  .  4  .  .  .  8 }
-    scale_factor = scale_factor_type(0, 1, 0, 2, 0, 0, 0, 3);
+const {  scale factor in bytes --> 1  2  .  4  .  .  .  8 }
+  scale_factor = scale_factor_type(0, 1, 0, 2, 0, 0, 0, 3);
 
-    word_bd_size = 2; { 68020 base displacement size for a word }
-    long_bd_size = 3; { 68020 base displacement size for a long }
+  word_bd_size = 2; { 68020 base displacement size for a word }
+  long_bd_size = 3; { 68020 base displacement size for a long }
 
-  var
-    isforward: integer; {true if forward reference}
-    vtptr: vartablerecptr;
-    temp: unsigned;
-    extension_size: integer;
-    kluge:
-      record
-        case integer of
-          1: (l: integer {long word} );
-          2: (w: packed array [boolean] of - 32767..32767);
-      end {kluge} ;
+var
+  isforward: integer; {true if forward reference}
+  vtptr: vartablerecptr;
+  temp: unsigned;
+  extension_size: integer;
+  kluge:
+    record
+      case integer of
+        1: (l: integer {long word} );
+        2: (w: packed array [boolean] of - 32767..32767);
+    end {kluge} ;
 
   {<<<}
   procedure pic_gen;
+  { For $pic only.
+    This procedure will generate a pcrelative mode for an external
+    symbol.  First the relocated external symbol is added to the
+    negative of the offset in the module, then the base of the current
+    section is subtracted to kill the relocation of the external symbol.
+    The result is the distance to the desired object.
 
-      { For $pic only.
+    The ESDID of the current section is the section number + 1.  A
+    do-nothing zero ESDID is added in to align the file to a word.
+    NOTE:  Variable ESDID must be setup prior to call.
+  }
+  var
+    temp_esdid: integer;
 
-        This procedure will generate a pcrelative mode for an external
-        symbol.  First the relocated external symbol is added to the
-        negative of the offset in the module, then the base of the current
-        section is subtracted to kill the relocation of the external symbol.
-        The result is the distance to the desired object.
+  begin
+    if mc68020 then
+      begin
+      { Generate a "PC indirect with index (base displacement)" mode with the index register suppressed }
+      extension_size := long_bd_size;
 
-        The ESDID of the current section is the section number + 1.  A
-        do-nothing zero ESDID is added in to align the file to a word.
+      insertobj( {no index reg}
+      {no index size}
+      {no scale}
+                + 400B {bit 8}
+      {BS = 0}
+                + 100B {IS = 1}
+                + (extension_size * 20B) {BD size}
+                + 000 {index/indirect selection}
+      {no indirection}
+                );
+      end;
 
-        NOTE:  Variable ESDID must be setup prior to call.
-      }
+    temp_esdid := ESDid;
 
-    var
-      temp_esdid: integer;
+    insertobj(16#6000 { Emit 3 ESDID's }
+              + (ord(mc68020) * 16#800) {1 word reloc'ed, 2 for 020}
+              + (ord(mc68020) * 16#200 + 16#200) {2 disp bytes, 4 for 020}
+              + temp_esdid); { first ESDID }
+    relocn[objctr] := true; { tag the word relocatable }
+    objtype[objctr] := objpic; { be sure this won't span buffers }
+    insertobj((sectionno[codesect] + 1) * 256);
 
+    { ^^^ a zero ESDID is emitted to keep file word aligned }
+    objtype[objctr] := objign;
+    currentpc := currentpc - 4; { last two words don't go into memory }
 
-    begin {pic_gen}
-      if mc68020 then
-        begin
-        { Generate a "PC indirect with index (base displacement)"
-          mode with the index register suppressed.
-        }
-        extension_size := long_bd_size;
-
-        insertobj( {no index reg}
-        {no index size}
-        {no scale}
-                  + 400B {bit 8}
-        {BS = 0}
-                  + 100B {IS = 1}
-                  + (extension_size * 20B) {BD size}
-                  + 000 {index/indirect selection}
-        {no indirection}
-                  );
-        end;
-
-      temp_esdid := ESDid;
-
-      insertobj(16#6000 { Emit 3 ESDID's }
-                + (ord(mc68020) * 16#800) {1 word reloc'ed, 2 for 020}
-                + (ord(mc68020) * 16#200 + 16#200) {2 disp bytes, 4 for 020}
-                + temp_esdid); { first ESDID }
-      relocn[objctr] := true; { tag the word relocatable }
-      objtype[objctr] := objpic; { be sure this won't span buffers }
-      insertobj((sectionno[codesect] + 1) * 256);
-      { ^^^ a zero ESDID is emitted to keep file word aligned }
-      objtype[objctr] := objign;
-      currentpc := currentpc - 4; { last two words don't go into memory }
-
-      if mc68020 then
-        begin
-
-        { Generate a long offset.  The pc is the address of the extension word.
-        }
-        insertobj(( - currentpc + 2) div 16#10000);
-        objtype[objctr] := objoff;
-        insertobj(( - currentpc + 4) mod 16#10000);
-        objtype[objctr] := objoff;
-        mode := 73B; { pcrelative, long disp }
-        end
-      else
-        begin
-        insertobj( - currentpc);
-        objtype[objctr] := objoff;
-        mode := 72B; { pcrelative }
-        end;
-    end; {pic_gen}
+    if mc68020 then
+      begin
+      { Generate a long offset.  The pc is the address of the extension word }
+      insertobj(( - currentpc + 2) div 16#10000);
+      objtype[objctr] := objoff;
+      insertobj(( - currentpc + 4) mod 16#10000);
+      objtype[objctr] := objoff;
+      mode := 73B; { pcrelative, long disp }
+      end
+    else
+      begin
+      insertobj( - currentpc);
+      objtype[objctr] := objoff;
+      mode := 72B; { pcrelative }
+      end;
+  end;
   {>>>}
 
-  begin {setmodeonly}
-    with n^.oprnd do
-      case m of
+begin {setmodeonly}
+  with n^.oprnd do
+    case m of
 
-        nomode: puterror(nomodeoprnd);
+      nomode: puterror(nomodeoprnd);
 
-        fpreg: puterror(badoperand);
+      fpreg: puterror(badoperand);
 
-        dreg:
+      dreg:
+        begin
+        mode := reg;
+        end; {dreg}
+
+      areg:
+        begin
+        mode := reg + 10B;
+        end; {areg}
+
+      indr:
+        begin
+        mode := reg + 20B;
+        end; {indr}
+
+      autoi:
+        begin
+        mode := reg + 30B;
+        end; {autoi}
+
+      autod:
+        begin
+        mode := reg + 40B;
+        end; {autod}
+
+      relative:
+        begin
+          { This generates the 68000 mode "address register indirect with
+            displacement" which has a 16 bit displacement.  If a long word
+            displacement is needed on the mc68020, we generate an "address
+            register indirect with index (base displacement)" mode with the
+            index register suppressed.
+          }
+        if (reg = 7) and (offset < 0) then puterror(negativesp);
+
+        if (offset > 32767) or (offset < - 32768) then
           begin
-          mode := reg;
-          end; {dreg}
-
-        areg:
-          begin
-          mode := reg + 10B;
-          end; {areg}
-
-        indr:
-          begin
-          mode := reg + 20B;
-          end; {indr}
-
-        autoi:
-          begin
-          mode := reg + 30B;
-          end; {autoi}
-
-        autod:
-          begin
-          mode := reg + 40B;
-          end; {autod}
-
-        relative:
-          begin
-            { This generates the 68000 mode "address register indirect with
-              displacement" which has a 16 bit displacement.  If a long word
-              displacement is needed on the mc68020, we generate an "address
-              register indirect with index (base displacement)" mode with the
-              index register suppressed.
-            }
-          if (reg = 7) and (offset < 0) then puterror(negativesp);
-
-          if (offset > 32767) or (offset < - 32768) then
+          if mc68020 then
             begin
-            if mc68020 then
-              begin
-              mode := reg + 60B;
+            mode := reg + 60B;
 
-              extension_size := long_bd_size;
+            extension_size := long_bd_size;
 
-              insertobj( {no index reg}
-              {no index size}
-              {no scale}
-                        + 400B {bit 8}
-              {BS = 0}
-                        + 100B {IS = 1}
-                        + (extension_size * 20B) {BD size}
-                        + 000 {index/indirect selection}
-              {no indirection}
-                        );
+            insertobj( {no index reg}
+            {no index size}
+            {no scale}
+                      + 400B {bit 8}
+            {BS = 0}
+                      + 100B {IS = 1}
+                      + (extension_size * 20B) {BD size}
+                      + 000 {index/indirect selection}
+            {no indirection}
+                      );
 
-                { Generate long offset
-                }
-              kluge.l := offset;
-                { the next two lines assume that "reversebytes" implies that
-                  words are also reversed. }
-              insertobj(kluge.w[reversebytes]);
-              insertobj(kluge.w[not reversebytes]);
-              end
-            else puterror(baddisplacement);
-            end
-          else
-            begin {mc68000 16-bit register indirect mode}
-            mode := reg + 50B;
-            insertobj(offset);
-            end;
-          end; {relative}
-
-        indexed:
-            { This generates the 68000 mode "address register indirect with
-              index (8-bit displacement)".  If a word or long word displacement
-              is needed on the mc68020, we generate an "address register
-              indirect with index (base displacement)" mode.  Suppression of
-              the base and index registers is currently not supported.
-            }
-          begin
-            { NOTE:  The scale is always 1 for the 68000, but may be 1, 2, 4
-              or 8 for the 68020.
-            }
-          mode := reg + 60B;
-
-          if (offset > 127) or (offset < - 128) then
-            begin
-            if mc68020 then
-              begin
-              if (offset <= 32767) and (offset >= - 32768) then
-                extension_size := word_bd_size
-              else extension_size := long_bd_size;
-
-              insertobj(indxr * 10000B {index reg}
-                        + ord(indxlong) * 4000B {word/long word index size}
-                        + (scale_factor[scale] * 1000B) + 400B {bit 8}
-              {BS = 0}
-              {IS = 0}
-                        + (extension_size * 20B) {BD size}
-                        + 000 {index/indirect selection}
-              {no indirection}
-                        );
-
-              if extension_size = long_bd_size then {generate long offset}
-                begin
-                kluge.l := offset;
-                  { the next two lines assume that "reversebytes" implies that
-                    words are also reversed. }
-                insertobj(kluge.w[reversebytes]);
-                insertobj(kluge.w[not reversebytes]);
-                end
-              else {generate word offset} insertobj(offset and 16#FFFF);
-              end
-            else {not mc68020} puterror(baddisplacement);
-            end
-          else {mc68000 or byte displacement}
-            begin
-            if (offset > 127) or (offset < - 128) then
-              puterror(baddisplacement);
-
-            insertobj(indxr * 10000B + ord(indxlong) * 4000B +
-                      (scale_factor[scale] * 1000B) + (offset and 16#FF));
-              { The scale is always 1 for the 68000, but may be 1, 2, 4 or 8
-                for the 68020.
+              { Generate long offset
               }
-            end;
-          end; {indexed}
-
-        bitindexed:
-          begin
-          puterror(bitindexmode);
-          end; {bitindexed}
-
-        absshort:
-          begin
-          mode := 70B;
+            kluge.l := offset;
+              { the next two lines assume that "reversebytes" implies that
+                words are also reversed. }
+            insertobj(kluge.w[reversebytes]);
+            insertobj(kluge.w[not reversebytes]);
+            end
+          else puterror(baddisplacement);
+          end
+        else
+          begin {mc68000 16-bit register indirect mode}
+          mode := reg + 50B;
           insertobj(offset);
-          end; {absshort}
+          end;
+        end; {relative}
 
-        abslong:
-          begin
-          mode := 71B;
-          kluge.l := offset;
-            { the next two lines assume that "reversebytes" implies that
-              words are also reversed. }
-          insertobj(kluge.w[reversebytes]);
-          insertobj(kluge.w[not reversebytes]);
-          end; {abslong}
+      indexed:
+          { This generates the 68000 mode "address register indirect with
+            index (8-bit displacement)".  If a word or long word displacement
+            is needed on the mc68020, we generate an "address register
+            indirect with index (base displacement)" mode.  Suppression of
+            the base and index registers is currently not supported.
+          }
+        begin
+          { NOTE:  The scale is always 1 for the 68000, but may be 1, 2, 4
+            or 8 for the 68020.
+          }
+        mode := reg + 60B;
 
-        immediate:
+        if (offset > 127) or (offset < - 128) then
           begin
-          mode := 74B;
-          if datasize <= word then insertobj(offset)
-          else
+          if mc68020 then
             begin
-            if hostintsize < long then
-              begin
-              if offset < 0 then insertobj(maxusword) {really -1}
-              else insertobj(0);
-              insertobj(offset);
-              end
-            else
+            if (offset <= 32767) and (offset >= - 32768) then
+              extension_size := word_bd_size
+            else extension_size := long_bd_size;
+
+            insertobj(indxr * 10000B {index reg}
+                      + ord(indxlong) * 4000B {word/long word index size}
+                      + (scale_factor[scale] * 1000B) + 400B {bit 8}
+            {BS = 0}
+            {IS = 0}
+                      + (extension_size * 20B) {BD size}
+                      + 000 {index/indirect selection}
+            {no indirection}
+                      );
+
+            if extension_size = long_bd_size then {generate long offset}
               begin
               kluge.l := offset;
                 { the next two lines assume that "reversebytes" implies that
                   words are also reversed. }
               insertobj(kluge.w[reversebytes]);
               insertobj(kluge.w[not reversebytes]);
-              end;
+              end
+            else {generate word offset} insertobj(offset and 16#FFFF);
+            end
+          else {not mc68020} puterror(baddisplacement);
+          end
+        else {mc68000 or byte displacement}
+          begin
+          if (offset > 127) or (offset < - 128) then
+            puterror(baddisplacement);
+
+          insertobj(indxr * 10000B + ord(indxlong) * 4000B +
+                    (scale_factor[scale] * 1000B) + (offset and 16#FF));
+            { The scale is always 1 for the 68000, but may be 1, 2, 4 or 8
+              for the 68020.
+            }
+          end;
+        end; {indexed}
+
+      bitindexed:
+        begin
+        puterror(bitindexmode);
+        end; {bitindexed}
+
+      absshort:
+        begin
+        mode := 70B;
+        insertobj(offset);
+        end; {absshort}
+
+      abslong:
+        begin
+        mode := 71B;
+        kluge.l := offset;
+          { the next two lines assume that "reversebytes" implies that
+            words are also reversed. }
+        insertobj(kluge.w[reversebytes]);
+        insertobj(kluge.w[not reversebytes]);
+        end; {abslong}
+
+      immediate:
+        begin
+        mode := 74B;
+        if datasize <= word then insertobj(offset)
+        else
+          begin
+          if hostintsize < long then
+            begin
+            if offset < 0 then insertobj(maxusword) {really -1}
+            else insertobj(0);
+            insertobj(offset);
+            end
+          else
+            begin
+            kluge.l := offset;
+              { the next two lines assume that "reversebytes" implies that
+                words are also reversed. }
+            insertobj(kluge.w[reversebytes]);
+            insertobj(kluge.w[not reversebytes]);
             end;
-          end; {immediate}
+          end;
+        end; {immediate}
 
-        immediatelong:
+      immediatelong:
+        begin
+        mode := 74B;
+        insertobj(offset1); { high order }
+        insertobj(offset); { low order }
+        end; {immediatelong}
+
+      immediatequad:
+        begin
+        mode := 74B;
+
+        { The lines below assume that "reversebytes" implies that
+          words are also reversed.
+        }
+        kluge.l := offset1; { high order }
+        insertobj(kluge.w[reversebytes]);
+        insertobj(kluge.w[not reversebytes]);
+
+        kluge.l := offset; { low order }
+        insertobj(kluge.w[reversebytes]);
+        insertobj(kluge.w[not reversebytes]);
+        end; {immediatelong}
+
+      immediate_extended:
+        begin
+        mode := 74B;
+
+        { The lines below assume that "reversebytes" implies that
+          words are also reversed.
+        }
+        kluge.l := offset2; { 1st longword }
+        insertobj(kluge.w[reversebytes]);
+        insertobj(kluge.w[not reversebytes]);
+
+        kluge.l := offset1; { 2nd longword }
+        insertobj(kluge.w[reversebytes]);
+        insertobj(kluge.w[not reversebytes]);
+
+        kluge.l := offset; { 3rd longword }
+        insertobj(kluge.w[reversebytes]);
+        insertobj(kluge.w[not reversebytes]);
+        end;
+
+      commonlong:
+        begin
+        mode := 71B; {absolute long}
+
+        if commonlong_reloc < 0 then
           begin
-          mode := 74B;
-          insertobj(offset1); { high order }
-          insertobj(offset); { low order }
-          end; {immediatelong}
+          {first get the common section esdid}
+          insertobj(54B * 256); {relocate by common section base (zero)}
+          relocn[objctr] := true;
+          objtype[objctr] := objcom;
+          currentpc := currentpc - 2;
 
-        immediatequad:
-          begin
-          mode := 74B;
-
-          { The lines below assume that "reversebytes" implies that
-            words are also reversed.
+          { Output offset within the common block.
           }
-          kluge.l := offset1; { high order }
-          insertobj(kluge.w[reversebytes]);
-          insertobj(kluge.w[not reversebytes]);
-
-          kluge.l := offset; { low order }
-          insertobj(kluge.w[reversebytes]);
-          insertobj(kluge.w[not reversebytes]);
-          end; {immediatelong}
-
-        immediate_extended:
-          begin
-          mode := 74B;
-
-          { The lines below assume that "reversebytes" implies that
-            words are also reversed.
-          }
-          kluge.l := offset2; { 1st longword }
-          insertobj(kluge.w[reversebytes]);
-          insertobj(kluge.w[not reversebytes]);
-
-          kluge.l := offset1; { 2nd longword }
-          insertobj(kluge.w[reversebytes]);
-          insertobj(kluge.w[not reversebytes]);
-
-          kluge.l := offset; { 3rd longword }
-          insertobj(kluge.w[reversebytes]);
-          insertobj(kluge.w[not reversebytes]);
+          temp := offset; { convert to unsigned }
+          insertobj(temp div 16#10000);
+          objtype[objctr] := objoff;
+          insertobj(temp mod 16#10000);
+          objtype[objctr] := objoff;
           end;
 
-        commonlong:
+        if commonlong_reloc > 0 then
           begin
-          mode := 71B; {absolute long}
+          vtptr := getvartableptr(commonlong_reloc);
 
-          if commonlong_reloc < 0 then
-            begin
-            {first get the common section esdid}
-            insertobj(54B * 256); {relocate by common section base (zero)}
-            relocn[objctr] := true;
-            objtype[objctr] := objcom;
-            currentpc := currentpc - 2;
-
-            { Output offset within the common block.
-            }
-            temp := offset; { convert to unsigned }
-            insertobj(temp div 16#10000);
-            objtype[objctr] := objoff;
-            insertobj(temp mod 16#10000);
-            objtype[objctr] := objoff;
-            end;
-
-          if commonlong_reloc > 0 then
-            begin
-            vtptr := getvartableptr(commonlong_reloc);
-
-            case vtptr^.extvaralloc of
-              definealloc:
-                begin
-                newESD.ESDkind := ESDdefine;
-                newESD.vartabindex := commonlong_reloc;
-                findESDid;
-                insertobj(54B * 256 + sharedPtr^.datasection + 1);
-                relocn[objctr] := true; { tag the word relocatable }
-                objtype[objctr] := objforw;
-                currentpc := currentpc - 2; { apply the PC correction }
-                temp := offset + vtptr^.offset;
-                insertobj(temp div 16#10000); { high order offset in psect }
-                objtype[objctr] := objoff;
-                insertobj(temp mod 16#10000); { low order offset in psect }
-                objtype[objctr] := objoff;
-                end;
-
-              sharedalloc:
-                begin
-                temp := 0;
-                if $pic then
-                  begin
-
-                  { Generate "#<global>-P_OWN" for a PIC reference to a
-                    shared variable, i.e. named common.
-
-                    Named common esd's must go out after all xref's and
-                    xdef's, so we must patch in the ESDID in writedatarecords.
-                  }
-                  insertobj(154B * 256);
-                  relocn[objctr] := true; { tag the word relocatable }
-                  objtype[objctr] := objpic;
-                  mode := 74B; { immediate }
-
-                  allocfixup;
-                  fixups[objctr] := fixuptail;
-                  with fixuptail^ do
-                    begin
-                    fixupkind := fixupesdid;
-                    vartabindex := commonlong_reloc;
-                    end;
-
-                  newESD.ESDkind := ESDsupport;
-                  newESD.suppno := libown;
-                  findESDid;
-
-                  insertobj(ESDid * 256); { The third ESDID is a "do nothing"
-                                            zero to word align the file. }
-                  objtype[objctr] := objign;
-                  currentpc := currentpc - 4; { apply the PC correction }
-                  end
-                else
-                  begin
-                  { Named common esd's must go out after all xref's and xdef's,
-                    so we must patch in the ESDID in writedatarecords.
-                  }
-                  insertobj(54B * 256);
-                  relocn[objctr] := true; { tag the word relocatable }
-                  objtype[objctr] := objforw;
-                  currentpc := currentpc - 2; { apply the PC correction }
-
-                  allocfixup;
-                  fixups[objctr] := fixuptail;
-                  with fixuptail^ do
-                    begin
-                    fixupkind := fixupesdid;
-                    vartabindex := commonlong_reloc;
-                    end;
-                  temp := offset + vtptr^.offset;
-                  end;
-
-                insertobj(temp div 16#10000); { high order offset in psect }
-                objtype[objctr] := objoff;
-                insertobj(temp mod 16#10000); { low order offset in psect }
-                objtype[objctr] := objoff;
-                end;
-
-              usealloc:
-                begin
-                newESD.ESDkind := ESDuse;
-                newESD.vartabindex := commonlong_reloc;
-                findESDid;
-
-                insertobj(54B * 256 + ESDid);
-                relocn[objctr] := true; { tag the word relocatable }
-                currentpc := currentpc - 2; { apply the PC correction }
-                objtype[objctr] := objforw;
-                temp := offset + vtptr^.offset;
-                insertobj(temp div 16#10000); { high order offset in psect }
-                objtype[objctr] := objoff;
-                insertobj(temp mod 16#10000); { low order offset in psect }
-                objtype[objctr] := objoff;
-                end;
-              end;
-            end;
-          end; {commonlong}
-
-        pcrelative:
-          begin
-            { Pcrelative is only used to access the current section, so
-              we always know exactly what the distance is.
-
-              This generates the 68000 mode "address register indirect with
-              displacement" which has a 16 bit displacement.  If a long word
-              displacement is needed on the mc68020 (PIC only as it is slow),
-              we generate an "PC indirect with index (base displacement)"
-              mode with the index register suppressed.  If a long displacement
-              is needed in nopic mode on the 68020 we use absolute.  A long
-              displacement in pic mode on the 68000 causes an error.
-            }
-
-          if $pic and (n^.operandcost >= long) then
-            begin
-            if mc68020 then
+          case vtptr^.extvaralloc of
+            definealloc:
               begin
-              mode := 73B;
-
-              extension_size := long_bd_size;
-
-              insertobj( {no index reg}
-              {no index size}
-              {no scale}
-                        + 400B {bit 8}
-              {BS = 0}
-                        + 100B {IS = 1}
-                        + (extension_size * 20B) {BD size}
-                        + 000 {index/indirect selection}
-              {no indirection}
-                        );
-
-              {generate a long offset}
-              kluge.l := offset - currentpc + 2; { pc = addr of extension word }
-                { the next two lines assume that "reversebytes" implies that
-                  words are also reversed. }
-              insertobj(kluge.w[reversebytes]);
-              insertobj(kluge.w[not reversebytes]);
-              end
-            else {not mc68020} puterror(baddisplacement);
-            end
-          else if n^.operandcost >= long then
-            begin {far, far away}
-            mode := 71B; {absolute long}
-            insertobj(54B * 256 + sectionno[codesect] + 1);
-            objtype[objctr] := objforw;
-            relocn[objctr] := true;
-            temp := offset; { convert to unsigned }
-            insertobj(temp div 16#10000); {high order}
-            objtype[objctr] := objoff;
-            currentpc := currentpc - 2; {this stuff's longer than code}
-            insertobj(temp mod 16#10000);
-            objtype[objctr] := objoff;
-            end {long displacement}
-          else
-            begin {in pcrelative range}
-            mode := 72B;
-            if offset - currentpc < - 32768 then puterror(baddisplacement);
-            insertobj(offset - currentpc); {pc = addr of displacement}
-            end;
-          end; {pcrelative}
-
-        pcindexed:
-            { This generates the 68000 mode "PC indirect with index (8-bit
-              displacement)".  If a word or long word displacement is needed
-              on the mc68020, we generate an "PC indirect with index (base
-              displacement)" mode.  Suppression of the PC and index registers
-              is currently not supported.
-            }
-          begin
-          mode := 73B;
-            { NOTE:  The scale is always 1 for the 68000, but may be 1, 2, 4
-              or 8 for the 68020.
-            }
-
-          if (offset > 127) or (offset < - 128) then
-            begin
-            if mc68020 then
-              begin
-              if (offset <= 32767) and (offset >= - 32768) then
-                extension_size := word_bd_size
-              else extension_size := long_bd_size;
-
-              insertobj(indxr * 10000B {index reg}
-              {word/long word index size (always word)}
-                        + (scale_factor[scale] * 1000B) + 400B {bit 8}
-              {BS = 0}
-              {IS = 0}
-                        + (extension_size * 20B) {BD size}
-                        + 000 {index/indirect selection}
-              {no indirection}
-                        );
-
-              if extension_size = long_bd_size then {generate long offset}
-                begin
-                kluge.l := offset;
-                  { the next two lines assume that "reversebytes" implies that
-                    words are also reversed. }
-                insertobj(kluge.w[reversebytes]);
-                insertobj(kluge.w[not reversebytes]);
-                end
-              else {generate word offset} insertobj(offset and 16#FFFF);
-              end
-            else {not mc68020} puterror(baddisplacement);
-            end
-          else {byte displacement}
-            begin
-            { note: this mode is only issued as "Dreg.W" }
-
-            insertobj(indxr * 10000B + (scale_factor[scale] * 1000B) +
-                      (offset and 16#FF));
-            end;
-          end; {pcindexed}
-
-        supportcall:
-          begin {treat it like an external usercall}
-          if (offset < ord(first_call)) or (offset > ord(last_call)) then
-            puterror(badsupportcall);
-
-{ note: support call operands generate 2 bytes of relocation data.
-  The first is always hexadecimal(20), which signifies one ESD index
-  byte follows (with no offset data).  The second is the ESD index
-  value, which is the index into the ESD table which has the unique
-  occurrence of this support number.  Therefore, we search the table
-  to see if this support routine is already present; if not, we enter
-  it, and use the newly assigned location for the second byte.
-}
-
-          newESD.ESDkind := ESDsupport;
-          newESD.suppno := loophole(libroutines, offset);
-          findESDid;
-
-          if $pic then pic_gen
-          else
-            begin
-            if sharedPtr^.switcheverplus[longlib] then
-              begin {treat it like an external usercall}
-              insertobj(50B * 256 + ESDid);
-              mode := 71B; {absolute long}
-              currentpc := currentpc + 2; {correct for long address}
-              end
-            else
-              begin
-              insertobj(40B * 256 + ESDid);
-              mode := 70B; {absolute short}
-              end;
-            relocn[objctr] := true; { tag the word relocatable }
-            objtype[objctr] := objsup;
-            end; {not $pic}
-          end; {supportcall}
-
-        usercall:
-          begin
-          if $pic then
-            begin
-            if sharedPtr^.proctable[offset].externallinkage and
-               not sharedPtr^.proctable[offset].bodydefined then
-              begin {external reference}
-
-                { We must search the ESD table to match the procedure
-                  number, thereby calculating the ESDID.
-                }
-              newESD.ESDkind := ESDexternal;
-              newESD.exproc := offset;
+              newESD.ESDkind := ESDdefine;
+              newESD.vartabindex := commonlong_reloc;
               findESDid;
-              pic_gen;
-              end
-            else
-              begin { not external call }
-              if procmap[offset].addr = undefinedaddr then
+              insertobj(54B * 256 + sharedPtr^.datasection + 1);
+              relocn[objctr] := true; { tag the word relocatable }
+              objtype[objctr] := objforw;
+              currentpc := currentpc - 2; { apply the PC correction }
+              temp := offset + vtptr^.offset;
+              insertobj(temp div 16#10000); { high order offset in psect }
+              objtype[objctr] := objoff;
+              insertobj(temp mod 16#10000); { low order offset in psect }
+              objtype[objctr] := objoff;
+              end;
+
+            sharedalloc:
+              begin
+              temp := 0;
+              if $pic then
                 begin
-                if mc68020 then
+
+                { Generate "#<global>-P_OWN" for a PIC reference to a
+                  shared variable, i.e. named common.
+
+                  Named common esd's must go out after all xref's and
+                  xdef's, so we must patch in the ESDID in writedatarecords.
+                }
+                insertobj(154B * 256);
+                relocn[objctr] := true; { tag the word relocatable }
+                objtype[objctr] := objpic;
+                mode := 74B; { immediate }
+
+                allocfixup;
+                fixups[objctr] := fixuptail;
+                with fixuptail^ do
                   begin
-                    { Generate a "PC indirect with index (base displacement)"
-                      mode with the index register suppressed.
-                    }
-                  extension_size := long_bd_size;
-
-                  insertobj( {no index reg}
-                  {no index size}
-                  {no scale}
-                            + 400B {bit 8}
-                  {BS = 0}
-                            + 100B {IS = 1}
-                            + (extension_size * 20B) {BD size}
-                            + 000 {index/indirect selection}
-                  {no indirection}
-                            );
-
-                    { Generate a long offset.  The fixup will plug in the
-                      pic displacement.  The pc is the address of the
-                      extension word.
-                    }
-                  temp := offset1 - currentpc + 2; { convert to unsigned }
-                  insertobj(temp div 16#10000);
-                  objtype[objctr] := objlong;
-                  insertobj(temp mod 16#10000);
-                  mode := 73B; { pcrelative, long disp }
-                  allocfixup;
-                  fixups[objctr - 1] := fixuptail;
-                  with fixuptail^ do
-                    begin
-                    fixupkind := fixupproc;
-                    fixuplen := long;
-                    fixupprocno := offset;
-                    fixupobjpc := fixupobjpc - 4;
-                    end;
-                  end
-                else { not mc68020 -- generate simple 16-bit PIC }
-                  begin
-                  insertobj(offset1 - currentpc);
-                  mode := 72B; { pcrelative }
-                  allocfixup;
-                  fixups[objctr] := fixuptail;
-                  with fixuptail^ do
-                    begin
-                    fixupkind := fixupproc;
-                    fixuplen := word;
-                    fixupprocno := offset;
-                    fixupobjpc := fixupobjpc - 2;
-                    end;
-                  end; { not mc68020 }
-                end { undefined addr }
-              else if n^.operandcost >= long then
-                begin {far, far away}
-
-                if mc68020 then
-                  begin
-                    { Generate a "PC indirect with index (base displacement)"
-                      mode with the index register suppressed.
-                    }
-                  extension_size := long_bd_size;
-
-                  insertobj( {no index reg}
-                  {no index size}
-                  {no scale}
-                            + 400B {bit 8}
-                  {BS = 0}
-                            + 100B {IS = 1}
-                            + (extension_size * 20B) {BD size}
-                            + 000 {index/indirect selection}
-                  {no indirection}
-                            );
-
-                    { Generate a long offset.  The pc is the address of the
-                      extension word.
-                    }
-                  insertobj((procmap[offset].addr + offset1 - currentpc + 2) div
-                            16#10000);
-                  insertobj((procmap[offset].addr + offset1 - currentpc + 4) mod
-                            16#10000);
-                  mode := 73B; { pcrelative, long disp }
-                  end
-                else
-                  begin
-                  write ('Reference too long for 16-bit PIC');
-                  abort(inconsistent);
+                  fixupkind := fixupesdid;
+                  vartabindex := commonlong_reloc;
                   end;
+
+                newESD.ESDkind := ESDsupport;
+                newESD.suppno := libown;
+                findESDid;
+
+                insertobj(ESDid * 256); { The third ESDID is a "do nothing"
+                                          zero to word align the file. }
+                objtype[objctr] := objign;
+                currentpc := currentpc - 4; { apply the PC correction }
                 end
               else
-                begin { simple case -- 16-bit offset to known location }
-                mode := 72B; {68000 PC relative}
-                insertobj(procmap[offset].addr + offset1 - currentpc);
-                end;
-              end;
-            end {if $pic}
-          else
-          if sharedPtr^.proctable[offset].externallinkage and
-             not sharedPtr^.proctable[offset].bodydefined then
-            begin {external reference}
-
-{ note: although this operand will be 4 bytes long when eventually loaded,
-  it is emitted to the relocatable object file as just 2 bytes.  The first
-  is an encoded byte which says one ESD is used to resolve a 4 byte operand;
-  the second is the number of that ESD.  We must search the ESD table to
-  match the procedure number, thereby calculating the ESD number.  The dump
-  file will show only this 2 byte operand, but the PC will increment by 4,
-  and the line will be flagged "EXTERNAL".
-}
-
-            newESD.ESDkind := ESDexternal;
-            newESD.exproc := offset;
-            findESDid;
-
-            insertobj(50B * 256 + ESDid);
-            relocn[objctr] := true; { tag the word relocatable }
-            mode := 71B; { absolute long }
-            currentpc := currentpc + 2; { apply the PC correction }
-            objtype[objctr] := objext;
-            end
-
-          else
-            begin { not external call }
-            if procmap[offset].addr = undefinedaddr then
-              begin {forward procedure call}
-              mode := 71B; {absolute long}
-              insertobj(54B * 256 + sectionno[codesect] + 1);
-              objtype[objctr] := objforw;
-              relocn[objctr] := true;
-              currentpc := currentpc - 2; {this stuff's longer than code}
-              temp := offset1; { convert to unsigned }
-              insertobj(temp div 16#10000); {high order}
-              objtype[objctr] := objoff;
-              insertobj(temp mod 16#10000); { fixup adds proctable addr }
-              objtype[objctr] := objoff;
-              allocfixup;
-              fixups[objctr - 1] := fixuptail;
-              with fixuptail^ do
                 begin
-                fixupkind := fixupproc;
-                fixuplen := long;
-                fixupprocno := offset;
-                fixupobjpc := fixupobjpc - 4;
-                end;
-              end { undefined addr }
+                { Named common esd's must go out after all xref's and xdef's,
+                  so we must patch in the ESDID in writedatarecords.
+                }
+                insertobj(54B * 256);
+                relocn[objctr] := true; { tag the word relocatable }
+                objtype[objctr] := objforw;
+                currentpc := currentpc - 2; { apply the PC correction }
 
-            else if n^.operandcost >= long then
-              begin {long, but not forward}
-              mode := 71B; {absolute long}
-              insertobj(54B * 256 + sectionno[codesect] + 1);
+                allocfixup;
+                fixups[objctr] := fixuptail;
+                with fixuptail^ do
+                  begin
+                  fixupkind := fixupesdid;
+                  vartabindex := commonlong_reloc;
+                  end;
+                temp := offset + vtptr^.offset;
+                end;
+
+              insertobj(temp div 16#10000); { high order offset in psect }
+              objtype[objctr] := objoff;
+              insertobj(temp mod 16#10000); { low order offset in psect }
+              objtype[objctr] := objoff;
+              end;
+
+            usealloc:
+              begin
+              newESD.ESDkind := ESDuse;
+              newESD.vartabindex := commonlong_reloc;
+              findESDid;
+
+              insertobj(54B * 256 + ESDid);
+              relocn[objctr] := true; { tag the word relocatable }
+              currentpc := currentpc - 2; { apply the PC correction }
               objtype[objctr] := objforw;
-              relocn[objctr] := true;
-              insertobj((procmap[offset].addr + offset1) div 16#10000);
-              { ^^^ high order }
+              temp := offset + vtptr^.offset;
+              insertobj(temp div 16#10000); { high order offset in psect }
               objtype[objctr] := objoff;
-              currentpc := currentpc - 2; {this stuff's longer than code}
-              insertobj((procmap[offset].addr + offset1) mod 16#10000);
+              insertobj(temp mod 16#10000); { low order offset in psect }
               objtype[objctr] := objoff;
-              end
-            else
-              begin {normal call within 32k bytes}
-              mode := 72B; {PC relative}
-              insertobj(procmap[offset].addr + offset1 - currentpc);
               end;
             end;
-          end; {usercall}
-
-        pic_own_immed:
-            { In PIC mode this can only occur for the code to load A3
-              at the beginning of each procedure.
-            }
-          begin
-          newESD.ESDkind := ESDsupport;
-          newESD.suppno := libown;
-          findESDid;
-
-          mode := 74B; { immediate }
-            { A zero in the first position is a hack for own section
-              relocation. }
-          insertobj(150B * 256);
-          relocn[objctr] := true;
-          objtype[objctr] := objlong;
-          insertobj(ESDid * 256); { The third ESDID is a "do nothing" zero to
-                                   word align the file. }
-          objtype[objctr] := objign;
-          end; {pic_own_immed}
-
-        pic_splat_pcrel:
-
-          { For 68000 24-bit PIC only.  Generates "<offset>+*(PC)".
-          }
-          begin
-          mode := 72B; { pc-relative }
-          insertobj(offset - 2);
           end;
+        end; {commonlong}
 
-        pic_usercall:
+      pcrelative:
+        begin
+          { Pcrelative is only used to access the current section, so
+            we always know exactly what the distance is.
 
-          { For 68000 24-bit PIC only.  Generates "#<name>-<offset1>-*".
+            This generates the 68000 mode "address register indirect with
+            displacement" which has a 16 bit displacement.  If a long word
+            displacement is needed on the mc68020 (PIC only as it is slow),
+            we generate an "PC indirect with index (base displacement)"
+            mode with the index register suppressed.  If a long displacement
+            is needed in nopic mode on the 68020 we use absolute.  A long
+            displacement in pic mode on the 68000 causes an error.
           }
+
+        if $pic and (n^.operandcost >= long) then
+          begin
+          if mc68020 then
+            begin
+            mode := 73B;
+
+            extension_size := long_bd_size;
+
+            insertobj( {no index reg}
+            {no index size}
+            {no scale}
+                      + 400B {bit 8}
+            {BS = 0}
+                      + 100B {IS = 1}
+                      + (extension_size * 20B) {BD size}
+                      + 000 {index/indirect selection}
+            {no indirection}
+                      );
+
+            {generate a long offset}
+            kluge.l := offset - currentpc + 2; { pc = addr of extension word }
+              { the next two lines assume that "reversebytes" implies that
+                words are also reversed. }
+            insertobj(kluge.w[reversebytes]);
+            insertobj(kluge.w[not reversebytes]);
+            end
+          else {not mc68020} puterror(baddisplacement);
+          end
+        else if n^.operandcost >= long then
+          begin {far, far away}
+          mode := 71B; {absolute long}
+          insertobj(54B * 256 + sectionno[codesect] + 1);
+          objtype[objctr] := objforw;
+          relocn[objctr] := true;
+          temp := offset; { convert to unsigned }
+          insertobj(temp div 16#10000); {high order}
+          objtype[objctr] := objoff;
+          currentpc := currentpc - 2; {this stuff's longer than code}
+          insertobj(temp mod 16#10000);
+          objtype[objctr] := objoff;
+          end {long displacement}
+        else
+          begin {in pcrelative range}
+          mode := 72B;
+          if offset - currentpc < - 32768 then puterror(baddisplacement);
+          insertobj(offset - currentpc); {pc = addr of displacement}
+          end;
+        end; {pcrelative}
+
+      pcindexed:
+          { This generates the 68000 mode "PC indirect with index (8-bit
+            displacement)".  If a word or long word displacement is needed
+            on the mc68020, we generate an "PC indirect with index (base
+            displacement)" mode.  Suppression of the PC and index registers
+            is currently not supported.
+          }
+        begin
+        mode := 73B;
+          { NOTE:  The scale is always 1 for the 68000, but may be 1, 2, 4
+            or 8 for the 68020.
+          }
+
+        if (offset > 127) or (offset < - 128) then
+          begin
+          if mc68020 then
+            begin
+            if (offset <= 32767) and (offset >= - 32768) then
+              extension_size := word_bd_size
+            else extension_size := long_bd_size;
+
+            insertobj(indxr * 10000B {index reg}
+            {word/long word index size (always word)}
+                      + (scale_factor[scale] * 1000B) + 400B {bit 8}
+            {BS = 0}
+            {IS = 0}
+                      + (extension_size * 20B) {BD size}
+                      + 000 {index/indirect selection}
+            {no indirection}
+                      );
+
+            if extension_size = long_bd_size then {generate long offset}
+              begin
+              kluge.l := offset;
+                { the next two lines assume that "reversebytes" implies that
+                  words are also reversed. }
+              insertobj(kluge.w[reversebytes]);
+              insertobj(kluge.w[not reversebytes]);
+              end
+            else {generate word offset} insertobj(offset and 16#FFFF);
+            end
+          else {not mc68020} puterror(baddisplacement);
+          end
+        else {byte displacement}
+          begin
+          { note: this mode is only issued as "Dreg.W" }
+
+          insertobj(indxr * 10000B + (scale_factor[scale] * 1000B) +
+                    (offset and 16#FF));
+          end;
+        end; {pcindexed}
+
+      supportcall:
+        begin {treat it like an external usercall}
+        if (offset < ord(first_call)) or (offset > ord(last_call)) then
+          puterror(badsupportcall);
+
+        {<<<}
+        { note: support call operands generate 2 bytes of relocation data.
+          The first is always hexadecimal(20), which signifies one ESD index
+          byte follows (with no offset data).  The second is the ESD index
+          value, which is the index into the ESD table which has the unique
+          occurrence of this support number.  Therefore, we search the table
+          to see if this support routine is already present; if not, we enter
+          it, and use the newly assigned location for the second byte.
+        }
+        {>>>}
+        newESD.ESDkind := ESDsupport;
+        newESD.suppno := loophole(libroutines, offset);
+        findESDid;
+
+        if $pic then pic_gen
+        else
+          begin
+          if sharedPtr^.switcheverplus[longlib] then
+            begin {treat it like an external usercall}
+            insertobj(50B * 256 + ESDid);
+            mode := 71B; {absolute long}
+            currentpc := currentpc + 2; {correct for long address}
+            end
+          else
+            begin
+            insertobj(40B * 256 + ESDid);
+            mode := 70B; {absolute short}
+            end;
+          relocn[objctr] := true; { tag the word relocatable }
+          objtype[objctr] := objsup;
+          end; {not $pic}
+        end; {supportcall}
+
+      usercall:
+        begin
+        if $pic then
           begin
           if sharedPtr^.proctable[offset].externallinkage and
              not sharedPtr^.proctable[offset].bodydefined then
@@ -5598,28 +5383,145 @@ procedure setmodeonly;
             newESD.ESDkind := ESDexternal;
             newESD.exproc := offset;
             findESDid;
-
-            mode := 74B; { immediate }
-            insertobj(154B * 256 + ESDid);
-            relocn[objctr] := true;
-            objtype[objctr] := objpic;
-            insertobj((sectionno[codesect] + 1) * 256);
-                  { ^^^ The third ESDid is a "do nothing" zero to word align the
-                    file. }
-            objtype[objctr] := objign;
-            currentpc := currentpc - 4;
-
-            insertobj(( - (offset1 - 2) - currentpc) div 16#10000);
-            objtype[objctr] := objoff;
-            insertobj(( - (offset1 - 2) - currentpc + 2) mod 16#10000);
-            objtype[objctr] := objoff;
+            pic_gen;
             end
-          else if procmap[offset].addr = undefinedaddr then
-            begin { long forward reference }
-            mode := 74B; { immediate }
-            insertobj(( - (offset1 - 2) - currentpc) div 16#10000);
-            objtype[objctr] := objlong;
-            insertobj(( - (offset1 - 2) - currentpc + 2) mod 16#10000);
+          else
+            begin { not external call }
+            if procmap[offset].addr = undefinedaddr then
+              begin
+              if mc68020 then
+                begin
+                  { Generate a "PC indirect with index (base displacement)"
+                    mode with the index register suppressed.
+                  }
+                extension_size := long_bd_size;
+
+                insertobj( {no index reg}
+                {no index size}
+                {no scale}
+                          + 400B {bit 8}
+                {BS = 0}
+                          + 100B {IS = 1}
+                          + (extension_size * 20B) {BD size}
+                          + 000 {index/indirect selection}
+                {no indirection}
+                          );
+
+                  { Generate a long offset.  The fixup will plug in the
+                    pic displacement.  The pc is the address of the
+                    extension word.
+                  }
+                temp := offset1 - currentpc + 2; { convert to unsigned }
+                insertobj(temp div 16#10000);
+                objtype[objctr] := objlong;
+                insertobj(temp mod 16#10000);
+                mode := 73B; { pcrelative, long disp }
+                allocfixup;
+                fixups[objctr - 1] := fixuptail;
+                with fixuptail^ do
+                  begin
+                  fixupkind := fixupproc;
+                  fixuplen := long;
+                  fixupprocno := offset;
+                  fixupobjpc := fixupobjpc - 4;
+                  end;
+                end
+              else { not mc68020 -- generate simple 16-bit PIC }
+                begin
+                insertobj(offset1 - currentpc);
+                mode := 72B; { pcrelative }
+                allocfixup;
+                fixups[objctr] := fixuptail;
+                with fixuptail^ do
+                  begin
+                  fixupkind := fixupproc;
+                  fixuplen := word;
+                  fixupprocno := offset;
+                  fixupobjpc := fixupobjpc - 2;
+                  end;
+                end; { not mc68020 }
+              end { undefined addr }
+            else if n^.operandcost >= long then
+              begin {far, far away}
+
+              if mc68020 then
+                begin
+                  { Generate a "PC indirect with index (base displacement)"
+                    mode with the index register suppressed.
+                  }
+                extension_size := long_bd_size;
+
+                insertobj( {no index reg}
+                {no index size}
+                {no scale}
+                          + 400B {bit 8}
+                {BS = 0}
+                          + 100B {IS = 1}
+                          + (extension_size * 20B) {BD size}
+                          + 000 {index/indirect selection}
+                {no indirection}
+                          );
+
+                  { Generate a long offset.  The pc is the address of the
+                    extension word.
+                  }
+                insertobj((procmap[offset].addr + offset1 - currentpc + 2) div
+                          16#10000);
+                insertobj((procmap[offset].addr + offset1 - currentpc + 4) mod
+                          16#10000);
+                mode := 73B; { pcrelative, long disp }
+                end
+              else
+                begin
+                write ('Reference too long for 16-bit PIC');
+                abort(inconsistent);
+                end;
+              end
+            else
+              begin { simple case -- 16-bit offset to known location }
+              mode := 72B; {68000 PC relative}
+              insertobj(procmap[offset].addr + offset1 - currentpc);
+              end;
+            end;
+          end {if $pic}
+        else
+        if sharedPtr^.proctable[offset].externallinkage and
+           not sharedPtr^.proctable[offset].bodydefined then
+          begin {external reference}
+
+          { note: although this operand will be 4 bytes long when eventually loaded,
+            it is emitted to the relocatable object file as just 2 bytes.  The first
+            is an encoded byte which says one ESD is used to resolve a 4 byte operand;
+            the second is the number of that ESD.  We must search the ESD table to
+            match the procedure number, thereby calculating the ESD number.  The dump
+            file will show only this 2 byte operand, but the PC will increment by 4,
+            and the line will be flagged "EXTERNAL".
+          }
+          newESD.ESDkind := ESDexternal;
+          newESD.exproc := offset;
+          findESDid;
+
+          insertobj(50B * 256 + ESDid);
+          relocn[objctr] := true; { tag the word relocatable }
+          mode := 71B; { absolute long }
+          currentpc := currentpc + 2; { apply the PC correction }
+          objtype[objctr] := objext;
+          end
+
+        else
+          begin { not external call }
+          if procmap[offset].addr = undefinedaddr then
+            begin {forward procedure call}
+            mode := 71B; {absolute long}
+            insertobj(54B * 256 + sectionno[codesect] + 1);
+            objtype[objctr] := objforw;
+            relocn[objctr] := true;
+            currentpc := currentpc - 2; {this stuff's longer than code}
+            temp := offset1; { convert to unsigned }
+            insertobj(temp div 16#10000); {high order}
+            objtype[objctr] := objoff;
+            insertobj(temp mod 16#10000); { fixup adds proctable addr }
+            objtype[objctr] := objoff;
             allocfixup;
             fixups[objctr - 1] := fixuptail;
             with fixuptail^ do
@@ -5630,23 +5532,68 @@ procedure setmodeonly;
               fixupobjpc := fixupobjpc - 4;
               end;
             end { undefined addr }
+
+          else if n^.operandcost >= long then
+            begin {long, but not forward}
+            mode := 71B; {absolute long}
+            insertobj(54B * 256 + sectionno[codesect] + 1);
+            objtype[objctr] := objforw;
+            relocn[objctr] := true;
+            insertobj((procmap[offset].addr + offset1) div 16#10000);
+            { ^^^ high order }
+            objtype[objctr] := objoff;
+            currentpc := currentpc - 2; {this stuff's longer than code}
+            insertobj((procmap[offset].addr + offset1) mod 16#10000);
+            objtype[objctr] := objoff;
+            end
           else
-            begin { simple case -- 24-bit offset to known location }
-            mode := 74B; { immediate }
-            insertobj((procmap[offset].addr - (offset1 - 2) - currentpc) div
-                      16#10000);
-            insertobj((procmap[offset].addr - (offset1 - 2) - currentpc + 2) mod
-                      16#10000);
+            begin {normal call within 32k bytes}
+            mode := 72B; {PC relative}
+            insertobj(procmap[offset].addr + offset1 - currentpc);
             end;
           end;
+        end; {usercall}
 
-        pic_supportcall:
-
-          { For 68000 24-bit PIC only.  Generates "#<suppt_call>-<offset1>-*".
+      pic_own_immed:
+          { In PIC mode this can only occur for the code to load A3
+            at the beginning of each procedure.
           }
-          begin
-          newESD.ESDkind := ESDsupport;
-          newESD.suppno := loophole(libroutines, offset);
+        begin
+        newESD.ESDkind := ESDsupport;
+        newESD.suppno := libown;
+        findESDid;
+
+        mode := 74B; { immediate }
+          { A zero in the first position is a hack for own section
+            relocation. }
+        insertobj(150B * 256);
+        relocn[objctr] := true;
+        objtype[objctr] := objlong;
+        insertobj(ESDid * 256); { The third ESDID is a "do nothing" zero to
+                                 word align the file. }
+        objtype[objctr] := objign;
+        end; {pic_own_immed}
+
+      pic_splat_pcrel:
+
+        { For 68000 24-bit PIC only.  Generates "<offset>+*(PC)".
+        }
+        begin
+        mode := 72B; { pc-relative }
+        insertobj(offset - 2);
+        end;
+
+      pic_usercall:
+
+        { For 68000 24-bit PIC only.  Generates "#<name>-<offset1>-*".
+        }
+        begin
+        if sharedPtr^.proctable[offset].externallinkage and
+           not sharedPtr^.proctable[offset].bodydefined then
+          begin {external reference}
+          { We must search the ESD table to match the procedure number, thereby calculating the ESDID }
+          newESD.ESDkind := ESDexternal;
+          newESD.exproc := offset;
           findESDid;
 
           mode := 74B; { immediate }
@@ -5654,8 +5601,8 @@ procedure setmodeonly;
           relocn[objctr] := true;
           objtype[objctr] := objpic;
           insertobj((sectionno[codesect] + 1) * 256);
-            { ^^^ The third ESDid is a "do nothing" zero to word align the
-              file. }
+                { ^^^ The third ESDid is a "do nothing" zero to word align the
+                  file. }
           objtype[objctr] := objign;
           currentpc := currentpc - 4;
 
@@ -5663,49 +5610,92 @@ procedure setmodeonly;
           objtype[objctr] := objoff;
           insertobj(( - (offset1 - 2) - currentpc + 2) mod 16#10000);
           objtype[objctr] := objoff;
-          end;
-
-        pic_branch:
-
-          { For 68000 24-bit PIC only.  Generates "#L<labelno>-<offset1>-*"
-            only for Pascal goto's.
-          }
-          begin
-          mode := 74B; {immediate}
-          op := op + mode;
-          findlabelpc(offset, isforward);
-
-          insertobj((labelpc - (offset1 - 2) - currentpc) div 16#10000);
-          insertobj((labelpc - (offset1 - 2) - currentpc + 2) mod 16#10000);
-
-          if isforward <> 0 then
+          end
+        else if procmap[offset].addr = undefinedaddr then
+          begin { long forward reference }
+          mode := 74B; { immediate }
+          insertobj(( - (offset1 - 2) - currentpc) div 16#10000);
+          objtype[objctr] := objlong;
+          insertobj(( - (offset1 - 2) - currentpc + 2) mod 16#10000);
+          allocfixup;
+          fixups[objctr - 1] := fixuptail;
+          with fixuptail^ do
             begin
-            objtype[objctr - 1] := objlong;
-            allocfixup; { generate a new fixupnode }
-            fixups[objctr - 1] := fixuptail;
-            with fixuptail^ do
-              begin
-              fixupkind := fixuplabel;
-              fixuplen := long;
-              fixuplabno := offset;
-              fixupobjpc := fixupobjpc - 4;
-              end;
+            fixupkind := fixupproc;
+            fixuplen := long;
+            fixupprocno := offset;
+            fixupobjpc := fixupobjpc - 4;
+            end;
+          end { undefined addr }
+        else
+          begin { simple case -- 24-bit offset to known location }
+          mode := 74B; { immediate }
+          insertobj((procmap[offset].addr - (offset1 - 2) - currentpc) div
+                    16#10000);
+          insertobj((procmap[offset].addr - (offset1 - 2) - currentpc + 2) mod
+                    16#10000);
+          end;
+        end;
+
+      pic_supportcall:
+        { For 68000 24-bit PIC only.  Generates "#<suppt_call>-<offset1>-*" }
+        begin
+        newESD.ESDkind := ESDsupport;
+        newESD.suppno := loophole(libroutines, offset);
+        findESDid;
+
+        mode := 74B; { immediate }
+        insertobj(154B * 256 + ESDid);
+        relocn[objctr] := true;
+        objtype[objctr] := objpic;
+        insertobj((sectionno[codesect] + 1) * 256);
+
+        { ^^^ The third ESDid is a "do nothing" zero to word align the file. }
+        objtype[objctr] := objign;
+        currentpc := currentpc - 4;
+
+        insertobj(( - (offset1 - 2) - currentpc) div 16#10000);
+        objtype[objctr] := objoff;
+        insertobj(( - (offset1 - 2) - currentpc + 2) mod 16#10000);
+        objtype[objctr] := objoff;
+        end;
+
+      pic_branch:
+        { For 68000 24-bit PIC only.  Generates "#L<labelno>-<offset1>-*" only for Pascal goto's }
+        begin
+        mode := 74B; {immediate}
+        op := op + mode;
+        findlabelpc(offset, isforward);
+
+        insertobj((labelpc - (offset1 - 2) - currentpc) div 16#10000);
+        insertobj((labelpc - (offset1 - 2) - currentpc + 2) mod 16#10000);
+
+        if isforward <> 0 then
+          begin
+          objtype[objctr - 1] := objlong;
+          allocfixup; { generate a new fixupnode }
+          fixups[objctr - 1] := fixuptail;
+          with fixuptail^ do
+            begin
+            fixupkind := fixuplabel;
+            fixuplen := long;
+            fixuplabno := offset;
+            fixupobjpc := fixupobjpc - 4;
             end;
           end;
+        end;
 
-        pic_pcrelative:
-
-          { For 68000 24-bit PIC only.  Generates "#L+<offset>-<offset1>-*"
-            only for constant section references greater than 32k bytes.
-          }
-          begin
-          mode := 74B; {immediate}
-          op := op + mode;
-          insertobj((offset - (offset1 - 2) - currentpc) div 16#10000);
-          insertobj((offset - (offset1 - 2) - currentpc + 2) mod 16#10000);
-          end;
-        end; { case m }
-  end; {setmodeonly}
+      pic_pcrelative:
+        { For 68000 24-bit PIC only.  Generates "#L+<offset>-<offset1>-*"
+          only for constant section references greater than 32k bytes }
+        begin
+        mode := 74B; {immediate}
+        op := op + mode;
+        insertobj((offset - (offset1 - 2) - currentpc) div 16#10000);
+        insertobj((offset - (offset1 - 2) - currentpc + 2) mod 16#10000);
+        end;
+      end; { case m }
+end; {setmodeonly}
 {>>>}
 {<<<}
 procedure seteffective;
@@ -9263,18 +9253,17 @@ procedure fpfunc2(op: standardids); forward;
 {<<<  genblk utils}
 {<<<}
 function getStringfileByte (loc: integer): integer;
-{ Return a byte from the string table.
-}
-begin
-{ Adjust loc if constant is in the structured constant section.
-}
-if loc >= sharedPtr^.stringfilecount then
-  loc := sharedPtr^.stringtablelimit + loc - sharedPtr^.stringfilecount;
+{ Return a byte from the string table }
 
-sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
-sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
-getStringfileByte := sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile];
+begin
+{ Adjust loc if constant is in the structured constant section }
+  if loc >= sharedPtr^.stringfilecount then
+    loc := sharedPtr^.stringtablelimit + loc - sharedPtr^.stringfilecount;
+
+  sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
+  sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+  sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
+  getStringfileByte := sharedPtr^.stringblkptr^[sharedPtr^.nextstringfile];
 end;
 {>>>}
 
@@ -9297,8 +9286,8 @@ end;
 
 {<<<}
 function equivaddr (l, r: keyindex): boolean;
-{ True if the addresses accessed for key l and key r are the same.
-}
+{ True if the addresses accessed for key l and key r are the same }
+
 begin
   with keytable[l].oprnd, keytable[r] do
     if (access <> valueaccess) or (keytable[l].access <> valueaccess) or
@@ -9316,12 +9305,12 @@ end;
 {>>>}
 {<<<}
 function equivaccess (l, r: keyindex): boolean;
-{ True if the addresses accessed for key l and key r are the same.
-}
+{ True if the addresses accessed for key l and key r are the same }
+
 begin
-  equivaccess := equivaddr(l,r) and (keytable[l].regvalid =
-                 keytable[r].regvalid) and (keytable[l].indxrvalid =
-                 keytable[r].indxrvalid);
+  equivaccess := equivaddr(l,r) and
+                 (keytable[l].regvalid = keytable[r].regvalid) and
+                 (keytable[l].indxrvalid = keytable[r].indxrvalid);
 end;
 {>>>}
 
@@ -9389,17 +9378,14 @@ begin
 
   oprnd := keytable[k].oprnd;
   with oprnd do
-    if popping(k) and
-       (stackoffset - oprndlen =
-       - keytable[stackcounter + 1].oprnd.offset) then
+    if popping(k) and (stackoffset - oprndlen = - keytable[stackcounter + 1].oprnd.offset) then
       begin
       returntemps(1);
       m := autoi;
       offset := 0;
       end
-    else if pushing(k) and
-            (stackoffset + oprndlen =
-            - keytable[stackcounter].oprnd.offset) then
+
+    else if pushing(k) and (stackoffset + oprndlen = - keytable[stackcounter].oprnd.offset) then
       begin
       stackoffset := stackoffset + oprndlen;
       m := autod;
@@ -9436,8 +9422,7 @@ begin
   l := keytable[src].len; { instlength uses this for immediate constants }
   geninst(i, 1, l);
 
-  { Insert the 68881 floating-point format in the instruction node.
-  }
+  { Insert the 68881 floating-point format in the instruction node }
   if (i <> fmove) and (keytable[src].oprnd.m = fpreg) then
     lastptr^.fp_format := extended_real
   else if keytable[src].oprnd.flavor = float then
@@ -9490,56 +9475,70 @@ var
   dstl, srcl: datarange; {dst, src lengths}
   srcoprnd, dstoprnd: operand; {modified operands returned by fixaccess}
 
-begin {fpgendouble}
+begin
   srcl := keytable[src].len; { instlength uses this for immediate constants }
   dstl := keytable[dst].len;
   geninst(i, 2, srcl);
 
-  { Insert the 68881 floating-point format in the instruction node.
-  }
+  { Insert the 68881 floating-point format in the instruction node }
   if (i in [fmovecr, fmovem]) or
-     ((i = fmove) and (keytable[src].oprnd.m = fpreg) and
-       (keytable[dst].oprnd.m = fpreg)) or
+     ((i = fmove) and (keytable[src].oprnd.m = fpreg) and (keytable[dst].oprnd.m = fpreg)) or
      ((i <> fmove) and (keytable[src].oprnd.m = fpreg)) then
     begin
     lastptr^.fp_format := extended_real;
     l := 12;
     end
+
   else if (i = fmove) and (keytable[dst].oprnd.m <> fpreg) then
     begin
     if keytable[dst].oprnd.flavor = float then
-      if dstl = 12 then lastptr^.fp_format := extended_real
-      else if dstl = quad then lastptr^.fp_format := double_real
-      else lastptr^.fp_format := single_real
+      if dstl = 12 then
+        lastptr^.fp_format := extended_real
+      else if dstl = quad then
+        lastptr^.fp_format := double_real
+      else
+        lastptr^.fp_format := single_real
     else if keytable[dst].oprnd.flavor = int then
       begin
-      if dstl = byte then lastptr^.fp_format := byte_integer
-      else if dstl = word then lastptr^.fp_format := word_integer
-      else if dstl > word then lastptr^.fp_format := long_integer;
+      if dstl = byte then
+        lastptr^.fp_format := byte_integer
+      else if dstl = word then
+        lastptr^.fp_format := word_integer
+      else if dstl > word then
+        lastptr^.fp_format := long_integer;
            { includes 3 byte integers }
       end
     else { It's an int_float }
       begin
       write ('Illegal 68881 data type in fpgendouble');
-      abort(inconsistent);
+      abort (inconsistent);
       end;
     l := dstl;
     end
+
   else if keytable[src].oprnd.flavor = float then
-    if srcl = 12 then lastptr^.fp_format := extended_real
-    else if srcl = quad then lastptr^.fp_format := double_real
-    else lastptr^.fp_format := single_real
+    if srcl = 12 then
+      lastptr^.fp_format := extended_real
+    else if srcl = quad then
+      lastptr^.fp_format := double_real
+    else
+      lastptr^.fp_format := single_real
+
   else if keytable[src].oprnd.flavor = int then
     begin
-    if srcl = byte then lastptr^.fp_format := byte_integer
-    else if srcl = word then lastptr^.fp_format := word_integer
-    else if srcl > word then lastptr^.fp_format := long_integer;
+    if srcl = byte then
+      lastptr^.fp_format := byte_integer
+    else if srcl = word then
+      lastptr^.fp_format := word_integer
+    else if srcl > word then
+      lastptr^.fp_format := long_integer;
          { includes 3 byte integers }
     end
+
   else { It's an int_float }
     begin
     write ('Illegal 68881 data type in fpgendouble');
-    abort(inconsistent);
+    abort (inconsistent);
     end;
 
   with keytable[src], oprnd do
@@ -9548,11 +9547,11 @@ begin {fpgendouble}
   with keytable[dst], oprnd do
     if m = fpreg then len := dstl;
 
-  fixaccess(keytable[src].len, src, srcoprnd);
-  genoprnd(srcoprnd);
-  fixaccess(l, dst, dstoprnd);
-  genoprnd(dstoprnd);
-end {fpgendouble} ;
+  fixaccess (keytable[src].len, src, srcoprnd);
+  genoprnd( srcoprnd);
+  fixaccess (l, dst, dstoprnd);
+  genoprnd (dstoprnd);
+end;
 {>>>}
 {<<<}
 procedure gensimplemove (src, dst: keyindex);
@@ -9593,7 +9592,6 @@ function signedoprnds: boolean;
 { True if both left and right operands of the current operation are
   signed.  Picks up the operands from the globals "left" and "right".
 }
-
 begin
   signedoprnds := keytable[left].signed and keytable[right].signed;
 end;
@@ -9952,77 +9950,74 @@ end {saveareg} ;
 {>>>}
 {<<<}
 procedure savekey{k: keyindex (operand to save) };
-
 { Save all volatile registers required by given key.  Calls upon
   "savedreg" and "saveareg" to do all the work.
 }
-
-
-  begin
-    if k > 0 then
-      with keytable[k] do
-        if access = valueaccess then
-          begin
-          bumpTempCount (k, -refcount);
-          with oprnd do
-            case m of
-              fpreg, twofpregs:
+begin
+  if k > 0 then
+    with keytable[k] do
+      if access = valueaccess then
+        begin
+        bumpTempCount (k, -refcount);
+        with oprnd do
+          case m of
+            fpreg, twofpregs:
+              begin
+              if (m = twofpregs) and indxrvalid and not indxrsaved and
+                 (indxr <= lastfpreg) then
                 begin
-                if (m = twofpregs) and indxrvalid and not indxrsaved and
-                   (indxr <= lastfpreg) then
-                  begin
-                  properindxr := savefpreg(indxr);
-                  indxrsaved := true;
-                  end;
-
-                if regvalid and not regsaved and (reg <= lastfpreg) then
-                  begin
-                  properreg := savefpreg(reg);
-                  regsaved := true;
-                  end;
+                properindxr := savefpreg(indxr);
+                indxrsaved := true;
                 end;
 
-              dreg, twodregs:
+              if regvalid and not regsaved and (reg <= lastfpreg) then
                 begin
-                if (m = twodregs) and indxrvalid and not indxrsaved and
-                   (indxr <= lastdreg) then
-                  begin
-                  properindxr := savedreg(indxr);
-                  indxrsaved := true;
-                  end;
-                if regvalid and not regsaved and (reg <= lastdreg) then
-                  begin
-                  properreg := savedreg(reg);
-                  regsaved := true;
-                  end;
+                properreg := savefpreg(reg);
+                regsaved := true;
                 end;
-
-              pcindexed:
-                if indxrvalid and not indxrsaved and (indxr <= lastdreg) then
-                  begin
-                  properindxr := savedreg(indxr);
-                  indxrsaved := true;
-                  end;
-
-              areg, indr, autoi, autod, relative, indexed, bitindexed:
-                begin
-                if (m in [indexed, bitindexed]) and indxrvalid and
-                   not indxrsaved and (indxr <= lastdreg) then
-                  begin
-                  properindxr := savedreg(indxr);
-                  indxrsaved := true;
-                  end;
-                if regvalid and not regsaved and (reg <= lastareg) then
-                  begin
-                  properreg := saveareg(reg);
-                  regsaved := true;
-                  end;
-                end;
-              otherwise
               end;
-          bumpTempCount (k, refcount);
-          end;
-  end {savekey} ;
+
+            dreg, twodregs:
+              begin
+              if (m = twodregs) and indxrvalid and not indxrsaved and
+                 (indxr <= lastdreg) then
+                begin
+                properindxr := savedreg (indxr);
+                indxrsaved := true;
+                end;
+              if regvalid and not regsaved and (reg <= lastdreg) then
+                begin
+                properreg := savedreg(reg);
+                regsaved := true;
+                end;
+              end;
+
+            pcindexed:
+              if indxrvalid and not indxrsaved and (indxr <= lastdreg) then
+                begin
+                properindxr := savedreg(indxr);
+                indxrsaved := true;
+                end;
+
+            areg, indr, autoi, autod, relative, indexed, bitindexed:
+              begin
+              if (m in [indexed, bitindexed]) and indxrvalid and
+                 not indxrsaved and (indxr <= lastdreg) then
+                begin
+                properindxr := savedreg(indxr);
+                indxrsaved := true;
+                end;
+              if regvalid and not regsaved and (reg <= lastareg) then
+                begin
+                properreg := saveareg(reg);
+                regsaved := true;
+                end;
+              end;
+            otherwise
+            end;
+        bumpTempCount (k, refcount);
+        end;
+end {savekey} ;
 {>>>}
 {<<<}
 procedure saveactivekeys;
@@ -10085,7 +10080,6 @@ end;
 
 {<<<}
 procedure markareg{r: regindex (register to clobber) };
-
 { Mark an address register used.  Since such a register is just about
   to be modified,  any operand which depends on its current value must
   be saved.  This is done by scanning the keytable for operands which
@@ -10103,54 +10097,51 @@ procedure markareg{r: regindex (register to clobber) };
   since the stack item has no ordinary key to be the properreg of.
 }
 
-  var
-    i, savedr: keyindex; {induction vars for keytable scan}
-    saved: boolean; {set true when the register has been saved}
-    j: loopindex;
+var
+  i, savedr: keyindex; {induction vars for keytable scan}
+  saved: boolean; {set true when the register has been saved}
+  j: loopindex;
 
+begin
+  aregused[r] := true;
+  if r <= lastareg then
+    begin
+    saved := false;
+    aregisters[r] := 0;
+    context[contextsp].abump[r] := false;
 
-  begin {markareg}
-    aregused[r] := true;
-    if r <= lastareg then
-      begin
-      saved := false;
-      aregisters[r] := 0;
-      context[contextsp].abump[r] := false;
+    for j := loopsp downto 1 do loopstack[j].aregstate[r].killed := true;
 
-      for j := loopsp downto 1 do loopstack[j].aregstate[r].killed := true;
-
-      with context[contextsp] do
-        for i := lastkey downto 1 do
-          with keytable[i], oprnd do
-            if (access = valueaccess) and
-               (m in [areg, indr, autoi, autod, relative, indexed, bitindexed])
-               and (r = reg) and regvalid then
+    with context[contextsp] do
+      for i := lastkey downto 1 do
+        with keytable[i], oprnd do
+          if (access = valueaccess) and
+             (m in [areg, indr, autoi, autod, relative, indexed, bitindexed])
+             and (r = reg) and regvalid then
+            begin
+            if i >= keymark then {current context}
               begin
-              if i >= keymark then {current context}
+              if not regsaved and (refcount > 0) then
                 begin
-                if not regsaved and (refcount > 0) then
+                regsaved := true;
+                if not saved then
                   begin
-                  regsaved := true;
-                  if not saved then
-                    begin
-                    savedr := saveareg(r);
-                    saved := true;
-                    end;
-                  properreg := savedr;
-                  keytable[savedr].refcount := keytable[savedr].refcount +
-                                               refcount
+                  savedr := saveareg(r);
+                  saved := true;
                   end;
-                regvalid := false;
+                properreg := savedr;
+                keytable[savedr].refcount := keytable[savedr].refcount +
+                                             refcount
                 end;
-              joinreg := true;
+              regvalid := false;
               end;
-      end;
-  end {markareg} ;
-
+            joinreg := true;
+            end;
+    end;
+end;
 {>>>}
 {<<<}
 procedure markdreg{r: regindex (register to clobber) };
-
 { Mark a data register used.  Since such a register is just about to be
   modified,  any operand which depends on its current value must be
   saved.  This is done by scanning the keytable for operands which
@@ -10158,79 +10149,76 @@ procedure markdreg{r: regindex (register to clobber) };
   the value is saved in a temp.  In any case, the "join" flag is
   set so it will be invalidated at the join context at the end
   of a conditional construct.
-
   For each operand saved, a scan of unsaved keys is made to set
   any keys with equivalent access to the same temp location.
 }
 
-  var
-    i, savedr: keyindex; {induction vars for keytable scan}
-    saved: boolean; {true if the register has already been saved}
-    j: loopindex;
+var
+  i, savedr: keyindex; {induction vars for keytable scan}
+  saved: boolean; {true if the register has already been saved}
+  j: loopindex;
 
+begin
+  dregused[r] := true;
+  if r <= lastdreg then
+    begin
+    saved := false;
+    dregisters[r] := 0;
+    context[contextsp].dbump[r] := false;
 
-  begin {markdreg}
-    dregused[r] := true;
-    if r <= lastdreg then
-      begin
-      saved := false;
-      dregisters[r] := 0;
-      context[contextsp].dbump[r] := false;
+    for j := loopsp downto 1 do loopstack[j].dregstate[r].killed := true;
 
-      for j := loopsp downto 1 do loopstack[j].dregstate[r].killed := true;
-
-      with context[contextsp] do
-        for i := lastkey downto 1 do
-          with keytable[i], oprnd do
-            if (access = valueaccess) and (m in [dreg, twodregs]) and
-               (r = reg) and regvalid then
+    with context[contextsp] do
+      for i := lastkey downto 1 do
+        with keytable[i], oprnd do
+          if (access = valueaccess) and (m in [dreg, twodregs]) and
+             (r = reg) and regvalid then
+            begin
+            if i >= keymark then {current context}
               begin
-              if i >= keymark then {current context}
+              if not regsaved and (refcount > 0) then
                 begin
-                if not regsaved and (refcount > 0) then
+                regsaved := true;
+                if not saved then
                   begin
-                  regsaved := true;
-                  if not saved then
-                    begin
-                    savedr := savedreg(r);
-                    saved := true;
-                    end;
-                  properreg := savedr;
-                  keytable[savedr].refcount := keytable[savedr].refcount +
-                                               refcount
+                  savedr := savedreg(r);
+                  saved := true;
                   end;
-                regvalid := false;
+                properreg := savedr;
+                keytable[savedr].refcount := keytable[savedr].refcount +
+                                             refcount
                 end;
-              joinreg := true;
-              end
-            else if (access = valueaccess) and
-                    (m in [pcindexed, indexed, bitindexed, twodregs]) and
-                    (r = indxr) and indxrvalid then
-              begin
-              if i >= keymark then
-                begin
-                if not indxrsaved and (refcount > 0) then
-                  begin
-                  indxrsaved := true;
-                  if not saved then
-                    begin
-                    savedr := savedreg(r);
-                    saved := true;
-                    end;
-                  properindxr := savedr;
-                  keytable[savedr].refcount := keytable[savedr].refcount +
-                                               refcount
-                  end;
-                indxrvalid := false;
-                end;
-              joinindxr := true;
+              regvalid := false;
               end;
-      end;
-  end {markdreg} ;
+            joinreg := true;
+            end
+          else if (access = valueaccess) and
+                  (m in [pcindexed, indexed, bitindexed, twodregs]) and
+                  (r = indxr) and indxrvalid then
+            begin
+            if i >= keymark then
+              begin
+              if not indxrsaved and (refcount > 0) then
+                begin
+                indxrsaved := true;
+                if not saved then
+                  begin
+                  savedr := savedreg(r);
+                  saved := true;
+                  end;
+                properindxr := savedr;
+                keytable[savedr].refcount := keytable[savedr].refcount +
+                                             refcount
+                end;
+              indxrvalid := false;
+              end;
+            joinindxr := true;
+            end;
+    end;
+end;
 {>>>}
 {<<<}
 procedure markfpreg{r: regindex (register to clobber) };
-
 { Mark an f.p. register used.  Since such a register is just about to be
   modified,  any operand which depends on its current value must be
   saved.  This is done by scanning the keytable for operands which
@@ -10238,243 +10226,219 @@ procedure markfpreg{r: regindex (register to clobber) };
   the value is saved in a temp.  In any case, the "join" flag is
   set so it will be invalidated at the join context at the end
   of a conditional construct.
-
   For each operand saved, a scan of unsaved keys is made to set
   any keys with equivalent access to the same temp location.
 }
 
-  var
-    i, savefpr: keyindex; {induction vars for keytable scan}
-    saved: boolean; {true if the register has already been saved}
-    j: loopindex;
+var
+  i, savefpr: keyindex; {induction vars for keytable scan}
+  saved: boolean; {true if the register has already been saved}
+  j: loopindex;
 
+begin
+  fpregused[r] := true;
+  if r <= lastfpreg then
+    begin
+    saved := false;
+    fpregisters[r] := 0;
+    context[contextsp].fpbump[r] := false;
 
-  begin {markfpreg}
-    fpregused[r] := true;
-    if r <= lastfpreg then
-      begin
-      saved := false;
-      fpregisters[r] := 0;
-      context[contextsp].fpbump[r] := false;
+    for j := loopsp downto 1 do loopstack[j].fpregstate[r].killed := true;
 
-      for j := loopsp downto 1 do loopstack[j].fpregstate[r].killed := true;
-
-      with context[contextsp] do
-        for i := lastkey downto 1 do
-          with keytable[i], oprnd do
-            if (access = valueaccess) and (m in [fpreg, twofpregs]) and
-               (r = reg) and regvalid then
+    with context[contextsp] do
+      for i := lastkey downto 1 do
+        with keytable[i], oprnd do
+          if (access = valueaccess) and (m in [fpreg, twofpregs]) and
+             (r = reg) and regvalid then
+            begin
+            if i >= keymark then {current context}
               begin
-              if i >= keymark then {current context}
+              if not regsaved and (refcount > 0) then
                 begin
-                if not regsaved and (refcount > 0) then
+                regsaved := true;
+                if not saved then
                   begin
-                  regsaved := true;
-                  if not saved then
-                    begin
-                    savefpr := savefpreg(r);
-                    saved := true;
-                    end;
-                  properreg := savefpr;
-                  keytable[savefpr].refcount := keytable[savefpr].refcount +
-                                               refcount
+                  savefpr := savefpreg(r);
+                  saved := true;
                   end;
-                regvalid := false;
+                properreg := savefpr;
+                keytable[savefpr].refcount := keytable[savefpr].refcount +
+                                             refcount
                 end;
-              joinreg := true;
-              end
-            else if (access = valueaccess) and (m = twofpregs) and
-               (r = indxr) and indxrvalid then
-              begin
-              if i >= keymark then {current context}
-                begin
-                if not indxrsaved and (refcount > 0) then
-                  begin
-                  indxrsaved := true;
-                  if not saved then
-                    begin
-                    savefpr := savefpreg(r);
-                    saved := true;
-                    end;
-                  properindxr := savefpr;
-                  keytable[savefpr].refcount := keytable[savefpr].refcount +
-                                               refcount
-                  end;
-                indxrvalid := false;
-                end;
-              joinindxr := true;
+              regvalid := false;
               end;
-      end;
-  end {markfpreg} ;
+            joinreg := true;
+            end
+          else if (access = valueaccess) and (m = twofpregs) and
+             (r = indxr) and indxrvalid then
+            begin
+            if i >= keymark then {current context}
+              begin
+              if not indxrsaved and (refcount > 0) then
+                begin
+                indxrsaved := true;
+                if not saved then
+                  begin
+                  savefpr := savefpreg(r);
+                  saved := true;
+                  end;
+                properindxr := savefpr;
+                keytable[savefpr].refcount := keytable[savefpr].refcount +
+                                             refcount
+                end;
+              indxrvalid := false;
+              end;
+            joinindxr := true;
+            end;
+    end;
+end;
 {>>>}
 {<<<}
 procedure reserve_dreg{k: keyindex; ( key to check )
                       r: regindex  ( register needed ) };
-
 { Similar to markdreg except it will not mark the register if k is already
   using that register.
 }
-  begin
-  with keytable[k], oprnd do
-    if regvalid and (refcount >= 1) and (m = dreg) and (reg = r) then
+begin
+with keytable[k], oprnd do
+  if regvalid and (refcount >= 1) and (m = dreg) and (reg = r) then
       { it's fine }
-    else markdreg(r); { blast the sucker! }
-  end; { reserve_dreg }
+  else
+    markdreg(r); { blast the sucker! }
+end;
 {>>>}
 {>>>}
 {<<<  register allocation procedures}
 {<<<}
 function countdreg: integer;
+{ Returns lowest register usage count of any data register.
+ Register count is increased if register is seen to be useful
+ beyond the next join point. This situation is recorded in the
+ dbump field of the markstack when the context is first entered
+ via a savelabel.
+ }
 
-      { Returns lowest register usage count of any data register.
-       Register count is increased if register is seen to be useful
-       beyond the next join point. This situation is recorded in the
-       dbump field of the markstack when the context is first entered
-       via a savelabel.
-       }
+var
+  cnt: integer;
+  r: regindex;
 
-  var
-    cnt: integer;
-    r: regindex;
-
-
-  begin {countdreg}
-    cnt := maxint;
-    for r := 0 to lastdreg do
-      if dregisters[r] + ord(context[contextsp].dbump[r]) < cnt then
-        cnt := dregisters[r] + ord(context[contextsp].dbump[r]);
-    countdreg := cnt;
-  end {countdreg} ;
+begin
+  cnt := maxint;
+  for r := 0 to lastdreg do
+    if dregisters[r] + ord(context[contextsp].dbump[r]) < cnt then
+      cnt := dregisters[r] + ord(context[contextsp].dbump[r]);
+  countdreg := cnt;
+end;
 {>>>}
 {<<<}
 function bestdreg(reg: regindex {data register to check} ): boolean;
-
 { Returns true if reg is the "best" data register to step on.
 }
-
-
-  begin {bestdreg}
-    bestdreg := (reg <= lastdreg) and
-                (dregisters[reg] + ord(context[contextsp].dbump[reg]) <=
-                countdreg);
-  end {bestdreg} ;
+begin {bestdreg}
+  bestdreg := (reg <= lastdreg) and
+              (dregisters[reg] + ord(context[contextsp].dbump[reg]) <=
+              countdreg);
+end;
 {>>>}
 {<<<}
 function getdreg;
-
 { Return the least worthwhile data register.  If necessary, the current
   contents of the selected register is flushed via markdreg.
 }
+var
+  cnt: integer;
+  r: regindex;
 
-  var
-    cnt: integer;
-    r: regindex;
-
-
-  begin
-    cnt := countdreg;
-    r := 0;
-    while dregisters[r] + ord(context[contextsp].dbump[r]) <> cnt do
-      r := r + 1;
-    markdreg(r);
-    getdreg := r;
-  end;
+begin
+  cnt := countdreg;
+  r := 0;
+  while dregisters[r] + ord(context[contextsp].dbump[r]) <> cnt do
+    r := r + 1;
+  markdreg(r);
+  getdreg := r;
+end;
 {>>>}
 
 {<<<}
 function countfpreg: integer;
-
 { Returns lowest register usage count of any f.p. register.
   Register count is increased if register is seen to be useful
   beyond the next join point. This situation is recorded in the
   fpbump field of the markstack when the context is first entered
   via a savelabel.
 }
+var
+  cnt: integer;
+  r: regindex;
 
-  var
-    cnt: integer;
-    r: regindex;
-
-
-  begin {countfpreg}
-    cnt := maxint;
-    for r := 0 to lastfpreg do
-      if fpregisters[r] + ord(context[contextsp].fpbump[r]) < cnt then
-        cnt := fpregisters[r] + ord(context[contextsp].fpbump[r]);
-    countfpreg := cnt;
-  end {countfpreg} ;
+begin
+  cnt := maxint;
+  for r := 0 to lastfpreg do
+    if fpregisters[r] + ord(context[contextsp].fpbump[r]) < cnt then
+      cnt := fpregisters[r] + ord(context[contextsp].fpbump[r]);
+  countfpreg := cnt;
+end;
 {>>>}
 {<<<}
 function bestfpreg(reg: regindex {f.p. register to check} ): boolean;
-
 { Returns true if reg is the "best" data register to step on.
 }
 
-
-  begin {bestfpreg}
-    bestfpreg := (reg <= lastfpreg) and
-                (fpregisters[reg] + ord(context[contextsp].fpbump[reg]) <=
-                countfpreg);
-  end {bestfpreg} ;
+begin
+  bestfpreg := (reg <= lastfpreg) and
+              (fpregisters[reg] + ord(context[contextsp].fpbump[reg]) <=
+              countfpreg);
+end;
 {>>>}
 {<<<}
 function getfpreg;
-
 { Return the least worthwhile f.p. register.  If necessary, the current
   contents of the selected register is flushed via markfpreg.
 }
+var
+  cnt: integer;
+  r: regindex;
 
-  var
-    cnt: integer;
-    r: regindex;
-
-
-  begin {getfpreg}
-    cnt := countfpreg;
-    r := 0;
-    while fpregisters[r] + ord(context[contextsp].fpbump[r]) <> cnt do
-      r := r + 1;
-    markfpreg(r);
-    getfpreg := r;
-  end {getfpreg} ;
+begin
+  cnt := countfpreg;
+  r := 0;
+  while fpregisters[r] + ord(context[contextsp].fpbump[r]) <> cnt do
+    r := r + 1;
+  markfpreg(r);
+  getfpreg := r;
+end;
 {>>>}
 
 {<<<}
 function countareg: integer;
-
 { Returns lowest register usage count of any address register.
   Register count is increased if register is seen to be useful
   beyond the next join point. This situation is recorded in the
   dbump field of the markstack when the context is first entered
   via a savelabel.
 }
+var
+  cnt: integer;
+  r: regindex;
 
-  var
-    cnt: integer;
-    r: regindex;
-
-
-  begin {countareg}
-    cnt := maxint;
-    for r := 0 to lastareg do
-      if aregisters[r] + ord(context[contextsp].abump[r]) < cnt then
-        cnt := aregisters[r] + ord(context[contextsp].abump[r]);
-    countareg := cnt;
-  end {countareg} ;
+begin
+  cnt := maxint;
+  for r := 0 to lastareg do
+    if aregisters[r] + ord(context[contextsp].abump[r]) < cnt then
+      cnt := aregisters[r] + ord(context[contextsp].abump[r]);
+  countareg := cnt;
+end;
 {>>>}
 {<<<}
 function bestareg{reg: regindex (address reg to check) : boolean};
-
 { Returns true if address register r is the "best" address register
   available to step on.
 }
-
-
-  begin {bestareg}
-    bestareg := (reg <= lastareg) and
-                (aregisters[reg] + ord(context[contextsp].abump[reg]) <=
-                countareg);
-  end {bestareg} ;
+begin
+  bestareg := (reg <= lastareg) and
+              (aregisters[reg] + ord(context[contextsp].abump[reg]) <=
+              countareg);
+end;
 {>>>}
 {<<<}
 function getareg: regindex;
@@ -10506,50 +10470,44 @@ procedure allowmodify{var k: keyindex; (operand to be modified)
   key can be used in generating the current operand.  The boolean "forcecopy"
   forces this routine to create a copy of the key.
 }
+begin
+  if forcecopy or (k >= 0) and
+     ((keytable[k].instmark < context[contextsp].lastbranch) or
+     (stackoffset <> - keytable[stackcounter].oprnd.offset) or
+     keytable[k].high_word_dirty) then
+    begin
+    if tempkey = lowesttemp then
+      abort(interntemp);
 
-
-  begin
-    if forcecopy or (k >= 0) and
-       ((keytable[k].instmark < context[contextsp].lastbranch) or
-       (stackoffset <> - keytable[stackcounter].oprnd.offset) or
-       keytable[k].high_word_dirty) then
-      begin
-      if tempkey = lowesttemp then abort(interntemp);
-      tempkey := tempkey - 1;
-      keytable[tempkey] := keytable[k];
-      keytable[tempkey].refcount := 0;
-      keytable[tempkey].copycount := 0;
-      keytable[tempkey].regsaved := false;
-      keytable[tempkey].indxrsaved := false;
-      k := tempkey
-      end;
-  end {allowmodify} ;
+    tempkey := tempkey - 1;
+    keytable[tempkey] := keytable[k];
+    keytable[tempkey].refcount := 0;
+    keytable[tempkey].copycount := 0;
+    keytable[tempkey].regsaved := false;
+    keytable[tempkey].indxrsaved := false;
+    k := tempkey
+    end;
+end;
 {>>>}
 
 {<<<}
 procedure lock{k: keyindex (operand to lock) };
-
 { Make sure that operand "k" will not be deallocated by setting
   reference counts to an impossibly high value.
 }
-
-
-  begin
-    adjustregcount(k, 100);
-    bumpTempCount(k, 100);
-  end {lock} ;
+begin
+  adjustregcount (k, 100);
+  bumpTempCount (k, 100);
+end {lock} ;
 {>>>}
 {<<<}
 procedure unlock{k: keyindex (operand to unlock) };
-
 { Undoes the effects of "lock" so normal deallocation can be done.
 }
-
-
-  begin
-    bumpTempCount(k, -100);
-    adjustregcount(k, -100);
-  end {unlock} ;
+begin
+  bumpTempCount (k, -100);
+  adjustregcount (k, -100);
+end;
 {>>>}
 
 {<<<}

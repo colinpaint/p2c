@@ -1089,5 +1089,17 @@ type
   {>>>}
   sharedPtrType = ^sharedType;
 
+procedure add (left, right: integer;  var result: integer; var overflow: boolean); external;
+procedure usadd (left, right: integer;  var result: integer; var overflow: boolean); external;
+procedure negate (operand: integer; var result: integer; var overflow: boolean); external;
+procedure subtract (left, right: integer; var result: integer; var overflow: boolean); external;
+procedure ussubtract (left, right: integer; var result: integer; var overflow: boolean); external;
+procedure multiply (left, right: integer;  var result: integer; var overflow: boolean); external;
+procedure usmultiply (left, right: integer; var result: integer; var overflow: boolean); external;
+procedure divide (left, right: integer;  var result: integer; var overflow: boolean); external;
+procedure usdivide (left, right: integer;  var result: integer; var overflow: boolean); external;
+procedure remainder (left, right: integer;  var result: integer; var overflow: boolean); external;
+procedure usremainder (left, right: integer;  var result: integer; var overflow: boolean); external;
+
 procedure initShared; external;
 function getSharedPtr : sharedPtrType; external;
