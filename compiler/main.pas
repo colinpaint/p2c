@@ -20,7 +20,6 @@
 %include 'inter.def';
 %include 'pseudo.def';
 
-%include 'debug.def';
 %include 'list.def';
 
 %include 'scan.def';
@@ -248,7 +247,7 @@ begin
   writeln (' during Pascal-2 compilation');
 
   Writeln (' - looping for debug');
-  while true do 
+  while true do
     begin
     end;
 
@@ -1347,9 +1346,6 @@ begin
     close (getInterSharedPtr^.interFile);
     close (getPseudoSharedPtr^.pseudoFile);
     printtime ('traverse/code');
-
-    if sharedPtr^.switcheverplus[symboltable] then
-      closed;
 
     { stats }
     writeln (sharedPtr^.proctabletop:1, ' procedures, ', sharedPtr^.insertions:1, ' identifiers');

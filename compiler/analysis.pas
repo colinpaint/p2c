@@ -40,7 +40,6 @@ Update release version for PC-VV0-GS0 at 2.3.0.1
 
 %include 'main.def';
 %include 'scan.def';
-%include 'debug.def';
 
 %include 'analysis.def';
 {>>>}
@@ -300,8 +299,6 @@ type
 
   forstackindex = 0..fordepth;
 
-  debughashtabletype = array [debughashindex] of targetint;
-
   { declarations for kluged type to allow writing to environment file }
   proctableblock = array [0..proctableentriesperblock] of proctableentry;
   tableblock = array [0..tableentriesperblock] of tableentry;
@@ -376,7 +373,6 @@ var
 
   undeftable: array [undefindex] of undefentry; {forward reference table}
 
-  debughashtable: debughashtabletype;
   lastdebugrecord: integer;   { last record written in debugger file}
   lastprocrecord: integer;    { last procedure record written in debugger file}
   lastfilekey: integer;       { used to generate unique ids for file and ptr types}
@@ -1639,376 +1635,6 @@ begin
       end;
     end;
 end;
-{>>>}
-{>>>}
-{<<<  pdbfiles}
-{<<<}
-procedure dumpform (f: entryptr; id: tableIndex; level: levelindex);
-
-var
-  p: entryptr;
-
-begin
-  with f^ do
-    if dbgsymbol > 0 then
-      begin
-      seek (sharedPtr^.debugfile, dbgsymbol);
-      sharedPtr^.debugfile^.kind := formdesc;
-      sharedPtr^.debugfile^.packedflag := packedflag;
-      sharedPtr^.debugfile^.bitaddress := bitaddress;
-      sharedPtr^.debugfile^.size := size;
-      sharedPtr^.debugfile^.typ := typ;
-      case typ of
-        scalars:
-          begin
-          sharedPtr^.debugfile^.lastord := lastord;
-          sharedPtr^.debugfile^.firstscalar := 0;
-          end;
-        subranges:
-          begin
-          sharedPtr^.debugfile^.lowerord := lowerord;
-          sharedPtr^.debugfile^.upperord := upperord;
-          sharedPtr^.debugfile^.extended := extendedrange;
-          p := ref(bigtable[parenttype]);
-          sharedPtr^.debugfile^.parenttype := p^.dbgsymbol;
-          end;
-        fields:
-          begin
-          sharedPtr^.debugfile^.fieldid := fieldid;
-          sharedPtr^.debugfile^.fieldlevel := level;
-          { new....... speed up pdb }
-          sharedPtr^.debugfile^.firstfield := 0;
-          sharedPtr^.debugfile^.lastfield := 0;
-          p := ref(bigtable[f^.firstfield]);
-          { modify the first field name to help pdb }
-          if not p^.form and (p^.namekind = fieldname) then
-            p^.sparelink := id;
-          end;
-        strings, arrays, conformantarrays:
-          begin
-          sharedPtr^.debugfile^.elementsize := elementsize;
-          p := ref(bigtable[indextype]);
-          sharedPtr^.debugfile^.indextype := p^.dbgsymbol;
-          p := ref(bigtable[elementtype]);
-          sharedPtr^.debugfile^.elementtype := p^.dbgsymbol;
-          end;
-        sets:
-          begin
-          p := ref(bigtable[basetype]);
-          sharedPtr^.debugfile^.basetype := p^.dbgsymbol;
-          end;
-        files:
-          begin
-          p := ref(bigtable[filebasetype]);
-          sharedPtr^.debugfile^.filebasetype := p^.dbgsymbol;
-          end;
-        ptrs:
-          if ptrtypename <> 0 then
-            begin
-            p := ref(bigtable[ptrtypename]);
-            p := ref(bigtable[p^.typeindex]);
-            sharedPtr^.debugfile^.ptrtype := p^.dbgsymbol
-            end;
-        otherwise;
-        end;
-      put(sharedPtr^.debugfile);
-      end;
-end;
-{>>>}
-{<<<}
-procedure dumpname (p: entryptr; level: levelindex; idno: integer);
-
-var
-  j: integer;
-  f: entryptr; {used to access form data}
-
-  {<<<}
-  function debughash(ch: char): debughashindex;
-
-  { return hash value for debugger hash table.
-  }
-
-
-    begin {debughash}
-      if ch = '$' then debughash := 26
-      else if ch = '_' then debughash := 27
-      else if ch in ['a'..'z'] then debughash := ord(ch) - ord('a')
-      else debughash := ord(ch) - ord('A');
-    end {debughash} ;
-  {>>>}
-
-begin
-  with p^ do
-    if charlen > 0 then
-      begin
-      lastdebugrecord := lastdebugrecord + 2;
-      with sharedPtr^.debugfile^ do
-        begin
-        kind := identdesc;
-        for j := 1 to debugsymbolmax do
-          identchars[j] := ' ';
-        for j := 1 to min(debugsymbolmax, charlen) do
-          identchars[j] := sharedPtr^.stringtable^[charindex - 1 + j];
-        chainoffset := debughashtable[debughash(identchars[1])];
-        debughashtable[debughash(identchars[1])] := lastdebugrecord - 1;
-        end {with} ;
-
-      put (sharedPtr^.debugfile);
-      sharedPtr^.debugfile^.kind := symboldesc;
-      sharedPtr^.debugfile^.name := name;
-      sharedPtr^.debugfile^.namekind := namekind;
-      case namekind of
-        {<<<}
-        typename:
-          begin
-          f := ref(bigtable[typeindex]);
-          sharedPtr^.debugfile^.typeindex := f^.dbgsymbol;
-          end;
-        {>>>}
-        {<<<}
-        constname:
-          begin
-          f := ref(bigtable[consttype]);
-          sharedPtr^.debugfile^.constform := f^.typ;
-          sharedPtr^.debugfile^.consttype := f^.dbgsymbol;
-          if (sharedPtr^.debugfile^.constform = reals) or
-             (sharedPtr^.debugfile^.constform = doubles) then
-            sharedPtr^.debugfile^.r := constvalue.realvalue.realbuffer
-          else if sharedPtr^.debugfile^.constform = ptrs then
-            sharedPtr^.debugfile^.nilpointer := constvalue.ptrvalue
-          else
-            begin
-            sharedPtr^.debugfile^.i := constvalue.intvalue;
-            sharedPtr^.debugfile^.extendedint := (constvalue.intvalue < 0) and
-                                      not constvalue.negated;
-            end;
-          if (sharedPtr^.debugfile^.constform = scalars) and (sharedPtr^.debugfile^.i = 0) then
-            begin
-            put(sharedPtr^.debugfile);
-            seek(sharedPtr^.debugfile, f^.dbgsymbol);
-            if sharedPtr^.debugfile^.firstscalar = 0 then {not an alias}
-              begin
-              sharedPtr^.debugfile^.firstscalar := lastdebugrecord - 1;
-              put(sharedPtr^.debugfile);
-              end;
-            seek(sharedPtr^.debugfile, lastdebugrecord);
-            end;
-          end;
-        {>>>}
-        {<<<}
-        varname, param, varparam, fieldname, procparam, funcparam, confparam,
-        varconfparam, boundid:
-          begin
-          if (level > 1) and (namekind <> fieldname) and
-             (varalloc in [pointeralloc, normalalloc]) then
-            sharedPtr^.debugfile^.offset := offset - display[level].blocksize
-          else if varalloc in [sharedalloc, usealloc, definealloc] then
-            sharedPtr^.debugfile^.offset := sparelink { index into vartable }
-          else
-            sharedPtr^.debugfile^.offset := offset;
-          sharedPtr^.debugfile^.length := length;
-          sharedPtr^.debugfile^.varalloc := varalloc;
-          f := ref(bigtable[vartype]);
-          sharedPtr^.debugfile^.vartype := f^.dbgsymbol;
-
-          { This is a kludge. sparelink is used to point to parent type..}
-          { and only for the first field names... }
-          if (namekind = fieldname) and (sparelink <> 0) then
-            begin
-            { idno is set for the first field name }
-            f := ref(bigtable[sparelink]);
-            put (sharedPtr^.debugfile);
-            seek (sharedPtr^.debugfile, f^.dbgsymbol);
-            sharedPtr^.debugfile^.firstfield := lastdebugrecord - 1;
-            put(sharedPtr^.debugfile);
-            seek(sharedPtr^.debugfile, lastdebugrecord);
-            end;
-
-          if (namekind = boundid) and (sparelink <> 0) then
-            begin
-            f := ref(bigtable[sparelink]);
-            put(sharedPtr^.debugfile);
-            seek(sharedPtr^.debugfile, f^.dbgsymbol);
-            sharedPtr^.debugfile^.lowbound := lastdebugrecord - 2;
-            put(sharedPtr^.debugfile);
-            seek(sharedPtr^.debugfile, lastdebugrecord);
-            end;
-          end;
-        {>>>}
-        {<<<}
-        procname, funcname:
-          begin
-          sharedPtr^.debugfile^.funclen := funclen;
-          if sharedPtr^.proctable[display[level].blockref].registerfunction <> 0 then
-            sharedPtr^.debugfile^.funcoffset := - display[level].blocksize
-          else sharedPtr^.debugfile^.funcoffset := display[level].paramsize;
-          if sharedPtr^.proctable[display[level].blockref].externallinkage then
-            sharedPtr^.debugfile^.funcoffset := sharedPtr^.debugfile^.funcoffset + sharedPtr^.extreturnlinksize
-          else
-            sharedPtr^.debugfile^.funcoffset := sharedPtr^.debugfile^.funcoffset + sharedPtr^.returnlinksize;
-          sharedPtr^.debugfile^.id := display[level].blockid;
-          sharedPtr^.debugfile^.level := level;
-          sharedPtr^.debugfile^.paramsize := display[level].paramsize;
-          sharedPtr^.debugfile^.blocksize := display[level].blocksize;
-          sharedPtr^.debugfile^.entryaddress := 0;
-          f := ref(bigtable[functype]);
-          sharedPtr^.debugfile^.functype := f^.dbgsymbol;
-          sharedPtr^.debugfile^.firststmt := 0;
-          end;
-        {>>>}
-        otherwise;
-        end;
-
-      put (sharedPtr^.debugfile);
-      end;
-end;
-{>>>}
-{<<<}
-procedure dumpsymboltable {level: levelindex; (level of block to dump) regok:
-                           boolean (ok to allocate global reg variables)} ;
-{ PDB only
-  Dump the symbol table entries for this block to the debug file.
-  First all forms are dumped, followed by the name table for the
-  block. The first name entry is the block name, then
-  parameters, then other names
-}
-var
-  i: tableIndex; {for stepping through symbol table}
-  p: entryptr; {for pointing to what we step on}
-  t: integer; {for tracking this block's name definition}
-  firstfieldname: targetint; {debugrecord containing first field name}
-
-begin
-  with display[level] do
-    begin
-    {Dump the forms defined locally}
-    for i := oldtabletop + 1 to tabletop do
-      begin
-      p := ref(bigtable[i]);
-      if p^.form then if not p^.disposable then dumpform(p, i, level);
-      end;
-
-    seek(sharedPtr^.debugfile, lastdebugrecord + 1);
-    p := ref(bigtable[blockname]);
-
-    t := lastdebugrecord + 1;
-
-    genint(t + 1);
-
-    for i := blockname to p^.paramlist do
-      begin {dump block and parameters}
-      p := ref(bigtable[i]);
-      if not p^.form then dumpname(p, level, i)
-      end;
-
-    { don't dump field names on this pass }
-    for i := oldtabletop + 1 to tabletop do
-      begin {dump all other names}
-      p := ref(bigtable[i]);
-      if not p^.form then
-        if not (p^.namekind in
-           [fieldname, procname, funcname, forwardproc, forwardfunc,
-           externalproc, externalfunc, param, varparam, funcparam, procparam,
-           boundid, confparam, varconfparam]) then
-          begin
-          dumpname(p, level, i);
-          { tell travrs about any var that may be assigned to a register }
-          if regok and (p^.namekind = varname) and p^.registercandidate then
-            possibletemp(p^.offset, p^.vartype, lastdebugrecord);
-          end;
-      end;
-
-    {set symbol table limits into block entry in debugfile}
-    seek(sharedPtr^.debugfile, t + 1);
-    sharedPtr^.debugfile^.firstname := t;
-    sharedPtr^.debugfile^.lastname := lastdebugrecord - 1;
-    sharedPtr^.debugfile^.nextprocedure := 0;
-    put (sharedPtr^.debugfile);
-
-    seek (sharedPtr^.debugfile, lastdebugrecord + 1);
-    { now dump field names where they won't clog up pdb }
-    firstfieldname := lastdebugrecord + 1;
-    for i := oldtabletop + 1 to tabletop do
-      begin {dump all other names}
-      p := ref(bigtable[i]);
-      if not p^.form then
-        if p^.namekind = fieldname then dumpname(p, level, i);
-      end;
-
-    { fix all the lastfield id's }
-    for i := oldtabletop + 1 to tabletop do
-      begin
-      p := ref(bigtable[i]);
-      if p^.form then
-        if not p^.disposable and (p^.typ = fields) then
-          begin
-          seek(sharedPtr^.debugfile, p^.dbgsymbol);
-          sharedPtr^.debugfile^.lastfield := lastdebugrecord - 1;
-          if sharedPtr^.debugfile^.firstfield = 0 then
-            sharedPtr^.debugfile^.firstfield := firstfieldname;
-          put (sharedPtr^.debugfile);
-          end;
-      end;
-
-    { build linked list of procedure entries, speed up pdb!}
-    if lastprocrecord <> 0 then
-      begin
-      { set procedure link }
-      seek (sharedPtr^.debugfile, lastprocrecord);
-      { point to the name, not the description }
-      sharedPtr^.debugfile^.nextprocedure := t;
-      put(sharedPtr^.debugfile);
-      end;
-    lastprocrecord := t + 1;
-    end
-end;
-{>>>}
-
-{<<<}
-procedure dbg_alloc {index: integer; (index into debugfile) new_alloc:
-                     allockind; (new allocation of var) new_offset:
-                     addressrange (new register number)} ;
-{ Called by improve to dump register allocation info into the debugfile.
-  Hidden in a language-depended routine to keep improve sharable between C, Modula-2 and Pascal
-}
-begin
-  seek (sharedPtr^.debugfile, index);
-  sharedPtr^.debugfile^.varalloc := new_alloc;
-  sharedPtr^.debugfile^.offset := new_offset;
-  put (sharedPtr^.debugfile);
-end;
-{>>>}
-{<<<}
-procedure dbg_regs {(index: m_symbolindex; {procedure name to be updated}
-                   {var reg: array[lo..hi: integer] of boolean;
-                   {var pc_index: integer) {map file index for pc} ;
-{ Modify the symbol file to reflect the actual register usage for a procedure.
-  Used by code after register usage is known.  pc_index, if non-zero, is
-  the location in the map file to place the function starting pc.
-}
-var
-  i: integer;
-
-begin
-  seek(sharedPtr^.debugfile, index + 2); {get procdescm}
-  { NOTE: Left unspecified.  Choice must be made to either map to existing
-    debugfile format or to change.  If change is the answer it might be
-    wise to preserve the old debug format for those systems where PDB is
-    still in use, rather than burning bridges to the past arbitrarily }
-  pc_index := 0; { We don't want the caller to touch the map file, yet}
-  writeln('dbg_regs not yet implemented for P2 ODB interface');
-
-  put(sharedPtr^.debugfile);
-end;
-{>>>}
-
-{<<<}
-procedure closed;
-{ close debugger file }
-
-begin
-  close(sharedPtr^.debugfile);
-end ;
 {>>>}
 {>>>}
 {<<<  body}
@@ -3624,15 +3250,15 @@ procedure foldrealplusminus (sign: integer {1 if add, -1 if sub} );
 }
 
   begin {foldrealplusminus}
-    if not realfolding then 
+    if not realfolding then
       foldedbinary := false
     else if (lconst and rconst) then
       returnreal(getrealvalue(l) + getrealvalue(r) * sign)
     else if lconst and (getrealvalue(l) = 0.0) and (sign > 0) then
       returnoprnd(r)
-    else if rconst and (getrealvalue(r) = 0.0) then 
+    else if rconst and (getrealvalue(r) = 0.0) then
       returnoprnd(l)
-    else 
+    else
       foldedbinary := false;
   end {foldrealplusminus} ;
 {>>>}
@@ -3658,9 +3284,9 @@ procedure foldplusminus (sign: integer {1 if add, -1 if sub} );
     if binaryform = strings then foldstringplus
     else if (binaryform = ints) or (binaryform = subranges) then
       foldintplusminus(sign)
-    else if binaryform = reals then 
+    else if binaryform = reals then
       foldrealplusminus(sign) {!!!}
-    else 
+    else
       foldedbinary := false;
   end {foldplusminus} ;
 {>>>}
@@ -9728,28 +9354,16 @@ begin
 
   with display[level] do
     begin
-    if (sharedPtr^.switchcounters[symboltable] > 0) and not sharedPtr^.switcheverplus[defineswitch] then
-      begin {condition in twice to remove reference to dumpsymboltable}
-      dumpsymboltable(level, regok)
-      end
-
-    else
+    genint(0);
+    for i := oldtabletop + 1 to tabletop do
       begin
-      genint(0);
-      for i := oldtabletop + 1 to tabletop do
+      p := ref(bigtable[i]);
+      if not p^.form and (p^.namekind = varname) then
         begin
-        p := ref(bigtable[i]);
-        if not p^.form and (p^.namekind = varname) then
-          begin
-           if (level > 1) and (p^.dbgsymbol <> 0) then
-           {update the offset field for vars living in a stack frame}
-           dbg_alloc (p^.dbgsymbol, p^.varalloc, p^.offset-blocksize);
-
-           { tell travrs about any var that may be assigned to a register }
-           if regok and p^.registercandidate then
-             possibletemp (p^.offset, p^.vartype, p^.dbgsymbol);
-           end;
-        end;
+         { tell travrs about any var that may be assigned to a register }
+         if regok and p^.registercandidate then
+           possibletemp (p^.offset, p^.vartype, p^.dbgsymbol);
+         end;
       end;
 
     { signal the end of local vars for this block }
@@ -13485,9 +13099,6 @@ procedure analys;
       new (sharedPtr^.stringblkptr);
       sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock] := sharedPtr^.stringblkptr;
       end;
-
-    for i := 0 to debughashtablesize do
-      debughashtable[i] := 0;
 
     { these values must change as more standard ids/types/consts are added }
     lastprocrecord := 0;

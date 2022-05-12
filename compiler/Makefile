@@ -8,8 +8,7 @@ LFLAGS =
 OBJ = main.o scan.o analysis.o traverse.o code.o list.o common.o
 SRC = main.c scan.c analysis.c traverse.c code.c list.c common.c dumpToken.c dumpInter.c dumpPseudo.c
 
-DEP = common.def token.def inter.def pseudo.def \
-      debug.def list.def main.def scan.def analysis.def traverse.def code.def
+DEP = common.def token.def inter.def pseudo.def list.def main.def scan.def analysis.def traverse.def code.def
 
 p68: $(OBJ) $(DEP) $(SRC)
 	$(CC) $(LFLAGS) $(OBJ) ../p2clib.a -o p68

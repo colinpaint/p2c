@@ -114,8 +114,6 @@ const
   defdatasection = 15; { default data section (used by csi) }
 
   maxdebugrecord = 14;   { max number-1 of debug records in a diskblock}
-  debugfileptrmax = 999; { max number-1 of debug file pointers}
-  debugfilemax = 15000;  { max number of debug records}
 
   { Define the maximum numbers of scalars and reals to assign to registers }
   assignreg = 3;
@@ -319,12 +317,6 @@ const
   maxstandardlabel = 9999; { maximum value for a Pascal label, cast in cement by the ISO standard }
 
   p_maxregmask = 31;
-  p_dbg_syp_span = 29;   { blocking span for debug records}
-  p_dbg_str_span = 1023; { block span for string table}
-
-  { define size of hash table used to speed debugger access to names }
-  debugsymbolmax = 32;
-  debughashtablesize = 27; { currently a bucket on ['A'..'Z','$','_'] }
 {>>>}
 {<<<}
 type
@@ -735,123 +727,10 @@ type
 
   { identifier name as written to symbol table file }
   file_addr = unsignedint;
-  symbolname = packed array [1..debugsymbolmax] of char;
+  {symbolname = packed array [1..debugsymbolmax] of char;
   debughashindex = 0..debughashtablesize;
+  }
   realarray = packed array [1..maxrealwords] of 0..maxusword; {to hold representation of a real}
-
-  debugrecordtype = (identdesc, symboldesc, formdesc);
-  {<<<}
-  { symbol table entry description }
-  debugrecord =
-    record
-      case kind: debugrecordtype of
-        {<<<}
-        identdesc:
-          ( { PDB identifier }
-           identchars: symbolname; {user supplied name}
-           chainoffset: p_symbolindex; {previous symbol name that has same first character}
-           );
-        {>>>}
-        {<<<}
-        { for now, the following definitions have PDB-required 'typeindex',
-          'consttype' etc fields.  This wastes space for ODB but I'm
-          figuring PDB will go away eventually and I didn't want to make an analys.pre }
-        symboldesc:
-          (
-          name: 0..255; {analogous to name field in analys, PDB only}
-
-          case namekind: nametype of
-            typename:
-              (typeindex: p_symbolindex {pointer to formdesc} );
-
-            constname:
-              (consttype: p_symbolindex {type pointer, PDB only} ;
-               case constform: types of {value}
-                 arrays, fields:
-                   (constoffset: unsignedint;
-                    constlength: unsignedint);
-                 ints, chars, bools, scalars:
-                   (i: targetint;
-                    extendedint: boolean);
-                 reals, doubles: (r: realarray);
-                 ptrs: (nilpointer: targetint {targetptr} ));
-
-            varname, param, varparam,
-            fieldname, procparam, funcparam,
-            confparam, varconfparam, boundid:
-              (offset: targetint;     { runtime addr}
-               length: targetint;     { data length in units}
-               varalloc: allockind;   { how this variable is allocated}
-               vartype: p_symbolindex { data type of item}
-              );
-
-            procname,
-            funcname:
-              (functype: p_symbolindex; { return type of function}
-               funclen: targetint;      { returned data length of function}
-               funcoffset: targetint;   { returned value offset}
-               id: targetint;           { symbols for this proc have name field set to id}
-               firststmt: targetint;    { first statement number for this block}
-               laststmt: targetint;     { last statement for this block (ODB only)}
-               firstname, lastname: p_symbolindex; {symbol table pointers}
-               level: targetint;        { static nesting level}
-               paramsize: targetint;    { size of parameters}
-               blocksize: targetint;    { size (in units) of local storage}
-               entryaddress: targetint; { entry point filled in by code}
-
-               { PDB has one mask set for each kind of register }
-               genregssaved: genregmask;     { general registers saved on entry}
-               ptrregssaved: ptrregmask;     { pointer registers saved on entry}
-               realregssaved: realregmask;   { real registers saved on entry}
-               nextprocedure: p_symbolindex; { link to next procedure in file}
-              )
-          );
-        {>>>}
-        {<<<}
-        formdesc:
-          (
-           packedflag: boolean; {true if user said 'packed'}
-           bitaddress: boolean; {true if item is bit, not unit accessed}
-           size: targetint; {size in units or bits}
-
-           case typ: types of
-             subranges:
-               (lowerord, upperord: targetint; {was declared
-                                                lowerord..upperord}
-                extended: boolean; {true if extended representation}
-                parenttype: p_symbolindex {points to base type} );
-             scalars:
-               (lastord: targetint; {lower value is implied = 0}
-                firstscalar: p_symbolindex {refers to first name in list} );
-             fields:
-               (fieldid, fieldlevel: targetint; {access info}
-                tagfield: p_symbolindex; { 0 = no tag, otherwise record index}
-                nextvariant: p_symbolindex; {next variant record at this level}
-                firstlabel: p_symbolindex; {head of label chain describing this
-                                    variant}
-                firstvariant: p_symbolindex; {first subvariant defined by case at
-                                      level}
-                firstfield, lastfield: p_symbolindex {access info} );
-             arrays, conformantarrays:
-               (indextype: p_symbolindex; {array [indextype] of elementtype}
-                elementtype: p_symbolindex;
-                lowbound: p_symbolindex; {first of the bound identifiers}
-                elementsize: targetint; {effective size of elements} );
-             sets: (basetype: p_symbolindex {set of basetype} );
-             files: (filebasetype: p_symbolindex {file of filebasetype} );
-             ptrs:
-               (ptrtype: p_symbolindex {^ptrtypename (field contains type)} )
-          );
-        {>>>}
-    end;
-  {>>>}
-  {<<<}
-  p_dbg_file_record = record
-    case boolean of
-      true:  (sym: array [0..p_dbg_syp_span] of debugrecord { symbols } );
-      false: (str: packed array [0..p_dbg_str_span] of char);
-    end;
-  {>>>}
 
   {<<<}
   { one proctableentry is filled for every procedure }
@@ -956,7 +835,6 @@ const
 type
   {<<<}
   sharedType = record
-    debugfile: file of debugrecord;
     localFile:  file of localvartype;
 
     { error, warning }

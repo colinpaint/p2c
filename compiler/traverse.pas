@@ -92,7 +92,6 @@
 
 %include 'main.def';
 %include 'code.def';
-%include 'debug.def';
 
 %include 'traverse.def';
 {>>>}
@@ -3908,27 +3907,9 @@ end;
 
 {<<<}
 procedure assignregs;
-{
-    Purpose:
-      Based on their lifetimes and worth assign local variables to registers
-
-    Inputs:
-      Uses global arrays regvars to determine lifetime.
-
-    Outputs:
-      Update regvars with register assignments.
-
-    Algorithm:
-
-      For each register type call allocateregs with proper parameters.
-
-    Sideeffects:
-      None
-
-    Last Modified: 7/12/85
-
+{ Based on their lifetimes and worth assign local variables to registers
+  For each register type call allocateregs with proper parameters.
 }
-
 type
   regallocset = set of regalloctype;
 
@@ -4016,93 +3997,74 @@ var
     end {disjoint} ;
   {>>>}
   {<<<}
-  procedure allocateregs(maxregs: shortint;
-                         acceptable: regallocset;
-                         var regcount: shortint);
-  {
-    Purpose:
-      Allocate maxregs to vars in acceptable class.
-
-    Inputs:
-      maxregs : number of registers of this type available to allocate.
-      acceptable : variable type ok to allocate to this register.
-
-    Outputs:
-      regcount : number of registers allocated.
-
-    Algorithm:
-        0. Init the register lifetime to empty.
-        1. Find the most valuable var that has a disjoint lifetime with
-           register. If one exists then assign it to the register and
-           add the vars lifetime to the register's lifetime and repeat.
-
-           In order to be interesting, the worth must exceed the cost
-           of saving and restoring the register, plus the cost of any
-           load.
-
-    Sideeffects:
-      none.
+  procedure allocateregs(maxregs: shortint; acceptable: regallocset; var regcount: shortint);
+  { Allocate maxregs to vars in acceptable class.
+    0. Init the register lifetime to empty.
+    1. Find the most valuable var that has a disjoint lifetime with
+       register. If one exists then assign it to the register and
+       add the vars lifetime to the register's lifetime and repeat.
+       In order to be interesting, the worth must exceed the cost
+       of saving and restoring the register, plus the cost of any
+       load.
   }
+  var
+    i, j: shortint; {induction vars }
+    bestvar: reghashindex; { best var to assign this pass }
+    bestworth: shortint; { most useful var with disjoint register life }
+    allocated: boolean; { true if a register allocated on this path }
+    varalloc: allockind; {kind of allocation}
 
-    var
-      i, j: shortint; {induction vars }
-      bestvar: reghashindex; { best var to assign this pass }
-      bestworth: shortint; { most useful var with disjoint register life }
-      allocated: boolean; { true if a register allocated on this path }
-      varalloc: allockind; {kind of allocation}
-
-    begin {allocateregs}
-      for i := regcount + 1 to maxregs do
-        begin
-        regioncount := - 1;
-        allocated := false;
-        { find a register to assign }
-        repeat
-          bestworth := 0;
-          j := 0;
-          while j <= regtablelimit do
+  begin
+    for i := regcount + 1 to maxregs do
+      begin
+      regioncount := - 1;
+      allocated := false;
+      { find a register to assign }
+      repeat
+        bestworth := 0;
+        j := 0;
+        while j <= regtablelimit do
+          begin
+          with regvars[j] do
             begin
-            with regvars[j] do
+            if registercandidate and
+               (worth - 3 * ord(parameter) > bestworth) and
+               (regkind in acceptable) then
               begin
-              if registercandidate and
-                 (worth - 3 * ord(parameter) > bestworth) and
-                 (regkind in acceptable) then
+              if disjoint(varlife) then
                 begin
-                if disjoint(varlife) then
-                  begin
-                  bestworth := worth - 3 * ord(parameter);
-                  bestvar := j;
-                  end;
+                bestworth := worth - 3 * ord(parameter);
+                bestvar := j;
                 end;
               end;
-            j := j + 1;
             end;
-          if regioncount < 0 then bestworth := max(bestworth - 2, 0);
-          if (bestworth > 0) then
-            begin
-            {found one to allocate }
-            allocated := true;
-            regvars[bestvar].worth := 0;
-            regvars[bestvar].regid := i;
-            regioncount := regioncount + 1;
-            reglife[regioncount] := regvars[bestvar].varlife;
-            { update debug file }
-            with regvars[bestvar] do
-              if debugrecord <> 0 then
-                begin
-                case regvars[bestvar].regkind of
-                  ptrreg: varalloc := ptrregister;
-                  genreg, bytereg: varalloc := genregister;
-                  realreg: varalloc := realregister;
-                  end;
-                dbg_alloc (debugrecord, varalloc, regid)
+          j := j + 1;
+          end;
+        if regioncount < 0 then bestworth := max(bestworth - 2, 0);
+        if (bestworth > 0) then
+          begin
+          {found one to allocate }
+          allocated := true;
+          regvars[bestvar].worth := 0;
+          regvars[bestvar].regid := i;
+          regioncount := regioncount + 1;
+          reglife[regioncount] := regvars[bestvar].varlife;
+          { update debug file }
+          with regvars[bestvar] do
+            if debugrecord <> 0 then
+              begin
+              case regvars[bestvar].regkind of
+                ptrreg: varalloc := ptrregister;
+                genreg, bytereg: varalloc := genregister;
+                realreg: varalloc := realregister;
                 end;
-            end;
-        until bestworth = 0;
-        if allocated then
-          regcount := regcount + 1;
-        end;
-    end {allocateregs} ;
+              end;
+          end;
+      until bestworth = 0;
+      if allocated then
+        regcount := regcount + 1;
+      end;
+  end;
   {>>>}
 
 begin
@@ -4140,17 +4102,18 @@ begin
         ptrtemps := ptrtemps + 1;
       end;
 
-    { If generating 68000 pic and there is an own section, then a
-      dedicated register is used here too.  If both are true the
-      debugger loses and debugger steps are three instructions long. }
+  { If generating 68000 pic and there is an own section, then a dedicated register is used here too.
+    If both are true the debugger loses and debugger steps are three instructions long. }
   if ((sharedPtr^.switcheverplus[pic] and (sharedPtr^.ownsize > 0)) or
       sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling]) then
     ptrtemps := ptrtemps + 1;
 
-  allocateregs(assignptrreg, [ptrreg], ptrtemps);
+  allocateregs (assignptrreg, [ptrreg], ptrtemps);
   regtemps := 0;
-  allocateregs(assignreg, [genreg], regtemps);
+
+  allocateregs (assignreg, [genreg], regtemps);
   realtemps := 0;
+
   if sharedPtr^.switcheverplus[fpc68881] then
     allocateregs(assignrealreg, [realreg], realtemps);
 
