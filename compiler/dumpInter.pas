@@ -558,11 +558,6 @@ var
             begin
             getintfile;
             write (' len:', getintfileint: 1);
-            if language = c then
-              begin
-              getintfile;
-              write (' struct_ret:', getintfileint: 1);
-              end;
             end;
             {>>>}
           structop, levop:
@@ -577,12 +572,6 @@ var
           realop, doubleop:
             {<<<}
             begin
-            if language = c then
-              begin
-              getintfile;
-              t := getintfileint;
-              write (' len:', t:1);
-              end;
             s := 0;
             i := 1;
             while s < size(realarray) do
@@ -631,11 +620,8 @@ var
         {<<<}
         begin
         getintfile;
-        if language <> c then
-          begin
-          write (' srcindex: ',getintfileint:1);
-          getintfile;
-          end;
+        write (' srcindex: ',getintfileint:1);
+        getintfile;
         write (' line:', getintfileint: 1);
         getintfile;
         writeln(' n:', getintfileint: 1);
@@ -667,11 +653,8 @@ var
         {<<<}
         begin
         getintfile;
-        if language <> c then
-          begin
-          write (' srcindex: ',getintfileint:1);
-          getintfile;
-          end;
+        write (' srcindex: ',getintfileint:1);
+        getintfile;
         writeln(' line:', getintfileint: 1);
         getintfile;
         expression
@@ -681,11 +664,8 @@ var
         {<<<}
         begin
         getintfile;
-        if language <> c then
-          begin
-          write (' srcindex: ',getintfileint:1);
-          getintfile;
-          end;
+        write (' srcindex: ',getintfileint:1);
+        getintfile;
         write (' line:', getintfileint: 1);
         end;
         {>>>}
@@ -693,11 +673,8 @@ var
         {<<<}
         begin
         getintfile;
-        if language <> c then
-          begin
-          write (' srcindex: ',getintfileint:1);
-          getintfile;
-          end;
+        write (' srcindex: ',getintfileint:1);
+        getintfile;
         write (' line:', getintfileint: 1);
         end;
         {>>>}
@@ -705,11 +682,8 @@ var
         {<<<}
         begin
         getintfile;
-        if language <> c then
-          begin
-          write (' srcindex: ',getintfileint:1);
-          getintfile;
-          end;
+        write (' srcindex: ',getintfileint:1);
+        getintfile;
         write (' line:', getintfileint: 1);
         getintfile;
         write (' lab:', getintfileint: 1);

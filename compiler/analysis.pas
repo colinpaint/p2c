@@ -9345,9 +9345,8 @@ var
 {>>>}
 
 begin
-  { Since for UMAX our global registers cannot overlap Unix-destroyed
-    registers, there is no need to restrict global allocation based on
-    nonpascal references. }
+  { Since for UMAX our global registers cannot overlap Unix-destroyed registers, 
+    there is no need to restrict global allocation based on nonpascal references. }
   regok := not anynonpascalcalls and not anynonlocallabels and (not anyexternals or (level > 1));
 
   tempvars := 0;
@@ -9392,7 +9391,7 @@ begin
         keymap[i] := t;
         end;
 
-      {If parameters, oldtabletop has been fudged}
+      { If parameters, oldtabletop has been fudged}
       tabletop := oldtabletop;
       undeftabletop := oldundeftabletop;
       end;

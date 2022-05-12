@@ -1,26 +1,13 @@
 { main header - const types }
 {$double} { the compiler must have double precision reals}
 {$nopointer} {ref() is used}
-type
-  languages = (pascal, c);
-  architectures = (pdp11, vax, iapx86, mc68000, ns32k, i80386);
-  opsystems = (vms, rsx, rsts, rt, unix, msdos, vdos, cpp, apollo);
-
+{<<<}
 const
   languagename = 'Pascal-2';
   systemtitle = '68k';
   versionstring = 'V2.3';
 
-  language = pascal;
-  hostmachine = vax;
-  hostopsys = vms;
-
-{<<<}
-const
   register_return = false;
-
-  newscaninterface = false; {we are using old-style string table and tokens}
-  newtravrsinterface = false; {we are using old-style proctable and case table interface}
 
   { Machine dependent parameters here apply to more than one pass.
     There are also parameters in analys and scan which will have to be modified when the compiler is moved }
@@ -660,7 +647,7 @@ type
 
   cmdindex = 1..cmdlinelength; {index into a command line}
   cmdbuffer = packed array [cmdindex] of char; {holds command line}
-  cmdptr = ^cmdbuffer; {save buffer on hostopsys = vdos }
+  cmdptr = ^cmdbuffer; {save buffer on }
   hdrline = packed array [1..130] of char; {header for list}
 
   {<<<}
@@ -840,7 +827,6 @@ type
     { error, warning }
     fatalflag: boolean; { true if fatal error found }
     errortable: array [errorindex] of errorrecord; { list of errors found }
-    anynonlocalgotos: boolean; { true if non-local goto's used in this unit }
     lasterror: errorindex;  { last error entered }
     abortmsg: abortwarning; { reason for aborting }
     current_line: integer;  { used by error }

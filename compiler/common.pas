@@ -281,14 +281,28 @@ begin
   with sharedPtr^ do
     {<<<}
     begin
-    current_stmt := 0;
-    current_line := 0;
     fatalflag := false;
     lasterror := 0;
+    current_stmt := 0;
+    current_line := 0;
+
+    starthour := 0;
+    startmin := 0;
+    startsec := 0;
+    startday := 0;
+    startmonth := 0;
+    startyear := 0;
+    endhour := 0;
+    endmin := 0;
+    endsec := 0;
+    istarthour := 0;
+    istartmin := 0;
+    istartsec := 0;
 
     sourcelevel := 0;
     for i := 1 to sourcedepth do
       source[i] := nil;
+    sourceListHead := nil;
 
     currentswitch := 1;
     lastswitch := 0;
@@ -297,7 +311,6 @@ begin
     lastList := 0;
     forceList := false;
 
-    sourceListHead := nil;
     objname := nil;
     macname := nil;
     listname := nil;
@@ -306,9 +319,9 @@ begin
     stringtablelimit := 0;
     stringtabletop := 0;
     curstringblock := 1;
+
     new (stringblkptr);
     stringblkptrtbl[1] := stringblkptr;
-
     for i := 2 to maxstringblks do
       stringblkptrtbl[i] := nil;
     new (stringtable);

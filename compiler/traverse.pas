@@ -2046,9 +2046,7 @@ var
           begin
           genpseudo (map[op, ints], len, key, refcount, copycount, oprnds[1], oprnds[2], oprnds[3]);
           if op = fptrop then
-            if newtravrsinterface then
-              sharedPtr^.new_proctable[oprnds[1] div (pts + 1)]^[oprnds[1] mod (pts + 1)].referenced := true
-            else sharedPtr^.proctable[oprnds[1]].referenced := true;
+            sharedPtr^.proctable[oprnds[1]].referenced := true;
           end;
       end {literalnode} ;
     {>>>}
@@ -2118,10 +2116,7 @@ var
       begin {ownnode}
         mapkey;
         genpseudo (doown, sharedPtr^.ptrsize, key, refcount, copycount, 0, 0, 0);
-        if newtravrsinterface then
-          sharedPtr^.new_proctable[sharedPtr^.blockref div (pts + 1)]^[sharedPtr^.blockref mod (pts +
-           1)].ownused := true
-        else sharedPtr^.proctable[sharedPtr^.blockref].ownused := true;
+        sharedPtr^.proctable[sharedPtr^.blockref].ownused := true;
       end {ownnode} ;
     {>>>}
     {<<<}
@@ -2199,10 +2194,7 @@ var
           genpseudo (callroutine, len, key, refcount, copycount,
                      rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form));
         p := rootp^.oprnds[1];
-        if newtravrsinterface then
-          sharedPtr^.new_proctable[p div (pts + 1)]^[p mod (pts + 1)].referenced := true
-        else
-          sharedPtr^.proctable[p].referenced := true;
+        sharedPtr^.proctable[p].referenced := true;
         clearkeys;
       end {callnode} ;
     {>>>}
@@ -2273,10 +2265,7 @@ var
         genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
         walknode (r, rkey, 0, true);
         genpseudo (pshproc, len, key, 0, 0, rkey, third, 0);
-        if newtravrsinterface then
-          sharedPtr^.new_proctable[third div (pts + 1)]^[third mod (pts + 1)].referenced := true
-        else
-          sharedPtr^.proctable[third].referenced := true;
+        sharedPtr^.proctable[third].referenced := true;
       end {pushprocnode} ;
     {>>>}
     {<<<}
@@ -3549,8 +3538,6 @@ var
       { genstmtbrk; }
       genpseudo (pascallabel, 0, 0, 0, 0, currentstmt.labelno, ord(currentstmt.nonlocalref), 0);
       targetstmt := targetstmt or currentstmt.nonlocalref;
-      if currentstmt.nonlocalref then
-        sharedPtr^.anynonlocalgotos := true;
     end;
     {>>>}
     {<<<}
@@ -3564,10 +3551,7 @@ var
     begin
       ptr := ref(bignodetable[root^.beginstmt]) ;
       p := ptr^.procref;
-      if newtravrsinterface then
-        branchstmt := currentstmt.labellevel <> sharedPtr^.new_proctable[p div (pts + 1)]^[p mod (pts + 1)].level
-      else
-        branchstmt := currentstmt.labellevel <> sharedPtr^.proctable[p].level;
+      branchstmt := currentstmt.labellevel <> sharedPtr^.proctable[p].level;
 
       genstmtbrk;
       with currentstmt do
@@ -4083,24 +4067,15 @@ begin
 
   { assign general registers, Static link comes out of general regs }
   ptrtemps := 0;
-  if newtravrsinterface then
-    with sharedPtr^.new_proctable[sharedPtr^.blockref div (pts + 1)]^[sharedPtr^.blockref mod (pts + 1)] do
-      begin
-      if intlevelrefs then ptrtemps := 1;
-      if (register_return and not sharedPtr^.switcheverplus[structstatic] and
-         (struct_calls or struct_ret)) and
-         (sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[targdebug]) then
-        ptrtemps := ptrtemps + 1;
-      end
-  else
-    with sharedPtr^.proctable[sharedPtr^.blockref] do
-      begin
-      if intlevelrefs then ptrtemps := 1;
-      if (register_return and not sharedPtr^.switcheverplus[structstatic] and
-         (struct_calls or struct_ret)) and
-         (sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[targdebug]) then
-        ptrtemps := ptrtemps + 1;
-      end;
+  with sharedPtr^.proctable[sharedPtr^.blockref] do
+    begin
+    if intlevelrefs then 
+      ptrtemps := 1;
+    if (register_return and not sharedPtr^.switcheverplus[structstatic] and
+       (struct_calls or struct_ret)) and
+       (sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[targdebug]) then
+      ptrtemps := ptrtemps + 1;
+    end;
 
   { If generating 68000 pic and there is an own section, then a dedicated register is used here too.
     If both are true the debugger loses and debugger steps are three instructions long. }
@@ -5456,15 +5431,9 @@ begin
         end;
       {>>>}
       end;
-    genpseudo (map[this_op, none], len, 0, 0, 0, op1, op2, 0);
 
-    if newtravrsinterface then
-      begin
-      if this_op = dfaddrop then
-        sharedPtr^.new_proctable[op1 div (pts + 1)]^[op1 mod (pts + 1)].referenced := true
-      end
-    else if this_op = dfaddrop then
-      sharedPtr^.proctable[op1].referenced := true;
+    genpseudo (map[this_op, none], len, 0, 0, 0, op1, op2, 0);
+    sharedPtr^.proctable[op1].referenced := true;
     end;
 end;
 {>>>}
@@ -6307,18 +6276,8 @@ var
             getintfile;
             fileline := getintfileint;
             getintfile;
-            if newtravrsinterface then
-              begin
-              level := sharedPtr^.new_proctable[procref div (pts + 1)]^[procref mod
-                       (pts + 1)].level;
-              intlevelrefs := sharedPtr^.new_proctable[procref div (pts +
-                              1)]^[procref mod (pts + 1)].intlevelrefs;
-              end
-            else
-              begin
-              level := sharedPtr^.proctable[procref].level;
-              intlevelrefs := sharedPtr^.proctable[procref].intlevelrefs;
-              end;
+            level := sharedPtr^.proctable[procref].level;
+            intlevelrefs := sharedPtr^.proctable[procref].intlevelrefs;
             end;
             {>>>}
           casehdr:
@@ -8144,27 +8103,21 @@ var
         begin {killaffectedvars}
           if stack[s].litflag then
             begin
-            if newtravrsinterface then
-              with sharedPtr^.new_proctable[stack[s].i div (pts + 1)]^[stack[s].i mod
-                   (pts + 1)] do
-                begin
-                if stack[s].i <= cseregions then cr := stack[s].i
-                else cr := 0;
-                if globaldeath then l := 0
-                else l := 2;
-                if intlevelrefs then u := level - 1
-                else u := 1;
-                end
-            else
-              with sharedPtr^.proctable[stack[s].i] do
-                begin
-                if stack[s].i <= cseregions then cr := stack[s].i
-                else cr := 0;
-                if globaldeath then l := 0
-                else l := 2;
-                if intlevelrefs then u := level - 1
-                else u := 1;
-                end
+            with sharedPtr^.proctable[stack[s].i] do
+              begin
+              if stack[s].i <= cseregions then 
+                cr := stack[s].i
+              else 
+                cr := 0;
+              if globaldeath then 
+                l := 0
+              else 
+                l := 2;
+              if intlevelrefs then 
+                u := level - 1
+              else 
+                u := 1;
+              end
             end
           else
             begin
@@ -8176,7 +8129,7 @@ var
             begin
             if loopdepth > 0 then loopkill(l, u);
             for i := context[contextsp].searchlevel to contextsp do
-              clobber(context[i].opmap[0]);
+              clobber (context[i].opmap[0]);
             updatecontext;
             end;
         end {killaffectedvars} ;
@@ -8261,26 +8214,15 @@ var
           with stack[sp - 2] do
             if litflag then
             { reverse parameters if calling c on some machines }
-              if newtravrsinterface then
-                begin
-                with sharedPtr^.new_proctable[i div (pts + 1)]^[i mod (pts + 1)] do
-                  if (calllinkage = nonpascalcall) and (stack[sp].i > 1) then
-                    begin
-                    reverseparms := true;
-                    { remember where reserveop is while it's cheap }
-                    reserve := stack[sp - 1].p;
-                    end
-                end
-              else
-                begin
-                with sharedPtr^.proctable[i] do
-                  if (calllinkage = nonpascalcall) and (stack[sp].i > 1) then
-                    begin
-                    reverseparms := true;
-                    { remember where reserveop is while it's cheap }
-                    reserve := stack[sp - 1].p;
-                    end;
-                end;
+              begin
+              with sharedPtr^.proctable[i] do
+                if (calllinkage = nonpascalcall) and (stack[sp].i > 1) then
+                  begin
+                  reverseparms := true;
+                  { remember where reserveop is while it's cheap }
+                  reserve := stack[sp - 1].p;
+                  end;
+              end;
           killaffectedvars(sp - 2);
           collectargs(3);
             { now that all the refcounts are set reverse parameter list
@@ -11330,12 +11272,8 @@ procedure traverse;
     maxnodes := 0;
 
     for p := 1 to sharedPtr^.proctabletop do
-      if newtravrsinterface then
-        sharedPtr^.new_proctable[p div (pts + 1)]^[p mod (pts + 1)].referenced := false
-      else
-        sharedPtr^.proctable[p].referenced := false;
+      sharedPtr^.proctable[p].referenced := false;
 
-    sharedPtr^.anynonlocalgotos := false;
     emitpseudo := false;
   end;
   {>>>}
