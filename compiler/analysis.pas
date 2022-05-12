@@ -3579,7 +3579,7 @@ procedure foldintplusminus (sign: integer {1 if add, -1 if sub} );
   begin {foldintplusminus}
     if sign > 0 then
       binaryrange (oprndstk[l].value_range, oprndstk[r].value_range, oextended,
-                   add, usadd, addrange, result_range, mayoverflow)
+                   addProc, usadd, addrange, result_range, mayoverflow)
     else
       binaryrange (oprndstk[l].value_range, oprndstk[r].value_range, oextended,
                    subtract, ussubtract, subrange, result_range, mayoverflow);
@@ -3624,13 +3624,16 @@ procedure foldrealplusminus (sign: integer {1 if add, -1 if sub} );
 }
 
   begin {foldrealplusminus}
-    if not realfolding then foldedbinary := false
+    if not realfolding then 
+      foldedbinary := false
     else if (lconst and rconst) then
       returnreal(getrealvalue(l) + getrealvalue(r) * sign)
     else if lconst and (getrealvalue(l) = 0.0) and (sign > 0) then
       returnoprnd(r)
-    else if rconst and (getrealvalue(r) = 0.0) then returnoprnd(l)
-    else foldedbinary := false;
+    else if rconst and (getrealvalue(r) = 0.0) then 
+      returnoprnd(l)
+    else 
+      foldedbinary := false;
   end {foldrealplusminus} ;
 {>>>}
 {<<<}
@@ -3651,13 +3654,14 @@ procedure foldstringplus;
 procedure foldplusminus (sign: integer {1 if add, -1 if sub} );
 { Fold addition and subtraction.
 }
-
   begin {foldplusminus}
     if binaryform = strings then foldstringplus
     else if (binaryform = ints) or (binaryform = subranges) then
       foldintplusminus(sign)
-    else if binaryform = reals then foldrealplusminus(sign) {!!!}
-    else foldedbinary := false;
+    else if binaryform = reals then 
+      foldrealplusminus(sign) {!!!}
+    else 
+      foldedbinary := false;
   end {foldplusminus} ;
 {>>>}
 {<<<}

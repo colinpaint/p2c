@@ -275,51 +275,48 @@ const
 
   { Code parameters }
   {The following constants size the pass and the max block size for compiling}
-  labeltablesize = 1000; {max number of labels per block}
-  lowesttemp = - 20; {lowest temp key which can be allocated}
+  labeltablesize = 1000; { max number of labels per block}
+  lowesttemp = - 20;     { lowest temp key which can be allocated}
 
   { Virtual memory sizing constants  These are all HOST, not target dependent }
-  crequiredspace = 2000; {min stack + heap space after virtual mem. (words)}
-  oktouse = 1000; {amount of remaining space we can use for branch chains}
+  crequiredspace = 2000; { min stack + heap space after virtual mem. (words)}
+  oktouse = 1000;        { amount of remaining space we can use for branch chains}
 
   { predefined data stored off gp.  Used to communicate with support library. }
-  stacklimit = 0; {used for stack overflow checking}
-  filevar = 4; {current file stored here for support lib i/o calls}
-  restorestack = 8; {set to initial value of stack}
-  supportlibdata = 12; {points to support lib private data}
-  globalbase = 16; {offset of first global variable}
+  stacklimit = 0;      { used for stack overflow checking}
+  filevar = 4;         { current file stored here for support lib i/o calls}
+  restorestack = 8;    { set to initial value of stack}
+  supportlibdata = 12; { points to support lib private data}
+  globalbase = 16;     { offset of first global variable}
 
-  { Entry points for read and write support routines.  Name is P$nn.}
-  { note:  these use default files, entry + 2 is specified file}
-  rdln = 16; {readln for a text file}
-  rdstg = 12; {read a string from a text file}
-  rdnm = 4; {read an integer from a text file}
-  rdch = 0; {read a character from a text file}
-  rdrl = 8; {read a real number from a text file}
-  rddr = 11; {read a double real number for a text file}
-  wrln = 36; {writeln for a text file}
-  wrnm = 24; {write an integer to a text file}
-  wrch = 20; {write a character to a text file}
-  wrrl = 28; {write a real number to a text file}
-  wrdr = 29; {write a double real number to a text file}
-  wrstrg = 32; {write a string to a text file}
-  wrbo = 110; {write a boolean variable to a text file}
+  { Entry points for read and write support routines.  Name is P$nn., default files, entry + 2 is specified file}
+  rdln = 16;   { readln for a text file}
+  rdstg = 12;  { read a string from a text file}
+  rdnm = 4;    { read an integer from a text file}
+  rdch = 0;    { read a character from a text file}
+  rdrl = 8;    { read a real number from a text file}
+  rddr = 11;   { read a double real number for a text file}
+  wrln = 36;   { writeln for a text file}
+  wrnm = 24;   { write an integer to a text file}
+  wrch = 20;   { write a character to a text file}
+  wrrl = 28;   { write a real number to a text file}
+  wrdr = 29;   { write a double real number to a text file}
+  wrstrg = 32; { write a string to a text file}
+  wrbo = 110;  { write a boolean variable to a text file}
 
   { constant definitions to support the PutObj module: }
-  firstESD = 17; { first available External Symbol Definition index }
-  lastESD = 256; { this value is 1 greater than the maximum assignable index
-                  so that nextESD will never be out of ESDrange }
   { note: a load module can have at most 238 external definitions/references! }
-
-  oursection = 13; { section in which Pascal code resides }
-  diagsection = 14; { section for diagnostic code }
-  linknamesize = 10; { max length of an external name }
-  linknameused = 10; { length of external names actually used }
+  firstESD = 17;      { first available External Symbol Definition index }
+  lastESD = 256;      { value 1 greater than maximum assignable index, nextESD will never be out of ESDrange }
+  oursection = 13;    { section in which Pascal code resides }
+  diagsection = 14;   { section for diagnostic code }
+  linknamesize = 10;  { max length of an external name }
+  linknameused = 10;  { length of external names actually used }
   maxtempbuffer = 32; { number of words in tempbuffer }
-  maxrelfile = 255; { number of words in relfilebuffer }
+  maxrelfile = 255;   { number of words in relfilebuffer }
 
-  maxstandardlabel = 9999; {maximum value for a Pascal label, cast in cement by the ISO standard.}
-  maxstrlen = 255; {maximum number of chars in a string, consistent across all implementations of Pascal-2}
+  maxstrlen = 255;    { maximum number of chars in a string, consistent across all implementations of Pascal-2}
+  maxstandardlabel = 9999; { maximum value for a Pascal label, cast in cement by the ISO standard }
 
   p_maxregmask = 31;
   p_dbg_syp_span = 29;   { blocking span for debug records}
@@ -1089,7 +1086,7 @@ type
   {>>>}
   sharedPtrType = ^sharedType;
 
-procedure add (left, right: integer;  var result: integer; var overflow: boolean); external;
+procedure addProc (left, right: integer;  var result: integer; var overflow: boolean); external;
 procedure usadd (left, right: integer;  var result: integer; var overflow: boolean); external;
 procedure negate (operand: integer; var result: integer; var overflow: boolean); external;
 procedure subtract (left, right: integer; var result: integer; var overflow: boolean); external;

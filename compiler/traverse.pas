@@ -7750,7 +7750,7 @@ var
                         leqlit: result := intvalue <= ptr^.oprnds[1];
                         gtrlit: result := intvalue > ptr^.oprnds[1];
                         geqlit: result := intvalue >= ptr^.oprnds[1];
-                        eqlit: result := intvalue = ptr^.oprnds[1];
+                        eqlit:  result := intvalue = ptr^.oprnds[1];
                         neqlit: result := intvalue <> ptr^.oprnds[1];
                         end
                       end;
@@ -7758,12 +7758,12 @@ var
                   andop, orop:
                     begin
                     end;
-                  plusop: binaryfold(add, usadd, plusop);
-                  minusop: binaryfold(subtract, ussubtract, endexpr);
-                  mulop: binaryfold(multiply, usmultiply, mulop);
-                  kwoop: binaryfold(divide, usdivide, endexpr);
+                  plusop: binaryfold (addProc, usadd, plusop);
+                  minusop: binaryfold (subtract, ussubtract, endexpr);
+                  mulop: binaryfold (multiply, usmultiply, mulop);
+                  kwoop: binaryfold (divide, usdivide, endexpr);
                   modop, stdmodop:
-                    binaryfold(remainder, usremainder, endexpr);
+                    binaryfold (remainder, usremainder, endexpr);
                   divop, stddivop, quoop, remop:
                     begin
                     end;

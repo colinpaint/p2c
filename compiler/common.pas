@@ -38,7 +38,7 @@ var
   pseudoSharedPtr: pseudoSharedPtrType;
 
 {<<<}
-procedure add (left, right: integer;  var result: integer; var overflow: boolean);
+procedure addProc (left, right: integer;  var result: integer; var overflow: boolean);
 { Add two target integers.  If the operation overflows, "overflow" will
   be set, and "result" will be set to the max value possible.
   ****Self hosted version

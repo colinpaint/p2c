@@ -333,9 +333,9 @@ type
   { M68000 instruction definitions }
   { the following list is partially ordered according to these rules:
       If a mnemonic (such as "add" or "cmp") has an address register
-      form ("adda" or "cmpa") then the latter must immediately preceed
-      the former.  If the mnemonic has an immediate operand form ("addi"
-      or "cmpi") then the latter must immediately succeed the former.  }
+        form ("adda" or "cmpa") then the latter must immediately preceed the former.
+      If the mnemonic has an immediate operand form ("addi" or "cmpi") then
+        the latter must immediately succeed the former.  }
   insttype = (nop, adda, add, addi, addq, addx, andinst, andi, asl, asr, beq,
               bge, bgt, bhi, ble, bls, blt, bmi, bpl, bne, blo, bhs, bvc, bvs,
               bchg, bclr, bfclr, bfexts, bfextu, bfins, bfset, bftst,
@@ -347,7 +347,7 @@ type
               orinst, ori, pea, rol, ror, roxl, roxr, rte, rts, suba, sub, subi,
               subq, subx, swap, trap, trapcc, trapv, tst, unlk,
 
-  { 68881 instructions }
+              { 68881 instructions }
               fp_first, {dummy tag}
               fabs, facos, fadd, fasin, fatan, fatanh,
               fbeq, fbne, fbgt, fbngt, fbge, fbnge, fblt, fbnlt, fble, fbnle,
@@ -360,6 +360,9 @@ type
               ftan, ftanh, ftentox, ftrap, ftst, ftwotox,
               fp_last {dummy tag} );
 
+  {>>>}
+  {<<<}
+  {<<<}
   { Notes about the addressing modes:
     - areg, indr, autoi, autod, and relative use one address register
     - dreg uses one data register
@@ -449,7 +452,6 @@ type
                              references to the constant section.
   }
   {>>>}
-  {<<<}
   modes = (nomode, dreg, areg, fpreg, indr, autoi, autod, relative, indexed,
            bitindexed, bit_field_const, pcindexed, absshort, abslong,
            immediate, immediatelong, immediatequad, immediate_extended,
@@ -742,17 +744,17 @@ type
   fixuptype = (fixuplabel, fixupproc, fixupabs, fixupesdid);
   {<<<}
   fixupnode = record
-      fixuplink: fixupptr;
-      fixupfileloc: addressrange; { location in relfile }
-      fixupobjpc: addressrange;
-      fixupaddr: addressrange; { relative address when found }
-      fixuplen: 2..4; { word or long fixup -- for 68020 }
-      case fixupkind: fixuptype of
-        fixuplabel: (fixuplabno: integer);
-        fixupproc: (fixupprocno: integer);
-        fixupabs: ();
-        fixupesdid: (vartabindex: integer); { index into vartable }
-    end;
+                fixuplink: fixupptr;
+                fixupfileloc: addressrange; { location in relfile }
+                fixupobjpc: addressrange;
+                fixupaddr: addressrange; { relative address when found }
+                fixuplen: 2..4; { word or long fixup -- for 68020 }
+                case fixupkind: fixuptype of
+                  fixuplabel: (fixuplabno: integer);
+                  fixupproc: (fixupprocno: integer);
+                  fixupabs: ();
+                  fixupesdid: (vartabindex: integer); { index into vartable }
+              end;
   {>>>}
 
   esdrange = firstesd..lastesd;
@@ -781,8 +783,8 @@ type
   bits = 0..16; {counts bits in a word}
 
   objfiletype = file of record
-                block:  packed array [0..255] of 0..255;
-                end;
+                  block:  packed array [0..255] of 0..255;
+                  end;
 
   tempreltype = (externrel, forwardrel, backwardrel, textrel,
                  nonlocalrel, supportrel, commonrel, stackrel);
@@ -798,8 +800,8 @@ type
   {>>>}
 
   relfiletype = file of record
-                block:  packed array [0..255] of 0..maxusword;
-                end;
+                  block: packed array [0..255] of 0..maxusword;
+                  end;
 
   worddiskblock = packed array [0..worddiskbufsize] of 0..maxusword;
   wordstream = file of worddiskblock;
@@ -826,10 +828,9 @@ var
   sharedPtr: sharedPtrType;
   pseudoSharedPtr: pseudoSharedPtrType;
 
-  macFile: text;            { receives macro assembler image}
-  objFile: objfiletype;     { receives object image} {??}
-  relFile: relfiletype;     { array [0..255] of unsigned }
-  diagFile: wordstream;     { temporary diagnostics file}
+  macFile: text;         { receives macro assembler image }
+  objFile: objfiletype;  { receives object image }
+  relFile: relfiletype;  { array [0..255] of unsigned }
 
   nokeydata: pseudoset;  { pseudoops without key, length, refcount or copycount}
   oneoperand: pseudoset; { pseudoops with only one operand}
@@ -1096,9 +1097,9 @@ var
   { buffers and counters to manage object file production }
   tempfilesize: addressrange; { total length in words of relfile }
 
-  nextobjfile: - 1..255; { index into objfile buffer }
-  nextrelfile: - 1..255; { index into relfile buffer }
-  nextobjblk: integer; { Block number for seek }
+  nextobjfile: -1..255; { index into objfile buffer }
+  nextrelfile: -1..255; { index into relfile buffer }
+  nextobjblk: integer;   { Block number for seek }
   objbytecount: integer;
 
   nexttempbuffer: 0..32; { index into tempbuffer }
@@ -1180,7 +1181,6 @@ procedure realtoints (rval: realarray; len: natural; var i1, i2: integer);
   about the order in which these values are stored.
 }
 var
-  dumm: boolean; {dummy error flag}
   tr: unsigned;
 
 begin
@@ -1354,7 +1354,6 @@ dependent on the stack, tempcount is set appropriately.
 }
 var
   tc: keyindex; {speedup for computations on tempcount field}
-  vtptr: vartablerecptr; {used to access vartable entries}
 
 begin
   newnode;
@@ -2374,6 +2373,17 @@ end;
 {>>>}
 {<<<  commc2 utils}
 {<<<}
+function uppercase (ch: char): char;
+
+begin
+  if (ch >= 'a') and (ch <= 'z') then
+    uppercase := chr(ord(ch) - ord('a') + ord('A'))
+  else
+    uppercase := ch;
+end;
+{>>>}
+
+{<<<}
 procedure writeCh (ch: char);
 
 begin
@@ -2478,16 +2488,19 @@ begin
   column := column + 4;
 end;
 {>>>}
-
 {<<<}
-procedure reposition (col: columnrange);
+procedure WriteSymbolName (name: packed array[m..n: integer] of char);
+{ Write a symbol name string to the macro file. }
+
+var
+  i: 0..maxprocnamelen;
 
 begin
-  if (column >= col) then {we're at or past the desired column}
-    writeCh (' ');  { emit one space at least }
-
-  while column < col do
-    writech (' ');
+  i := 0;
+  while (i < n) and (name[i + 1] <> ' ') do begin
+    i := i + 1;
+    writeCh (uppercase(name[i]))
+    end;
 end;
 {>>>}
 {<<<}
@@ -2496,17 +2509,6 @@ procedure writeLine;
 begin
   writeln (macFile);
   column := 1;
-end;
-{>>>}
-
-{<<<}
-function uppercase (ch: char): char;
-
-begin
-  if (ch >= 'a') and (ch <= 'z') then
-    uppercase := chr(ord(ch) - ord('a') + ord('A'))
-  else
-    uppercase := ch;
 end;
 {>>>}
 
@@ -2580,38 +2582,35 @@ begin
   while (ESD < nextESD) and not found do begin
     with ESDtable[ESD] do
       if ESDkind = ESDsupport then
-
-        if (newESD.ESDkind = ESDsupport) and
-           (newESD.suppno = suppno) then
+        if (newESD.ESDkind = ESDsupport) and (newESD.suppno = suppno) then
           found := true
-        else ESDid := ESDid + 1
+        else
+          ESDid := ESDid + 1
 
       else if ESDkind = ESDexternal then
-
-        if (newESD.ESDkind = ESDexternal) and
-           (newESD.exproc = exproc) then
+        if (newESD.ESDkind = ESDexternal) and (newESD.exproc = exproc) then
           found := true
-        else ESDid := ESDid + 1
+        else
+          ESDid := ESDid + 1
 
       else if ESDkind = ESDdefine then
         begin
         { ESDdefine is odd because there is no ESDid assigned, but the check
           is here so xdefs are not added to the table more than once }
-        if (newESD.ESDkind = ESDdefine) and
-           (newESD.vartabindex = vartabindex) then
+        if (newESD.ESDkind = ESDdefine) and (newESD.vartabindex = vartabindex) then
           found := true
         end
 
       else if ESDkind in [ESDuse, ESDshrvar] then
-
-        if (newESD.ESDkind = ESDkind) and
-           (newESD.vartabindex = vartabindex) then
+        if (newESD.ESDkind = ESDkind) and (newESD.vartabindex = vartabindex) then
           found := true
         else ESDid := ESDid + 1
 
       else if ESDkind in [ESDcommon, ESDdiag] then
-        if newESD.ESDkind = ESDkind then found := true
-        else ESDid := ESDid + 1;
+        if newESD.ESDkind = ESDkind then
+          found := true
+        else
+          ESDid := ESDid + 1;
 
     ESD := ESD + 1;
     end; {while}
@@ -2631,14 +2630,14 @@ begin
     end
   else
     nextrelfile := nextrelfile + 1;
+
   relfile^.block[nextrelfile] := data;
 end;
 {>>>}
 {<<<}
 procedure flushtempbuffer;
-{ Write the current contents of the tempbuffer to the temporary object
-  file.
-}
+{ Write the current contents of the tempbuffer to the temporary object file }
+
 var
   i : 0..31;  { induction var for buffer copying }
   packbits: unsigned;  { pseudo packed array of boolean }
@@ -2647,7 +2646,10 @@ begin
   if nexttempbuffer > 0 then
     begin
     putrelfile ((sectionno[currentsect] + 1) * 256 + nexttempbuffer);
-    for i := nexttemprelocn to 31 do temprelocn[i] := false;
+
+    for i := nexttemprelocn to 31 do
+      temprelocn[i] := false;
+
     packbits := 0;
     for i := 0 to 15 do begin
       packbits := packbits * 2;
@@ -2673,7 +2675,6 @@ begin
     end;
 end;
 {>>>}
-
 {<<<}
 procedure putdata (data: unsigned);
 
@@ -2695,6 +2696,17 @@ end;
 {>>>}
 
 {<<<}
+procedure reposition (col: columnrange);
+
+begin
+  if (column >= col) then {we're at or past the desired column}
+    writeCh (' ');  { emit one space at least }
+
+  while column < col do
+    writech (' ');
+end;
+{>>>}
+{<<<}
 procedure newsection (newsect: section {section to switch to} );
 { Change sections to "newsect".  If there is any data accumulated for the
   object file, that buffer is written.
@@ -2704,7 +2716,7 @@ begin
     begin
     if sharedPtr^.switcheverplus[outputmacro] then
       begin
-      reposition(opcolumn);
+      reposition (opcolumn);
       writeStr ('SECTION');
       if newsect = codesect then
         writeStr (sectiontail);
@@ -2712,8 +2724,10 @@ begin
       writeInt (sectionno[newsect]);
       writeLine;
       end;
+
     if sharedPtr^.switcheverplus[outputobj] then
       flushtempbuffer;
+
     sectionpc[currentsect] := currentpc;
     currentsect := newsect;
     currentpc := sectionpc[currentsect];
@@ -2847,93 +2861,12 @@ begin
     diagbitbuffer := diagbitbuffer * 2 + bit[i];
     if nextdiagbit = 15 then
       begin
-      diag_word(diagbitbuffer);
+      diag_word (diagbitbuffer);
       diagbitbuffer := 0;
       nextdiagbit := 0;
       end
     else
       nextdiagbit := nextdiagbit + 1;
-    end;
-end;
-{>>>}
-{<<<}
-procedure initdiags;
-{ Initialize the diagnostic code, called only if diagnostics are going to be generated }
-
-var
-  kludge: integer; {to get around a purposeful range error}
-
-begin
-  everdiagnosing := true;
-  nextdiagbit := 0;
-  diagbitbuffer := 0;
-
-  if sharedPtr^.switcheverplus[outputmacro] then
-    begin
-    writeln (macFile, 'P_DIAG', 'SECTION': opcolumn + 6 - 6, ' ': opndcolumn - opcolumn - 7, sectionno[diagsect]:1);
-    newsection (diagsect);
-
-    writeln (macFile, 'STDIAG', 'DC.W': opcolumn + 3 - 6, 'ENDIAG-STDIAG': opndcolumn - opcolumn - 4 + 13);
-    writeln (macFile, 'DC.L': opcolumn + 3, 'L': opndcolumn - opcolumn - 4 + 1);
-    writeln (macFile, 'DC.L': opcolumn + 3, 'LAST-L': opndcolumn - opcolumn - 4 + 6);
-
-    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-      begin
-      writeln (macFile, 'DC.B': opcolumn+3, '''':opndcolumn - opcolumn - 4, sharedPtr^.outputname: 8, '''');
-      write (macFile, 'DC.L':opcolumn + 3, ' ':opndcolumn - opcolumn - 4);
-      if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
-        writeln (macFile, 'G')
-      else
-        writeln (macFile, '0');
-      end;
-    end;
-
-  if sharedPtr^.switcheverplus[outputobj] then
-    begin
-    newsection (diagsect);
-    absfixup (diaglenfix, word);
-    putbuffer (0, false);
-    putbuffer (50B * 256 + sectionno[codesect] + 1, true);
-    currentpc := 6; {needed for absfixup diagnostic}
-    absfixup (codelenfix, long);
-    putbuffer (0, false);
-    putbuffer (0, false);
-
-    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-      begin
-      putbuffer (ord(sharedPtr^.outputname[1]) * 256 + ord(sharedPtr^.outputname[2]), false);
-      putbuffer (ord(sharedPtr^.outputname[3]) * 256 + ord(sharedPtr^.outputname[4]), false);
-      putbuffer (ord(sharedPtr^.outputname[5]) * 256 + ord(sharedPtr^.outputname[6]), false);
-      putbuffer( ord(sharedPtr^.outputname[7]) * 256 + ord(sharedPtr^.outputname[8]), false);
-
-      if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
-        putbuffer (50B * 256, true)
-      else
-        begin
-        putbuffer (0, false);
-        putbuffer (0, false);
-        end;
-      end;
-    end;
-
-  if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-    currentpc := 22
-  else
-    currentpc := 10; {length of header data}
-end;
-{>>>}
-{<<<}
-procedure WriteSymbolName (name: packed array[m..n: integer] of char);
-{ Write a symbol name string to the macro file. }
-
-var
-  i: 0..maxprocnamelen;
-
-begin
-  i := 0;
-  while (i < n) and (name[i + 1] <> ' ') do begin
-    i := i + 1;
-    writeCh (uppercase(name[i]))
     end;
 end;
 {>>>}
@@ -3104,101 +3037,99 @@ procedure CopySFile;
       end;
   end {CopySFile} ;
 {>>>}
+
 {<<<}
 procedure InitMac;
-
 { Generate preliminary pieces of the macro file. In the process, some
   global variables used for code generation are initialized to point to
   some generated tables.
 }
-
   var
     loc: integer; {location in the string file}
     i: integer; {induction variable}
 
+begin
+  if sharedPtr^.shortsection then
+    sectiontail := '.S'
+  else
+    sectiontail := '  ';
 
-  begin
-    if sharedPtr^.shortsection then
-      sectiontail := '.S'
-    else
-      sectiontail := '  ';
+  write (macFile, '*  Oregon Software Pascal ', versionstring, ' Cross Compiler ');
+  if mc68020 then
+    begin
+    write (macFile, '68020');
+    if mc68881 then
+      write (macFile, '68881');
+    writeln (macFile);
+    end
+  else
+    writeln (macFile, '68000');
 
-    write (macFile, '*  Oregon Software Pascal ', versionstring, ' Cross Compiler ');
-    if mc68020 then
-      begin
-      write (macFile, '68020');
-      if mc68881 then
-        write (macFile, '68881');
-      writeln (macFile);
-      end
-    else
-      writeln (macFile, '68000');
+  write (macFile, '*  File:  ');
+  writesymbolname (sharedPtr^.outputname);
+  writeLine;
+  writech ('*');
+  writeLine;
 
-    write (macFile, '*  File:  ');
-    writesymbolname (sharedPtr^.outputname);
-    writeLine;
-    writech ('*');
-    writeLine;
+  writesymbolname (sharedPtr^.outputname);
+  reposition (opcolumn);
+  writeStr ('IDNT');
 
-    writesymbolname (sharedPtr^.outputname);
+  reposition(opndcolumn);
+  writeint (sharedPtr^.objversion);
+  writech (',');
+  writeint (sharedPtr^.objrevision);
+  if sharedPtr^.ident_strlength > 0 then
+    begin
+    writech (' ');
+    loc := sharedPtr^.stringfilecount + sharedPtr^.ident_string - 1;
+    sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
+    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+    sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
+    for i := 1 to sharedPtr^.ident_strlength do
+      writech (chr (getstringfile));
+    end;
+  writeLine;
+
+  { Tell the assembler this is 68020 code }
+  if mc68020 then
+    begin
     reposition (opcolumn);
-    writeStr ('IDNT');
-
-    reposition(opndcolumn);
-    writeint (sharedPtr^.objversion);
-    writech (',');
-    writeint (sharedPtr^.objrevision);
-    if sharedPtr^.ident_strlength > 0 then
-      begin
-      writech (' ');
-      loc := sharedPtr^.stringfilecount + sharedPtr^.ident_string - 1;
-      sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
-      sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-      sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
-      for i := 1 to sharedPtr^.ident_strlength do
-        writech (chr (getstringfile));
-      end;
-    writeLine;
-
-    { Tell the assembler this is 68020 code }
-    if mc68020 then
-      begin
-      reposition (opcolumn);
-      writestr ('OPT');
-      reposition (opndcolumn);
-      writestr ('P=68020');
-      if mc68881 then
-        begin
-        writestr ('/68881');
-        writeLine;
-        reposition (opcolumn);
-        writestr ('FOPT');
-        reposition (opndcolumn);
-        writestr ('ID=');
-        writeint (coprocessor_id);
-        end;
-      writeLine;
-      end;
-
-    reposition (opcolumn);
-    writestr ('SECTION');
-    writestr (sectiontail);
-
+    writestr ('OPT');
     reposition (opndcolumn);
-    writeInt (sectionno[codesect]);
+    writestr ('P=68020');
+    if mc68881 then
+      begin
+      writestr ('/68881');
+      writeLine;
+      reposition (opcolumn);
+      writestr ('FOPT');
+      reposition (opndcolumn);
+      writestr ('ID=');
+      writeint (coprocessor_id);
+      end;
     writeLine;
+    end;
 
-    CopySFile; { emit string and structured constants }
-    highcode := currentpc; { initialize code address }
-    lastobjpc := currentpc; { required if dumping object code }
-  end;
+  reposition (opcolumn);
+  writestr ('SECTION');
+  writestr (sectiontail);
+
+  reposition (opndcolumn);
+  writeInt (sectionno[codesect]);
+  writeLine;
+
+  CopySFile; { emit string and structured constants }
+  highcode := currentpc; { initialize code address }
+  lastobjpc := currentpc; { required if dumping object code }
+end;
 {>>>}
 {<<<}
 procedure InitObj;
-{ Write the string constants and structured constants to the temporary
-  object file.  Every 32 words of such data are preceeded by 2 words of
-  zeroes, which signals the final object file that the data does not require relocation }
-
+{ Write the string constants and structured constants to the temporary object file.
+  Every 32 words of such data are preceeded by 2 words of zeroes,
+  which signals the final object file that the data does not require relocation
+}
 var
   i: integer;
   j: 0..proctablesize;
@@ -3211,6 +3142,7 @@ begin
   nextrelfile := - 1;
   nextobjfile := - 1;
   nextobjblk := 0;
+
   tempfilesize := 0; { number of bytes written to temp file }
 
   count := sharedPtr^.stringfilecount + ord(odd(sharedPtr^.stringfilecount));
@@ -3252,7 +3184,7 @@ begin
       i := i - 1;
       end;
 
-    putbuffer(data, false);
+    putbuffer (data, false);
     end;
 
   if odd(currentpc) then
@@ -3260,10 +3192,78 @@ begin
 
   lastobjpc := currentpc;
 
-  highcode := currentpc; { highest address so far }
+  { highest address so far }
+  highcode := currentpc;
   sectionpc[codesect] := currentpc;
 end;
 {>>>}
+{<<<}
+procedure initDiags;
+{ Initialize the diagnostic code, called only if diagnostics are going to be generated }
+
+var
+  kludge: integer; {to get around a purposeful range error}
+
+begin
+  everdiagnosing := true;
+  nextdiagbit := 0;
+  diagbitbuffer := 0;
+
+  if sharedPtr^.switcheverplus[outputmacro] then
+    begin
+    writeln (macFile, 'P_DIAG', 'SECTION': opcolumn + 6 - 6, ' ': opndcolumn - opcolumn - 7, sectionno[diagsect]:1);
+    newsection (diagsect);
+
+    writeln (macFile, 'STDIAG', 'DC.W': opcolumn + 3 - 6, 'ENDIAG-STDIAG': opndcolumn - opcolumn - 4 + 13);
+    writeln (macFile, 'DC.L': opcolumn + 3, 'L': opndcolumn - opcolumn - 4 + 1);
+    writeln (macFile, 'DC.L': opcolumn + 3, 'LAST-L': opndcolumn - opcolumn - 4 + 6);
+
+    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
+      begin
+      writeln (macFile, 'DC.B': opcolumn+3, '''':opndcolumn - opcolumn - 4, sharedPtr^.outputname: 8, '''');
+      write (macFile, 'DC.L':opcolumn + 3, ' ':opndcolumn - opcolumn - 4);
+      if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
+        writeln (macFile, 'G')
+      else
+        writeln (macFile, '0');
+      end;
+    end;
+
+  if sharedPtr^.switcheverplus[outputobj] then
+    begin
+    newsection (diagsect);
+    absfixup (diaglenfix, word);
+    putbuffer (0, false);
+    putbuffer (50B * 256 + sectionno[codesect] + 1, true);
+    currentpc := 6; {needed for absfixup diagnostic}
+    absfixup (codelenfix, long);
+    putbuffer (0, false);
+    putbuffer (0, false);
+
+    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
+      begin
+      putbuffer (ord(sharedPtr^.outputname[1]) * 256 + ord(sharedPtr^.outputname[2]), false);
+      putbuffer (ord(sharedPtr^.outputname[3]) * 256 + ord(sharedPtr^.outputname[4]), false);
+      putbuffer (ord(sharedPtr^.outputname[5]) * 256 + ord(sharedPtr^.outputname[6]), false);
+      putbuffer( ord(sharedPtr^.outputname[7]) * 256 + ord(sharedPtr^.outputname[8]), false);
+
+      if sharedPtr^.switcheverplus[own] and (sharedPtr^.ownsize > 0) then
+        putbuffer (50B * 256, true)
+      else
+        begin
+        putbuffer (0, false);
+        putbuffer (0, false);
+        end;
+      end;
+    end;
+
+  if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
+    currentpc := 22
+  else
+    currentpc := 10; {length of header data}
+end;
+{>>>}
+
 {<<<}
 procedure FixMac;
 { Clean up the macro file.  There isn't much to do for this file }
@@ -3561,241 +3561,244 @@ var
   j: integer;
   vtptr: vartablerecptr;
 
-{<<<}
-procedure putbyte(data: bytesize);
+  {<<<}
+  procedure putbyte (data: bytesize);
 
-begin
-  if nextobjfile = 255 then
-    begin
-    put (objfile); { good riddence }
-    nextobjfile := 0; { reset fill index }
-    nextobjblk := nextobjblk + 1;
-    end
-  else
-    nextobjfile := nextobjfile + 1;
+  begin
+    if nextobjfile = 255 then
+      begin
+      put (objfile); { good riddence }
+      nextobjfile := 0; { reset fill index }
+      nextobjblk := nextobjblk + 1;
+      end
+    else
+      nextobjfile := nextobjfile + 1;
 
-  objfile^.block[nextobjfile] := data;
-  objbytecount := objbytecount + 1;
-end;
-{>>>}
-{<<<}
-procedure putlong(data: unsigned);
+    objfile^.block[nextobjfile] := data;
+    objbytecount := objbytecount + 1;
+  end;
+  {>>>}
+  {<<<}
+  procedure putlong (data: unsigned);
 
-begin
-  putbyte ((data and 16#FF000000) div 16#1000000); { high order first }
-  putbyte ((data and 16#FF0000) div 16#10000);
-  putbyte ((data and 16#FF00) div 16#100);
-  putbyte (data and 16#FF); { down to low order }
-end;
-{>>>}
-{<<<}
-procedure putword(data: unsigned);
+  begin
+    putbyte ((data and 16#FF000000) div 16#1000000); { high order first }
+    putbyte ((data and 16#FF0000) div 16#10000);
+    putbyte ((data and 16#FF00) div 16#100);
+    putbyte (data and 16#FF); { down to low order }
+  end;
+  {>>>}
+  {<<<}
+  procedure putword (data: unsigned);
 
-  begin {putword}
+  begin
     putbyte(data div 256); { high order first }
     putbyte(data mod 256); { then low order }
-  end; {putword}
-{>>>}
-{<<<}
-procedure putname(linkname: packed array [l..h: shortint] of char);
-{ Write out the given string to the object file.  If we are writing a new format object, a null byte is added to the end }
+  end;
+  {>>>}
+  {<<<}
+  procedure putname (linkname: packed array [l..h: shortint] of char);
+  { Write out the given string to the object file.  If we are writing a new format object, a null byte is added to the end }
 
-var
-  i: shortint;
+  var
+    i: shortint;
 
-begin
-  for i := 1 to h do
-    if i <= linknameused then putbyte (ord (uppercase (linkname[i])));
-  for i := linknameused + 1 to linknamesize do
-    putbyte (ord(' '));
-end;
-{>>>}
-{<<<}
-procedure putdateandtime;
-{ Write the current date and time to the object file }
+  begin
+    for i := 1 to h do
+      if i <= linknameused then putbyte (ord (uppercase (linkname[i])));
 
-type
-  datimtype = (hour, min, sec, month, day, year);
+    for i := linknameused + 1 to linknamesize do
+      putbyte (ord(' '));
+  end;
+  {>>>}
+  {<<<}
+  procedure putdateandtime;
+  { Write the current date and time to the object file }
 
-var
-  bcdbuf: array [datimtype] of integer;
-  i: datimtype;
+  type
+    datimtype = (hour, min, sec, month, day, year);
 
+  var
+    bcdbuf: array [datimtype] of integer;
+    i: datimtype;
 
-begin
-  TimeStamp (bcdbuf[day], bcdbuf[month], bcdbuf[year], bcdbuf[hour], bcdbuf[min], bcdbuf[sec]);
-  bcdbuf[year] := bcdbuf[year] mod 100;
-  for i := hour to year do
-    begin
-    bcdbuf[i] := (bcdbuf[i] div 10) * 16 + bcdbuf[i] mod 10;
-    putbyte (bcdbuf[i]);
-    end;
-end;
-{>>>}
-{<<<}
-procedure fixuplength(block, byte, count: integer);
-
-var
-  old_nextobjfile: integer;
-  old_nextobjblk: integer;
-
-begin
-  if block <> nextobjblk then
-    begin
-    put (objfile);
-    seek (objfile, block + 1);
-    end;
-
-  old_nextobjfile := nextobjfile;
-  old_nextobjblk := nextobjblk;
-  nextobjfile := byte;
-  putlong (count);
-
-  if block <> nextobjblk then
-    begin
-    put (objfile);
-    nextobjblk := old_nextobjblk;
-    seek (objfile, nextobjblk + 1);
-    end;
-
-  nextobjfile := old_nextobjfile;
-end;
-{>>>}
-{<<<}
-procedure writeidentrecord;
-{ Write a old type 1 ident record or a new type 5 ident record to the object file }
-
-const
-  magiclength = 44; { number of bytes generated below }
-
-var
-  i: 1..magiclength; { induction var for filling record }
-  fixupblock, fixupbyte: integer;
-
-begin
-  putbyte(magiclength + sharedPtr^.ident_strlength);
-
-  putbyte (ord('1'));
-  putname (sharedPtr^.outputname);
-  putbyte (sharedPtr^.objversion);
-  putbyte (sharedPtr^.objrevision);
-  putbyte (ord('P')); { Language = Pascal }
-  for i := 1 to 4 do { Volume Name }
-    putbyte(ord(' '));
-
-  putword(0); { User Number }
-  for i := 1 to 18 do { Cat, Fname, Ex }
-    putbyte(ord(' '));
-
-  putdateandtime;
-
-  if sharedPtr^.ident_strlength > 0 then
-    begin
-    loc := sharedPtr^.stringfilecount + sharedPtr^.ident_string - 1;
-
-    sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
-    sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
-    sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
-
-    for i := 1 to sharedPtr^.ident_strlength do
-      putbyte (getstringfile);
-    end;
-end;
-{>>>}
-{<<<}
-procedure writeESDrecord;
-{ Write an only type 2 ESD record or a new type 6 ESD record to the object file }
-
-var
-  s: namestring;
-  linkname: linknametype;
-  i: 1..linknamesize;
-  loc: integer; { location in string file }
-  temp: integer; { used to convert support number to decimal }
-  ESDlo,
-  ESDhi,
-  ESD: ESDrange; { induction vars for scanning ESDtable }
-  ESDcounter: bytesize; { tracks length of ESDrecord }
-  count: 0..15; { records length of one table entry }
-  vtptr: vartablerecptr;
-  fixupblock, fixupbyte: integer;
-  writeheader: boolean;
-
-begin
-  writeheader := true;
-  ESDlo := firstESD;
-  objbytecount := 0;
-
-  while ESDlo < nextESD do
-    begin
-    ESDhi := ESDlo;
-    ESDcounter := 1; { for the identification byte }
-
-    while (ESDcounter <= 255) and (ESDhi < nextESD) do
+  begin
+    TimeStamp (bcdbuf[day], bcdbuf[month], bcdbuf[year], bcdbuf[hour], bcdbuf[min], bcdbuf[sec]);
+    bcdbuf[year] := bcdbuf[year] mod 100;
+    for i := hour to year do
       begin
+      bcdbuf[i] := (bcdbuf[i] div 10) * 16 + bcdbuf[i] mod 10;
+      putbyte (bcdbuf[i]);
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure fixuplength (block, byte, count: integer);
 
-      with ESDtable[ESDhi] do { compute length of next entry }
-        case ESDkind of
-          ESDuse,
-          ESDsupport,
-          ESDexternal: count := 11;
-          ESDglobal,
-          ESDcommon,
-          ESDdiag,
-          ESDdefine,
-          ESDshrvar,
-          ESDentry: count := 15;
-          ESDload: count :=  5;
-          end; { case newESD.kind }
-      ESDhi := ESDhi + 1;
-      ESDcounter := ESDcounter + count;
-      end; { while }
+  var
+    old_nextobjfile: integer;
+    old_nextobjblk: integer;
 
-    if ESDcounter > 255 then
+  begin
+    if block <> nextobjblk then
       begin
-      ESDhi := ESDhi - 1; { because we're 2 beyond }
-      ESDcounter := ESDcounter - count;
+      put (objfile);
+      seek (objfile, block + 1);
       end;
 
-    putbyte(ESDcounter); { length of ESD record }
-    putbyte(ord('2')); { type 2 record }
+    old_nextobjfile := nextobjfile;
+    old_nextobjblk := nextobjblk;
+    nextobjfile := byte;
+    putlong (count);
 
-    ESDlo := ESDhi; { prepare for the next record, if any }
-    end; { while ESDlo < nextESD }
-end; {writeESDrecord}
-{>>>}
-{<<<}
-procedure writeDataRecords;
-{ Note that this contains a gross kluge to put the esd record for the common section at the end.
-  Any esdid of 0 is assumed to be a reference to the common esdid, and is so treated.
-  This is kluged in because Wayne wants to do it right and sort esdids anyway, and I didn't feel like doing it twice }
+    if block <> nextobjblk then
+      begin
+      put (objfile);
+      nextobjblk := old_nextobjblk;
+      seek (objfile, nextobjblk + 1);
+      end;
 
-const
-  debug = false;
-
-var
-  data, offset_len: unsigned; { single word buffer between files }
-  finalcount: addressrange; { number of words re-read from temp file }
-  cursection: 0..15; {current section}
-  tempbuffer: unsigned; {first word before being broken up}
-  datacount: 0..32; { number of words remaining before header is req'd }
-  fixuplocation,
-  fixupaddress: addressrange; { pulled from fixup list }
-  fixuplength: integer; { word or long fixup for procedures }
-  fixupobjectpc: integer; { address of fixup }
-  fixupvartabindex: integer;
-  { The following is a kluge and should be replaced later }
-  relcode: array [1..32] of boolean;
-  pieceno: 0..32;
-  i: 0..7; { loop counter for ESDID's }
-  esdid_count: 0..7; { Number of ESDID's in relocation expression }
-  vtptr: vartablerecptr;
-
+    nextobjfile := old_nextobjfile;
+  end;
+  {>>>}
   {<<<}
-  function gettemp: unsigned;
+  procedure writeidentrecord;
+  { Write a old type 1 ident record or a new type 5 ident record to the object file }
 
+  const
+    magiclength = 44; { number of bytes generated below }
 
-    begin {gettemp}
+  var
+    i: 1..magiclength; { induction var for filling record }
+    fixupblock, fixupbyte: integer;
+
+  begin
+    putbyte(magiclength + sharedPtr^.ident_strlength);
+
+    putbyte (ord('1'));
+    putname (sharedPtr^.outputname);
+    putbyte (sharedPtr^.objversion);
+    putbyte (sharedPtr^.objrevision);
+    putbyte (ord('P')); { Language = Pascal }
+    for i := 1 to 4 do { Volume Name }
+      putbyte(ord(' '));
+
+    putword(0); { User Number }
+    for i := 1 to 18 do { Cat, Fname, Ex }
+      putbyte(ord(' '));
+
+    putdateandtime;
+
+    if sharedPtr^.ident_strlength > 0 then
+      begin
+      loc := sharedPtr^.stringfilecount + sharedPtr^.ident_string - 1;
+
+      sharedPtr^.curstringblock := loc div (diskbufsize + 1) + 1;
+      sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
+      sharedPtr^.nextstringfile := loc mod (diskbufsize + 1);
+
+      for i := 1 to sharedPtr^.ident_strlength do
+        putbyte (getstringfile);
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure writeESDrecord;
+  { Write an only type 2 ESD record or a new type 6 ESD record to the object file }
+
+  var
+    s: namestring;
+    linkname: linknametype;
+    i: 1..linknamesize;
+    loc: integer; { location in string file }
+    temp: integer; { used to convert support number to decimal }
+    ESDlo,
+    ESDhi,
+    ESD: ESDrange; { induction vars for scanning ESDtable }
+    ESDcounter: bytesize; { tracks length of ESDrecord }
+    count: 0..15; { records length of one table entry }
+    vtptr: vartablerecptr;
+    fixupblock, fixupbyte: integer;
+    writeheader: boolean;
+
+  begin
+    writeheader := true;
+    ESDlo := firstESD;
+    objbytecount := 0;
+
+    while ESDlo < nextESD do
+      begin
+      ESDhi := ESDlo;
+      ESDcounter := 1; { for the identification byte }
+
+      while (ESDcounter <= 255) and (ESDhi < nextESD) do
+        begin
+        with ESDtable[ESDhi] do { compute length of next entry }
+          case ESDkind of
+            ESDuse,
+            ESDsupport,
+            ESDexternal: count := 11;
+            ESDglobal,
+            ESDcommon,
+            ESDdiag,
+            ESDdefine,
+            ESDshrvar,
+            ESDentry: count := 15;
+            ESDload: count :=  5;
+            end; { case newESD.kind }
+        ESDhi := ESDhi + 1;
+        ESDcounter := ESDcounter + count;
+        end; { while }
+
+      if ESDcounter > 255 then
+        begin
+        ESDhi := ESDhi - 1; { because we're 2 beyond }
+        ESDcounter := ESDcounter - count;
+        end;
+
+      putbyte (ESDcounter); { length of ESD record }
+      putbyte (ord('2')); { type 2 record }
+
+      ESDlo := ESDhi; { prepare for the next record, if any }
+      end; { while ESDlo < nextESD }
+  end;
+  {>>>}
+  {<<<}
+  procedure writeDataRecords;
+  { Note that this contains a gross kluge to put the esd record for the common section at the end.
+    Any esdid of 0 is assumed to be a reference to the common esdid, and is so treated.
+    This is kluged in because Wayne wants to do it right and sort esdids anyway, and I didn't feel like doing it twice }
+
+  const
+    debug = false;
+
+  var
+    data: unsigned;           { single word buffer between files }
+    offset_len: unsigned;     { single word buffer between files }
+    finalcount: addressrange; { number of words re-read from temp file }
+
+    cursection: 0..15;        { current section}
+    tempbuffer: unsigned;     { first word before being broken up}
+    datacount: 0..32;         { number of words remaining before header is req'd }
+
+    fixuplocation: addressrange;
+    fixupaddress: addressrange; { pulled from fixup list }
+    fixuplength: integer; { word or long fixup for procedures }
+    fixupobjectpc: integer; { address of fixup }
+    fixupvartabindex: integer;
+
+    { The following is a kluge and should be replaced later }
+    relcode: array [1..32] of boolean;
+    pieceno: 0..32;
+
+    i: 0..7; { loop counter for ESDID's }
+    esdid_count: 0..7; { Number of ESDID's in relocation expression }
+    vtptr: vartablerecptr;
+
+    {<<<}
+    function gettemp: unsigned;
+
+    begin
       if nextrelfile = maxrelfile then
         begin
         get (relfile);
@@ -3806,13 +3809,12 @@ var
 
       finalcount := finalcount + 1;
       gettemp := relfile^.block[nextrelfile];
-    end; {gettemp}
-  {>>>}
-  {<<<}
-  procedure nextfixup;
+    end;
+    {>>>}
+    {<<<}
+    procedure nextfixup;
 
-
-    begin {nextfixup}
+    begin
       if fixuphead = nil then { no fixups to be had }
         begin
         fixupaddress := 0;
@@ -3830,201 +3832,198 @@ var
           fixupobjectpc := fixupobjpc;
           if fixupkind = fixupesdid then fixupvartabindex := vartabindex;
           end; { with fixp^ }
+
         dispose(fixp); { and return it to the heap }
         end; { consume fixupnode }
-    end; {nextfixup}
-  {>>>}
-  {<<<}
-  procedure decr_datacount;
-  { Decrement the word count and check for consistency }
-
-  begin
-  datacount := datacount - 1;
-  if datacount < 0 then
-    begin
-    write ('WRITEDATARECORDS internal error -- bad datacount');
-    abort (inconsistent);
     end;
-  end;
-  {>>>}
-  {<<<}
-  procedure do_fixup(relocated: boolean {Don't bump pieceno if true});
-  { If the current location is the next fixup then handle it.  If a long
-    fixup is needed, get the next word and build the longword before adding }
+    {>>>}
+    {<<<}
+    procedure decr_datacount;
+    { Decrement the word count and check for consistency }
 
-  begin
-  if finalcount = fixuplocation then
-    begin { apply the fixup }
-    if fixuplength = long then
-      begin
-      data := data * 16#10000 + gettemp;
-      if not relocated then
-        pieceno := pieceno + 1;
-      end;
-
-    data := data + fixupaddress;
-
-    if fixuplength = long then
-      begin
-      putword (data div 16#10000);
-      data := data mod 16#10000;
-      decr_datacount; { account for extra word }
-      end;
-
-    nextfixup;
-    end { apply the fixup }
-
-  else if finalcount > fixuplocation then
     begin
-    write ('DO_FIXUP internal error -- missed fixup at filepos=',
-           fixuplocation:1, ', fixup=',fixupaddress:-1,', pc=',
-           fixupobjectpc:-1);
-    abort (inconsistent);
-    nextfixup;  { Just in case of /test }
+      datacount := datacount - 1;
+      if datacount < 0 then
+        begin
+        write ('WRITEDATARECORDS internal error -- bad datacount');
+        abort (inconsistent);
+        end;
     end;
+    {>>>}
+    {<<<}
+    procedure do_fixup (relocated: boolean {Don't bump pieceno if true});
+    { If the current location is the next fixup then handle it.  If a long
+      fixup is needed, get the next word and build the longword before adding }
 
-  putword (data);
-  end;
-  {>>>}
-
-begin
-  nextfixup;
-  datacount := 0;
-  finalcount := 0;
-  nextrelfile := - 1;
-
-  while finalcount <> tempfilesize do
     begin
-    if datacount = 0 then
-      begin { new record header }
-      tempbuffer := gettemp;
-      datacount := tempbuffer mod 256;
-      cursection := tempbuffer div 256;
-      putbyte (datacount * 2 + 6); { size in bytes }
-      putbyte (ord('3')); { type of Data Record }
-
-      { the following is part of the main kluge }
-      data := gettemp;
-      putword(data); { 1st 16 relocation bits }
-      for pieceno := 16 downto 1 do
+    if finalcount = fixuplocation then
+      begin { apply the fixup }
+      if fixuplength = long then
         begin
-        relcode[pieceno] := odd(data);
-        data := data div 2;
+        data := data * 16#10000 + gettemp;
+        if not relocated then
+          pieceno := pieceno + 1;
         end;
-      data := gettemp;
-      putword (data); { 2nd 16 relocation bits }
+      data := data + fixupaddress;
 
-      for pieceno := 32 downto 17 do
+      if fixuplength = long then
         begin
-        relcode[pieceno] := odd(data);
-        data := data div 2;
+        putword (data div 16#10000);
+        data := data mod 16#10000;
+        decr_datacount; { account for extra word }
         end;
-      pieceno := 0;
-      putbyte (cursection); { in every record }
-      end; { new record header }
 
-    decr_datacount;
-    data := gettemp; { fetch word from temp file }
+      nextfixup;
+      end { apply the fixup }
 
-    { The main part of the kluge}
-    pieceno := pieceno + 1;
-    if debug then
-      writeln ('pieceno = ', pieceno:1);
-
-    if pieceno > 32 then
+    else if finalcount > fixuplocation then
       begin
-      write ('WRITEDATARECORDS internal error -- bad pieceno');
+      write ('DO_FIXUP internal error -- missed fixup at filepos=',
+             fixuplocation:1, ', fixup=',fixupaddress:-1,', pc=', fixupobjectpc:-1);
       abort (inconsistent);
+      nextfixup;  { Just in case of /test }
       end;
 
-    if relcode[pieceno] then
+    putword (data);
+    end;
+    {>>>}
+
+  begin
+    nextfixup;
+    datacount := 0;
+    finalcount := 0;
+    nextrelfile := -1;
+
+    while finalcount <> tempfilesize do
       begin
-      offset_len := (data and 16#700) div 256; { offset field length }
-      { There are two hacks here:
-        1 - There may be a fixup of the ESD record to fill in the ESDid
-            of a "shared" variable which is really a named common.  This
-            is necessary because all named commons must appear after all
-            xref's and xdef's.
-        2 - If there is no fixup, then a zero ESDid in the first ESDid
-            position, which would normally be meaningless, means common
-            section relocation }
-      if (finalcount >= fixuplocation) then
-        if finalcount > fixuplocation then
-          begin
-          write ('WRITEDATARECORDS internal error -- missed fixup at filepos=',
-                 fixuplocation:1, ', fixup=',fixupaddress:-1,', pc=',
-                 fixupobjectpc:-1);
-          abort (inconsistent);
-          nextfixup;  { Just in case of /test }
-          end
-        else
-          begin
-          { insert the ESDid in data word }
-          vtptr := getvartableptr(fixupvartabindex);
-          putword(data + vtptr^.offset);
-          nextfixup;
-          end
-      else if data and 255 = 0 then
-        putword(data + commonesdid)
-      else
-        putword(data);
+      if datacount = 0 then
+        begin { new record header }
+        tempbuffer := gettemp;
+        datacount := tempbuffer mod 256;
+        cursection := tempbuffer div 256;
+        putbyte (datacount * 2 + 6); { size in bytes }
+        putbyte (ord ('3')); { type of Data Record }
 
-      esdid_count := data div (32 * 256); { shift the ESDID count down }
+        { the following is part of the main kluge }
+        data := gettemp;
+        putword (data); { 1st 16 relocation bits }
+        for pieceno := 16 downto 1 do
+          begin
+          relcode[pieceno] := odd(data);
+          data := data div 2;
+          end;
+        data := gettemp;
+        putword (data); { 2nd 16 relocation bits }
+
+        for pieceno := 32 downto 17 do
+          begin
+          relcode[pieceno] := odd(data);
+          data := data div 2;
+          end;
+        pieceno := 0;
+        putbyte (cursection); { in every record }
+        end; { new record header }
+
+      decr_datacount;
+      data := gettemp; { fetch word from temp file }
+
+      { The main part of the kluge}
+      pieceno := pieceno + 1;
       if debug then
-        writeln('esdid_count = ', esdid_count:1);
+        writeln ('pieceno = ', pieceno:1);
 
-      { Account for multiple ESDID's.  They will always appear in odd
-        numbers.  A zero ESDID in the last position is used to pad to
-        word boundary for our self-imposed file of words }
-      for i := 2 to esdid_count do
-        if not odd(i) then { by two's }
+      if pieceno > 32 then
+        begin
+        write ('WRITEDATARECORDS internal error -- bad pieceno');
+        abort (inconsistent);
+        end;
+
+      if relcode[pieceno] then
+        begin
+        offset_len := (data and 16#700) div 256; { offset field length }
+        { There are two hacks here:
+          1 - There may be a fixup of the ESD record to fill in the ESDid
+              of a "shared" variable which is really a named common.  This
+              is necessary because all named commons must appear after all
+              xref's and xdef's.
+          2 - If there is no fixup, then a zero ESDid in the first ESDid
+              position, which would normally be meaningless, means common
+              section relocation }
+        if (finalcount >= fixuplocation) then
+          if finalcount > fixuplocation then
+            begin
+            write ('WRITEDATARECORDS internal error -- missed fixup at filepos=',
+                   fixuplocation:1, ', fixup=',fixupaddress:-1,', pc=', fixupobjectpc:-1);
+            abort (inconsistent);
+            nextfixup; { Just in case of /test }
+            end
+          else
+            begin
+            { insert the ESDid in data word }
+            vtptr := getvartableptr(fixupvartabindex);
+            putword (data + vtptr^.offset);
+            nextfixup;
+            end
+        else if data and 255 = 0 then
+          putword (data + commonesdid)
+        else
+          putword (data);
+
+        esdid_count := data div (32 * 256); { shift the ESDID count down }
+        if debug then
+          writeln ('esdid_count = ', esdid_count:1);
+
+        { Account for multiple ESDID's.
+          They will always appear in odd numbers.
+          A zero ESDID in the last position is used to pad to word boundary for our self-imposed file of words }
+        for i := 2 to esdid_count do
+          if not odd(i) then { by two's }
+            begin
+            decr_datacount;
+            data := gettemp;
+            putword (data);
+            end;
+
+        if offset_len > 0 then
           begin
           decr_datacount;
           data := gettemp;
-          putword(data);
           end;
 
-      if offset_len > 0 then
-        begin
-        decr_datacount;
-        data := gettemp;
-        end;
+        { If there is no fixup then process the high order word here,
+          otherwise the application of the fixup below will skip over both words }
+        if (offset_len = 4) and (finalcount <> fixuplocation) then
+          begin
+          putword (data);
+          decr_datacount;
+          data := gettemp;
+          end;
 
-      { If there is no fixup then process the high order word here,
-        otherwise the application of the fixup below will skip over both words }
-      if (offset_len = 4) and (finalcount <> fixuplocation) then
-        begin
-        putword(data);
-        decr_datacount;
-        data := gettemp;
-        end;
+        if offset_len > 0 then
+          do_fixup (true);
+        end
+      else
+        do_fixup (false);
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure writeEndRecord;
 
-      if offset_len > 0 then
-        do_fixup (true);
+  begin
+    if startaddress = undefinedaddr then
+      begin
+      putword (2 * 256 + ord('4')); { length = 2 bytes }
+      putbyte (17); { indicates no start address }
       end
     else
-      do_fixup (false);
-    end;
-end;
-{>>>}
-{<<<}
-procedure writeEndRecord;
-
-
-begin
-  if startaddress = undefinedaddr then
-    begin
-    putword (2 * 256 + ord('4')); { length = 2 bytes }
-    putbyte (17); { indicates no start address }
-    end
-  else
-    begin
-    putword (6 * 256 + ord('4')); {length = 6 bytes}
-    putbyte (sectionno[codesect]); {starts in the code}
-    putlong (startaddress);
-    end;
-end;
-{>>>}
+      begin
+      putword (6 * 256 + ord('4')); {length = 6 bytes}
+      putbyte (sectionno[codesect]); {starts in the code}
+      putlong (startaddress);
+      end;
+  end;
+  {>>>}
 
 begin
   newESD.ESDkind := ESDload;
@@ -4068,20 +4067,24 @@ begin
   flushtempbuffer;
 
   repeat
-    putrelfile (0); { flush the file buffer }
+    { flush relfile buffer to disk }
+    putrelfile (0);
   until nextrelfile = 0;
+  close (relFile);
 
-  seek (relfile, 1); { prepare to read it back in }
+  { and read relfile back in }
+  reset (relFile, 'output.rel');
+  get (relfile);
 
   writeidentrecord;
   writeESDrecord;
-  if odd(nextobjfile) then
-    putbyte(0);
+  if odd (nextobjfile) then
+    putbyte (0);
   writeDataRecords;
   writeEndRecord;
 
   repeat
-    putbyte(0); { flush objfilebuffer }
+    putbyte (0); { flush objfilebuffer }
   until nextobjfile = 0;
 
   if totalputerr <> 0 then
@@ -4093,83 +4096,80 @@ begin
 end;
 {>>>}
 {<<<}
-procedure fixdiags;
+procedure fixDiags;
 { Final code when diagnostics are generated
 }
+var
+  junk: integer; { throw-away result of dump_externals }
+  switches: packed record case boolean of
+    true: (sw: packed array [1..16] of boolean);
+    false: (u: uns_word);
+    end;
 
-  var
-    junk: integer; { throw-away result of dump_externals }
-    switches: packed record case boolean of
-      true: (sw: packed array [1..16] of boolean);
-      false: (u: uns_word);
-      end;
+begin
+  switches.u := 0;
 
-  begin {fixdiags}
-    switches.u := 0;
+  if reversebytes then
+    begin
+    switches.sw[16] := sharedPtr^.switchcounters[mainbody] > 0;
+    switches.sw[15] := sharedPtr^.switcheverplus[own];
+    switches.sw[14] := sharedPtr^.switcheverplus[doublereals];
+    switches.sw[13] := sharedPtr^.switcheverplus[caseswitch];
+    switches.sw[12] := sharedPtr^.switcheverplus[shortintegers];
+    switches.sw[11] := mc68881;
+    end
+  else
+    begin
+    switches.sw[1] := sharedPtr^.switchcounters[mainbody] > 0;
+    switches.sw[2] := sharedPtr^.switcheverplus[own];
+    switches.sw[3] := sharedPtr^.switcheverplus[doublereals];
+    switches.sw[4] := sharedPtr^.switcheverplus[caseswitch];
+    switches.sw[5] := sharedPtr^.switcheverplus[shortintegers];
+    switches.sw[6] := mc68881;
+    end;
 
-    if reversebytes then
-      begin
-      switches.sw[16] := sharedPtr^.switchcounters[mainbody] > 0;
-      switches.sw[15] := sharedPtr^.switcheverplus[own];
-      switches.sw[14] := sharedPtr^.switcheverplus[doublereals];
-      switches.sw[13] := sharedPtr^.switcheverplus[caseswitch];
-      switches.sw[12] := sharedPtr^.switcheverplus[shortintegers];
-      switches.sw[11] := mc68881;
-      end
-    else
-      begin
-      switches.sw[1] := sharedPtr^.switchcounters[mainbody] > 0;
-      switches.sw[2] := sharedPtr^.switcheverplus[own];
-      switches.sw[3] := sharedPtr^.switcheverplus[doublereals];
-      switches.sw[4] := sharedPtr^.switcheverplus[caseswitch];
-      switches.sw[5] := sharedPtr^.switcheverplus[shortintegers];
-      switches.sw[6] := mc68881;
-      end;
-
-    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-      currentpc := currentpc + 2;
-
-    if sharedPtr^.switcheverplus[outputmacro] then
-      begin
-      newsection(codesect);
-      writeln(macFile, 'LAST', 'EQU': opcolumn - 4 + 2,
-              '*': opndcolumn - opcolumn - 3 + 1);
-      end;
-
-    newsection(diagsect);
-    if nextdiagbit > 0 then diag_bits(0, 16 - nextdiagbit);
-
-    if sharedPtr^.switcheverplus[outputmacro] then
-      if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-        writeln(macFile, 'DC.W': opcolumn + 3, ' ': opndcolumn - opcolumn - 4,
-                switches.u: 1);
-
-    if sharedPtr^.switcheverplus[outputobj] then
-      if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
-        putbuffer(switches.u, false);
-
-    if sharedPtr^.switcheverplus[debugging] then
-      junk := dump_externals;
-
-    if sharedPtr^.switcheverplus[outputmacro] then
-      writeln(macFile, 'ENDIAG', 'DC.W': opcolumn - 6 + 3,
-              'STDIAG-ENDIAG': opndcolumn - opcolumn - 4 + 13);
-
-    if sharedPtr^.switcheverplus[outputobj] then
-      begin
-      diaglenfix^.fixupaddr := currentpc;
-      codelenfix^.fixupaddr := sectionpc[codesect];
-      putbuffer(-currentpc, false);
-      newesd.esdkind := ESDdiag;
-      insertnewesd;
-      end;
-
+  if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
     currentpc := currentpc + 2;
-    sectionpc[diagsect] := currentpc;
-    newesd.esdkind := esdload;
-    newesd.sect := diagsect;
+
+  if sharedPtr^.switcheverplus[outputmacro] then
+    begin
+    newsection (codesect);
+    writeln (macFile, 'LAST', 'EQU': opcolumn - 4 + 2, '*': opndcolumn - opcolumn - 3 + 1);
+    end;
+
+  newsection(diagsect);
+  if nextdiagbit > 0 then
+    diag_bits (0, 16 - nextdiagbit);
+
+  if sharedPtr^.switcheverplus[outputmacro] then
+    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
+      writeln (macFile, 'DC.W': opcolumn + 3, ' ': opndcolumn - opcolumn - 4, switches.u: 1);
+
+  if sharedPtr^.switcheverplus[outputobj] then
+    if sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling] then
+      putbuffer (switches.u, false);
+
+  if sharedPtr^.switcheverplus[debugging] then
+    junk := dump_externals;
+
+  if sharedPtr^.switcheverplus[outputmacro] then
+    writeln (macFile, 'ENDIAG', 'DC.W': opcolumn - 6 + 3, 'STDIAG-ENDIAG': opndcolumn - opcolumn - 4 + 13);
+
+  if sharedPtr^.switcheverplus[outputobj] then
+    begin
+    diaglenfix^.fixupaddr := currentpc;
+    codelenfix^.fixupaddr := sectionpc[codesect];
+    putbuffer (-currentpc, false);
+    newesd.esdkind := ESDdiag;
     insertnewesd;
-  end; {fixdiags}
+    end;
+
+  currentpc := currentpc + 2;
+  sectionpc[diagsect] := currentpc;
+  newesd.esdkind := esdload;
+  newesd.sect := diagsect;
+  insertnewesd;
+end;
 {>>>}
 
 { putcode }
@@ -4242,7 +4242,7 @@ var
   filenameindex: integer;
 
   {<<<}
-  procedure diag_number(n: integer);
+  procedure diag_number (n: integer);
   {<<<}
   { Generate a compressed format number.  The format was determined
     empirically from data gathered over a large selection of Pascal
@@ -4258,26 +4258,29 @@ var
   {>>>}
 
     begin
-      if (n >= 0) and (n < 3) then diag_bits(n, 2)
+      if (n >= 0) and (n < 3) then
+        diag_bits (n, 2)
       else
         begin
-        diag_bits(3, 2);
-        if (n >= 0) and (n < 18) then diag_bits(n - 3, 4)
+        diag_bits (3, 2);
+        if (n >= 0) and (n < 18) then
+          diag_bits (n - 3, 4)
         else
           begin
-          diag_bits(15, 4);
-          if (n >= 0) and (n < 49) then diag_bits(n - 18, 5)
+          diag_bits (15, 4);
+          if (n >= 0) and (n < 49) then
+            diag_bits (n - 18, 5)
           else
             begin
-            diag_bits(31, 5);
-            diag_bits(n, 16);
+            diag_bits (31, 5);
+            diag_bits (n, 16);
             end;
           end;
         end;
     end; {diag_number}
   {>>>}
   {<<<}
-  procedure diag_line(line: integer; {new line reference}
+  procedure diag_line (line: integer; {new line reference}
                       pc: addressrange {pc at that line} );
 
   { Generate code to indicate that there is a new line number "line"
@@ -4316,9 +4319,9 @@ var
     end; {diag_line}
   {>>>}
 
-begin {put_diags}
+begin
   if not everdiagnosing then
-    initdiags;
+    initDiags;
 
   { first generate the procedure name }
   diag_number (0); {end of lineincs}
@@ -4346,7 +4349,7 @@ begin {put_diags}
         diag_bits (hm_value[uppercase(sharedPtr^.outputname[i])].value, hm_value[uppercase(sharedPtr^.outputname[i])].length);
 
   { mark the end with a blank }
-  diag_bits(hm_value[' '].value, hm_value[' '].length);
+  diag_bits (hm_value[' '].value, hm_value[' '].length);
 
   {Now scan the code, generating table entries for errors and lines}
   codewords := highcode div 2;
@@ -4364,11 +4367,11 @@ begin {put_diags}
       else if kind = labeldeltanode then codewords := codewords + 1
       else if kind = errornode then
         begin {write an error label}
-        diag_number(0); {first end lines}
-        diag_number(0);
-        diag_number(diag_error); {say it is an error}
-        diag_number(codewords - lastdiagpc); {pc increment}
-        diag_number(errorno); {actual error number}
+        diag_number (0); {first end lines}
+        diag_number (0);
+        diag_number (diag_error); {say it is an error}
+        diag_number (codewords - lastdiagpc); {pc increment}
+        diag_number (errorno); {actual error number}
         end
       else if kind = stmtref then
         begin
@@ -4386,19 +4389,18 @@ begin {put_diags}
           sharedPtr^.stringblkptr := sharedPtr^.stringblkptrtbl[sharedPtr^.curstringblock];
           sharedPtr^.nextstringfile := filenameindex mod (diskbufsize + 1);
 
-          { Pull the null terminated filename from the stringfile and
-            write it as 8 bit ascii to the diag table. }
+          { Pull the null terminated filename from the stringfile and write it as 8 bit ascii to the diag table. }
           ch := getstringfile;
           name_part := 0; {dev(0):usrno(1).cat(2).fname(3).ext(4)}
           while (ch <> 0) and (chr(ch) <> ' ') do
             begin
             ch := ord(uppercase(chr(ch)));
-            diag_bits(ch, 8);
+            diag_bits (ch, 8);
             ch := getstringfile;
             end;
 
-          diag_bits(ord(' '), 8);
-          diag_number(sourceline - lineoffset);
+          diag_bits (ord(' '), 8);
+          diag_number (sourceline - lineoffset);
           lastdiagline := sourceline - lineoffset;
           end
         else if firststmt then firststmt := false
@@ -23209,10 +23211,10 @@ begin
 
   if not everdiagnosing and
      (sharedPtr^.switcheverplus[debugging] or sharedPtr^.switcheverplus[profiling]) then
-    initdiags;
+    initDiags;
 
   if everdiagnosing then
-    fixdiags;
+    fixDiags;
 
   if sharedPtr^.switcheverplus[outputmacro] then
     fixmac;
