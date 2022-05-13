@@ -2,6 +2,7 @@ p68
 dumpToken
 dumpInter
 dumpPseudo
+ql
 
 *.c
 *.log

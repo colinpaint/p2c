@@ -187,65 +187,63 @@ function search(s: packed array [slow..shigh: integer] of char;
   end {search} ;
 {>>>}
 {<<<}
-procedure readstring(var f: text; { an input file }
-                     var s: packed array [slow..shigh: integer] of char);
+procedure readstring (var f: text; { an input file }
+                      var s: packed array [slow..shigh: integer] of char);
 
-  var
-    slen: integer {used to hold accumulated length of s, quicker access than
-                   s[0]} ;
+{<<<}
+var
+  slen: integer {used to hold accumulated length of s, quicker access than s[0]} ;
 
-
-  begin {readstring}
-    if slow <> 0 then abort('readstring')
-    else
+begin {readstring}
+  if slow <> 0 then abort('readstring')
+  else
+    begin
+    slen := 0;
+    while (not eoln(f)) and (slen < shigh) do
       begin
-      slen := 0;
-      while (not eoln(f)) and (slen < shigh) do
-        begin
-        slen := slen + 1;
-        read(f, s[slen]);
-        end;
-      s[0] := chr(slen);
-      readln(f);
+      slen := slen + 1;
+      read(f, s[slen]);
       end;
-  end {readstring} ;
+    s[0] := chr(slen);
+    readln(f);
+    end;
+end {readstring} ;
+{>>>}
 {>>>}
 
 {<<<}
-procedure substring(var t: packed array [tlow..thigh: integer] of char;
-                    s: packed array [slow..shigh: integer] of char;
-                    start, span: integer);
+procedure substring (var t: packed array [tlow..thigh: integer] of char;
+                     s: packed array [slow..shigh: integer] of char;
+                     start, span: integer);
+var
+  i, slen: integer;
 
-  var
-    i, slen: integer;
-
-
-  begin {substring}
-    if (tlow <> 0) or (slow <> 0) and (slow <> 1) then abort('substring')
+begin {substring}
+  if (tlow <> 0) or (slow <> 0) and (slow <> 1) then abort('substring')
+  else
+    begin
+    if slow = 0 then slen := ord(s[0])
+    else slen := shigh;
+    if span < 0 then
+      begin
+      span := - span;
+      start := start - span
+      end;
+    if start < 1 then
+      begin
+      span := span + start - 1;
+      start := 1
+      end;
+    if start + span > slen + 1 then span := slen - start + 1;
+    if thigh < span then abort('substring')
+    else if span <= 0 then t[0] := chr(0)
     else
       begin
-      if slow = 0 then slen := ord(s[0])
-      else slen := shigh;
-      if span < 0 then
-        begin
-        span := - span;
-        start := start - span
-        end;
-      if start < 1 then
-        begin
-        span := span + start - 1;
-        start := 1
-        end;
-      if start + span > slen + 1 then span := slen - start + 1;
-      if thigh < span then abort('substring')
-      else if span <= 0 then t[0] := chr(0)
-      else
-        begin
-        for i := 1 to span do t[i] := s[start + i - 1];
-        t[0] := chr(span);
-        end;
+      for i := 1 to span do t[i] := s[start + i - 1];
+      t[0] := chr(span);
       end;
-  end {substring} ;
+    end;
+end;
 {>>>}
 {<<<}
 procedure delstring(var t: packed array [tlow..thigh: integer] of char;

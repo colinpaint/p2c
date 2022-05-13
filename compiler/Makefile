@@ -6,12 +6,15 @@ CFLAGS = $(OPT) $(DEB)
 LFLAGS =
 
 OBJ = main.o scan.o analysis.o traverse.o code.o list.o common.o
-SRC = main.c scan.c analysis.c traverse.c code.c list.c common.c dumpToken.c dumpInter.c dumpPseudo.c
+SRC = main.c scan.c analysis.c traverse.c code.c list.c common.c ql.c dumpToken.c dumpInter.c dumpPseudo.c
 
 DEP = common.def token.def inter.def pseudo.def list.def main.def scan.def analysis.def traverse.def code.def
 
 p68: $(OBJ) $(DEP) $(SRC)
 	$(CC) $(LFLAGS) $(OBJ) ../p2clib.a -o p68
+
+ql: ql.o
+	$(CC) $(LFLAGS) ql.o ../p2clib.a -o ql
 
 pmt: $(PMT_OBJ)
 	$(CC) $(LFLAGS) pasmat.o ../p2clib.a -o pmt
