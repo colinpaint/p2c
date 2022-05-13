@@ -9014,7 +9014,7 @@ procedure writelastopnd;
                {>>>}
                {>>>}
 {>>>}
-{<<<  externals}
+{<<<  forwards}
 procedure fmtx; forward;
 procedure closerangex; forward;
 procedure setfilex; forward;
@@ -9161,8 +9161,7 @@ procedure forcebranch(k: keyindex; {operand to test}
 procedure loadstack(src: keyindex {operand to load} ); forward;
 function loadedfpreg(k: keyindex; {operand to check}
                      regneeded: boolean {must be in a register} ): boolean; forward;
-{>>>}
-{<<<  forwards}
+
 procedure defforindexx(sgn, { true if signed induction var }
                        lit: boolean { true if constant starter value } ); forward;
 procedure fortopx(signedbr, unsignedbr: insttype { proper exit branch } ); forward;
@@ -11154,7 +11153,7 @@ procedure finishloop;
   end {finishloop} ;
 {>>>}
 {>>>}
-{<<<  Reference count book-keeping}
+{<<<  reference count book-keeping}
 {<<<}
 procedure firstreference{k: keyindex (loop address counter) };
 
@@ -12630,7 +12629,7 @@ procedure forcebranch{k: keyindex; (operand to test)
   end {forcebranch} ;
 {>>>}
 {>>>}
-{<<<  Routines to access operands}
+{<<<  access operands}
 {<<<}
 procedure dolevelx;
 
@@ -14696,7 +14695,7 @@ begin
 end;
 {>>>}
 {>>>}
-{<<<  Pascal label and goto routines}
+{<<<  pascal label and goto routines}
 {<<<}
 procedure pascallabelx;
 
@@ -15504,7 +15503,7 @@ procedure callroutinex{s: boolean (signed function value) };
   end {callroutinex} ;
 {>>>}
 {>>>}
-{<<<  Case statement generation}
+{<<<  case statement generation}
 { The general scheme is to generate a case branch followed directly by
   as many caseelt's as needed.  Tying a caseelt to the code for that case
   is done by the labels generated
@@ -19630,7 +19629,7 @@ procedure genone;
 { Generate code for one pseudoop.  Called by genblk for small compilers,
   called by travrs directly for large compilers
 }
-begin {genone}
+begin 
   bftst_needed := false; { Used by forcebranch and unpack -- 68020 only }
   use_preferred_key := false; {code generator flag}
 
@@ -19909,7 +19908,6 @@ procedure genblk;
   keytable to a possibly higher key.  It also returns any temps which
   are now unused.
 }
-
 begin
   while pseudoSharedPtr^.pseudobuff.op <> blockexit do
     begin
@@ -19925,7 +19923,8 @@ procedure insert (m: nodeindex; n: nodeindex);
   if they exist, but it may move instructions if it needs to.  If it does
   move instructions, it will have to adjust the "savemark" fields of any
   temps allocated after instruction "m" and adjust labels which may point to them.
-  This has the side effect of saving the current value of "lastnode" in "lastsaved" and setting "lastnode" to m }
+  This has the side effect of saving the current value of "lastnode" in "lastsaved" and setting "lastnode" to m
+}
 
 var
   i: nodeindex; {used to scan noop nodes}
@@ -20056,6 +20055,7 @@ begin
 
     if p^.kind = p1^.kind then
       case p^.kind of
+        {<<<}
         oprndnode:
           if (p^.oprnd.m <> p1^.oprnd.m) or
              (p^.oprnd.reg <> p1^.oprnd.reg) or
@@ -20066,19 +20066,28 @@ begin
              (p^.oprnd.scale <> p1^.oprnd.scale) or
              (p^.oprnd.commonlong_reloc <> p1^.oprnd.commonlong_reloc) then
             equal := false;
+        {>>>}
+        {<<<}
         labelnode:
           if (getlabelnode(p^.labelno) <> getlabelnode(p1^.labelno)) or
              (p^.stackdepth <> p1^.stackdepth) or
              (findlabel(p^.labelno) = 0) then
             equal := false;
+        {>>>}
+        {<<<}
         relnode:
           if p^.distance <> p1^.distance then
             equal := false;
+        {>>>}
+        {<<<}
         otherwise
           equal := false;
+        {>>>}
       end {case}
+
     else {not the same node kind}
       equal := false;
+
     oprnds := oprnds - 1;
     end {while} ;
 
@@ -20786,7 +20795,6 @@ procedure fixcmps;
   forward in the code tree.  More might be added to make more use of
   autoincrement and autodecrement modes on addressing registers.
 }
-
 var
   i, j: nodeindex; {for scanning the list}
   m, n: nodeptr; {for getting at nodes}
@@ -22206,7 +22214,6 @@ procedure maintrailer;
 { Generate code for a main program trailer.  This generates debugging
   initialization code if needed.
 }
-
   begin
     mainsymbolindex := left;
     callsupport(libexit);
