@@ -3,6 +3,7 @@ dumpToken
 dumpInter
 dumpPseudo
 ql
+ro
 
 *.c
 *.log
