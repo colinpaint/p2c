@@ -2,13 +2,14 @@ Language          OREGON
 AnsiC             1             # 1=use all Ansi C features and definitions
 MainType          int           # Type name to put in front of "main";
 HeaderName        "../p2c.h"
+#
 LibraryFile       imports.txt   # Names of import-text files to search
-
+#
 ElimDeadCode      0             # 1 or default=eliminate unreachable code
                                 # 2=even eliminate "if (false)" statements
                                 # 0=leave unreachable code in place
 AnonymousUnions   1             # 1=use C++ anonymous unions for variant recs
-
+#
 # replacements
 ReplaceBefore     abort = abort1
 ReplaceBefore     unix = unix1
@@ -16,7 +17,7 @@ ReplaceBefore     fmod = fmod1
 ReplaceBefore     fabs = fabs1
 ReplaceBefore     remainder = remainder1
 ReplaceBefore     rename = rename1
-
+#
 # buffered files
 BufferedFile      tokenFile
 BufferedFile      interFile
@@ -25,7 +26,7 @@ BufferedFile      objFile
 BufferedFile      relFile
 BufferedFile      dumpFile
 BufferedFile      debugfile
-
+#
 # formatting
 MajorSpacing      1
 MinorSpacing      1
@@ -36,13 +37,13 @@ SpaceCommas       1             # space after commas: f(x, y)
 PhysTabSize       0             # Spacing of tab-character tabs; default=8.
 NoBanner          1             # 1=omit "From input file..." comment
 SlashSlash        1             # 1=use C++ // for all comments except #define
-
+#
 # defaults
 ExternWords       external      # Words analogous to "forward" for declaring
 ExternWords       extern        # procedures or functions external.
 ExternWords       fortran
 CExternWords      nonpascal     # Words like ExternWords but for which any
-
+#
 OneSpecialArg     printf        # List of functions like printf for which the
 TwoSpecialArgs    sprintf       # List of functions like fprintf for which the
 TwoSpecialArgs    fprintf       # first two arguments are "special".
