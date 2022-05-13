@@ -70,7 +70,6 @@ clean:
 	rm -f -v *.rel
 	rm -f -v *.local
 	rm -f -v *.tree
-	rm -f -v *.txt
 #
 	rm -f -v pmt
 	rm -f -v formatted.pas

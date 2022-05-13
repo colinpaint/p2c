@@ -5580,7 +5580,7 @@ int p_search (char* fname, char* ext, int need) {
     if (need)
       perror (infnbuf);
     if (logfile)
-      fprintf (logfile, "(Unable to open search file \"%s\")\n", infnbuf);
+      fprintf (logfile, "Unable to open search file %s\n", infnbuf);
     return 0;
     }
 

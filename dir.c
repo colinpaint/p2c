@@ -46,7 +46,7 @@ void setup_dir()
 //{{{
 void setup_module (char* name, int defn) {
 
-  if (!strcicmp(name, "SYSTEM"))
+  if (!strcicmp (name, "SYSTEM"))
     decl_builtins();
   }
 //}}}

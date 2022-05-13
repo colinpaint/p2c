@@ -2091,332 +2091,370 @@ int num;
 
 //}}}
 //{{{
-int record_is_union (tp)
-Type *tp;
-{
-    return (tp->kind == TK_RECORD &&
-      tp->fbase && tp->fbase->kind == MK_VARIANT);
-}
+int record_is_union (Type *tp) {
+
+  return (tp->kind == TK_RECORD &&
+    tp->fbase && tp->fbase->kind == MK_VARIANT);
+  }
 //}}}
 //{{{
-void outfieldlist (mp)
-Meaning *mp;
-{
-    Meaning *mp0;
-    int num, flags, only_union, empty, saveindent, saveindent2;
-    int isprivate = 0;
-    Type *virtdestr = NULL;
-    Strlist *fnames, *fn;
+void outfieldlist (Meaning *mp) {
 
-    if (!mp) {
-  output("int empty_struct;   /* Pascal record was empty */\n");
-  return;
+  Meaning *mp0;
+  int num, flags, only_union, empty, saveindent, saveindent2;
+  int isprivate = 0;
+  Type *virtdestr = NULL;
+  Strlist *fnames, *fn;
+
+  if (!mp) {
+    output("int empty_struct;   /* Pascal record was empty */\n");
+    return;
     }
-    only_union = (mp && mp->kind == MK_VARIANT);
-    fnames = NULL;
-    while (mp && mp->kind != MK_VARIANT) {
-  if (mp->isreturn && !isprivate) {
+  only_union = (mp && mp->kind == MK_VARIANT);
+  fnames = NULL;
+  while (mp && mp->kind != MK_VARIANT) {
+    if (mp->isreturn && !isprivate) {
       output("private:\n");
       isprivate = 1;
-  }
-  flushcomments(&mp->comments, CMT_PRE, -1);
-  output(storageclassname(varstorageclass(mp) & 0x10));
-  if (mp->kind == MK_FUNCTION && mp->bufferedfile)
+      }
+
+    flushcomments(&mp->comments, CMT_PRE, -1);
+    output(storageclassname(varstorageclass(mp) & 0x10));
+    if (mp->kind == MK_FUNCTION && mp->bufferedfile)
       output("virtual ");
-  if (mp->dtype)
+    if (mp->dtype)
       output(mp->dtype->name);
-  else
+    else
       outbasetype(mp->type, 0);
-  flags = 0;
-  if (mp->dtype)
+
+    flags = 0;
+    if (mp->dtype)
       output(" \005");
-  else
+    else
       flags = ODECL_SPACE|ODECL_SPMRG;
-  for (;;) {
+
+    for (;;) {
       if (mp->dtype)
-    output(mp->name);
+        output(mp->name);
       else
-    outdeclarator(mp->type, mp->name, flags);
+        outdeclarator(mp->type, mp->name, flags);
       flags = 0;
       if (mp->val.i && (mp->type != tp_abyte || mp->val.i != 8))
-    output(format_d(" : %d", mp->val.i));
+        output(format_d(" : %d", mp->val.i));
       if (isfiletype(mp->type, 0)) {
-    fn = strlist_append(&fnames, mp->name);
-    fn->value = (long)mp;
-      }
+        fn = strlist_append(&fnames, mp->name);
+        fn->value = (long)mp;
+        }
+
       mp->wasdeclared = 1;
       if (mp->kind == MK_FUNCTION && mp->val.s && mp->val.s[0] == 'D' &&
-    mp->bufferedfile)
-    virtdestr = mp->rectype;
+        mp->bufferedfile)
+
+      virtdestr = mp->rectype;
       if (!mp->cnext || mp->cnext->kind == MK_VARIANT ||
-    mp->dtype != mp->cnext->dtype ||
-    varstorageclass(mp) != varstorageclass(mp->cnext) ||
-    !mixable(mp, mp->cnext, 0, 0))
-    break;
-            mp = mp->cnext;
+          mp->dtype != mp->cnext->dtype ||
+          varstorageclass(mp) != varstorageclass(mp->cnext) ||
+          !mixable(mp, mp->cnext, 0, 0))
+        break;
+
+      mp = mp->cnext;
       if (spacecommas)
-    output(",\001 ");
+        output(",\001 ");
       else
-    output(",\001");
-        }
-        output(";");
-  outtrailcomment(mp->comments, -1, declcommentindent);
-  flushcomments(&mp->comments, -1, -1);
-        mp = mp->cnext;
-    }
-    declarefiles(fnames);
-    if (mp) {
-  saveindent = outindent;
-  empty = 1;
-        if (!only_union) {
-            output("union {\n");
-      moreindent(tabsize);
-      moreindent(structindent);
-        }
-        while (mp) {
-            mp0 = mp->ctx;
-            num = ord_value(mp->val);
-            while (mp && mp->ctx == mp0)
-                mp = mp->cnext;
-            if (mp0) {
-    empty = 0;
-                if (!mp0->cnext && mp0->kind == MK_FIELD) {
-        mp0->val.i = 0;   /* no need for bit fields in a union! */
-                    outfieldlist(mp0);
-                } else {
-                    if (mp0->kind == MK_VARIANT)
-                        output("union {\n");
-                    else
-                        output("struct {\n");
-        saveindent2 = outindent;
-        moreindent(tabsize);
-        moreindent(structindent);
-                    outfieldlist(mp0);
-        outindent = saveindent2;
-                    output("} ");
-                    output(format_s(name_VARIANT, variantfieldname(num)));
-                    output(";\n");
-                }
-    flushcomments(&mp0->comments, -1, -1);
-            }
-        }
-  if (empty)
-      output("int empty_union;   /* Pascal variant record was empty */\n");
-        if (!only_union) {
-            outindent = saveindent;
-            output("}");
-      if (!anonymousunions) {
-    output(" ");
-    output(format_s(name_UNION, ""));
+        output(",\001");
       }
-            output(";\n");
-        }
+
+    output(";");
+    outtrailcomment(mp->comments, -1, declcommentindent);
+    flushcomments(&mp->comments, -1, -1);
+    mp = mp->cnext;
     }
-    if (virtdestr) {
-  output(format_s("virtual ~%s() { }\n", virtdestr->meaning->name));
-    }
-}
-//}}}
-//{{{
-void declarebigfile (type)
-Type *type;
-{
-    output("FILE *f;\n");
-    if (!*declbufncname) {
-  output(declbufname);
-  output("(f,,");
-    } else {
-  output(declbufncname);
-  output("(f,");
-    }
-    out_type(type->basetype, 0);
-    output(");\n");
-    output(charname);
-    output(format_s(" name[%s];\n", *name_FNSIZE ? name_FNSIZE : "80"));
-}
-//}}}
-//{{{
-void outbasetype (type, flags)
-Type *type;
-int flags;
-{
-    Meaning *mp;
-    int saveindent;
-
-    type = findbasetype(type, flags | ODECL_DECL);
-    if (type->preserved && type->meaning->wasdeclared) {
-  output(type->meaning->name);
-  return;
-    }
-    switch (type->kind) {
-
-        case TK_INTEGER:
-            if (type == tp_uint) {
-                output("unsigned");
-            } else if (type == tp_sint) {
-                if (useAnyptrMacros == 1)
-                    output("Signed int");
-                else if (hassignedchar)
-                    output("signed int");
-                else
-                    output("int");   /* will sign-extend by hand */
-            } else if (type == tp_unsigned) {
-                output("unsigned long");
-            } else if (type != tp_int)
-                output(integername);
-            else
-                output("int");
-            break;
-
-        case TK_SUBR:
-            if (type == tp_special_anyptr) {
-                output("Anyptr");
-            } else if (type == tp_abyte) {
-                output("char");
-            } else if (type == tp_ubyte) {
-                output(ucharname);
-            } else if (type == tp_sbyte) {
-                output(scharname);
-                if (signedchars != 1 && !hassignedchar)
-                    note("'signed char' may not be valid in all compilers [102]");
-            } else {
-                if (type == tp_ushort)
-                    output("unsigned ");
-                output("short");
-            }
-            break;
-
-        case TK_CHAR:
-            if (type == tp_uchar) {
-                output(ucharname);
-            } else if (type == tp_schar) {
-                output(scharname);
-                if (signedchars != 1 && !hassignedchar)
-                    note("'signed char' may not be valid in all compilers [102]");
-      } else
-    output(charname);
-            break;
-
-        case TK_BOOLEAN:
-            output((*name_BOOLEAN) ? name_BOOLEAN : ucharname);
-            break;
-
-        case TK_REAL:
-      if (type == tp_longreal)
-    output("double");
-      else
-    output("float");
-            break;
-
-        case TK_VOID:
-            if (ansiC == 0)
-                output("int");
-            else if (useAnyptrMacros == 1)
-                output("Void");
-            else
-                output("void");
-            break;
-
-        case TK_PROCPTR:
-      output(name_PROCEDURE);
-      break;
-
-        case TK_FILE:
-            output("FILE");
-            break;
-
-  case TK_SPECIAL:
-      if (type == tp_jmp_buf)
-    output("jmp_buf");
-      break;
-
-        default:
-      if (type->kind == TK_POINTER && type->smin) {
-    note("Forward pointer reference assumes struct type [323]");
-    output("struct ");
-    output(format_s(name_STRUCT, type->smin->val.s));
-      } else if (type->meaning && type->meaning->kind == MK_TYPE &&
-                type->meaning->wasdeclared) {
-                output(type->meaning->name);
-            } else {
-                switch (type->kind) {
-
-                    case TK_ENUM:
-                        output("enum ");
-      if (cplus > 0 && type->meaning)
-          output(format_s("%s ", type->meaning->name));
-                        output("{\n");
-      saveindent = outindent;
+  declarefiles(fnames);
+  if (mp) {
+    saveindent = outindent;
+    empty = 1;
+    if (!only_union) {
+      output("union {\n");
       moreindent(tabsize);
       moreindent(structindent);
-                        mp = type->fbase;
-                        while (mp) {
-                            output(mp->name);
-                            mp = mp->xnext;
-                            if (mp)
-        if (spacecommas)
-            output(",\001 ");
-        else
-            output(",\001");
-                        }
-                        outindent = saveindent;
-                        output("\n}");
-                        break;
-
-                    case TK_RECORD:
-                    case TK_BIGFILE:
-      if (type->issigned && type->kind == TK_RECORD)
-          output("class ");
-      else if (record_is_union(type))
-                            output("union ");
-                        else
-                            output("struct ");
-                        if (type->meaning)
-                            output(format_s(name_STRUCT, type->meaning->name));
-      else if (type->smin)
-          output(type->smin->val.s);
-      if (!type->structdefd ||
-           (!type->meaning && !type->smin)) {
-          if (type->meaning || type->smin) {
-        if (type->issigned && type->basetype) {
-            output(" : public ");
-            output(type->basetype->meaning->name);
-        }
-        output(" ");
-          } else if (type->structdefd) {
-        note(format_s("Consider using TagStructs or {%s} for this [328]",
-                tagcomment));
+      }
+    while (mp) {
+      mp0 = mp->ctx;
+      num = ord_value(mp->val);
+      while (mp && mp->ctx == mp0)
+        mp = mp->cnext;
+      if (mp0) {
+        empty = 0;
+        if (!mp0->cnext && mp0->kind == MK_FIELD) {
+          mp0->val.i = 0;   /* no need for bit fields in a union! */
+          outfieldlist(mp0);
           }
-          type->structdefd = 1;
-                            output("{\n");
-          if (type->issigned && type->kind == TK_RECORD &&
-        type->fbase && !type->fbase->isreturn)
-        output("public:\n");
-          saveindent = outindent;
+        else {
+          if (mp0->kind == MK_VARIANT)
+            output("union {\n");
+          else
+            output("struct {\n");
+          saveindent2 = outindent;
           moreindent(tabsize);
           moreindent(structindent);
-          if (type->kind == TK_BIGFILE) {
-        declarebigfile(type);
-          } else {
-        outfieldlist(type->fbase);
-        if (type->issigned && !turboobjects)
-            output(format_s("virtual ~%s() { }\n",
-                format_s(name_STRUCT,
-                   type->meaning->name)));
+          outfieldlist(mp0);
+          outindent = saveindent2;
+          output("} ");
+          output(format_s(name_VARIANT, variantfieldname(num)));
+          output(";\n");
           }
-                            outindent = saveindent;
-                            output("}");
-                        }
-      break;
-
-        default:
-      break;
-
-                }
-            }
-            break;
+        flushcomments(&mp0->comments, -1, -1);
+        }
+      }
+    if (empty)
+      output("int empty_union;   /* Pascal variant record was empty */\n");
+    if (!only_union) {
+      outindent = saveindent;
+      output("}");
+      if (!anonymousunions) {
+        output(" ");
+        output(format_s(name_UNION, ""));
+        }
+      output(";\n");
+      }
     }
-}
+
+  if (virtdestr) {
+    output(format_s("virtual ~%s() { }\n", virtdestr->meaning->name));
+    }
+  }
+//}}}
+//{{{
+void declarebigfile (Type *type) {
+
+  output ("FILE *f;\n");
+  if (!*declbufncname) {
+    output (declbufname);
+    output ("(f,,");
+    }
+  else {
+    output (declbufncname);
+    output ("(f,");
+    }
+
+  out_type (type->basetype, 0);
+  output (");\n");
+  output (charname);
+  output (format_s (" name[%s];\n", *name_FNSIZE ? name_FNSIZE : "80"));
+  }
+//}}}
+//{{{
+void outbasetype (Type *type, int flags) {
+
+  Meaning *mp;
+  int saveindent;
+
+  type = findbasetype(type, flags | ODECL_DECL);
+  if (type->preserved && type->meaning->wasdeclared) {
+    output(type->meaning->name);
+    return;
+    }
+
+  switch (type->kind) {
+    //{{{
+    case TK_INTEGER:
+      if (type == tp_uint) {
+        output ("unsigned");
+        }
+      else if (type == tp_sint) {
+        if (useAnyptrMacros == 1)
+          output ("Signed int");
+        else if (hassignedchar)
+          output ("signed int");
+        else
+          output ("int");   /* will sign-extend by hand */
+        }
+      else if (type == tp_unsigned) {
+        output ("unsigned long");
+        }
+      else if (type != tp_int)
+        output (integername);
+      else
+        output ("int");
+      break;
+    //}}}
+    //{{{
+    case TK_SUBR:
+      if (type == tp_special_anyptr) {
+        output("Anyptr");
+        }
+      else if (type == tp_abyte) {
+        output("char");
+        }
+      else if (type == tp_ubyte) {
+        output(ucharname);
+        }
+      else if (type == tp_sbyte) {
+        output(scharname);
+        if (signedchars != 1 && !hassignedchar)
+          note("'signed char' may not be valid in all compilers [102]");
+        }
+      else {
+        if (type == tp_ushort)
+          output("unsigned ");
+        output("short");
+        }
+      break;
+    //}}}
+    //{{{
+    case TK_CHAR:
+      if (type == tp_uchar) {
+        output(ucharname);
+        }
+      else if (type == tp_schar) {
+        output(scharname);
+        if (signedchars != 1 && !hassignedchar)
+          note("'signed char' may not be valid in all compilers [102]");
+        }
+      else
+        output(charname);
+      break;
+    //}}}
+    //{{{
+    case TK_BOOLEAN:
+      output((*name_BOOLEAN) ? name_BOOLEAN : ucharname);
+      break;
+    //}}}
+    //{{{
+    case TK_REAL:
+      if (type == tp_longreal)
+        output("double");
+      else
+        output("float");
+      break;
+    //}}}
+    //{{{
+
+    case TK_VOID:
+      if (ansiC == 0)
+        output("int");
+      else if (useAnyptrMacros == 1)
+        output("Void");
+      else
+        output("void");
+      break;
+    //}}}
+    //{{{
+    case TK_PROCPTR:
+      output(name_PROCEDURE);
+      break;
+    //}}}
+    //{{{
+    case TK_FILE:
+      output("FILE");
+      break;
+    //}}}
+    //{{{
+    case TK_SPECIAL:
+      if (type == tp_jmp_buf)
+        output("jmp_buf");
+        break;
+    //}}}
+    //{{{
+    default:
+      if (type->kind == TK_POINTER && type->smin) {
+        note("Forward pointer reference assumes struct type [323]");
+        output("struct ");
+        output(format_s(name_STRUCT, type->smin->val.s));
+        }
+
+      else if (type->meaning && type->meaning->kind == MK_TYPE &&
+        type->meaning->wasdeclared) {
+        output(type->meaning->name);
+        }
+
+      else {
+        switch (type->kind) {
+          //{{{
+          case TK_ENUM:
+            output("enum ");
+            if (cplus > 0 && type->meaning)
+              output(format_s("%s ", type->meaning->name));
+
+            output ("{\n");
+            saveindent = outindent;
+            moreindent (tabsize);
+            moreindent (structindent);
+            mp = type->fbase;
+            while (mp) {
+              output(mp->name);
+
+              mp = mp->xnext;
+              if (mp)
+                if (spacecommas)
+                  output(",\001 ");
+                else
+                  output(",\001");
+              }
+            outindent = saveindent;
+            output("\n}");
+            break;
+          //}}}
+          case TK_RECORD:
+          //{{{
+          case TK_BIGFILE:
+            if (type->issigned && type->kind == TK_RECORD)
+              output ("class ");
+            else if (record_is_union(type))
+              output ("union ");
+            else
+              output ("struct ");
+
+            if (type->meaning)
+              output (format_s(name_STRUCT, type->meaning->name));
+            else if (type->smin)
+              output (type->smin->val.s);
+
+            if (!type->structdefd || (!type->meaning && !type->smin)) {
+              if (type->meaning || type->smin) {
+                if (type->issigned && type->basetype) {
+                  output (" : public ");
+                  output (type->basetype->meaning->name);
+                  }
+                output (" ");
+                }
+              else if (type->structdefd) {
+                note (format_s ("Consider using TagStructs or {%s} for this [328]", tagcomment));
+                }
+
+              type->structdefd = 1;
+              output ("{\n");
+              if (type->issigned && type->kind == TK_RECORD && type->fbase && !type->fbase->isreturn)
+                output ("public:\n");
+
+              saveindent = outindent;
+              moreindent (tabsize);
+              moreindent (structindent);
+              if (type->kind == TK_BIGFILE) {
+                declarebigfile (type);
+                }
+              else {
+                outfieldlist (type->fbase);
+                if (type->issigned && !turboobjects)
+                  output (format_s ("virtual ~%s() { }\n", format_s(name_STRUCT, type->meaning->name)));
+                }
+
+              outindent = saveindent;
+              output("}");
+              }
+
+            break;
+          //}}}
+          //{{{
+          default:
+            break;
+          //}}}
+          }
+        }
+     break;
+    //}}}
+    }
+  }
 //}}}
 //{{{
 void out_type (type, flags)

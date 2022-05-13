@@ -1,12 +1,7 @@
 Language          OREGON
 HeaderName        "p2c.h"
-LibraryFile       system.imp    # Names of import-text files to search
+LibraryFile       imports.txt   # Names of import-text files to search
 FuncMacro                       # Format:  FuncMacro foo(a,b,c) = C-expression
-
-ReplaceBefore     abort = abort1
-ReplaceBefore     unix = unix1
-ReplaceBefore     fmod = fmod1
-ReplaceBefore     fabs = fabs1
 
 AnsiC             1             # 1=use all Ansi C features and definitions
 MainType          int           # Type name to put in front of "main";

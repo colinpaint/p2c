@@ -555,6 +555,7 @@ Static void postrc() {
   if (nestedcomments < 0)
     nestedcomments = (which_lang == LANG_TURBO || which_lang == LANG_MPW ||
                       which_lang == LANG_UCSD || which_lang == LANG_BERK) ? 2 : 0;
+
   if (importall < 0)
     importall = (which_lang == LANG_HP) ? 1 : 0;
   if (turboobjects < 0)
@@ -744,7 +745,7 @@ int main (int argc, char** argv) {
   if (i < argc)
     strcpy (infname, argv[i]);
 
-  readrc ("p2crc", 1);
+  readrc ("options.txt", 1);
 
   codefname = codefnbuf;
   *codefname = 0;
@@ -841,7 +842,7 @@ int main (int argc, char** argv) {
     exit_failure();
 
   if (!quietmode)
-    printf ("using resource p2crc\n");
+    printf ("using options.txt\n");
 
   if (strcmp (codefname, "-")) {
     //{{{  open codefname file for write
