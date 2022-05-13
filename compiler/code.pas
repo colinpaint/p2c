@@ -64,7 +64,6 @@
 {>>>}
 const
   traceNode = false;
-
 {<<<}
 const
   nodesperblock = codemaxnodeinblock; {nodes per physical file block - 1}
@@ -19629,7 +19628,7 @@ procedure genone;
 { Generate code for one pseudoop.  Called by genblk for small compilers,
   called by travrs directly for large compilers
 }
-begin 
+begin
   bftst_needed := false; { Used by forcebranch and unpack -- 68020 only }
   use_preferred_key := false; {code generator flag}
 

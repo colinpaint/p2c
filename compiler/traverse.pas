@@ -102,7 +102,6 @@ const { convert back to commandLine quals }
   dumpDetails = false;
   traceGetIntFile = false;
   traceBlock = true;
-
 {<<<}
 const
   pts = proctablespan; {shorter local name}
@@ -543,16 +542,118 @@ var
 
 {<<<  utils}
 {<<<}
-function newlabel: labelrange;
-{ Create a new pseudo-code label.  Labels created in travrs are assigned
-  from the low numbers, while those created later in codegen are
-  assigned from the high end (maxint) down.  This helps avoid conflict.
-  The label is not defined by this routine, it simply generates unique
-  labels for later definition.
+procedure comparereal (left, right: real; var result: boolean; op: operator);
+ { Fold the compare of a pair of real operands. }
+
+
+  begin {comparereal}
+   if realfolding then
+    begin
+    case op of
+      lsslit: result := left < right;
+      leqlit: result := left <= right;
+      gtrlit: result := left > right;
+      geqlit: result := left >= right;
+      eqlit: result := left = right;
+      neqlit: result := left <> right;
+      end;
+   end
+  end {comparereal} ;
+{>>>}
+{<<<}
+procedure uscompareint (left, right: unsignedint; var result: boolean; op: operator);
+ { Fold the compare of a pair of unsigned integer operands. }
+
+
+  begin
+    { NOTE: it seems at first glance that we should take into
+    account whether the other operand is signed and compensate
+    However if this were done at runtime the code generator
+    would generate an unsigned compare which would give different
+    results than what we would do here. For consistency give the
+    runtime result here. E.G.  -1 < x::0..maxusint-1 but a
+    runtime this would be false since -1 = maxusint and we do
+    a simple unsigned compare.
+    }
+    case op of
+      lsslit: result := left < right;
+      leqlit: result := left <= right;
+      gtrlit: result := left > right;
+      geqlit: result := left >= right;
+      eqlit: result := left = right;
+      neqlit: result := left <> right;
+      end;
+  end; {uscompareint}
+{>>>}
+{<<<}
+procedure compareint (left, right: integer; var result: boolean; op: operator);
+{ Fold the compare of a pair of unsigned integer operands. }
+
+  begin
+    case op of
+      lsslit: result := left < right;
+      leqlit: result := left <= right;
+      gtrlit: result := left > right;
+      geqlit: result := left >= right;
+      eqlit: result := left = right;
+      neqlit: result := left <> right;
+      end;
+  end; {compareint}
+{>>>}
+
+{<<<}
+procedure clearkeys;
+{ count of zero, and all keys greater than it are reusable.  This allows
+  the code generator to keep track of useful keys with a simple pointer
+  to the key for the last pseudocode read.
 }
+var
+  done: boolean; {true when no more keys reusable}
+  ptr: nodeptr; {used for access to key nodes}
+
 begin
-  lasttravrslabel := lasttravrslabel + 1;
-  newlabel := lasttravrslabel
+  if oktoclear then
+    with context[contextsp] do
+      begin
+      done := high < low;
+      while not done do
+        begin
+        ptr := ref(bignodetable[keytable[high]]);
+        if (keytable[high] = 0) or (ptr^.refcount = 0) then
+          high := high - 1
+        else
+          done := true;
+        done := done or (high < low);
+        end;
+      end;
+end;
+{>>>}
+{<<<}
+procedure increfcount (n: nodeindex; deadcode: boolean; inc: shortint);
+{ Change the effective reference count for a node by "inc".
+  This may have to chain down a sequence of nodes to get the actual most recent node which should be changed
+}
+var
+  p: nodeptr;
+
+begin
+  if not (deadcode and (removedeadcode in sharedPtr^.genset)) and
+     (n <> 0) {or (inc < 0)} then
+    begin
+    p := ref(bignodetable[n]);
+    if p^.action = visit then
+      if (p^.op < intop) and (p^.op > newunsvarop) then
+        while p^.slink <> 0 do
+          begin
+          n := p^.slink;
+          p := ref(bignodetable[n]);
+          end;
+
+    p := ref(bignodetable[n]);
+    p^.refcount := p^.refcount + inc;
+    if p^.action = visit then
+      if p^.op = commaop then increfcount(p^.oprnds[2], deadcode, inc);
+    end;
 end;
 {>>>}
 {<<<}
@@ -575,137 +676,8 @@ begin
       constflag := false;
 end;
 {>>>}
-{<<<}
-procedure estimateloop (stmt: nodeindex; var fixed: boolean; var overflow: boolean; var runcount: unsignedint);
-{ Figure out if possible how many iterations a for loop will execute.
-  Note : assumes that unsigned arithmetic works properly.
-}
-var
-  ptr: nodeptr; {used to access index node}
-  initialvalue, finalvalue: integer; {initial and final values}
-  uinitialvalue, ufinalvalue: unsignedint; {initial and final values unsigned}
-  currentstmt: node; { copy of the stmt node }
-  constfinal: boolean; { true if to/downto is constant }
-
-begin
-  fixed := false;
-  overflow := false;
-  runcount := 0; {temp }
-  ptr := ref(bignodetable[stmt]);
-  currentstmt := ptr^;
-  with currentstmt do
-    begin
-
-    ptr := ref(bignodetable[expr1]);
-    if ptr^.op in [forupchkop, fordnchkop, forerrchkop] then
-      checkconst(ptr^.oprnds[1], constfinal, finalvalue)
-    else checkconst(expr1, constfinal, finalvalue);
-
-    ptr := ref(bignodetable[expr2]);
-    if constfinal and ((ptr^.op = defforlitindexop) or
-       (ptr^.op = defunsforlitindexop)) then
-      begin
-      fixed := true;
-      initialvalue := ptr^.oprnds[3];
-      uinitialvalue := initialvalue;
-      ufinalvalue := finalvalue;
-
-      if stmtkind = foruphdr then
-        begin
-        if ptr^.op = defunsforlitindexop then
-          begin
-          if (uinitialvalue = 0) and (ufinalvalue = maxusint) then
-            begin
-            overflow := true;
-            runcount := maxusint; { at least! }
-            end
-          else
-            begin
-            if ufinalvalue >= uinitialvalue then
-              runcount := ufinalvalue - uinitialvalue + 1
-            else runcount := 0;
-            end;
-          end
-        else
-          begin
-          { assumes two's complement representation }
-          if (initialvalue < - maxint) and (finalvalue = maxint) then
-            begin
-            overflow := true;
-            runcount := maxusint; { at least! }
-            end
-          else
-            begin
-            if initialvalue <= finalvalue then
-              begin
-              if initialvalue >= 0 then
-                runcount := finalvalue - initialvalue + 1
-              else
-                begin
-                if finalvalue < 0 then
-                  runcount := finalvalue - initialvalue + 1
-                else
-                  begin
-                  runcount := - initialvalue;
-                  runcount := runcount + finalvalue + 1;
-                  end;
-                end;
-              end
-            else runcount := 0;
-            end;
-          end;
-        end
-      else
-        begin
-        { down loop }
-        if ptr^.op = defunsforlitindexop then
-          begin
-          if (uinitialvalue = maxusint) and (ufinalvalue = 0) then
-            begin
-            overflow := true;
-            runcount := maxusint; { at least! }
-            end
-          else
-            begin
-            if ufinalvalue <= uinitialvalue then
-              runcount := uinitialvalue - ufinalvalue + 1
-            else runcount := 0;
-            end;
-          end
-        else
-          begin
-          { assumes two's complement representation }
-          if (initialvalue = maxint) and (finalvalue < - maxint) then
-            begin
-            overflow := true;
-            runcount := maxusint; { at least! }
-            end
-          else
-            begin
-            if initialvalue >= finalvalue then
-              begin
-              if finalvalue >= 0 then
-                runcount := initialvalue - finalvalue + 1
-              else
-                begin
-                if initialvalue < 0 then
-                  runcount := initialvalue - finalvalue + 1
-                else
-                  begin
-                  runcount := - finalvalue;
-                  runcount := runcount + initialvalue + 1;
-                  end;
-                end;
-              end
-            else runcount := 0;
-            end;
-          end;
-        end; { down loop }
-      end;
-    end; {with}
-end;
 {>>>}
-
+{<<<  pseudoFile utils}
 {<<<}
 procedure putpseudofile;
 { Do the equivalent of a "put" on the pseudofile.
@@ -725,6 +697,7 @@ end;
 {<<<}
 procedure genpseudo (o: pseudoop; l: addressrange; n: keyindex;
                      r: refcountrange; c: refcountrange; i, j, k: integer);
+{<<<}
 { Generate a pseudocode output to the pseudofile.  Logically,
   this file consists of fixed length records, with unused fields
   filled with zeros.  The fields have the following use.
@@ -738,6 +711,7 @@ procedure genpseudo (o: pseudoop; l: addressrange; n: keyindex;
   operator, and a considerable reduction in I/O may be achieved by
   writing only the fields which are used.
 }
+{>>>}
   {<<<}
   procedure putint (i: integer);
   {<<<}
@@ -859,98 +833,21 @@ begin
     end;
 end;
 {>>>}
-
+{>>>}
+{<<<  label utils}
 {<<<}
-procedure increfcount (n: nodeindex; deadcode: boolean; inc: shortint);
-{ Change the effective reference count for a node by "inc".
-  This may have to chain down a sequence of nodes to get the actual most recent node which should be changed
+function newlabel: labelrange;
+{ Create a new pseudo-code label.  Labels created in travrs are assigned
+  from the low numbers, while those created later in codegen are
+  assigned from the high end (maxint) down.  This helps avoid conflict.
+  The label is not defined by this routine, it simply generates unique
+  labels for later definition.
 }
-var
-  p: nodeptr;
-
 begin
-  if not (deadcode and (removedeadcode in sharedPtr^.genset)) and
-     (n <> 0) {or (inc < 0)} then
-    begin
-    p := ref(bignodetable[n]);
-    if p^.action = visit then
-      if (p^.op < intop) and (p^.op > newunsvarop) then
-        while p^.slink <> 0 do
-          begin
-          n := p^.slink;
-          p := ref(bignodetable[n]);
-          end;
-    p := ref(bignodetable[n]);
-    p^.refcount := p^.refcount + inc;
-    if p^.action = visit then
-      if p^.op = commaop then increfcount(p^.oprnds[2], deadcode, inc);
-    end;
+  lasttravrslabel := lasttravrslabel + 1;
+  newlabel := lasttravrslabel
 end;
 {>>>}
-{>>>}
-{<<<  inter utils}
-{<<<}
-procedure comparereal (left, right: real; var result: boolean; op: operator);
- { Fold the compare of a pair of real operands. }
-
-
-  begin {comparereal}
-   if realfolding then
-    begin
-    case op of
-      lsslit: result := left < right;
-      leqlit: result := left <= right;
-      gtrlit: result := left > right;
-      geqlit: result := left >= right;
-      eqlit: result := left = right;
-      neqlit: result := left <> right;
-      end;
-   end
-  end {comparereal} ;
-{>>>}
-{<<<}
-procedure uscompareint (left, right: unsignedint; var result: boolean; op: operator);
- { Fold the compare of a pair of unsigned integer operands. }
-
-
-  begin
-    { NOTE: it seems at first glance that we should take into
-    account whether the other operand is signed and compensate
-    However if this were done at runtime the code generator
-    would generate an unsigned compare which would give different
-    results than what we would do here. For consistency give the
-    runtime result here. E.G.  -1 < x::0..maxusint-1 but a
-    runtime this would be false since -1 = maxusint and we do
-    a simple unsigned compare.
-    }
-    case op of
-      lsslit: result := left < right;
-      leqlit: result := left <= right;
-      gtrlit: result := left > right;
-      geqlit: result := left >= right;
-      eqlit: result := left = right;
-      neqlit: result := left <> right;
-      end;
-  end; {uscompareint}
-{>>>}
-{<<<}
-procedure compareint (left, right: integer; var result: boolean; op: operator);
-{ Fold the compare of a pair of unsigned integer operands. }
-
-  begin
-    case op of
-      lsslit: result := left < right;
-      leqlit: result := left <= right;
-      gtrlit: result := left > right;
-      geqlit: result := left >= right;
-      eqlit: result := left = right;
-      neqlit: result := left <> right;
-      end;
-  end; {compareint}
-{>>>}
-{>>>}
-
-{<<<  walk utils}
 {<<<}
 function getlabel (blk: basicblockptr): labelrange;
 { return the blocklabel of basic block pointed to by blk.
@@ -995,32 +892,6 @@ begin
       if blocklabel = 0 then
         blocklabel := newlabel;
       exitlabel := blocklabel;
-      end;
-end;
-{>>>}
-
-{<<<}
-procedure clearkeys;
-{ count of zero, and all keys greater than it are reusable.  This allows
-  the code generator to keep track of useful keys with a simple pointer
-  to the key for the last pseudocode read.
-}
-var
-  done: boolean; {true when no more keys reusable}
-  ptr: nodeptr; {used for access to key nodes}
-
-begin
-  if oktoclear then
-    with context[contextsp] do
-      begin
-      done := high < low;
-      while not done do
-        begin
-        ptr := ref(bignodetable[keytable[high]]);
-        if (keytable[high] = 0) or (ptr^.refcount = 0) then high := high - 1
-        else done := true;
-        done := done or (high < low);
-        end;
       end;
 end;
 {>>>}
@@ -1110,7 +981,8 @@ begin
   clearkeys;
 end;
 {>>>}
-
+{>>>}
+{<<<  walk utils}
 {<<<}
 function newkey : keyindex;
 { Return the next highest key.  If none available, give panic error and stop compilation }
@@ -1208,7 +1080,7 @@ begin
             if (oprndptr^.op in [originop, call, callparam, unscall, unscallparam]) or
                (oprndptr^.form in [sets, strings]) then
               begin
-              walknode(ptr^.oprnds[j], k, 0, false);
+              walknode (ptr^.oprnds[j], k, 0, false);
               ptr := ref(bignodetable[newroot]);
               end;
             end;
@@ -1447,19 +1319,18 @@ var
     l, r: integer; {left and right operand nodes, or literals}
 
     {<<<}
-    function cost(p: nodeindex {node to check} ): shortint;
+    function cost (p: nodeindex {node to check} ): shortint;
     { Returns the cost of the operation represented by node p.  This is
       the number of temporary locations needed to compute the operation
       and all of its sub-trees.
     }
-      var
-        ptr: nodeptr; {used to access node}
+    var
+      ptr: nodeptr; {used to access node}
 
-
-      begin
-        ptr := ref(bignodetable[p]);
-        cost := ptr^.cost;
-      end {cost} ;
+    begin
+      ptr := ref(bignodetable[p]);
+      cost := ptr^.cost;
+    end;
     {>>>}
     {<<<}
     procedure walkboth;
@@ -1509,7 +1380,7 @@ var
       code for expressions.  They are called from the large case statement which makes up the majority of "visitnode" }
     {>>>}
     {<<<}
-    procedure indxnode(p: pseudoop {operator for root node} );
+    procedure indxnode (p: pseudoop {operator for root node} );
     { Walk and generate code for "indx" or "pindx" operations.
       These operations compute the address of a variable, and this routine
       checks to see if the variable should be assigned to a register.
@@ -1518,62 +1389,57 @@ var
       checked against the list from analys and assigned to the temp register
       if it matches.
     }
+    var
+      lp: nodeptr; {used to access left operand}
+      possibletemp: boolean; {true if local var and possible temp loc}
+      offset: addressrange; {variable offset if possibletemp}
+      j: 0..regtablelimit; { var for temp search }
+      third: integer; {third operand, zero or temp number}
+      paramflag: boolean; {true if indexing parameter level}
 
-      var
-        lp: nodeptr; {used to access left operand}
-        possibletemp: boolean; {true if local var and possible temp loc}
-        offset: addressrange; {variable offset if possibletemp}
-        j: 0..regtablelimit; { var for temp search }
-        third: integer; {third operand, zero or temp number}
-        paramflag: boolean; {true if indexing parameter level}
+    begin
+      lp := ref(bignodetable[l]);
+      third := 0;
+      offset := rootp^.oprnds[2];
+      paramflag := l = localparamnode;
+      with lp^ do
+        if action = revisit then
+          possibletemp := (p = indx) and (op = levop) and (oprnds[1] = level)
+        else
+          possibletemp := false;
 
+      walknode (l, lkey, 0, true);
 
-      begin
-        lp := ref(bignodetable[l]);
-        third := 0;
-        offset := rootp^.oprnds[2];
-        paramflag := l = localparamnode;
-        with lp^ do
-          if action = revisit then
-            possibletemp := (p = indx) and (op = levop) and (oprnds[1] = level)
-          else possibletemp := false;
-
-        walknode(l, lkey, 0, true);
-
-        if possibletemp then
+      if possibletemp then
+        begin
+        { This hashes the var's offset, really should be a function call.
+          However it would be called in several high bandwidth places and
+          places an unneeded speed penalty on this phase.
+          This code is replicated in procedures: doreference, killasreg and dodefine in travrs }
+        j := (offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
+        while ((regvars[j].offset <> offset) or
+              (regvars[j].parameter <> paramflag)) and
+              (regvars[j].worth >= 0) do
+          j := (j + 1) mod (regtablelimit + 1);
+        if regvars[j].regid <> 0 then
           begin
-            { This hashes the var's offset, really should be a function call.
-              However it would be called in several high bandwidth places and
-              places an unneeded speed penalty on this phase.
-              This code is replicated in procedures: doreference, killasreg
-              and dodefine in travrs.
-            }
-          j := (offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
-          while ((regvars[j].offset <> offset) or
-                (regvars[j].parameter <> paramflag)) and
-                (regvars[j].worth >= 0) do
-            j := (j + 1) mod (regtablelimit + 1);
-          if regvars[j].regid <> 0 then
-            begin
-            { assigned to a register }
-            third := regvars[j].regid;
-            case regvars[j].regkind of
-              genreg, bytereg: p := regtemp;
-              realreg: p := realtemp;
-              ptrreg: p := ptrtemp;
-              end;
+          { assigned to a register }
+          third := regvars[j].regid;
+          case regvars[j].regkind of
+            genreg, bytereg: p := regtemp;
+            realreg: p := realtemp;
+            ptrreg: p := ptrtemp;
             end;
           end;
+        end;
 
-        mapkey;
-        genpseudo(p, len, key, refcount, copycount, lkey, offset, third);
-
-      end {indxnode} ;
+      mapkey;
+      genpseudo (p, len, key, refcount, copycount, lkey, offset, third);
+    end;
     {>>>}
     {<<<}
     procedure vindxnode;
     { Walk and generate code for "vindx" operations.
-
       This is very similar to "indx" except that it is used for local
       variables in C functions.  Such functions allow variables local to
       inner blocks, so the blocksize is unknown until function exit.
@@ -1581,7 +1447,6 @@ var
       Also, any variable references with 'vindx" is a register candidate.
       Note that there is an arbitrary "offset" used only to identify the variable,
       and a real offset which is the location in the block.
-
       These operations compute the address of a variable, and this routine
       checks to see if the variable should be assigned to a register.
       Analys made an estimate of the best local vars to assign to registers,
@@ -1589,67 +1454,64 @@ var
       checked against the list from analys and assigned to the temp register
       if it matches.
     }
-      var
-        lp: nodeptr; {used to access left operand}
-        offset: addressrange; {actual variable offset}
-        trav_offset: addressrange; {traverse offset for temp check}
-        j: 0..regtablelimit; { var for temp search }
-        third: integer; {third operand, zero or temp number}
-        p: pseudoop; {the operation to generate}
+    var
+      lp: nodeptr; {used to access left operand}
+      offset: addressrange; {actual variable offset}
+      trav_offset: addressrange; {traverse offset for temp check}
+      j: 0..regtablelimit; { var for temp search }
+      third: integer; {third operand, zero or temp number}
+      p: pseudoop; {the operation to generate}
 
+    begin
+      lp := ref(bignodetable[l]);
+      third := 0;
+      offset := final_block_size - rootp^.oprnds[2];
+      trav_offset := rootp^.oprnds[3];
+      p := indx;
 
-      begin
-        lp := ref(bignodetable[l]);
-        third := 0;
-        offset := final_block_size - rootp^.oprnds[2];
-        trav_offset := rootp^.oprnds[3];
-        p := indx;
+      walknode(l, lkey, 0, true);
 
-        walknode(l, lkey, 0, true);
-
-        if trav_offset <> 0 then
+      if trav_offset <> 0 then
+        begin
+        { This hashes the var's offset, really should be a function call.
+          However it would be called in several high bandwidth places and
+          places an unneeded speed penalty on this phase.
+          This code is replicated in procedures: doreference, killasreg
+          and dodefine in travrs.
+        }
+        j := (trav_offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
+        while (regvars[j].offset <> trav_offset) and
+              (regvars[j].worth >= 0) do
+          j := (j + 1) mod (regtablelimit + 1);
+        if regvars[j].regid <> 0 then
           begin
-          { This hashes the var's offset, really should be a function call.
-            However it would be called in several high bandwidth places and
-            places an unneeded speed penalty on this phase.
-            This code is replicated in procedures: doreference, killasreg
-            and dodefine in travrs.
-          }
-          j := (trav_offset div sharedPtr^.targetintsize) mod (regtablelimit + 1);
-          while (regvars[j].offset <> trav_offset) and
-                (regvars[j].worth >= 0) do
-            j := (j + 1) mod (regtablelimit + 1);
-          if regvars[j].regid <> 0 then
-            begin
-            { assigned to a register }
-            third := regvars[j].regid;
-            case regvars[j].regkind of
-              genreg, bytereg: p := regtemp;
-              realreg: p := realtemp;
-              ptrreg: p := ptrtemp;
-              end;
+          { assigned to a register }
+          third := regvars[j].regid;
+          case regvars[j].regkind of
+            genreg, bytereg: p := regtemp;
+            realreg: p := realtemp;
+            ptrreg: p := ptrtemp;
             end;
           end;
+        end;
 
-        mapkey;
-        genpseudo (p, len, key, refcount, copycount, lkey, offset, third);
+      mapkey;
+      genpseudo (p, len, key, refcount, copycount, lkey, offset, third);
 
-      end {vindxnode} ;
+    end;
     {>>>}
     {<<<}
     procedure openarraynode;
     { walk and generate code for copying an open array value parameter's value
       into newly-opened space in the procedure's stack frame. }
 
-      begin {openarraynode}
-
-        genpseudo (openarray, len, 0, 0 {refcount} , 0 {copycount} ,
-                   rootp^.oprnds[1] {offset} , rootp^.oprnds[2], 0);
-
-      end {openarraynode} ;
+    begin
+      genpseudo (openarray, len, 0, 0 {refcount} , 0 {copycount} ,
+                 rootp^.oprnds[1] {offset} , rootp^.oprnds[2], 0);
+    end;
     {>>>}
     {<<<}
-    procedure orderednode(op: operator; {root operator}
+    procedure orderednode (op: operator; {root operator}
                           form: types {operand form} );
     { Walk and generate code for an operator whose right operand should
     be walked first irregardless of which operand has higher cost.
@@ -1657,58 +1519,52 @@ var
     make use of targetting information, so the operands are walked
     with target = 0.
     }
-
-
-      begin {orderednode}
-        walkvalue(r, rkey, 0);
-        walkvalue(l, lkey, 0);
-        mapkey;
-        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, targetkey);
-      end {orderednode} ;
+    begin
+      walkvalue (r, rkey, 0);
+      walkvalue (l, lkey, 0);
+      mapkey;
+      genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, targetkey);
+    end;
     {>>>}
     {<<<}
-    procedure binarynode(op: operator; {root operator}
+    procedure binarynode (op: operator; {root operator}
                          form: types {operand type} );
     { Walk and generate code for a normal binary operation "op" with
       operand type "form".  The array "map" converts the operator and
       type into a pseudocode operator.
-
       ***PDP11***
       The special targets multarget and divtarget are passed to the
       operand trees to facilitate good code generation if these
       operations require special action or register allocation.
     }
+    var
+      oldtarget: keyindex; {target key for root node}
 
-      var
-        oldtarget: keyindex; {target key for root node}
-
-
-      begin
-        oldtarget := targetkey;
-        walkboth;
-        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
-      end {binarynode} ;
+    begin
+      oldtarget := targetkey;
+      walkboth;
+      genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
+    end;
     {>>>}
     {<<<}
-    procedure incnode(op: operator; {root operator}
+    procedure incnode (op: operator; {root operator}
                       form: types; {operand type}
                       op3: integer {third operand} );
     { Walk and generate code for a pre or pos increment operation with
       operand type "form".  The array "map" converts the operator and
       type into a pseudocode operator.
-
       If the third operand is negative, it is passed along in place of the
       target
     }
-
-      begin
-        if op3 >= 0 then op3 := targetkey;
-        walkboth;
-        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, op3);
-      end {incnode} ;
+    begin
+      if op3 >= 0 then
+        op3 := targetkey;
+      walkboth;
+      genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, op3);
+    end;
     {>>>}
     {<<<}
-    procedure reflexivenode(op: operator; {root operator}
+    procedure reflexivenode (op: operator; {root operator}
                             form: types {operand type} );
     { Walk a reflexive operator.  We fake this as an ordinary operator
       but the left hand side is always the target.  We then fake a binary
@@ -1718,111 +1574,114 @@ var
       These are computed from the type of the operation and the type
       of the lvalue.
     }
+    var
+      target: keyindex; {dummy target operand}
+      tkey: keyindex; {temp for result}
+      ckey: keyindex; {cast lvalue key}
+      lp: nodeptr; {for access to the left side}
+      lform: types; {type of lvalue}
+      llen: addressrange; {length of lvalue}
+      use_casts: boolean; {we have to insert casts}
 
-      var
-        target: keyindex; {dummy target operand}
-        tkey: keyindex; {temp for result}
-        ckey: keyindex; {cast lvalue key}
-        lp: nodeptr; {for access to the left side}
-        lform: types; {type of lvalue}
-        llen: addressrange; {length of lvalue}
-        use_casts: boolean; {we have to insert casts}
+    begin
+      target := 0;
+      lp := ref(bignodetable[l]);
+      llen := lp^.len;
+      lform := loophole(types, rootp^.oprnds[3]);
+      walknode (l, lkey, 0, true);
+      genpseudo (startreflex, 0, 0, 0, 0, 0, 0, 0);
+      use_casts := (lform <> form) or (lform = reals) and (llen <> len);
+      if use_casts then
+        begin
+        ckey := newkey;
+        context[contextsp].high := ckey;
+        keytable[ckey] := 0;
+        genpseudo (castmap[form, lform], len, ckey, 1, 0, lkey, 0, 0);
+        end
+      else
+        ckey := lkey;
 
+      walkvalue (r, rkey, 0);
+      tkey := newkey;
+      context[contextsp].high := tkey;
+      keytable[tkey] := 0;
+      genpseudo (map[op, form], len, tkey, 1, 0, ckey, rkey, ckey);
+      if use_casts then
+        begin
+        ckey := newkey;
+        context[contextsp].high := ckey;
+        keytable[ckey] := 0;
+        genpseudo (castmap[lform, form], llen, ckey, 1, 0, tkey, 0, 0);
+        end
+      else
+        ckey := tkey;
 
-      begin
-        target := 0;
-        lp := ref(bignodetable[l]);
-        llen := lp^.len;
-        lform := loophole(types, rootp^.oprnds[3]);
-        walknode(l, lkey, 0, true);
-        genpseudo (startreflex, 0, 0, 0, 0, 0, 0, 0);
-        use_casts := (lform <> form) or (lform = reals) and (llen <> len);
-        if use_casts then
-          begin
-          ckey := newkey;
-          context[contextsp].high := ckey;
-          keytable[ckey] := 0;
-          genpseudo (castmap[form, lform], len, ckey, 1, 0, lkey, 0, 0);
-          end
-        else ckey := lkey;
-        walkvalue(r, rkey, 0);
-        tkey := newkey;
-        context[contextsp].high := tkey;
-        keytable[tkey] := 0;
-        genpseudo (map[op, form], len, tkey, 1, 0, ckey, rkey, ckey);
-        if use_casts then
-          begin
-          ckey := newkey;
-          context[contextsp].high := ckey;
-          keytable[ckey] := 0;
-          genpseudo(castmap[lform, form], llen, ckey, 1, 0, tkey, 0, 0);
-          end
-        else ckey := tkey;
-        mapkey;
-        genpseudo (map[moveop, lform], llen, key, refcount, copycount, lkey, ckey, targetkey);
-        genpseudo (endreflex, 0, 0, 0, 0, 0, 0, 0);
-      end; {reflexivenode}
+      mapkey;
+      genpseudo (map[moveop, lform], llen, key, refcount, copycount, lkey, ckey, targetkey);
+      genpseudo (endreflex, 0, 0, 0, 0, 0, 0, 0);
+    end;
     {>>>}
     {<<<}
-    procedure reflexdivnodes(op: operator; {root operator}
+    procedure reflexdivnodes (op: operator; {root operator}
                              form: types {operand type} );
     { Walk a reflexive divide operator.  This would be the same as any
       other reflexive operator except that integer divide and mod are
       handled specially.
     }
+    var
+      target: keyindex; {dummy target operand}
+      tkey, tdkey: keyindex; {temps for results}
 
-      var
-        target: keyindex; {dummy target operand}
-        tkey, tdkey: keyindex; {temps for results}
+    begin
+      if form = ints then
+        begin
+        target := 0;
+        walknode(l, lkey, target, true);
+        genpseudo (startreflex, 0, 0, 0, 0, 0, 0, 0);
+        target := 0;
+        walkvalue (r, rkey, target);
 
+        tdkey := newkey;
+        context[contextsp].high := tdkey;
+        keytable[tdkey] := 0;
+        genpseudo (divint, len, tdkey, 1, 0, lkey, rkey, lkey);
 
-      begin
-        if form = ints then
-          begin
-          target := 0;
-          walknode(l, lkey, target, true);
-          genpseudo (startreflex, 0, 0, 0, 0, 0, 0, 0);
-          target := 0;
-          walkvalue(r, rkey, target);
-          tdkey := newkey;
-          context[contextsp].high := tdkey;
-          keytable[tdkey] := 0;
-          genpseudo (divint, len, tdkey, 1, 0, lkey, rkey, lkey);
-          tkey := newkey;
-          context[contextsp].high := tkey;
-          keytable[tkey] := 0;
-          genpseudo (map[op, ints], len, tkey, 1, 0, tdkey, 0, lkey);
-          mapkey;
-          genpseudo (movint, len, key, refcount, copycount, lkey, tkey, targetkey);
-          genpseudo (endreflex, 0, 0, 0, 0, 0, 0, 0);
-          end
-        else reflexivenode(op, form);
-      end; {reflexdivnodes}
+        tkey := newkey;
+        context[contextsp].high := tkey;
+        keytable[tkey] := 0;
+        genpseudo (map[op, ints], len, tkey, 1, 0, tdkey, 0, lkey);
+
+        mapkey;
+        genpseudo (movint, len, key, refcount, copycount, lkey, tkey, targetkey);
+        genpseudo (endreflex, 0, 0, 0, 0, 0, 0, 0);
+        end
+      else
+        reflexivenode (op, form);
+    end;
     {>>>}
     {<<<}
     procedure commanode;
     { Walk a comma operator.  This just walks and discards the left
       operand.  The result is the right operand.
     }
-      var
-        target: keyindex; {target, ignored}
-        deref: boolean; {set true if we must deref subtree}
+    var
+      target: keyindex; {target, ignored}
+      deref: boolean; {set true if we must deref subtree}
 
-
-      begin
-        target := 0;
-        deref := rootp^.refcount > 0;
-        walknode (l, lkey, target, false);
-        if deref then
-          walkvalue (r, rkey, targetkey)
-        else
-          walknode (r, rkey, targetkey, false);
-        mapkey;
-        genpseudo (commafake, len, key, refcount, copycount, rkey, 0, 0);
-      end; {commanode}
+    begin
+      target := 0;
+      deref := rootp^.refcount > 0;
+      walknode (l, lkey, target, false);
+      if deref then
+        walkvalue (r, rkey, targetkey)
+      else
+        walknode (r, rkey, targetkey, false);
+      mapkey;
+      genpseudo (commafake, len, key, refcount, copycount, rkey, 0, 0);
+    end;
     {>>>}
     {<<<}
-    procedure litopnode(op: operator; {root operator}
+    procedure litopnode (op: operator; {root operator}
                         form: types {operand form} );
     { Walk and generate code for an operator with one literal operand.
       Only the left operand is an expression, the right is the literal
@@ -1831,108 +1690,96 @@ var
       Note: only values which can be represented in a single integer
       value may be used as operands for literal operations.
     }
-
-
-      begin
-        walkvalue(l, lkey, targetkey);
-        mapkey;
-        genpseudo (map[op, form], len, key, refcount, copycount, lkey, r, targetkey);
-      end {litopnode} ;
+    begin
+      walkvalue(l, lkey, targetkey);
+      mapkey;
+      genpseudo (map[op, form], len, key, refcount, copycount, lkey, r, targetkey);
+    end;
     {>>>}
     {<<<}
-    procedure movelitnode(form: types {operand form} );
+    procedure movelitnode (form: types {operand form} );
     { Walk and generate code for "movelit".  This only differs from
       a normal litopnode in that we always emit zero as the reference
       count when language is Pascal.
     }
-
-      begin
-        walkvalue(l, lkey, targetkey);
-        mapkey;
-          genpseudo (map[movelit, form], len, key, 0, 0, lkey, r, targetkey);
-      end {movelitnode} ;
+    begin
+      walkvalue(l, lkey, targetkey);
+      mapkey;
+      genpseudo (map[movelit, form], len, key, 0, 0, lkey, r, targetkey);
+    end;
     {>>>}
     {<<<}
-    procedure mulintnode(form: types {operand type} );
+    procedure mulintnode (form: types {operand type} );
     { Walk and generate code for a multiply operation }
 
-      var
-        oldtarget: keyindex; {target key for root node}
+    var
+      oldtarget: keyindex; {target key for root node}
 
-
-      begin
-        oldtarget := targetkey;
-        walkboth;
-        genpseudo (map[mulop, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
-      end {mulintnode} ;
+    begin
+      oldtarget := targetkey;
+      walkboth;
+      genpseudo (map[mulop, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
+    end;
     {>>>}
     {<<<}
-    procedure divintnode(op: operator; {divop or stddivop}
+    procedure divintnode (op: operator; {divop or stddivop}
                          form: types {operand type} );
     { Walk and generate code for an integer divide operation }
 
-      var
-        oldtarget: keyindex; {target key for root node}
+    var
+      oldtarget: keyindex; {target key for root node}
 
-
-      begin
-        oldtarget := targetkey;
-        walkboth;
-        genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
-      end {divintnode} ;
+    begin
+      oldtarget := targetkey;
+      walkboth;
+      genpseudo (map[op, form], len, key, refcount, copycount, lkey, rkey, oldtarget);
+    end;
     {>>>}
     {<<<}
-    procedure unaryaddrnode(op: operator {root operator} );
+    procedure unaryaddrnode (op: operator {root operator} );
     { Walk and generate code for a unary operator which generates an
       At the moment, the only ones are "indrop" and "filebufindrop".  The form
       and length are implicit in the operation.
     }
-
-
-      begin
-        walknode (l, lkey, targetkey, true);
-        mapkey;
-        genpseudo (map[op, ints], len, key, refcount, copycount, lkey, 0, targetkey);
-      end {unaryaddrnode} ;
+    begin
+      walknode (l, lkey, targetkey, true);
+      mapkey;
+      genpseudo (map[op, ints], len, key, refcount, copycount, lkey, 0, targetkey);
+    end;
     {>>>}
     {<<<}
-    procedure unarynode(op: operator; {root operation}
+    procedure unarynode (op: operator; {root operation}
                         form: types {operand type} );
     { Walk and generate code for a unary operator.  Only the left operand is significant }
 
-
-      begin
-        walkvalue (l, lkey, targetkey);
-        mapkey;
-        genpseudo (map[op, form], len, key, refcount, copycount, lkey, 0, targetkey);
-      end {unarynode} ;
+    begin
+      walkvalue (l, lkey, targetkey);
+      mapkey;
+      genpseudo (map[op, form], len, key, refcount, copycount, lkey, 0, targetkey);
+    end;
     {>>>}
     {<<<}
-    procedure castnode(op: operator; {root operation}
+    procedure castnode (op: operator; {root operation}
                        form: types {operand type} );
     { Walk and generate code for a cast operator.  The left operand contains
       the value being cast while the right is a flag for an unsigned result.
     }
-      begin {castnode};
-        walkvalue (l, lkey, targetkey);
-        mapkey;
-        genpseudo (map[op, form], len, key, refcount, copycount, lkey, r, targetkey);
-      end {castnode};
+    begin
+      walkvalue (l, lkey, targetkey);
+      mapkey;
+      genpseudo (map[op, form], len, key, refcount, copycount, lkey, r, targetkey);
+    end;
     {>>>}
     {<<<}
     procedure groupnode;
-    {<<<}
     { This is exactly like a unary node except that it generates no
       code itself.  This is for the unary "+", which is used only to
       group operands.
     }
-    {>>>}
-
-
-      begin
-        walknode(l, lkey, targetkey, true);
-        key := lkey;
-      end;
+    begin
+      walknode (l, lkey, targetkey, true);
+      key := lkey;
+    end;
     {>>>}
     {<<<}
     procedure setbinfilenode;
@@ -1940,27 +1787,23 @@ var
       is significant and must be prewalked to pull out odd nested function
       calls, believe it or not!
     }
-
-
-      begin
-        shortvisit(l, true);
-        walkvalue(l, lkey, targetkey);
-        mapkey;
-        genpseudo (setbinfile, len, key, refcount, copycount, lkey, 0, targetkey);
-      end {unarynode} ;
+    begin
+      shortvisit (l, true);
+      walkvalue (l, lkey, targetkey);
+      mapkey;
+      genpseudo (setbinfile, len, key, refcount, copycount, lkey, 0, targetkey);
+    end;
     {>>>}
     {<<<}
-    procedure unmappedunarynode(op: operator; {root operation}
+    procedure unmappedunarynode (op: operator; {root operation}
                                 form: types {operand type} );
     { Walk and generate code for a unary operator that does not need its own key.
       Same as unarynode, except no mapkey.  Only the left operand is significant.
     }
-
-
-      begin {unmappedunarynode}
-        walkvalue(l, lkey, targetkey);
-        genpseudo (map[op, form], len, 0, 0, 0, lkey, 0, targetkey);
-      end {unmappedunarynode} ;
+    begin
+      walkvalue (l, lkey, targetkey);
+      genpseudo (map[op, form], len, 0, 0, 0, lkey, 0, targetkey);
+    end;
     {>>>}
     {<<<}
     procedure copystacknode;
@@ -1970,85 +1813,81 @@ var
       requiring it.  This operator only occurs within I/O parameter lists
       and is used to copy the explicit file parameter, if it exists.
     }
-
-
-      begin
-        walkvalue (l, key, targetkey);
-        if len <> 0 then
-          genpseudo (makeroom, len, 0, 0, 0, 0, 0, 0);
-        genpseudo (copystack, 0, 0, 0, 0, 0, 0, 0);
-      end {copystacknode} ;
+    begin
+      walkvalue (l, key, targetkey);
+      if len <> 0 then
+        genpseudo (makeroom, len, 0, 0, 0, 0, 0, 0);
+      genpseudo (copystack, 0, 0, 0, 0, 0, 0, 0);
+    end;
     {>>>}
     {<<<}
-    procedure checknode(op: operator {root operator} );
+    procedure checknode (op: operator {root operator} );
     { Walk and generate code for a rangecheck operation.  This is similar
       to a unary operator except two additional range operands are in
       oprnds[2] and oprnds[3].
     }
+    var
+      low, high: integer; {range limits}
+      lowkey, highkey: keyindex; {range limits if expressions}
+      exprlimit: boolean; {the limits are expresions}
 
-      var
-        low, high: integer; {range limits}
-        lowkey, highkey: keyindex; {range limits if expressions}
-        exprlimit: boolean; {the limits are expresions}
+    begin
+      exprlimit := rootp^.nodeoprnd[2];
+      low := rootp^.oprnds[2];
+      high := rootp^.oprnds[3];
 
-
-      begin
-        exprlimit := rootp^.nodeoprnd[2];
-        low := rootp^.oprnds[2];
-        high := rootp^.oprnds[3];
-        walkvalue(l, lkey, 0);
-        if exprlimit then
-          begin
-          walkvalue(low, lowkey, 0);
-          walkvalue(high, highkey, 0);
-          low := lowkey;
-          high := highkey;
-          end;
-        mapkey;
-        genpseudo (map[op, ints], len, key, refcount, copycount, lkey, low, high);
-      end {checknode} ;
+      walkvalue (l, lkey, 0);
+      if exprlimit then
+        begin
+        walkvalue (low, lowkey, 0);
+        walkvalue (high, highkey, 0);
+        low := lowkey;
+        high := highkey;
+        end;
+      mapkey;
+      genpseudo (map[op, ints], len, key, refcount, copycount, lkey, low, high);
+    end;
     {>>>}
     {<<<}
-    procedure movenode(op: operator; {root operator}
+    procedure movenode (op: operator; {root operator}
                        form: types {operand type} );
     { Walk and generate code for a "moveop". This is a simple binary operator
       except that the left operand is always walked before the right,
       and the left key is the target for the right operands.
     }
+    var
+      size: nodeindex; {size of this move if cmoveop}
+      skey: keyindex; {key for size if cmoveop}
 
-      var
-        size: nodeindex; {size of this move if cmoveop}
-        skey: keyindex; {key for size if cmoveop}
-
-
-      begin
-        size := rootp^.oprnds[3];
-        walknode(l, lkey, 0, true);
-        walkvalue(r, rkey, lkey);
-        if op = cmoveop then walkvalue(size, skey, 0)
-        else skey := 0;
-        mapkey;
-        genpseudo (map[op, form], len, key, 0, 0, lkey, rkey, skey);
-      end {movenode} ;
+    begin
+      size := rootp^.oprnds[3];
+      walknode (l, lkey, 0, true);
+      walkvalue (r, rkey, lkey);
+      if op = cmoveop then
+        walkvalue(size, skey, 0)
+      else
+        skey := 0;
+      mapkey;
+      genpseudo (map[op, form], len, key, 0, 0, lkey, rkey, skey);
+    end;
     {>>>}
     {<<<}
-    procedure literalnode(op: operator {root operator} );
+    procedure literalnode (op: operator {root operator} );
     {<<<}
     { Generate pseudocode for a literal.  Here all operands are either part
       of the literal or pointers into the string area.
     }
     {>>>}
 
-
-      begin
-        mapkey;
-        with rootp^ do
-          begin
-          genpseudo (map[op, ints], len, key, refcount, copycount, oprnds[1], oprnds[2], oprnds[3]);
-          if op = fptrop then
-            sharedPtr^.proctable[oprnds[1]].referenced := true;
-          end;
-      end {literalnode} ;
+    begin
+      mapkey;
+      with rootp^ do
+        begin
+        genpseudo (map[op, ints], len, key, refcount, copycount, oprnds[1], oprnds[2], oprnds[3]);
+        if op = fptrop then
+          sharedPtr^.proctable[oprnds[1]].referenced := true;
+        end;
+    end;
     {>>>}
     {<<<}
     procedure crealnode;
@@ -2057,14 +1896,11 @@ var
       count is transmitted along with the data.  Note that the code generator
       depends on these being in a sequence with no intervening operators.
     }
-
-
-      begin {crealnode}
-        mapkey;
-        with rootp^ do
-          genrealop(doreal, len, key, refcount, copycount, realvalue);
-      end; {crealnode}
-
+    begin
+      mapkey;
+      with rootp^ do
+        genrealop (doreal, len, key, refcount, copycount, realvalue);
+    end;
     {>>>}
     {<<<}
     procedure realnode;
@@ -2073,37 +1909,35 @@ var
       count is transmitted along with the data.  Note that the code generator
       depends on these being in a sequence with no intervening operators.
     }
+    var
+      piece: 0..maxrealwords; {piece count}
+      l: addressrange; {length of node}
+      refc, copy: refcountrange; {ref and copy counts}
+      nextpiece: nodeindex; {next piece being generated}
+      nextp: nodeptr; {access to next piece to generate}
 
-      var
-        piece: 0..maxrealwords; {piece count}
-        l: addressrange; {length of node}
-        refc, copy: refcountrange; {ref and copy counts}
-        nextpiece: nodeindex; {next piece being generated}
-        nextp: nodeptr; {access to next piece to generate}
-
-
-      begin
-        mapkey;
-        with rootp^ do
+    begin
+      mapkey;
+      with rootp^ do
+        begin
+        l := len;
+        refc := refcount;
+        copy := copycount;
+        end;
+      piece := 1;
+      nextp := rootp;
+      repeat
+        with nextp^ do
           begin
-          l := len;
-          refc := refcount;
-          copy := copycount;
+          genpseudo (doreal, l, key, refc, copy, oprnds[1], oprnds[2], piece);
+          action := revisit;
+          nextpiece := oprnds[3];
           end;
-        piece := 1;
-        nextp := rootp;
-        repeat
-          with nextp^ do
-            begin
-            genpseudo (doreal, l, key, refc, copy, oprnds[1], oprnds[2], piece);
-            action := revisit;
-            nextpiece := oprnds[3];
-            end;
-          piece := piece + 1;
-          if nextpiece <> 0 then
-            nextp := ref(bignodetable[nextpiece]);
-        until nextpiece = 0;
-      end; {realnode}
+        piece := piece + 1;
+        if nextpiece <> 0 then
+          nextp := ref(bignodetable[nextpiece]);
+      until nextpiece = 0;
+    end;
     {>>>}
     {<<<}
     procedure ownnode;
@@ -2111,13 +1945,11 @@ var
       an offset to future indices off level 0.  A first-class, but should-work
       kludge, easier than defining a new magic level.
     }
-
-
-      begin {ownnode}
-        mapkey;
-        genpseudo (doown, sharedPtr^.ptrsize, key, refcount, copycount, 0, 0, 0);
-        sharedPtr^.proctable[sharedPtr^.blockref].ownused := true;
-      end {ownnode} ;
+    begin
+      mapkey;
+      genpseudo (doown, sharedPtr^.ptrsize, key, refcount, copycount, 0, 0, 0);
+      sharedPtr^.proctable[sharedPtr^.blockref].ownused := true;
+    end;
     {>>>}
     {<<<}
     procedure extnode;
@@ -2137,19 +1969,17 @@ var
       end; {extnode}
     {>>>}
     {<<<}
-    procedure originsegnode(o: pseudoop);
+    procedure originsegnode (o: pseudoop);
     { Walk and generate code for an "originop" or "segop".  This operation
       establishes addressing for an absolute address.
     }
-
-
-      begin {originsegnode}
-        with rootp^ do
-          begin
-          mapkey;
-          genpseudo (o, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], 0, 0);
-          end;
-      end {originsegnode} ;
+    begin
+      with rootp^ do
+        begin
+        mapkey;
+        genpseudo (o, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], 0, 0);
+        end;
+    end;
     {>>>}
     {<<<}
     procedure levnode;
@@ -2157,82 +1987,78 @@ var
       addressing for a lex level.  It may or may not have an operand tree
       in the third operand.
     }
-
-
-      begin
-        with rootp^ do
-          begin
-          if (oprnds[1] = 0) or (oprnds[1] = level) then rkey := 0
-          else walknode(oprnds[3], rkey, 0, true);
-          mapkey;
-          genpseudo (dolevel, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], oprnds[2], rkey);
-          end;
-      end {levnode} ;
+    begin
+      with rootp^ do
+        begin
+        if (oprnds[1] = 0) or (oprnds[1] = level) then
+          rkey := 0
+        else
+          walknode (oprnds[3], rkey, 0, true);
+        mapkey;
+        genpseudo (dolevel, sharedPtr^.ptrsize, key, refcount, copycount, oprnds[1], oprnds[2], rkey);
+        end;
+    end;
     {>>>}
     {<<<}
-    procedure callnode(op: operator);
+    procedure callnode (op: operator);
     { Walk and generate code for a procedure call.  The right operand is
       the parameter list, and the call pseudocode does not further use them.
-
       A "shortvisit" is done prior to evaluating the parameters so that any
       temporaries will be left on the stack before the call setup is done.
       This avoids conflicts with the use of the stack for parameters.
     }
+    var
+      p: proctableindex; {temp for proc name}
 
-      var
-        p: proctableindex; {temp for proc name}
+    begin
+      shortvisit (r, false);
+      walknode (r, rkey, 0, true);
+      mapkey;
 
-      begin
-        shortvisit(r, false);
-        walknode(r, rkey, 0, true);
-        mapkey;
-        rootp := ref(bignodetable[root]) ;
-        if op = unscall then
-          genpseudo (unscallroutine, len, key, refcount, copycount,
-                     rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form))
-        else
-          genpseudo (callroutine, len, key, refcount, copycount,
-                     rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form));
-        p := rootp^.oprnds[1];
-        sharedPtr^.proctable[p].referenced := true;
-        clearkeys;
-      end {callnode} ;
+      rootp := ref(bignodetable[root]) ;
+      if op = unscall then
+        genpseudo (unscallroutine, len, key, refcount, copycount,
+                   rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form))
+      else
+        genpseudo (callroutine, len, key, refcount, copycount,
+                   rootp^.oprnds[1], rootp^.oprnds[3], - ord(rootp^.form));
+      p := rootp^.oprnds[1];
+      sharedPtr^.proctable[p].referenced := true;
+      clearkeys;
+    end;
     {>>>}
     {<<<}
-    procedure callparamnode(op: operator);
+    procedure callparamnode (op: operator);
     { Walk and generate code for a call to a parameter procedure.  This
       is similar to "callnode" except that the left operand evaluates to
       the procedure descriptor.
     }
+    begin
+      walknode (l, lkey, 0, true);
+      shortvisit (r, false);
+      walknode (r, rkey, 0, true);
+      mapkey;
 
-
-      begin {callparamnode}
-        walknode(l, lkey, 0, true);
-        shortvisit(r, false);
-        walknode(r, rkey, 0, true);
-        mapkey;
-        rootp := ref(bignodetable[root]);
-        if op = unscallparam then
-          genpseudo (unscallroutine, len, key, refcount, copycount, lkey, rootp^.oprnds[3], ord(rootp^.form))
-        else
-          genpseudo (callroutine, len, key, refcount, copycount, lkey, rootp^.oprnds[3], ord(rootp^.form));
-        clearkeys;
-      end {callparamnode} ;
+      rootp := ref(bignodetable[root]);
+      if op = unscallparam then
+        genpseudo (unscallroutine, len, key, refcount, copycount, lkey, rootp^.oprnds[3], ord(rootp^.form))
+      else
+        genpseudo (callroutine, len, key, refcount, copycount, lkey, rootp^.oprnds[3], ord(rootp^.form));
+      clearkeys;
+    end;
     {>>>}
     {<<<}
-    procedure linkednode(op: operator; {root operator}
+    procedure linkednode (op: operator; {root operator}
                          form: types {operand type} );
     { Process the file variable setup operator for read/write procedure.
       Similar to "stacknode" except no stacktarget is generated.
     }
-
-
-      begin
-        walknode (l, lkey, 0, true);
-        walknode (r, rkey, key, true);
-        mapkey;
-        genpseudo (map[op, form], len, key, refcount, copycount, rkey, 0, 0);
-      end {linkednode} ;
+    begin
+      walknode (l, lkey, 0, true);
+      walknode (r, rkey, key, true);
+      mapkey;
+      genpseudo (map[op, form], len, key, refcount, copycount, rkey, 0, 0);
+    end;
     {>>>}
     {<<<}
     procedure pushfinalnode;
@@ -2240,81 +2066,74 @@ var
       generates a stack target to hold the value, then generates the expression,
       then the push to save the value.
     }
-
-
-      begin
-        mapkey;
-        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        walkvalue (l, lkey, key);
-        genpseudo (pshint, len, key, refcount, copycount, lkey, 0, 0);
-      end {pushfinalnode} ;
+    begin
+      mapkey;
+      genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+      walkvalue (l, lkey, key);
+      genpseudo (pshint, len, key, refcount, copycount, lkey, 0, 0);
+    end;
     {>>>}
     {<<<}
     procedure pushprocnode;
     { Push a procedure descriptor on the stack.  This is used to generate
       an actual procedure parameter.
     }
-      var
-        third: proctableindex; {third root operand (procedure number)}
+    var
+      third: proctableindex; {third root operand (procedure number)}
 
-
-      begin
-        third := rootp^.oprnds[3];
-        walknode(l, lkey, 0, true);
-        mapkey;
-        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        walknode (r, rkey, 0, true);
-        genpseudo (pshproc, len, key, 0, 0, rkey, third, 0);
-        sharedPtr^.proctable[third].referenced := true;
-      end {pushprocnode} ;
+    begin
+      third := rootp^.oprnds[3];
+      walknode (l, lkey, 0, true);
+      mapkey;
+      genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+      walknode (r, rkey, 0, true);
+      genpseudo (pshproc, len, key, 0, 0, rkey, third, 0);
+      sharedPtr^.proctable[third].referenced := true;
+    end;
     {>>>}
     {<<<}
-    procedure pushcvaluenode(form: types);
+    procedure pushcvaluenode (form: types);
     { Push an array value on the stack for a value conformant array parameter }
 
-
-      begin
-        walkvalue(l, lkey, targetkey);
-        mapkey;
-        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        genpseudo (map[pushcvalue, form], len, key, refcount, copycount, lkey, 0, 0);
-      end; {pushcvaluenode}
+    begin
+      walkvalue(l, lkey, targetkey);
+      mapkey;
+      genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+      genpseudo (map[pushcvalue, form], len, key, refcount, copycount, lkey, 0, 0);
+    end;
     {>>>}
     {<<<}
     procedure pushretnode;
     { Walk a node which "pushes" the return address of a structure }
 
-
-      begin
-        walknode(l, lkey, 0, true);
-        mapkey;
-        genpseudo (ptrtemp, len, key, refcount, copycount, 0, 0, - 2);
-        walkvalue (r, rkey, key);
-        genpseudo (map[pushret, ptrs], len, key, 0, 0, rkey, 0, 0);
-      end; {pushretnode}
+    begin
+      walknode(l, lkey, 0, true);
+      mapkey;
+       genpseudo (ptrtemp, len, key, refcount, copycount, 0, 0, - 2);
+      walkvalue (r, rkey, key);
+      genpseudo (map[pushret, ptrs], len, key, 0, 0, rkey, 0, 0);
+    end;
     {>>>}
     {<<<}
-    procedure stacknode(op: operator; {root operator}
+    procedure stacknode (op: operator; {root operator}
                         form: types {operand form} );
     { Walk and generate code for a node which pushes a value on the stack.
       Left operand is the link to other parameters, right operand is the value to be pushed
     }
+    begin
+      walknode (l, lkey, 0, true);
+      mapkey;
+      genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+      if op in [pushlitvalue, pushfptr] then
+        genpseudo (map[op, form], len, key, 0, 0, r, 0, 0)
+      else
+        begin
+        walkvalue (r, rkey, key);
+        genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
+        end;
 
-
-      begin {stacknode}
-        walknode(l, lkey, 0, true);
-        mapkey;
-        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        if op in [pushlitvalue, pushfptr] then
-          genpseudo (map[op, form], len, key, 0, 0, r, 0, 0)
-        else
-          begin
-          walkvalue (r, rkey, key);
-          genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
-          end;
-
-        clearkeys;
-      end {stacknode} ;
+      clearkeys;
+    end;
     {>>>}
     {<<<}
     procedure pushaddrnode (op: operator; form: types);
@@ -2322,43 +2141,38 @@ var
       Left operand is the link to other parameters, right operand is the
       address to be pushed.
     }
+    var
+      rptr: nodeptr; {point to right operand}
+      walkfirst: boolean; {set true if we must walk operand before emitting stacktarget}
 
-      var
-        rptr: nodeptr; {point to right operand}
-        walkfirst: boolean; {set true if we must walk operand before emitting
-                             stacktarget}
-
-
-      begin {pushaddrnode}
-        walknode(l, lkey, 0, true);
-        rptr := ref(bignodetable[r]) ;
-        walkfirst := (rptr^.op in
-                     [copystackop, call, callparam, unscall, unscallparam]) or
-                     (form = strings);
-        if walkfirst then walkvalue(r, rkey, key);
-        mapkey;
-        genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
-        if not walkfirst then
-          walkvalue (r, rkey, key);
-        genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
-        clearkeys;
-      end {pushaddrnode} ;
+    begin
+      walknode (l, lkey, 0, true);
+      rptr := ref(bignodetable[r]) ;
+      walkfirst := (rptr^.op in
+                   [copystackop, call, callparam, unscall, unscallparam]) or
+                   (form = strings);
+      if walkfirst then walkvalue(r, rkey, key);
+      mapkey;
+      genpseudo (stacktarget, len, key, refcount, copycount, 0, 0, 0);
+      if not walkfirst then
+        walkvalue (r, rkey, key);
+      genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
+      clearkeys;
+    end;
     {>>>}
     {<<<}
-    procedure dummyargnode(op: operator;
+    procedure dummyargnode (op: operator;
                            form: types);
     { Walk and generate code for a dummy argument node.  Left operand is the link
       to other dummy argument nodes, right operand is the address of the arg.
     }
-
-
-      begin
-        walknode (l, lkey, 0, true);
-        walkvalue (r, rkey, 0);
-        mapkey;
-        genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
-        clearkeys;
-      end {dummyargnode} ;
+    begin
+      walknode (l, lkey, 0, true);
+      walkvalue (r, rkey, 0);
+      mapkey;
+      genpseudo (map[op, form], len, key, 0, 0, rkey, 0, 0);
+      clearkeys;
+    end;
     {>>>}
     {<<<}
     procedure seteltnode;
@@ -2369,42 +2183,42 @@ var
       code operator is used for both single and paired set elements.
     }
 
-      begin
-        walknode (l, lkey, targetkey, true);
-        walkvalue (r, rkey, 0);
-        genpseudo (setinsert, len, 0, 0, 0, rkey, 0, targetkey);
-        clearkeys;
-      end {seteltnode} ;
+    begin
+      walknode (l, lkey, targetkey, true);
+      walkvalue (r, rkey, 0);
+      genpseudo (setinsert, len, 0, 0, 0, rkey, 0, targetkey);
+      clearkeys;
+    end;
     {>>>}
     {<<<}
     procedure setpairnode;
     { Walk and generate code for a set pair element.  This is very similar to the previous procedure }
 
-      begin
-        walknode (l, lkey, targetkey, true);
-        walkvalue (r, lkey, 0);
-        walkvalue (rootp^.oprnds[3], rkey, 0);
-        genpseudo (setinsert, len, 0, 0, 0, lkey, rkey, targetkey);
-        clearkeys;
-      end {setpairnode} ;
+    begin
+      walknode (l, lkey, targetkey, true);
+      walkvalue (r, lkey, 0);
+      walkvalue (rootp^.oprnds[3], rkey, 0);
+      genpseudo (setinsert, len, 0, 0, 0, lkey, rkey, targetkey);
+      clearkeys;
+    end;
     {>>>}
     {<<<}
     procedure bldsetnode;
     { This operator defines a set for use by the set insert operators.
       The right node defines the set const, the left has the inserts.
     }
+    begin
+      unnestsets (l);
+      walknode (r, rkey, 0, true);
+      mapkey;
 
+      if walkdepth > 2 then
+        targetkey := 0;
 
-      begin
-        unnestsets(l);
-        walknode(r, rkey, 0, true);
-        mapkey;
-        if walkdepth > 2 then
-          targetkey := 0;
-        genpseudo (doset, len, key, refcount, copycount, rkey, 0, targetkey);
-        walknode (l, lkey, key, true);
-        clearkeys;
-      end {bldsetnode} ;
+      genpseudo (doset, len, key, refcount, copycount, rkey, 0, targetkey);
+      walknode (l, lkey, key, true);
+      clearkeys;
+    end;
     {>>>}
     {<<<}
     procedure wrnode;
@@ -2413,45 +2227,44 @@ var
       that any common expressions are put on the stack before the write
       operand.
     }
-
-
-      begin {wrnode}
-        shortvisit(l, false);
-        refcount := refcount - 1;
-        unarynode(wr, rootp^.form);
-        clearkeys;
-      end {wrnode} ;
+    begin
+      shortvisit (l, false);
+      refcount := refcount - 1;
+      unarynode (wr, rootp^.form);
+      clearkeys;
+    end;
     {>>>}
     {<<<}
     procedure rdnode;
     { Walk and generate code for a read operator.  This is similar to a write node }
 
-      begin
-        shortvisit(l, false);
-        refcount := refcount - 1;
-        if rootp^.form = arrays then unarynode(rd, arrays)
-        else
-          begin
-          walknode(l, lkey, 0, true);
-          walknode(r, rkey, 0, true);
-          mapkey;
-          rootp := ref(bignodetable[root]);
-          genpseudo (map[rd, rootp^.form], len, key, refcount, copycount, rkey, 0, 0);
-          end;
-        clearkeys;
-      end {rdnode} ;
+    begin
+      shortvisit(l, false);
+      refcount := refcount - 1;
 
+      if rootp^.form = arrays then 
+        unarynode(rd, arrays)
+      else
+        begin
+        walknode (l, lkey, 0, true);
+        walknode (r, rkey, 0, true);
+        mapkey;
+        rootp := ref(bignodetable[root]);
+        genpseudo (map[rd, rootp^.form], len, key, refcount, copycount, rkey, 0, 0);
+        end;
+
+      clearkeys;
+    end;
     {>>>}
     {<<<}
     procedure reservenode;
     { Walk and generate a reserrve stack node.  The only operand is the length of the function result }
 
-
-      begin
-        mapkey;
-        with rootp^ do
-          genpseudo (makeroom, oprnds[1], key, 0, 0, oprnds[2], oprnds[3], 0);
-      end {reservenode} ;
+    begin
+      mapkey;
+      with rootp^ do
+        genpseudo (makeroom, oprnds[1], key, 0, 0, oprnds[2], oprnds[3], 0);
+    end;
     {>>>}
     {<<<}
     procedure tempnode;
@@ -2461,32 +2274,29 @@ var
       third operand.  It is interpreted by the code generator in a
       machine-dependent manner.
     }
-
-      begin
-        mapkey;
-        with rootp^ do
-              genpseudo (map[op, form], len, key, refcount, copycount, 0, 0, - oprnds[1]);
-      end; {tempnode}
+    begin
+      mapkey;
+      with rootp^ do
+        genpseudo (map[op, form], len, key, refcount, copycount, 0, 0, - oprnds[1]);
+    end;
     {>>>}
     {<<<}
-    procedure varnode(psop: pseudoop {pseudo op to generate} );
+    procedure varnode (psop: pseudoop {pseudo op to generate} );
     { Walk and generate code for a variable or unsigned variable.  The
       level access is in operand three, while operands 1 and 2 are the
       level and displacement and are ignored as far as code goes.
     }
+    var
+      threekey: keyindex; {key for level access tree}
 
-      var
-        threekey: keyindex; {key for level access tree}
-
-
-      begin
-        walknode (rootp^.oprnds[3], threekey, 0, true);
-        mapkey;
-        genpseudo (psop, len, key, refcount, copycount, threekey, 0, 0);
-      end {varnode} ;
+    begin
+      walknode (rootp^.oprnds[3], threekey, 0, true);
+      mapkey;
+      genpseudo (psop, len, key, refcount, copycount, threekey, 0, 0);
+    end;
     {>>>}
     {<<<}
-    procedure sysfnnode(op: operator; {root operator}
+    procedure sysfnnode (op: operator; {root operator}
                         form: types {result form} );
     { Walk and generate code for a system function.  This is a unary node
       with the argument receiving a shortvisit to get common expressions on
@@ -2494,170 +2304,162 @@ var
       Note that such functions may change type, in which case targeting is
       not applicable.
     }
+    var
+      rp: nodeptr; {used to access right operand}
 
-      var
-        rp: nodeptr; {used to access right operand}
+    begin
+      shortvisit(r, false);
 
-
-      begin
-        shortvisit(r, false);
-
-        if not (sharedPtr^.switcheverplus[fpc68881] and (loophole(standardids,
-                                                       rootp^.oprnds[1]) in
+      if not (sharedPtr^.switcheverplus[fpc68881] and
+        (loophole(standardids, rootp^.oprnds[1]) in
            [facosid, fasinid, fatanid, fatanhid, fcoshid, fetoxm1id, fgetexpid,
            fgetmanid, fintid, flog10id, flog2id, flognp1id, fmodid, fremid,
            fscaleid, fsgldivid, fsglmulid, fsinhid, ftanid, ftanhid, ftentoxid,
            ftwotoxid, fmovecrid, absid, sqrid, sinid, cosid, expid, lnid,
            sqrtid, arctanid, truncid, roundid, snglid, dblid, acosid, asinid,
-           tanid, coshid, sinid, tanhid, log10id, fabsid, labsid, sinhid,
-           logid])) then
-          begin
-          rp := ref(bignodetable[r]);
-          if form <> rp^.form then
-            targetkey := 0;
-          end;
+           tanid, coshid, sinid, tanhid, log10id, fabsid, labsid, sinhid, logid])) then
+        begin
+        rp := ref(bignodetable[r]);
+        if form <> rp^.form then
+          targetkey := 0;
+        end;
 
-        walkvalue (r, rkey, 0);
-        mapkey;
-        genpseudo (map[op, form], len, key, refcount, copycount, rkey, rootp^.oprnds[1], targetkey);
-
-      end {sysfnnode} ;
+      walkvalue (r, rkey, 0);
+      mapkey;
+      genpseudo (map[op, form], len, key, refcount, copycount, rkey, rootp^.oprnds[1], targetkey);
+    end;
     {>>>}
     {<<<}
-    procedure defforindexnode(notforlit: boolean {intl val is expr} );
+    procedure defforindexnode (notforlit: boolean {intl val is expr} );
     { Walk and generate code for a for index node.  The target field of the
       emitted pseudoop tells the code generator if a memory copy must be kept.
-
       This node contains the initial value expression (or literal) in operand 3,
       and if the initial value is not a literal, this expression is walked.
     }
+    var
+      initialkey, varkey: keyindex; {initial expr key }
+      initialvalue: integer; { first operand for pseudo-op}
+      varp: nodeptr; {point to the defined variable}
 
-      var
-        initialkey, varkey: keyindex; {initial expr key }
-        initialvalue: integer; { first operand for pseudo-op}
-        varp: nodeptr; {point to the defined variable}
+    begin
+      with rootp^ do
+        begin
+        walkvalue (oprnds[2], varkey, 0);
 
-
-      begin {defforindexnode}
-        with rootp^ do
+        if notforlit then
           begin
-
-          walkvalue(oprnds[2], varkey, 0);
-
-          if notforlit then
-            begin
-            walknode(oprnds[3], initialkey, 0, false {already decremented} );
-            initialvalue := initialkey;
-            end
-          else initialvalue := oprnds[3];
-
-          mapkey;
-
-          genpseudo (map[op, ints], len, key, refcount, copycount, initialvalue,
-                     varkey, ord((oprnds[1] = 0) or nowdebugging or nowwalking));
-
-          end;
-      end {defforindexnode} ;
-    {>>>}
-    {<<<}
-    { Walk a conditional expression node.
-      We assign a temp for the value, then walk the two sides, moving
-      each to the temp.  The result is the temp.
-      }
-    procedure questnode;
-    { The condition is the first operand, while the two expressions are
-      the second and third operands.
-    }
-
-      var
-        oldinv: boolean; {local save for "inverted"}
-        oldt, oldf: integer; {local saves for "truelabel", "falselabel"}
-        oldtused, oldfused: boolean; {local saves for "trueused", "falseused"}
-        tlabel, flabel, jlabel: integer; {new labels for converting to value}
-        k: nodeindex; {new key for building value}
-        tk: integer; {temp for searching list of nodes}
-        targ: nodeindex; {temp target}
-        cond: nodeindex; {the condition expression}
-        p: nodeptr; {for access to left and right nodes}
-        form: types; {form for this operation}
-        oldclearok: boolean; {old value of oktoclear}
-        val_used: boolean; {the value is used}
-        next: integer; {for tracing through comma ops}
-
-
-      begin
-        oldclearok := oktoclear;
-        oktoclear := false;
-        cond := l; {first get the names right}
-        l := r;
-        r := rootp^.oprnds[3];
-        val_used := rootp^.refcount > 0;
-        form := rootp^.form;
-
-        if not val_used then
-          begin
-          increfcount(l, false, - 1);
-          increfcount(r, false, - 1);
-          end;
-
-        oldinv := inverted;
-        oldt := truelabel;
-        oldf := falselabel;
-        oldtused := trueused;
-        oldfused := falseused;
-        tlabel := newlabel;
-        flabel := newlabel;
-        jlabel := newlabel;
-        if (targetkey <> 0) and (keytable[targetkey] <> 0) and
-           targetpresent(root) then
-          targetkey := 0;
-        if val_used then
-          begin
-          k := newkey;
-          context[contextsp].high := k;
-          keytable[k] := 0;
-          genpseudo (createtemp, len, k, 3, 0, ord(form), 0, targetkey);
-          end;
-
-        walkboolean (cond, key, tlabel, flabel);
-        definelabel (tlabel);
-        targ := k;
-        if val_used then
-          begin
-          walkvalue(l, lkey, targ);
-          tk := newkey;
-          context[contextsp].high := tk;
-          keytable[tk] := 0;
-          genpseudo (map[moveop, form], len, tk, 0, 0, k, lkey, k);
+          walknode (oprnds[3], initialkey, 0, false {already decremented} );
+          initialvalue := initialkey;
           end
         else
-          walknode(l, lkey, 0, false);
+          initialvalue := oprnds[3];
 
-        genpseudo (jump, 0, 0, 0, 0, jlabel, 0, 0);
-        definelabel (flabel);
-        targ := k;
-        if val_used then
-          begin
-          walkvalue (r, rkey, targ);
-          tk := newkey;
-          context[contextsp].high := tk;
-          keytable[tk] := 0;
-          genpseudo (map[moveop, form], len, tk, 0, 0, k, rkey, k);
-          end
-        else walknode(r, rkey, 0, false);
-        definelabel(jlabel);
-        if val_used then
-          begin
-          mapkey;
-          genpseudo (jointemp, len, key, refcount, copycount, k, ord(form), 0);
-          end;
-        inverted := oldinv;
-        truelabel := oldt;
-        falselabel := oldf;
-        trueused := oldtused;
-        falseused := oldfused;
-        oktoclear := oldclearok;
-      end; {questnode}
+        mapkey;
+
+        genpseudo (map[op, ints], len, key, refcount, copycount, initialvalue,
+                   varkey, ord((oprnds[1] = 0) or nowdebugging or nowwalking));
+        end;
+    end;
+    {>>>}
+    {<<<}
+    procedure questnode;
+    { Walk a conditional expression node.
+      We assign a temp for the value, then walk the two sides, moving each to the temp.  The result is the temp.
+      The condition is the first operand, while the two expressions are the second and third operands.
+    }
+    var
+      oldinv: boolean; {local save for "inverted"}
+      oldt, oldf: integer; {local saves for "truelabel", "falselabel"}
+      oldtused, oldfused: boolean; {local saves for "trueused", "falseused"}
+      tlabel, flabel, jlabel: integer; {new labels for converting to value}
+      k: nodeindex; {new key for building value}
+      tk: integer; {temp for searching list of nodes}
+      targ: nodeindex; {temp target}
+      cond: nodeindex; {the condition expression}
+      p: nodeptr; {for access to left and right nodes}
+      form: types; {form for this operation}
+      oldclearok: boolean; {old value of oktoclear}
+      val_used: boolean; {the value is used}
+      next: integer; {for tracing through comma ops}
+
+    begin
+      oldclearok := oktoclear;
+      oktoclear := false;
+      cond := l; {first get the names right}
+      l := r;
+      r := rootp^.oprnds[3];
+      val_used := rootp^.refcount > 0;
+      form := rootp^.form;
+
+      if not val_used then
+        begin
+        increfcount(l, false, - 1);
+        increfcount(r, false, - 1);
+        end;
+
+      oldinv := inverted;
+      oldt := truelabel;
+      oldf := falselabel;
+      oldtused := trueused;
+      oldfused := falseused;
+      tlabel := newlabel;
+      flabel := newlabel;
+      jlabel := newlabel;
+
+      if (targetkey <> 0) and (keytable[targetkey] <> 0) and
+         targetpresent(root) then
+        targetkey := 0;
+
+      if val_used then
+        begin
+        k := newkey;
+        context[contextsp].high := k;
+        keytable[k] := 0;
+        genpseudo (createtemp, len, k, 3, 0, ord(form), 0, targetkey);
+        end;
+
+      walkboolean (cond, key, tlabel, flabel);
+      definelabel (tlabel);
+      targ := k;
+      if val_used then
+        begin
+        walkvalue(l, lkey, targ);
+        tk := newkey;
+        context[contextsp].high := tk;
+        keytable[tk] := 0;
+        genpseudo (map[moveop, form], len, tk, 0, 0, k, lkey, k);
+        end
+      else
+        walknode(l, lkey, 0, false);
+
+      genpseudo (jump, 0, 0, 0, 0, jlabel, 0, 0);
+      definelabel (flabel);
+      targ := k;
+      if val_used then
+        begin
+        walkvalue (r, rkey, targ);
+        tk := newkey;
+        context[contextsp].high := tk;
+        keytable[tk] := 0;
+        genpseudo (map[moveop, form], len, tk, 0, 0, k, rkey, k);
+        end
+      else 
+        walknode(r, rkey, 0, false);
+
+      definelabel(jlabel);
+      if val_used then
+        begin
+        mapkey;
+        genpseudo (jointemp, len, key, refcount, copycount, k, ord(form), 0);
+        end;
+
+      inverted := oldinv;
+      truelabel := oldt;
+      falselabel := oldf;
+      trueused := oldtused;
+      falseused := oldfused;
+      oktoclear := oldclearok;
+    end;
     {>>>}
     {<<<}
     procedure shortand;
@@ -2682,41 +2484,43 @@ var
       frequently saved and restored by the tree walking routines.
     }
     {>>>}
-
     { Walk and generate code for a boolean "and", using shortcircuit
       evaluation.  In this case, control passes to the falselabel if
       the left operand is false, and to the code for the right operand
       if it is true.  Falselabel remains constant for the evaluation of
       the and, while truelabel is changed for the left operand.
     }
+    var
+      nextlabel: labelrange; {label for right operand eval}
+      t: labelrange; {local storage for truelabel}
+      oldinv: boolean; {local storage for inverted}
+      oldused: boolean; {local value for "trueused"}
 
-      var
-        nextlabel: labelrange; {label for right operand eval}
-        t: labelrange; {local storage for truelabel}
-        oldinv: boolean; {local storage for inverted}
-        oldused: boolean; {local value for "trueused"}
+    begin
+      nextlabel := newlabel;
+      t := truelabel;
+      truelabel := nextlabel;
+      oldused := trueused;
+      trueused := false;
+      oldinv := inverted;
 
+      shortvisit (r, false);
+      walknode (l, lkey, 0, true);
 
-      begin
-        nextlabel := newlabel;
-        t := truelabel;
-        truelabel := nextlabel;
-        oldused := trueused;
-        trueused := false;
-        oldinv := inverted;
-        shortvisit(r, false);
-        walknode(l, lkey, 0, true);
-        if inverted then
-          genpseudo (jumpt, 0, 0, 0, 0, falselabel, lkey, 0)
-        else
-          genpseudo (jumpf, 0, 0, 0, 0, falselabel, lkey, 0);
-        inverted := oldinv;
-        truelabel := t;
-        if trueused then definelabel(nextlabel);
-        falseused := true;
-        trueused := oldused;
-        walknode(r, key, 0, true);
-      end {shortand} ;
+      if inverted then
+        genpseudo (jumpt, 0, 0, 0, 0, falselabel, lkey, 0)
+      else
+        genpseudo (jumpf, 0, 0, 0, 0, falselabel, lkey, 0);
+
+      inverted := oldinv;
+      truelabel := t;
+      if trueused then
+        definelabel (nextlabel);
+      falseused := true;
+      trueused := oldused;
+
+      walknode (r, key, 0, true);
+    end;
     {>>>}
     {<<<}
     procedure shortor;
@@ -2729,34 +2533,38 @@ var
     }
     {>>>}
 
-      var
-        nextlabel: labelrange; {label for right operand eval}
-        f: labelrange; {local storage for falselabel}
-        oldinv: boolean; {local storage for inverted}
-        oldused: boolean; {local value for falseused}
+    var
+      nextlabel: labelrange; {label for right operand eval}
+      f: labelrange; {local storage for falselabel}
+      oldinv: boolean; {local storage for inverted}
+      oldused: boolean; {local value for falseused}
 
+    begin
+      nextlabel := newlabel;
+      f := falselabel;
+      falselabel := nextlabel;
 
-      begin
-        nextlabel := newlabel;
-        f := falselabel;
-        falselabel := nextlabel;
-        oldused := falseused;
-        falseused := false;
-        oldinv := inverted;
-        shortvisit(r, false);
-        walknode(l, lkey, 0, true);
-        if inverted then
-          genpseudo (jumpf, 0, 0, 0, 0, truelabel, lkey, 0)
-        else
-          genpseudo (jumpt, 0, 0, 0, 0, truelabel, lkey, 0);
-        inverted := oldinv;
-        if falseused then definelabel(nextlabel);
-        falseused := oldused;
-        trueused := true;
-        falselabel := f;
-        walknode(r, key, 0, true);
-      end {shortor} ;
+      oldused := falseused;
+      falseused := false;
+      oldinv := inverted;
 
+      shortvisit (r, false);
+      walknode (l, lkey, 0, true);
+
+      if inverted then
+        genpseudo (jumpf, 0, 0, 0, 0, truelabel, lkey, 0)
+      else
+        genpseudo (jumpt, 0, 0, 0, 0, truelabel, lkey, 0);
+      inverted := oldinv;
+
+      if falseused then
+        definelabel (nextlabel);
+
+      falseused := oldused;
+      trueused := true;
+      falselabel := f;
+      walknode (r, key, 0, true);
+    end;
     {>>>}
     {<<<}
     procedure shortnot;
@@ -2765,28 +2573,28 @@ var
       while the operand is being evaluated, then complements "inverted"
       to invert the final condition.
     }
+    var
+      t: labelrange; {temp for inverting labels}
+      b: boolean; {temp for inverting used variables}
 
-      var
-        t: labelrange; {temp for inverting labels}
-        b: boolean; {temp for inverting used variables}
+    begin
+      t := truelabel;
+      truelabel := falselabel;
+      falselabel := t;
 
+      b := trueused;
+      trueused := falseused;
+      falseused := b;
+      walknode (l, key, 0, true);
 
-      begin
-        t := truelabel;
-        truelabel := falselabel;
-        falselabel := t;
-        b := trueused;
-        trueused := falseused;
-        falseused := b;
-        walknode(l, key, 0, true);
-        t := truelabel;
-        truelabel := falselabel;
-        falselabel := t;
-        b := trueused;
-        trueused := falseused;
-        falseused := b;
-        inverted := not inverted;
-      end {shortnot} ;
+      t := truelabel;
+      truelabel := falselabel;
+      falselabel := t;
+      b := trueused;
+      trueused := falseused;
+      falseused := b;
+      inverted := not inverted;
+    end;
     {>>>}
 
   begin
@@ -2990,6 +2798,7 @@ begin
     rootp := ref(bignodetable[root]);
     refcount := rootp^.refcount;
     copycount := rootp^.copycount;
+
     len := rootp^.len;
     if rootp^.action in [visit, revisit] then
       if rootp^.op < intop then
@@ -3382,8 +3191,8 @@ var
           actualexpr1 := expr1;
           end;
 
-        shortvisit(actualexpr1, false);
-        checkconst(actualexpr1, constfinal, finalvalue);
+        shortvisit (actualexpr1, false);
+        checkconst (actualexpr1, constfinal, finalvalue);
         ptr := ref(bignodetable[expr2]) ;
         if (ptr^.op = defforlitindexop) or
            (ptr^.op = defunsforlitindexop) then
@@ -4069,7 +3878,7 @@ begin
   ptrtemps := 0;
   with sharedPtr^.proctable[sharedPtr^.blockref] do
     begin
-    if intlevelrefs then 
+    if intlevelrefs then
       ptrtemps := 1;
     if (register_return and not sharedPtr^.switcheverplus[structstatic] and
        (struct_calls or struct_ret)) and
@@ -7015,6 +6824,138 @@ var
       ptr: nodeptr; { for access to statement node }
 
     {<<<}
+    procedure estimateloop (stmt: nodeindex; var fixed: boolean; var overflow: boolean; var runcount: unsignedint);
+    { Figure out if possible how many iterations a for loop will execute.
+      Note : assumes that unsigned arithmetic works properly.
+    }
+    var
+      ptr: nodeptr; {used to access index node}
+      initialvalue, finalvalue: integer; {initial and final values}
+      uinitialvalue, ufinalvalue: unsignedint; {initial and final values unsigned}
+      currentstmt: node; { copy of the stmt node }
+      constfinal: boolean; { true if to/downto is constant }
+
+    begin
+      fixed := false;
+      overflow := false;
+      runcount := 0; {temp }
+      ptr := ref(bignodetable[stmt]);
+      currentstmt := ptr^;
+      with currentstmt do
+        begin
+
+        ptr := ref(bignodetable[expr1]);
+        if ptr^.op in [forupchkop, fordnchkop, forerrchkop] then
+          checkconst (ptr^.oprnds[1], constfinal, finalvalue)
+        else
+          checkconst(expr1, constfinal, finalvalue);
+
+        ptr := ref(bignodetable[expr2]);
+        if constfinal and ((ptr^.op = defforlitindexop) or
+           (ptr^.op = defunsforlitindexop)) then
+          begin
+          fixed := true;
+          initialvalue := ptr^.oprnds[3];
+          uinitialvalue := initialvalue;
+          ufinalvalue := finalvalue;
+
+          if stmtkind = foruphdr then
+            begin
+            if ptr^.op = defunsforlitindexop then
+              begin
+              if (uinitialvalue = 0) and (ufinalvalue = maxusint) then
+                begin
+                overflow := true;
+                runcount := maxusint; { at least! }
+                end
+              else
+                begin
+                if ufinalvalue >= uinitialvalue then
+                  runcount := ufinalvalue - uinitialvalue + 1
+                else runcount := 0;
+                end;
+              end
+            else
+              begin
+              { assumes two's complement representation }
+              if (initialvalue < - maxint) and (finalvalue = maxint) then
+                begin
+                overflow := true;
+                runcount := maxusint; { at least! }
+                end
+              else
+                begin
+                if initialvalue <= finalvalue then
+                  begin
+                  if initialvalue >= 0 then
+                    runcount := finalvalue - initialvalue + 1
+                  else
+                    begin
+                    if finalvalue < 0 then
+                      runcount := finalvalue - initialvalue + 1
+                    else
+                      begin
+                      runcount := - initialvalue;
+                      runcount := runcount + finalvalue + 1;
+                      end;
+                    end;
+                  end
+                else runcount := 0;
+                end;
+              end;
+            end
+          else
+            begin
+            { down loop }
+            if ptr^.op = defunsforlitindexop then
+              begin
+              if (uinitialvalue = maxusint) and (ufinalvalue = 0) then
+                begin
+                overflow := true;
+                runcount := maxusint; { at least! }
+                end
+              else
+                begin
+                if ufinalvalue <= uinitialvalue then
+                  runcount := uinitialvalue - ufinalvalue + 1
+                else runcount := 0;
+                end;
+              end
+            else
+              begin
+              { assumes two's complement representation }
+              if (initialvalue = maxint) and (finalvalue < - maxint) then
+                begin
+                overflow := true;
+                runcount := maxusint; { at least! }
+                end
+              else
+                begin
+                if initialvalue >= finalvalue then
+                  begin
+                  if finalvalue >= 0 then
+                    runcount := initialvalue - finalvalue + 1
+                  else
+                    begin
+                    if initialvalue < 0 then
+                      runcount := initialvalue - finalvalue + 1
+                    else
+                      begin
+                      runcount := - finalvalue;
+                      runcount := runcount + initialvalue + 1;
+                      end;
+                    end;
+                  end
+                else runcount := 0;
+                end;
+              end;
+            end; { down loop }
+          end;
+        end; {with}
+    end;
+    {>>>}
+
+    {<<<}
     procedure assignvalue (movenode: nodeindex);
     {
       Purpose:
@@ -8105,17 +8046,17 @@ var
             begin
             with sharedPtr^.proctable[stack[s].i] do
               begin
-              if stack[s].i <= cseregions then 
+              if stack[s].i <= cseregions then
                 cr := stack[s].i
-              else 
+              else
                 cr := 0;
-              if globaldeath then 
+              if globaldeath then
                 l := 0
-              else 
+              else
                 l := 2;
-              if intlevelrefs then 
+              if intlevelrefs then
                 u := level - 1
-              else 
+              else
                 u := 1;
               end
             end
@@ -8963,7 +8904,7 @@ var
         ifstmthdr := thisstmt;
         start_deadcount := deadcount;
         ptr := ref(bignodetable[ifstmthdr]);
-        checkconst(ptr^.expr1, removing, constvalue);
+        checkconst (ptr^.expr1, removing, constvalue);
         shorteval := false;
         startblock := currentblock;
         removing := removing and (removedeadcode in sharedPtr^.genset);
@@ -9094,7 +9035,7 @@ var
           newstmt(casetopstmt, casehdr);
           getintfile;
           caseexpr := buildexpr;
-          checkconst(caseexpr, removing, constvalue);
+          checkconst (caseexpr, removing, constvalue);
           removing := removing and (removedeadcode in sharedPtr^.genset);
           ptr := ref(bignodetable[casetopstmt]);
           ptr^.selector := caseexpr;
@@ -9792,7 +9733,7 @@ var
         setupstmt(cforhdr);
         cforhdrstmt := thisstmt;
         ptr := ref(bignodetable[cforhdrstmt]);
-        checkconst(ptr^.expr1, removing, constvalue);
+        checkconst (ptr^.expr1, removing, constvalue);
         removing := removing and (removedeadcode in sharedPtr^.genset);
         shorteval := false;
         newblock(controlled, hdrblock, false);
@@ -10026,7 +9967,7 @@ var
         setupstmt(whilehdr);
         whilehdrstmt := thisstmt;
         ptr := ref(bignodetable[whilehdrstmt]);
-        checkconst(ptr^.expr1, removing, constvalue);
+        checkconst (ptr^.expr1, removing, constvalue);
         removing := removing and (removedeadcode in sharedPtr^.genset);
         shorteval := false;
 
@@ -10170,102 +10111,107 @@ var
     }
     {>>>}
 
-      var
-        ptr: nodeptr; { to access stmt node }
-        temp: nodeindex; { hold fn result till usable }
-        loopbody: basicblockptr; { block containing loop body }
-        control: basicblockptr; { block containing loop control }
-        exit_block: basicblockptr; {the exit block}
-        start_deadcount: natural; {starting value of deadcount}
-        constvalue: integer; { value of control expression }
-        removing: boolean; { true if control expr is constant and dead goes}
-        untilstmt: nodeindex; { index of untilhdr }
-        exitdead: boolean; {the exit block is dead}
-        startdead: boolean; {we were dead at entry}
+    var
+      ptr: nodeptr; { to access stmt node }
+      temp: nodeindex; { hold fn result till usable }
+      loopbody: basicblockptr; { block containing loop body }
+      control: basicblockptr; { block containing loop control }
+      exit_block: basicblockptr; {the exit block}
+      start_deadcount: natural; {starting value of deadcount}
+      constvalue: integer; { value of control expression }
+      removing: boolean; { true if control expr is constant and dead goes}
+      untilstmt: nodeindex; { index of untilhdr }
+      exitdead: boolean; {the exit block is dead}
+      startdead: boolean; {we were dead at entry}
 
+    begin
+      start_deadcount := deadcount;
+      startdead := deadcode;
+      if gotodead = deadcount then deadcode := false;
+      newblock(loopbody, currentblock, true);
+      with loopbody^ do
+        begin
+        clearop := not startdead;
+        willexecute := true;
+        end;
+      newblock(control, nil, false);
+      newblock(exit_block, nil, false);
+      clearcontext;
+      currentblock := loopbody;
 
-      begin
-        start_deadcount := deadcount;
-        startdead := deadcode;
-        if gotodead = deadcount then deadcode := false;
-        newblock(loopbody, currentblock, true);
-        with loopbody^ do
-          begin
-          clearop := not startdead;
-          willexecute := true;
-          end;
-        newblock(control, nil, false);
-        newblock(exit_block, nil, false);
+      newstmt(thisstmt, rpthdr);
+      getintfile;
+
+      enterloop(loopbody);
+      pushloop(control, exit_block);
+      buildstmtlist(endrpt, control);
+      if this_loop^.cont_found then dead_exit(start_deadcount);
+      exitdead := deadcode and (removedeadcode in sharedPtr^.genset);
+      shorteval := true;
+
+      currentblock := control;
+
+      if irreducible then
+        loopbody^.clearop := false;
+
+      currentblock^.dominates := context[contextsp].dominates;
+      newstmt (untilstmt, untilhdr);
+
+      if this_loop^.cont_found then
         clearcontext;
-        currentblock := loopbody;
 
-        newstmt(thisstmt, rpthdr);
-        getintfile;
+      temp := buildexpr;
+      checkconst (temp, removing, constvalue);
+      if exitdead and not removing then
+        begin
+        removing := (removedeadcode in sharedPtr^.genset);
+        constvalue := 1;
+        end
+      else
+        removing := removing and (removedeadcode in sharedPtr^.genset);
 
-        enterloop(loopbody);
-        pushloop(control, exit_block);
-        buildstmtlist(endrpt, control);
-        if this_loop^.cont_found then dead_exit(start_deadcount);
-        exitdead := deadcode and (removedeadcode in sharedPtr^.genset);
-        shorteval := true;
+      { loopbody follows control ( unless dead control ) }
+      if exitdead then
+        begin
+        addpredsuccs (exit_block, exit_block);
+        exit_block^.isdead := removedeadcode in sharedPtr^.genset;
+        end;
+      addpredsuccs (control, exit_block);
 
-        currentblock := control;
+      if not removing or (constvalue = 0) then
+        begin
+        addpredsuccs (control, loopbody);
+        loopbody^.loophdr := true;
+        loopbody^.blocklabel := newlabel;
+        end;
 
-        if irreducible then loopbody^.clearop := false;
+      shorteval := false;
+      exitloop;
 
-        currentblock^.dominates := context[contextsp].dominates;
-        newstmt(untilstmt, untilhdr);
+      if this_loop^.break_found then
+        clearcontext;
 
-        if this_loop^.cont_found then clearcontext;
-
-        temp := buildexpr;
-        checkconst(temp, removing, constvalue);
-        if exitdead and not removing then
-          begin
-          removing := (removedeadcode in sharedPtr^.genset);
-          constvalue := 1;
-          end
-        else removing := removing and (removedeadcode in sharedPtr^.genset);
-
-        { loopbody follows control ( unless dead control ) }
-
-        if exitdead then
-          begin
-          addpredsuccs(exit_block, exit_block);
-          exit_block^.isdead := removedeadcode in sharedPtr^.genset;
-          end;
-        addpredsuccs(control, exit_block);
-
-        if not removing or (constvalue = 0) then
-          begin
-          addpredsuccs(control, loopbody);
-          loopbody^.loophdr := true;
-          loopbody^.blocklabel := newlabel;
-          end;
-
-        shorteval := false;
-        exitloop;
-
-        if this_loop^.break_found then clearcontext;
-
-        ptr := ref(bignodetable[untilstmt]);
-        if removing and (constvalue = 1) then ptr^.stmtkind := nohdr
+      ptr := ref(bignodetable[untilstmt]);
+      if removing and (constvalue = 1) then ptr^.stmtkind := nohdr
+      else
+        begin
+        { kill the expression on an "infinite" loop }
+        if removing then
+          ptr^.expr1 := 0
         else
-          begin
-          { kill the expression on an "infinite" loop }
-          if removing then ptr^.expr1 := 0
-          else ptr^.expr1 := temp;
-          ptr^.falseblock := loopbody;
-          ptr^.trueblock := exit_block;
-          ptr^.has_break := this_loop^.break_found;
-          end;
+          ptr^.expr1 := temp;
+        ptr^.falseblock := loopbody;
+        ptr^.trueblock := exit_block;
+        ptr^.has_break := this_loop^.break_found;
+        end;
 
-        if not this_loop^.cont_found then dead_exit(start_deadcount);
+      if not this_loop^.cont_found then
+        dead_exit(start_deadcount);
 
-        currentblock := exit_block;
-        currentblock^.dominates := context[contextsp].dominates;
-        poploop;
-      end {buildrptstmt} ;
+      currentblock := exit_block;
+      currentblock^.dominates := context[contextsp].dominates;
+      poploop;
+    end;
     {>>>}
     {<<<}
     procedure buildwithstmt;
