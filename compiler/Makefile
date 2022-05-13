@@ -13,19 +13,19 @@ DEP = common.def token.def inter.def pseudo.def list.def main.def scan.def analy
 p68: $(OBJ) $(DEP) $(SRC)
 	$(CC) $(LFLAGS) $(OBJ) ../p2clib.a -o p68
 
-ql: ql.o
+ql: ql.o $(SRC)
 	$(CC) $(LFLAGS) ql.o ../p2clib.a -o ql
 
 pmt: $(PMT_OBJ)
 	$(CC) $(LFLAGS) pasmat.o ../p2clib.a -o pmt
 
-dumpToken: dumpToken.o $(DEP)
+dumpToken: dumpToken.o $(DEP) $(SRC)
 	$(CC) $(LFLAGS) dumpToken.o common.o ../p2clib.a -o dumpToken
 
-dumpInter: dumpInter.o $(DEP)
+dumpInter: dumpInter.o $(DEP) $(SRC)
 	$(CC) $(LFLAGS) dumpInter.o common.o ../p2clib.a -o dumpInter
 
-dumpPseudo: dumpPseudo.o $(DEP)
+dumpPseudo: dumpPseudo.o $(DEP) $(SRC)
 	$(CC) $(LFLAGS) dumpPseudo.o common.o ../p2clib.a -o dumpPseudo
 
 %.o: %.c
@@ -34,7 +34,7 @@ dumpPseudo: dumpPseudo.o $(DEP)
 %.c: %.pas $(DEP)
 	./../p2c -q $<
 
-all: p68
+all: p68 ql dumpToken dumpInter dumpPseudo
 
 rebuild:
 	make clean
@@ -58,6 +58,7 @@ clean:
 	rm -f -v *.o
 	rm -f -v *.c
  #
+	rm -f -v ql
 	rm -f -v p68
 	rm -f -v dumpToken
 	rm -f -v dumpInter

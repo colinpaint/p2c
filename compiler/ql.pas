@@ -175,7 +175,7 @@ end;
 {>>>}
 
 {<<<}
-function seq (f1,f2: filename):boolean;
+function seq (f1, f2: filename):boolean;
 
 begin
   if f1.length <> f2.length then
@@ -185,35 +185,35 @@ begin
 end;
 {>>>}
 {<<<}
-function ior(i1,i2: integer):integer;
+function ior (i1, i2: integer):integer;
 
 begin
   ior := ord (uor (uint(i1), uint(i2)));
 end;
 {>>>}
 {<<<}
-function iand(i1,i2: integer):integer;
+function iand (i1, i2: integer):integer;
 
 begin
   iand := ord(uand(uint(i1),uint(i2)));
 end;
 {>>>}
 {<<<}
-function ixor(i1,i2: integer):integer;
+function ixor (i1, i2: integer):integer;
 
 begin
   ixor := ord(uxor(uint(i1),uint(i2)));
 end;
 {>>>}
 {<<<}
-function mvl(i:integer):integer;
+function mvl (i: integer):integer;
 
 begin
   mvl := i*256;
 end;
 {>>>}
 {<<<}
-function mvr(i:integer):integer;
+function mvr (i: integer):integer;
 
 begin
   if i < 0 then
@@ -223,7 +223,7 @@ begin
 end;
 {>>>}
 {<<<}
-function hexchr(c:char):integer;
+function hexchr (c: char):integer;
 
 begin
   if (c >= '0') AND (c <= '9') then
@@ -249,7 +249,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure getrec(VAR o: objrec);
+procedure getrec (VAR o: objrec);
 { .ro files are 256 byte fixed size blocks. Within these blocks, records are
   packed end to end i.e. one record can span a block boundary. Each record
   conisits of a single byte <n> followed by <n> data bytes
@@ -285,7 +285,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure opentextin (f:filename);
+procedure opentextin (f: filename);
 
 begin
   cur_file := f;
@@ -313,35 +313,35 @@ end;
 {>>>}
 
 {<<<}
-function null(c:char):boolean;
+function null (c: char):boolean;
 
 begin
   null := (c=chr(13)) OR (c=chr(10)) OR (c=' ') OR (c=chr(9)) OR (c=chr(0));
 end;
 {>>>}
 {<<<}
-function digit(c:char):boolean;
+function digit (c: char):boolean;
 
 begin
   digit := (c >= '0') AND (c <= '9');
 end;
 {>>>}
 {<<<}
-function alpha(c:char):boolean;
+function alpha (c: char):boolean;
 
 begin
   alpha := ((c>='a') AND (c<='z')) OR ((c>='A') AND (c<='Z'));
 end;
 {>>>}
 {<<<}
-function alphanum(c:char):boolean;
+function alphanum (c: char):boolean;
 
 begin
   alphanum := digit(c) OR alpha(c) OR (c='_');
 end;
 {>>>}
 {<<<}
-procedure force_up(VAR s:symbolName);
+procedure force_up (VAR s: symbolName);
 
 VAR
   i:integer;
@@ -365,7 +365,7 @@ begin
 end;
 {>>>}
 {<<<}
-function hash_sym (VAR s:symbolName):integer;
+function hash_sym (VAR s: symbolName):integer;
 
 VAR
   h,i:integer;
@@ -383,7 +383,7 @@ begin
 end;
 {>>>}
 {<<<}
-function find_insert (VAR s:symbolName; VAR s_ptr:symbolPtr;
+function find_insert (VAR s: symbolName; VAR s_ptr:symbolPtr;
                          ins : boolean):boolean;
 VAR
   found : boolean;
@@ -481,7 +481,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure add_res (s:symbolPtr; addr, offset : integer);
+procedure add_res (s: symbolPtr; addr, offset : integer);
 { add a resolved symbol reference to list held per symbol }
 
 VAR
@@ -497,7 +497,7 @@ end;
 {>>>}
 
 {<<<}
-procedure read_history ( f : filename);
+procedure read_history (f: filename);
 { disp history and read_history must have match in file format }
 
 VAR
@@ -750,12 +750,12 @@ begin
   close (sym_tab);
 end;
 {>>>}
-{>>>}
+
 {<<<}
 procedure openloggingFile;
 
 begin
-  rewrite (logFile,cmdroot+'.logging');
+  rewrite (logFile, cmdroot + '.log');
   writeln (logFile, 'Linking from ', full_filename);
 end;
 {>>>}
@@ -767,59 +767,74 @@ VAR
   datestring: packed array [1..11] of CHAR;
 
 begin
-if english then
-  begin
+  if english then
+    begin
+    writeln (logFile);
+
+    total := 0;
+    if sectbase[8] <> 0 then
+      {<<<}
+      begin
+      writeln (logFile, 'Size of P                 (8)  = ', sectbase[8]:8, ' bytes');
+      total := total + sectbase[8];
+      end;
+      {>>>}
+    if sectbase[9] <> 0 then
+      {<<<}
+      begin
+      writeln (logFile, 'Size of HELP              (9)  = ', sectbase[9]:8, ' bytes'); 
+      total := total + sectbase[9];
+      end;
+      {>>>}
+    if sectbase[12] <> 0 then
+      {<<<}
+      begin
+      writeln (logFile, 'Size of error messages   (12)  = ', sectbase[12]:8, ' bytes');
+      total := total + sectbase[12];
+      end;
+      {>>>}
+    if sectbase[13] <> 0 then
+      {<<<}
+      begin
+      writeln (logFile, 'Size of code & constants (13)  = ', sectbase[13]:8, ' bytes');
+      total := total + sectbase[13];
+      end;
+      {>>>}
+    if sectbase[14] <> 0 then
+      {<<<}
+      begin
+      writeln (logFile, 'Size of diagnostic block (14)  = ', sectbase[14]:8, ' bytes');
+      total := total + sectbase[14];
+      end;
+      {>>>}
+    if sectbase[15] <> 0 then
+      {<<<}
+      begin
+      writeln (logFile, 'Size of global variables (15)  = ', sectbase[15]:8, ' bytes');
+      total := total + sectbase[15];
+      end;
+      {>>>}
+
+    writeln (logFile, 'Total size                     = ', total:8, ' bytes');
+    end
+
+  else for i:=0 TO 15 DO
+    if sectbase[i] <> 0 then
+      begin
+      write (logFile, 'Section ',i:2,' Start ', hex(baseaddr[i], 6, 6), ' Length ', hex(sectbase[i],6,6));
+      writeln (logFile, ' Finish  ', hex(baseaddr[i] + sectbase[i], 6 ,6));
+      end;
+
+  date (datestring);
   writeln (logFile);
-  total := 0;
-  if sectbase[8] <> 0 then
-    begin
-    writeln (logFile, 'Size of P                 (8)  = ', sectbase[8]:8, ' bytes');
-    total := total + sectbase[8];
-    end;
-  if sectbase[9] <> 0 then
-    begin
-    writeln (logFile, 'Size of HELP              (9)  = ',
-              sectbase[9]:8, ' bytes'); total := total + sectbase[9];
-    end;
-  if sectbase[12] <> 0 then
-    begin
-    writeln (logFile, 'Size of error messages   (12)  = ', sectbase[12]:8, ' bytes');
-    total := total + sectbase[12];
-    end;
-  if sectbase[13] <> 0 then
-    begin
-    writeln (logFile, 'Size of code & constants (13)  = ', sectbase[13]:8, ' bytes');
-    total := total + sectbase[13];
-    end;
-  if sectbase[14] <> 0 then
-    begin
-    writeln (logFile, 'Size of diagnostic block (14)  = ', sectbase[14]:8, ' bytes');
-    total := total + sectbase[14];
-    end;
-  if sectbase[15] <> 0 then
-    begin
-    writeln (logFile, 'Size of global variables (15)  = ', sectbase[15]:8, ' bytes');
-    total := total + sectbase[15];
-    end;
-  writeln (logFile, 'Total size                     = ', total:8, ' bytes');
-  end
+  writeln (logFile, 'Link started ', start_link.time_of_day, ' ', datestring);
+  writeln (logFile, 'Link ended   ', end_link.time_of_day, ' ', datestring);
+  writeln (logFile, 'total CPU time:- ',(end_link.mill_time-start_link.mill_time)/1000:7:2);
 
-else for i:=0 TO 15 DO
-  if sectbase[i] <> 0 then
-    begin
-    write (logFile, 'Section ',i:2,' Start ',hex(baseaddr[i],6,6),' Length ', hex(sectbase[i],6,6));
-    writeln (logFile, ' Finish  ',hex(baseaddr[i]+sectbase[i],6,6));
-    end;
-
-date (datestring);
-writeln (logFile);
-writeln (logFile, 'Link started ', start_link.time_of_day, ' ', datestring);
-writeln (logFile, 'Link ended   ', end_link.time_of_day, ' ', datestring);
-writeln (logFile, 'total CPU time:- ',(end_link.mill_time-start_link.mill_time)/1000:7:2);
-
-close (logFile);
+  close (logFile);
 end;
 {>>>}
+
 {<<<}
 procedure allocCom;
 
@@ -839,6 +854,7 @@ begin
     s_ptr := s_ptr^.next_com;
     end;
 end;
+{>>>}
 {>>>}
 
 {<<<}
@@ -969,9 +985,10 @@ end;
 procedure sendbin (b: byte);
 
 begin
-if (b = esc) AND (escape = true) then
+  if (b = esc) AND (escape = true) then
+    binbyte (b);
+
   binbyte (b);
-binbyte (b);
 end;
 {>>>}
 {<<<}
@@ -998,22 +1015,20 @@ end;
 procedure wbyte (b: byte);
 
 VAR
-  s:string;
+  s: string;
 
 begin
   if bin then
     begin
     sendbin (b);
-    checksum := ixor(checksum,b);
+    checksum := ixor (checksum,b);
     end
-
   else
     begin
     s := hex (b,2,2);
     sendsform (s);
     checksum := checksum + b;
     end;
-
 end;
 {>>>}
 {<<<}
@@ -1023,14 +1038,14 @@ VAR
   s:string;
 
 begin
-if bin then
-  sendbin (checksum)
-else
-  begin
-  s := hex (255 - (checksum MOD 256),2,2);
-  sendsform (s);
-  sendsfnewline;
-  end;
+  if bin then
+    sendbin (checksum)
+  else
+    begin
+    s := hex (255 - (checksum MOD 256),2,2);
+    sendsform (s);
+    sendsfnewline;
+    end;
 end;
 {>>>}
 
@@ -1081,7 +1096,6 @@ begin
   else
     if chat OR debug then
       writeln ('Pass 1 of ', mod_id,':');
-
 end;
 {>>>}
 {<<<}
@@ -1306,7 +1320,6 @@ begin
     '3': proctxt;
     '4': proceom;
     end;
-
 end;
 {>>>}
 {<<<}
@@ -1762,9 +1775,7 @@ begin
       rewrite (sfile, cmdroot+'.SR');
       writeln ('Making SR file ', cmdroot + '.SR');
       end;
-
     end;
-
 end;
 {>>>}
 {<<<}
@@ -1802,6 +1813,7 @@ procedure closeoutput;
 begin
   if inpacket then
     endpacket;
+
   sendstop;
 
   if bin then
@@ -1818,12 +1830,11 @@ begin
     if out then
       close (sfile);
     end;
-
 end;
 {>>>}
 
 {<<<}
-procedure doSwitch (start,sw_len: integer);
+procedure doSwitch (start, sw_len: integer);
 {--- processes a switch setting directive}
 
 VAR
@@ -1833,14 +1844,14 @@ VAR
   c : char;
 
   {<<<}
-  procedure setsw(VAR b:boolean);
+  procedure setsw (VAR b: boolean);
 
   BEGIN
     b := NOT noflag;
   end;
   {>>>}
   {<<<}
-  function gnext:char;
+  function gnext: char;
 
   begin
     gnext := line_buff [swpos];
@@ -1850,7 +1861,7 @@ VAR
   {>>>}
 
 begin
-  {--- Convert to lower case only}
+  { convert to lowerCase }
   for i:=1 TO sw_len DO
     if (line_buff[i]>='A') AND (line_buff[i]<='Z') then
       line_buff[i]:=chr(ord(line_buff[i])+ord('a')-ord('A'));
@@ -1862,71 +1873,97 @@ begin
     sw[2] := gnext;
     sw[3] := '.';
     if sw = 'no.' then
+      {<<<  no.}
       begin
       noflag := true;
       sw[1] := gnext;
       sw[2] := gnext;
       end;
-
+      {>>>}
     sw[3] := gnext;
     sw_end := swpos;
-
     repeat
       c := gnext;
-      until (c='/') OR (null(c)) OR (swpos>=sw_len); {skip to next switch}
+      until (c='/') OR (null (c)) OR (swpos >= sw_len); {skip to next switch}
 
-    if (sw[1]='o') AND (sw[2]>='0') AND (sw[2]<='9') then
+    if (sw[1] = 'o') AND (sw[2] >= '0') AND (sw[2] <= '9') then
+      {<<<  section startAddress}
       begin
-      {we're processing a section start address record}
-      if sw[3]=':' then sect:=ord(sw[2])-ord('0') else
+      if sw[3] = ':' then
+        sect := ord (sw[2]) - ord('0')
+      else
         begin
-        sect := 10*(ord(sw[2])-ord('0'))+(ord(sw[3])-ord('0'));
+        sect := 10 * (ord(sw[2]) - ord('0')) + (ord(sw[3]) - ord('0'));
         sw_end := sw_end+1;
         end;
 
-      if swpos <> sw_len then endpos := swpos - 2 else endpos:=swpos;
+      if swpos <> sw_len then
+        endpos := swpos - 2
+      else
+        endpos := swpos;
 
       if (sect >= 0) AND (sect <= 15) then
         begin
         userbase[sect] := 0;
         for i := sw_end TO endpos DO
-          userbase[sect] := 16 * userbase[sect] + hexchr(line_buff[i]);
+          userbase[sect] := 16 * userbase[sect] + hexchr (line_buff[i]);
         if debug then
-          writeln (hex(userbase[sect],6,6),' ',sect);
+          writeln (hex (userbase[sect],6,6),' ',sect);
         end
       else
-        writeln (' Illegal section number in switch ''',sw,'''');
+        writeln (' Illegal section number in switch ', sw);
       end
-
+      {>>>}
+    else if (sw = 'xre') OR (sw = 'xrf') then
+      setsw (xref) { generate xref file }
+    else if sw = 'map' then
+      setsw (map)  { generate map file}
+    else if sw = 'sym' then
+      setsw(symout) { generate symbol file}
+    else if sw= 'bin' then
+      setsw (bin)  { binary output}
+    else if sw = 'mod' then
+      setsw (modules) { module list}
+    else if sw = 'deb' then
+      setsw (debug) { debug mode}
+    else if (sw = 'dld') OR (sw='dow') then
+      setsw (download) {download to target}
+    else if sw = 'out' then
+      setsw (out) { generate any output at all!}
+    else if sw = 'cha' then
+      setsw (chat) { generate loads of output }
+    else if sw = 'qui' then
+      setsw (quiet) { generate minimum output}
+    else if sw = 'eng' then
+      setsw (english) { say understandable things}
+    else if sw = 'log' then
+      {<<<  log stuff in .log file}
+      begin
+      setsw (logging);
+      openloggingFile;
+      end
+      {>>>}
+    else if sw = 'fil' then
+      setsw (files) { generate put filenames in mod file }
+    else if sw = 'his' then
+      setsw (history) { generate history file }
+    else if sw = 'bel' then
+      {<<<  bells}
+      begin
+      { generate bells at end of link }
+      setsw (bell);
+      if noflag then
+        writeln ('What do you want, a prize or something??');
+      end
+      {>>>}
+    else if sw = 'che' then
+      setsw (check) { check all possible grubbies}
+    else if sw = 'esc' then
+      setsw (escape) { replace all 1B's in code with 1B1B }
     else
-      if (sw='xre') OR (sw='xrf') then setsw(xref)        {generate xref file}
-      else if sw='map' then setsw(map)                    {generate map file}
-      else if sw='sym' then setsw(symout)                 {generate symbol file}
-      else if sw='bin' then setsw(bin)                    {binary output}
-      else if sw='mod' then setsw(modules)                {module list}
-      else if sw='deb' then setsw(debug)                  {debug mode}
-      else if (sw='dld') OR (sw='dow') then setsw(download){download to target}
-      else if sw='out' then setsw(out)                    {generate any output at all!}
-      else if sw='cha' then setsw(chat)                   {generate loads of output}
-      else if sw='qui' then setsw(quiet)                  {generate minimum output}
-      else if sw='eng' then setsw(english)                {say understandable things}
-      else if sw='log' then                               {put sizes etc in .logging file}
-        begin
-        setsw(logging);
-        openloggingFile;
-        end
-      else if sw='fil' then setsw(files)                  {generate put filenames in mod file}
-      else if sw='his' then setsw(history)                {generate history file}
-      else if sw='bel' then
-        begin
-        setsw(bell);                              {generate bells at end of link}
-        if noflag then writeln('What do you want, a prize or something??');
-        end
-      else if sw='che' then setsw(check)                  {check all possible grubbies}
-      else if sw='esc' then setsw(escape)                 {replace all 1B's in code with 1B1B}
-      else writeln('Unknown switch :''',sw,'''');
-      until (swpos>=sw_len) OR (null(c));
+      writeln ('Unknown switch :', sw );
 
+    until (swpos >= sw_len) OR (null (c));
 end;
 {>>>}
 {<<<}
@@ -1964,7 +2001,7 @@ end;
 {>>>}
 
 {<<<}
-function getfile (VAR terminator : char): filename;
+function getfile (VAR terminator: char): filename;
 
 VAR
   f : filename;
@@ -2127,7 +2164,7 @@ begin
 end;
 {>>>}
 {<<<}
-procedure show_milestone (s: string; ms1,ms2: milestone);
+procedure show_milestone (s: string; ms1, ms2: milestone);
 
 VAR
   temp, cc, ss, mm, hh: integer;
@@ -2148,11 +2185,10 @@ begin
   writev (time_str, hh :2, ':', mm :2, ':', ss :2, '.', cc :2 );
 
   for temp := 1 TO time_str.length DO
-    if time_str[ temp ] = ' ' then
-      time_str[ temp ] := '0';
+    if time_str[temp] = ' ' then
+      time_str[temp] := '0';
   write ( ' ', time_str );
-  writeln ('  ',((ms1.mill_time-ms2.mill_time)*100)/
-           (end_link.mill_time-start_link.mill_time):7:2,'%');
+  writeln ('  ', ((ms1.mill_time-ms2.mill_time)*100) / (end_link.mill_time-start_link.mill_time):7:2,'%');
 end;
 {>>>}
 {<<<}
