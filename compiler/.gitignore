@@ -18,3 +18,7 @@ ro
 *.tree
 *.cmd
 *.ro
+*.bin
+*.map
+*.xref
+*.mod

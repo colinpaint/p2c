@@ -18,42 +18,42 @@ type
   byte = 0..255;
   word = -32768..32767;
 
-  filename = varying [80] of char;
+  filenameType = varying [80] of char;
   string = varying [maxStringLen] of char;
   objrec = varying [255] of char;
 
-  symbolName = packed array [1..10] of char;
+  symbolNameType = packed array [1..10] of char;
   {<<<}
   idrec = packed record
     rlen : word;
     rtype : char;
-    modname : symbolName;
+    modName : symbolNameType;
     end;
   {>>>}
 
   referencePtr = ^reference;
   {<<<}
   reference = packed record
-    rname    : symbolName;
-    next_ref : referencePtr;
+    nextReference : referencePtr;
+    symbolName    : symbolNameType;
     end;
   {>>>}
 
   resolvePtr = ^resolve;
   {<<<}
   resolve = packed record
-    res_addr   : integer;
-    res_offset : integer;
-    next_res   : resolvePtr;
+    nextResolve : resolvePtr;
+    res_addr    : integer;
+    res_offset  : integer;
     end;
   {>>>}
 
   symbolPtr = ^symbolType;
   {<<<}
   symbolType = packed record
-    sname, mname           : symbolName;
-    ssect, saddr, comsize  : integer;
     nextSymbol, nextCom    : symbolPtr;
+    sname, mname           : symbolNameType;
+    ssect, saddr, comsize  : integer;
     sdef, sused            : boolean;
     sflagged, shist        : boolean;
     reflist                : referencePtr;
@@ -63,6 +63,14 @@ type
 
   block = packed array [0..255] of byte;
   bblock = packed array [0..511] of byte;
+
+  fileListPtrType = ^fileListType;
+  {<<<}
+  fileListType = record
+    nextFile : fileListPtrType;
+    f        : text;
+    end;
+  {>>>}
 
   {<<<}
   milestone = record
@@ -77,7 +85,7 @@ type
     CASE history_type : history_type_t of
       $history_obj :    (obj_addr : integer;);
       $history_symbol : (symbol_addr : integer;
-                         symbol_name : symbolName;);
+                         symbol_name : symbolNameType;);
       $history_ref :    (ref_addr, ref_offset : integer;);
     end;
   {>>>}
@@ -90,14 +98,6 @@ type
     end;
   {>>>}
   history_file_t = FILE of filed_history_t;
-
-  fileListPtrType = ^fileListType;
-  {<<<}
-  fileListType = record
-    f: text;
-    nextFile: fileListPtrType;
-    end;
-  {>>>}
 {>>>}
 {<<<}
 var
@@ -105,12 +105,12 @@ var
   commandLen: word;
 
   fileId: string;
-  f: filename;
-  cur_file: filename;
-  ext: filename;
-  defext: filename;
-  commandRoot: filename;
-  fullFilename: filename;
+  filename: filenameType;
+  curFile: filenameType;
+  ext: filenameType;
+  defext: filenameType;
+  commandRoot: filenameType;
+  fullFilename: filenameType;
 
   cmdFile: fileListPtrType;
   logFile: text;
@@ -126,15 +126,17 @@ var
   smax, checksum, pass, opos, bpos: integer;
   o: objrec;
 
-  line_length: integer;
-  line_buff: packed array [1..maxStringLen+1] of char; {extra byte to stop bound overflow!}
-
   prev_com : symbolPtr;
   com_head : symbolPtr;
 
-  modules, debug, download, check, bell, xref, map, bin, out, symout : boolean;
-  logging, english, quiet, files, chat, history, use_history, escape : boolean;
-  newline, duffer, inpacket : boolean;
+  { switches }
+  modules, download, check, bell, xref, map, bin, out, symout : boolean;
+  chat, debug, logging, english, quiet, files, history, escape : boolean;
+
+  duffer: boolean;
+  newline: boolean;
+  inpacket: boolean;
+  usingHistory: boolean;
 
   hash_table : array [0..maxHash] of symbolPtr;
 
@@ -151,13 +153,13 @@ var
   end_map_gen, end_his_gen, end_sym_gen, end_space_alloc, end_xref_gen: milestone;
   start_read_his, end_read_his: milestone;
 
-  mod_id: symbolName;
+  modName: symbolNameType;
 
   oblock: bblock;
   bl, inblock: block;
   empty: boolean;
 
-  sn: symbolName;
+  sn: symbolNameType;
   spt: symbolPtr;
   orec: objrec;
   total, basepos, i: integer;
@@ -167,7 +169,7 @@ var
 
   {<<<  utils}
   {<<<}
-  function seq (f1, f2: filename): boolean;
+  function seq (f1, f2: filenameType): boolean;
 
   begin
     if f1.length <> f2.length then
@@ -228,7 +230,10 @@ var
     else if (c >= 'A') AND (c <= 'F') then
       hexchr := ord(c)-ord('A')+10
     else
+      begin
       writeln ('Duff char ''',c,'''when hex char expected!');
+      hexchr := 0;
+      end;
   end;
   {>>>}
 
@@ -263,7 +268,7 @@ var
   {>>>}
 
   {<<<}
-  procedure forceUp (var s: symbolName);
+  procedure forceUp (var s: symbolNameType);
 
   var
     i:integer;
@@ -284,7 +289,7 @@ var
 
   begin
     if (tlow <> 0) or (slow <> 0) and (slow <> 1) then
-      Writeln ('substring consistency error1')
+      writeln ('substring consistency error1')
 
     else
       begin
@@ -309,7 +314,7 @@ var
         span := slen - start + 1;
 
       if thigh < span then
-        Writeln ('substring consistency error2')
+        writeln ('substring consistency error2')
       else if span <= 0 then
         t[0] := chr(0)
       else
@@ -322,12 +327,12 @@ var
   {>>>}
 
   {<<<}
-  procedure showModId;
+  procedure showModName;
 
   begin
-    writeln ('in module ''', mod_id, ''', from file ''', cur_file, '''....');
+    writeln ('in module ''', modName, ''', from file ''', curFile, '''....');
     if logging then
-      writeln (logFile, 'in module ''', mod_id, ''', from file ''', cur_file, '''....');
+      writeln (logFile, 'in module ''', modName, ''', from file ''', curFile, '''....');
   end;
   {>>>}
 
@@ -335,68 +340,104 @@ var
   function currentTime: milestone;
 
   var
-    ms : milestone;
-    temp :integer;
+    ms: milestone;
+    temp: integer;
 
     {<<<}
-    function get_num (startch: integer): integer;
+    function getNum (startch: integer): integer;
 
     var
       temp1, temp2: integer;
 
     begin
-      temp1 := ORD( ms.time_of_day[ startch ] ) - ORD( '0' );
-      temp2 := ORD( ms.time_of_day[ startch + 1 ] ) - ORD( '0' );
-      get_num := (temp1 * 10) + temp2;
+      temp1 := ORD(ms.time_of_day[startch]) - ORD('0');
+      temp2 := ORD(ms.time_of_day[startch + 1] ) - ORD('0');
+      getNum := (temp1 * 10) + temp2;
     end;
     {>>>}
 
   begin
-    {ms.mill_time := clock;
-    }
     time (ms.time_of_day);
 
     { ms.time_of_day is hh:mm:ss.cc }
     {                   12 45 78 AB }
     ms.int_time := 0;
-    temp := get_num( 1 ); {hh}
+
+    temp := getNum (1); {hh}
     ms.int_time := temp;
-    temp := get_num( 4 ); {mm}
+
+    temp := getNum (4); {mm}
     ms.int_time := ms.int_time * 60 + temp;
-    temp := get_num( 7 ); {ss}
+
+    temp := getNum (7); {ss}
     ms.int_time := ms.int_time * 60 + temp;
-    temp := get_num( 10 ); {cc}
+
+    temp := getNum (10); {cc}
     ms.int_time := ms.int_time * 100 + temp;
 
     currentTime := ms;
   end;
   {>>>}
+  {<<<}
+  procedure showMilestone (s: string; ms1, ms2: milestone);
+
+  var
+    temp, cc, ss, mm, hh: integer;
+    timeString: string;
+
+  begin
+    temp := ms1.int_time - ms2.int_time;
+
+    cc := temp MOD 100;
+    temp := temp DIV 100;
+    ss := temp MOD 60;
+
+    temp := temp DIV 60;
+    mm := temp MOD 60;
+
+    temp := temp DIV 60;
+    hh := temp MOD 60;
+
+    write (s);
+    write (ms1.time_of_day,' ',(ms1.mill_time-ms2.mill_time) / 1000:7:2);
+    writev (timeString, hh :2, ':', mm :2, ':', ss :2, '.', cc :2 );
+
+    for temp := 1 TO timeString.length DO
+      if timeString[temp] = ' ' then
+        timeString[temp] := '0';
+
+    write ( ' ', timeString );
+
+    if end_link.mill_time - start_link.mill_time > 0 then
+      write ('  ', ((ms1.mill_time-ms2.mill_time)*100) / (end_link.mill_time-start_link.mill_time):7:2,'%');
+    writeln;
+  end;
+  {>>>}
   {>>>}
   {<<<  file utils}
   {<<<}
-  function getExt (var f: filename; defaultExt: filename): filename;
+  function getExt (var filename: filenameType; defaultExt: filenameType): filenameType;
 
   var
     i:integer;
-    result: filename;
+    result: filenameType;
 
   begin
-    i := f.length;
+    i := filename.length;
 
     { search backwards, to see if first non-alpha char is a '.' (i.e. extension)}
-    while (i > 1) AND alphanum(f[i]) DO
-      i := i-1;
+    while (i > 1) AND alphanum (filename[i]) DO
+      i := i - 1;
 
-    if f[i] = '.' then
+    if filename[i] = '.' then
       begin
-      Writeln ('missing substr');
-      subString (result, f, i, f.length + 1 - i);
-      getExt := f;
+      subString (result, filename, i, filename.length + 1 - i);
+      getExt := filename;
       end
     else
       begin
+      filename := filename + defaultExt;
       getExt := defaultExt;
-      f := f + defaultExt;
       end;
   end;
   {>>>}
@@ -488,11 +529,11 @@ var
 
   { .ro objext file }
   {<<<}
-  procedure openin (f: filename);
+  procedure openin (filename: filenameType);
 
   begin
-    cur_file := f;
-    reset (objectFile, f);
+    curFile := filename;
+    reset (objectFile, filename);
 
     blockpt := 0;
     read (objectFile, inblock);
@@ -501,7 +542,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure getRec (var o: objrec);
+  procedure getRecord (var o: objrec);
   { .ro files are 256 byte fixed size blocks. Within these blocks, records are
     packed end to end i.e. one record can span a block boundary. Each record
     conisits of a single byte <n> followed by <n> data bytes
@@ -546,11 +587,11 @@ var
 
   { .rx objext file }
   {<<<}
-  procedure openTextIn (f: filename);
+  procedure openTextIn (filename: filenameType);
 
   begin
-    cur_file := f;
-    reset (textObjectFile, f);
+    curFile := filename;
+    reset (textObjectFile, filename);
   end;
   {>>>}
   {<<<}
@@ -844,7 +885,7 @@ var
       if hash_table[i] <> nil then
         begin
         if debug then
-          writeln(ref_file,i,':');
+          writeln (ref_file,i,':');
         s_ptr := hash_table[i];
         REPEAT
           refcount:=0;
@@ -862,11 +903,11 @@ var
             begin
             r := s_ptr^.reflist;
             REPEAT
-              write (ref_file,r^.rname,'    ');
+              write (ref_file,r^.symbolName,'    ');
               refcount := refcount + 1;
               if refcount MOD 6 = 0 then
                 writeln (ref_file);
-              r := r^.next_ref;
+              r := r^.nextReference;
               until r = nil;
             if refcount MOD 6 <> 0 then
               writeln (ref_file);
@@ -946,7 +987,7 @@ var
                 history_rec.ref_offset := r^.res_offset;
                 {Write (res_file, history_rec);}
                 send_to_file (history_rec);
-                r := r^.next_res;
+                r := r^.nextResolve;
                 end until r = nil;
               end;
 
@@ -975,11 +1016,11 @@ var
   end;
   {>>>}
   {<<<}
-  function getSymbolName: symbolName;
+  function getSymbolName: symbolNameType;
 
   var
     i: integer;
-    sn: symbolName;
+    sn: symbolNameType;
 
   begin
     for i := 1 TO 10 DO
@@ -1004,7 +1045,7 @@ var
   {>>>}
 
   {<<<}
-  function hashSymbol (var s: symbolName): integer;
+  function hashSymbol (var s: symbolNameType): integer;
 
   var
     h,i:integer;
@@ -1022,7 +1063,7 @@ var
   end;
   {>>>}
   {<<<}
-  function findInsert (var s: symbolName; var s_ptr: symbolPtr; ins: boolean): boolean;
+  function findInsert (var s: symbolNameType; var s_ptr: symbolPtr; ins: boolean): boolean;
   var
     found : boolean;
     hash : integer;
@@ -1054,7 +1095,7 @@ var
       s_ptr^.sused := true;
       s_ptr^.sflagged := false;
       s_ptr^.sname := s;
-      s_ptr^.mname := mod_id;
+      s_ptr^.mname := modName;
       s_ptr^.comsize := -1;
       s_ptr^.reflist := nil;
       s_ptr^.reslist := nil;
@@ -1090,7 +1131,7 @@ var
 
   begin
     new (res_ptr);
-    res_ptr^.next_res := s^.reslist;
+    res_ptr^.nextResolve := s^.reslist;
     res_ptr^.res_addr := addr;
     res_ptr^.res_offset := offset;
     s^.reslist := res_ptr;
@@ -1154,7 +1195,7 @@ var
   procedure doubleDef (s: symbolPtr);
 
   begin
-    showModId;
+    showModName;
 
     writeln ('Doubly defined label  ''',s^.sname,'''');
     writeln ('Previously defined in module ''',s^.mname,'''');
@@ -1169,7 +1210,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure readHistory (f: filename);
+  procedure readHistory (filename: filenameType);
   { disp history and read_history must have match in file format }
 
   var
@@ -1180,7 +1221,9 @@ var
     res_file : history_file_t;
 
   begin
-    reset (res_file, f);
+    spt := nil;
+
+    reset (res_file, filename);
 
     while NOT eof (res_file) DO
       begin
@@ -1194,7 +1237,6 @@ var
           $history_symbol :
             begin
             if findInsert (symbol_name, spt, true) then;
-
             spt^.shist := TRUE;
             spt^.mname := 'patched!!!';
             spt^.ssect := -1;
@@ -1205,7 +1247,7 @@ var
           $history_ref :
             begin
             new (r);
-            r^.next_res := spt^.reslist;
+            r^.nextResolve := spt^.reslist;
             r^.res_addr := ref_addr;
             r^.res_offset := ref_offset;
             spt^.reslist := r;
@@ -1221,16 +1263,30 @@ var
   {<<<}
   procedure switchProcess (var s: string);
 
+  var
+    i, j, l: integer;
+    slashfound: boolean;
+    lineBuffer: packed array [1..maxStringLen+1] of char; {extra byte to stop bound overflow!}
+
     {<<<}
     procedure doSwitch (start, switchLen: integer);
     { processes a switch setting directive }
 
     var
-      noflag : boolean;
-      sw : packed array [1..3] of char;
-      endpos, sw_end, sect, i, swpos : integer;
       c : char;
+      noflag : boolean;
+      tla : packed array [1..3] of char;
+      i, pos, endPos, switchEndPos, sect : integer;
 
+      {<<<}
+      function getNextCh: char;
+
+      begin
+        getNextCh := lineBuffer [pos];
+        if pos < switchLen then
+          pos := pos + 1;
+      end;
+      {>>>}
       {<<<}
       procedure setSwitch (var b: boolean);
 
@@ -1238,105 +1294,98 @@ var
         b := NOT noflag;
       end;
       {>>>}
-      {<<<}
-      function gnext: char;
-
-      begin
-        gnext := line_buff [swpos];
-        if swpos < switchLen then
-          swpos := swpos + 1;
-      end;
-      {>>>}
 
     begin
       { convert to lowerCase }
       for i := 1 TO switchLen DO
-        if (line_buff[i]>='A') AND (line_buff[i]<='Z') then
-          line_buff[i] := chr(ord(line_buff[i]) + ord('a') - ord('A'));
+        if (lineBuffer[i] >= 'A') AND (lineBuffer[i] <= 'Z') then
+          lineBuffer[i] := chr(ord(lineBuffer[i]) + ord('a') - ord('A'));
 
-      swpos := start;
+      pos := start;
       repeat
         noflag := false;
-        sw[1] := gnext;
-        sw[2] := gnext;
-        sw[3] := '.';
-        if sw = 'no.' then
+        tla[1] := getNextCh;
+        tla[2] := getNextCh;
+        tla[3] := '.';
+        if tla = 'no.' then
           {<<<  no.}
           begin
           noflag := true;
-          sw[1] := gnext;
-          sw[2] := gnext;
+          tla[1] := getNextCh;
+          tla[2] := getNextCh;
           end;
           {>>>}
 
-        sw[3] := gnext;
-        sw_end := swpos;
-        repeat
-          c := gnext;
-          until (c='/') OR (null (c)) OR (swpos >= switchLen); {skip to next switch}
+        tla[3] := getNextCh;
+        switchEndPos := pos;
 
-        if (sw[1] = 'o') AND (sw[2] >= '0') AND (sw[2] <= '9') then
+        { skip to next switch }
+        repeat
+          c := getNextCh;
+          until (c='/') OR (null (c)) OR (pos >= switchLen); 
+
+        if (tla[1] = 'o') AND (tla[2] >= '0') AND (tla[2] <= '9') then
           {<<<  section startAddress}
           begin
-          if sw[3] = ':' then
-            sect := ord (sw[2]) - ord('0')
+          if tla[3] = ':' then
+            sect := ord (tla[2]) - ord('0')
           else
             begin
-            sect := 10 * (ord(sw[2]) - ord('0')) + (ord(sw[3]) - ord('0'));
-            sw_end := sw_end+1;
+            sect := 10 * (ord(tla[2]) - ord('0')) + (ord(tla[3]) - ord('0'));
+            switchEndPos := switchEndPos + 1;
             end;
 
-          if swpos <> switchLen then
-            endpos := swpos - 2
+          if pos <> switchLen then
+            endPos := pos - 2
           else
-            endpos := swpos;
+            endPos := pos;
 
           if (sect >= 0) AND (sect <= 15) then
             begin
             userbase[sect] := 0;
-            for i := sw_end TO endpos DO
-              userbase[sect] := 16 * userbase[sect] + hexchr (line_buff[i]);
+            for i := switchEndPos TO endPos DO
+              userbase[sect] := 16 * userbase[sect] + hexchr (lineBuffer[i]);
             if debug then
               writeln (hex (userbase[sect],6,6),' ',sect);
             end
           else
-            writeln (' Illegal section number in switch ', sw);
+            writeln (' Illegal section number in switch ', tla);
           end
           {>>>}
-        else if (sw = 'xre') OR (sw = 'xrf') then
+        else if (tla = 'xre') OR (tla = 'xrf') then
           setSwitch (xref) { generate xref file }
-        else if sw = 'map' then
+        else if tla = 'map' then
           setSwitch (map)  { generate map file}
-        else if sw = 'sym' then
+        else if tla = 'sym' then
           setSwitch (symout) { generate symbol file}
-        else if sw = 'bin' then
+        else if tla = 'bin' then
           setSwitch (bin)  { binary output}
-        else if sw = 'mod' then
+        else if tla = 'mod' then
           setSwitch (modules) { module list}
-        else if sw = 'deb' then
+        else if tla = 'deb' then
           setSwitch (debug) { debug mode}
-        else if (sw = 'dld') OR (sw='dow') then
+        else if (tla = 'dld') OR (tla = 'dow') then
           setSwitch (download) {download to target}
-        else if sw = 'out' then
+        else if tla = 'out' then
           setSwitch (out) { generate any output at all!}
-        else if sw = 'cha' then
+        else if tla = 'cha' then
           setSwitch (chat) { generate loads of output }
-        else if sw = 'qui' then
+        else if tla = 'qui' then
           setSwitch (quiet) { generate minimum output}
-        else if sw = 'eng' then
+        else if tla = 'eng' then
           setSwitch (english) { say understandable things}
-        else if sw = 'log' then
+        else if tla = 'log' then
           {<<<  log stuff in .log file}
           begin
           setSwitch (logging);
           openloggingFile;
           end
           {>>>}
-        else if sw = 'fil' then
+        else if tla = 'fil' then
           setSwitch (files) { generate put filenames in mod file }
-        else if sw = 'his' then
+        else if tla = 'his' then
           setSwitch (history) { generate history file }
-        else if sw = 'bel' then
+        else if tla = 'bel' then
           {<<<  bells}
           begin
           { generate bells at end of link }
@@ -1345,19 +1394,15 @@ var
             writeln ('What do you want, a prize or something??');
           end
           {>>>}
-        else if sw = 'che' then
+        else if tla = 'che' then
           setSwitch (check) { check all possible grubbies}
-        else if sw = 'esc' then
+        else if tla = 'esc' then
           setSwitch (escape) { replace all 1B's in code with 1B1B }
         else
-          writeln ('Unknown switch :', sw );
-      until (swpos >= switchLen) OR (null (c));
+          writeln ('Unknown switch :', tla);
+      until (pos >= switchLen) OR (null (c));
     end;
     {>>>}
-
-  var
-    i, j, l: integer;
-    slashfound: boolean;
 
   begin
     l := s.length;
@@ -1373,14 +1418,113 @@ var
     if slashfound then
       begin
       for j := i + 1 TO l DO
-        line_buff[j-i] := s[j]; {pick up everything after the slash }
+        lineBuffer[j-i] := s[j]; { pick up everything after the slash }
 
       doSwitch (1, l-i);
       if i = 1 then
         s := ''
       else
-        substring (s,s, 1, i-1);
+        subString (s, s, 1, i-1);
       end;
+  end;
+  {>>>}
+
+  {<<<}
+  function getFilename (var terminator: char): filenameType;
+
+  var
+    filename: filenameType;
+    c : char;
+    s : string;
+    tempfile: fileListPtrType;
+
+  begin
+    filename := '';
+    repeat
+      { Get the next char that is part of a filename }
+      repeat
+        { Read the next char }
+        read (cmdFile^.f, c);
+        if newline then
+          {<<<  if it's at the start of a line, handle switches and comments}
+          begin
+          newline := false;
+
+          { Read sequence of comment/control lines }
+          while ((c='!') OR (c='/') or (c = '@')) and not eof (cmdFile^.f) do { comment/control line}
+            begin
+            readln (cmdFile^.f,s);
+
+            if c = '@' then
+              begin
+              {writeln( 'Line read is ', s );}
+              while NOT (s[s.length] IN [ 'A' .. 'Z', 'a' .. 'z', '0' .. '9', '-', '_' ]) DO
+                s.length := s.length - 1;
+
+              writeln ('File read is ', s );
+
+              new (tempfile);
+              tempfile^.nextFile := cmdFile;
+              cmdFile := tempfile;
+              reset (cmdFile^.f, s);
+              writeln ('File opened is ', s);
+              end
+
+            else if (c='/') AND (pass = 1) then
+              begin
+              s := '/' + s;
+              switchprocess (s);
+              end;
+
+            if NOT eof (cmdFile^.f) then
+              read (cmdFile^.f, c);
+            end;
+
+          if eof (cmdFile^.f) then
+            if cmdFile^.nextFile <> NIL then
+              BEGIN
+              close (cmdFile^.f);
+              cmdFile := cmdFile^.nextFile;
+              end;
+          end;
+          {>>>}
+        if eoln (cmdFile^.f) then
+           {<<<  eoln, eat empty lines}
+           begin
+
+           readln (cmdFile^.f);
+           while eoln (cmdFile^.f) AND NOT eof (cmdFile^.f) DO
+             readln (cmdFile^.f);
+
+           newline := true;
+           end;
+           {>>>}
+      until (NOT null(c)) OR eof (cmdFile^.f);
+
+      if eof (cmdFile^.f) then
+        if cmdFile^.nextFile <> NIL then
+          begin
+          close (cmdFile^.f);
+          cmdFile := cmdfile^.nextFile;
+          end;
+
+      if (c <> '=') AND (c <> ',') AND (c <> '!') AND NOT null(c) then
+        begin
+        filename.length := filename.length+1;
+        filename[filename.length] := c;
+        end;
+    until (c = ',') OR (c = '=') OR eof (cmdFile^.f);
+
+    if eof (cmdFile^.f) then
+      if cmdFile^.nextFile <> NIL then
+        begin
+        close (cmdFile^.f);
+        cmdFile := cmdFile^.nextFile;
+        end;
+
+    terminator := c;
+    getFilename := filename;
+    writeln ('getFilename ', filename, ' terminated by ', c);
   end;
   {>>>}
 
@@ -1400,17 +1544,17 @@ var
     esdarr[0] := 0;  {unused esd value}
 
     coerce.ob := o;
-    mod_id := coerce.id.modname;
+    modName := coerce.id.modName;
 
     { we need to init these esd values, in case of zero length sections}
     if pass = 2 then
       begin
       if chat OR debug then
-        writeln ('Pass 2 of ', mod_id,':');
+        writeln ('Pass 2 of ', modName,':');
 
       if modules then
         begin
-        write (moduleFile, mod_id, ':');
+        write (moduleFile, modName, ':');
         if files then
           begin
           {if fileId.length < 50 then
@@ -1430,105 +1574,7 @@ var
       end
 
     else if chat OR debug then
-      Writeln ('Pass 1 of ', mod_id,':');
-  end;
-  {>>>}
-  {<<<}
-  function getFile (var terminator: char): filename;
-
-  var
-    f : filename;
-    c : char;
-    s : string;
-    tempfile: fileListPtrType;
-
-  begin
-    f := '';
-    repeat
-      { Get the next char that is part of a filename. }
-      repeat
-        { Read the next char. }
-        read (cmdFile^.f,c);
-        if newline then
-          {<<<  if it's at the start of a line, handle switches and comments}
-          begin
-          newline := false;
-
-          { Read sequence of comment/control lines }
-          while ((c='!') OR (c='/') OR (c = '@')) AND NOT eof (cmdFile^.f) DO
-            {<<<  its a comment/control line}
-            begin
-            readln (cmdFile^.f,s);
-
-            if c = '@' then
-              begin
-              {writeln( 'Line read is ', s );}
-              while NOT (s[ s.length ] IN [ 'A' .. 'Z', 'a' .. 'z', '0' .. '9', '-', '_' ]) DO
-                s.length := s.length - 1;
-
-              writeln( 'File read is ', s );
-
-              NEW (tempfile);
-              tempfile^.nextFile := cmdFile;
-              cmdFile := tempfile;
-              reset (cmdFile^.f, s);
-              writeln ('File opened is ', s);
-              end
-
-            else if (c='/') AND (pass=1) then
-              begin
-              s := '/'+s;
-              switchprocess (s);
-              end;
-
-            if NOT eof (cmdFile^.f) then
-              read (cmdFile^.f,c);
-            end;
-            {>>>}
-
-          if eof (cmdFile^.f) then
-            if cmdFile^.nextFile <> NIL then
-              BEGIN
-              close (cmdFile^.f);
-              cmdFile := cmdFile^.nextFile;
-              end;
-          end;
-          {>>>}
-        if eoln (cmdFile^.f) then
-           {<<<  eoln, eat empty lines}
-           begin
-           readln (cmdFile^.f);
-           while eoln (cmdFile^.f) AND NOT eof (cmdFile^.f) DO
-             readln (cmdFile^.f);
-           newline := true;
-           end;
-           {>>>}
-      until (NOT null(c)) OR eof (cmdFile^.f);
-
-      if eof (cmdFile^.f) then
-        if cmdFile^.nextFile <> NIL then
-          begin
-          close (cmdFile^.f);
-          cmdFile := cmdfile^.nextFile;
-          end;
-
-      if (c <> '=') AND (c <> ',') AND (c <> '!') AND NOT null(c) then
-        begin
-        f.length := f.length+1;
-        f[f.length] := c;
-        end;
-    until (c = ',') OR (c = '=') OR eof (cmdFile^.f);
-
-    if eof (cmdFile^.f) then
-      if cmdFile^.nextFile <> NIL then
-        begin
-        close (cmdFile^.f);
-        cmdFile := cmdFile^.nextFile;
-        end;
-
-    getFile := f;
-    terminator := c;
-    {writeln( 'getFile returning <', f, '>, terminator <', c, '>' );}
+      writeln ('Pass 1 of ', modName,':');
   end;
   {>>>}
   {<<<}
@@ -1538,7 +1584,7 @@ var
     firstFile : boolean;
 
     {<<<}
-    procedure processRec;
+    procedure processRecord;
     { first pass object record processor }
 
       {<<<}
@@ -1550,26 +1596,27 @@ var
         var
           ty : byte;
           sect : integer;
-          s : symbolName;
+          s : symbolNameType;
           b : boolean;
           i:integer;
           spt : symbolPtr;
 
           {<<<}
-          procedure addRef (s: symbolPtr; mod_name: symbolName);
+          procedure addRef (s: symbolPtr; mod_name: symbolNameType);
 
           var
-            r_ptr: referencePtr;
+            reference: referencePtr;
 
           begin
-            new (r_ptr);
-            r_ptr^.next_ref := s^.reflist;
-            r_ptr^.rname := mod_name;
-            s^.reflist := r_ptr;
+            new (reference);
+            reference^.nextReference := s^.reflist;
+            reference^.symbolName := mod_name;
+            s^.reflist := reference;
           end;
           {>>>}
 
         begin
+          spt := nil;
           ty := getByte;
           sect := ty MOD 16;
           ty := ty DIV 16;
@@ -1581,18 +1628,18 @@ var
               begin { common area symbol }
               s := getSymbolName;
               i := getInt;
-              b := findInsert (s,spt,true);
+              b := findInsert (s, spt, true);
 
               if debug then
-                Writeln ('Common data - section ', sect:2,' ', s, ' length = ', hex(i,6,6));
+                writeln ('Common data - section ', sect:2,' ', s, ' length = ', hex(i,6,6));
 
               if xref then
-                addRef (spt,mod_id);
+                addRef (spt, modName);
 
               if NOT spt^.sdef then
                 begin
                 if b then undefsym:=undefsym-1;
-                spt^.mname := mod_id;
+                spt^.mname := modName;
                 spt^.ssect := sect;
                 spt^.sdef := true;
                 spt^.comsize := i;
@@ -1609,16 +1656,16 @@ var
                   begin
                   if (NOT spt^.sflagged) AND (spt^.comsize=-1) then
                     begin
-                    showModId;
+                    showModName;
                     writeln ('Label ''', s, ''' is used double defined - ');
-                    writeln ('as a common in module ''', mod_id, '''');
+                    writeln ('as a common in module ''', modName, '''');
                     writeln (' and as an XDEF in module ''', spt^.mname, '''');
                     spt^.sflagged := true;
                    end
 
                  else if check AND (NOT spt^.sflagged) then
                    begin
-                   showModId;
+                   showModName;
                    writeln ('Common area size clash - common ''', s, '''');
                    writeln ('size in this module is ',hex(i,6,6), ' bytes');
                    writeln ('size in ''', spt^.mname,''' is ', hex (spt^.comsize,6,6), ' bytes');
@@ -1627,7 +1674,7 @@ var
 
                  if (i>spt^.comsize) AND (spt^.comsize <> -1) then
                    begin
-                   spt^.mname := mod_id;
+                   spt^.mname := modName;
                    spt^.comsize := i;
                    end;
                  end;
@@ -1638,7 +1685,7 @@ var
               begin { section definition and allocation }
               i := getInt;
               if debug then
-                Writeln ('Section - ', sect:2,' ', ' length = ', hex(i,6,6));
+                writeln ('Section - ', sect:2,' ', ' length = ', hex(i,6,6));
 
               sectbase[sect] := sectbase[sect]+i;
               if odd(sectbase[sect]) then
@@ -1658,7 +1705,7 @@ var
                 if spt^.shist then { previously defined by history file }
                   begin
                   if chat then
-                    Writeln ('redefining ',s);
+                    writeln ('redefining ',s);
                   end
                 else
                   doubledef(spt)
@@ -1670,13 +1717,13 @@ var
                   if spt^.shist then { previously defined by history file }
                     begin
                     if chat then
-                      Writeln ('redefining ',s);
+                      writeln ('redefining ',s);
                     end
                   else
                     undefsym := undefsym - 1;
                   end;
 
-              spt^.mname := mod_id;
+              spt^.mname := modName;
               spt^.ssect := sect;
               spt^.sdef := true;
               spt^.saddr := getInt + sectbase[sect];
@@ -1687,14 +1734,14 @@ var
               begin { symbol reference }
               if ty = 6 then
                 begin
-                showModId;
+                showModName;
                 writeln ('xref ',sect);
                 end;
 
               s := getSymbolName;
               b := findInsert (s,spt,true);
               if xref then
-                addRef (spt,mod_id);
+                addRef (spt, modName);
               if (NOT b) then
                 undefsym := undefsym + 1;
               end;
@@ -1702,7 +1749,7 @@ var
             {<<<}
             8,9 :
               begin
-              showModId;
+              showModName;
               writeln ('cl address');
               bpos := bpos + 5;
               end;
@@ -1710,7 +1757,7 @@ var
             {<<<}
             10 :
               begin
-              showModId;
+              showModName;
               writeln ('cl addr common');
               bpos := bpos + 15;
               end;
@@ -1754,40 +1801,40 @@ var
 
     firstFile := true;
     repeat
-      f := getFile (termchar);
+      filename := getFilename (termchar);
       if termchar = '=' then
         begin
         if firstFile then
-          commandRoot := f
+          commandRoot := filename
         else
           writeln ('You can''t put an ''='' THERE!');
         end
       else
         {<<<  process the file}
         begin
-        ext := getExt (f, defext);
+        ext := getExt (filename, defext);
 
         if ext = '.his' then { history file of previous link }
           begin
-          if use_history then
-            Writeln ('Can only use one history file, subsequent ones ignored')
+          if usingHistory then
+            writeln ('Can only use one history file, subsequent ones ignored')
           else
             begin
             start_read_his := currentTime;
-            readHistory (f);
+            readHistory (filename);
             end_read_his := currentTime;
             end;
 
-          use_history := TRUE;
+          usingHistory := TRUE;
           end
 
         else if ext = '.rx' then { text format .rx file }
           begin
-          openTextIn (f);
+          openTextIn (filename);
           repeat
             getTextRec (o);
             if o.length > 0 then
-              processrec;
+              processRecord;
           until eof (textObjectFile) ;
 
           closeTextIn;
@@ -1795,12 +1842,12 @@ var
 
         else { normal .ro file }
           begin
-          openIn (f);
+          openIn (filename);
 
           repeat
-            getRec (o);
+            getRecord (o);
             if o.length > 0 then
-              processRec;
+              processRecord;
           until empty;
 
           closeIn;
@@ -1835,11 +1882,11 @@ var
 
         if out then
           begin
-          rewrite (binaryFile, commandRoot+'.BIN');
+          rewrite (binaryFile, commandRoot + '.bin');
           if chat OR debug OR (NOT quiet) then
-            writeln ('Making binary file ', commandRoot + '.BIN');
+            writeln ('Making binary file ', commandRoot + '.bin');
           if logging then
-            writeln (logFile, 'Making binary file ', commandRoot + '.BIN');
+            writeln (logFile, 'Making binary file ', commandRoot + '.bin');
           end;
         end
 
@@ -1853,8 +1900,8 @@ var
 
         if out then
           begin
-          rewrite (srFormatFile, commandRoot+'.SR');
-          writeln ('Making SR file ', commandRoot + '.SR');
+          rewrite (srFormatFile, commandRoot+'.sr');
+          writeln ('Making SR file ', commandRoot + '.sr');
           end;
         end;
     end;
@@ -1901,7 +1948,7 @@ var
     end;
     {>>>}
     {<<<}
-    procedure procRec2;
+    procedure processRecord;
     { second pass object record processor }
 
       {<<<}
@@ -1911,7 +1958,7 @@ var
         c,pos : integer;
 
         {<<<}
-        procedure srFormat(pos,len:integer);
+        procedure srFormat (pos, len:integer);
 
         var
           b,cstart,i:integer;
@@ -2027,16 +2074,17 @@ var
 
       begin
         c := codelen;
+
         pos := 0;
         while c > smax DO
           begin
-          srFormat (pos,smax);
-          pos := pos+smax;
+          srFormat (pos, smax);
+          pos := pos + smax;
           c := c - smax;
           end;
 
         if c > 0 then
-          srFormat(pos,c);
+          srFormat (pos, c);
       end;
       {>>>}
       {<<<}
@@ -2047,7 +2095,7 @@ var
 
         var
           sect,ty : byte;
-          s : symbolName;
+          s : symbolNameType;
           b : boolean;
           patch, i:integer;
           spt : symbolPtr;
@@ -2078,10 +2126,10 @@ var
               s := getSymbolName;
               bpos := bpos + 4; {skip int}
 
-              b := findInsert (s,spt,false);
+              b := findInsert (s, spt, false);
               if NOT b then
                 begin
-                showModId;
+                showModName;
                 writeln ('internal consistency check failure - lost symbol');
                 end;
 
@@ -2111,7 +2159,7 @@ var
             {>>>}
             {<<<}
             4,5 :
-              if use_history then
+              if usingHistory then
                 begin { symbol defintion, use to make patches on second pass }
                 s := getSymbolName;
                 b := findInsert (s,spt,FALSE); { find it }
@@ -2131,7 +2179,7 @@ var
                     codelen := 2;
                     outputData;
 
-                    r := r^.next_res;
+                    r := r^.nextResolve;
                     end until r=nil;
                   end;
 
@@ -2145,10 +2193,10 @@ var
               begin { symbol reference }
               s := getSymbolName;
 
-              b := findInsert (s,spt,false);
+              b := findInsert (s, spt, false);
               if NOT b then
                 begin
-                showModId;
+                showModName;
                 writeln ('internal check failure - lost symbol');
                 end;
 
@@ -2207,7 +2255,7 @@ var
             begin
             if duffer then
               begin
-              showModId;
+              showModName;
               writeln ('Warning - possible assembler foul-up');
               end;
 
@@ -2223,7 +2271,7 @@ var
               thisesd := getByte;
               if thisesd > topesd then
                 begin
-                showModId;
+                showModName;
                 writeln(' assembler foul-up.. trying to use an undefined ESD : ' , thisesd);
                 end;
 
@@ -2247,7 +2295,7 @@ var
               begin
               if odd(offset) then
                 begin
-                showModId;
+                showModName;
                 writeln ('odd fix-up offset - assembler error .', offset, curresd);
                 writeln ('>>', hex(codestart, 6, 6));
                 offset := offset + 1;
@@ -2267,20 +2315,20 @@ var
                 begin
                 if (add > 32767) OR (add < -32768) then
                   begin
-                  showModId;
+                  showModName;
                   writeln ('Long address generated into word location :', hex (add, 8, 8));
                   end;
                 end;
 
               if esdsymarr [thisesd] <> NIL then { only need named symbols }
-                if mod_id <> esdsymarr [thisesd]^.mname then { outside module }
+                if modName <> esdsymarr [thisesd]^.mname then { outside module }
                   begin
                   if history then
                     { address to be resolved LONGWORD only at present}
                     addRes (esdsymarr [thisesd], codestart + codelen*2, offset);
 
                   if debug then
-                    Writeln ('sym ', longwd,
+                    writeln ('sym ', longwd,
                              ' ', thisesd:2,
                              ' ', esdsymarr [thisesd]^.sname,
                              ' ', hex (add,8,8), ' = ', hex (esdarr[thisesd]),
@@ -2348,10 +2396,10 @@ var
       sbase[i] := 0;
 
     repeat
-      f := getFile (termchar);
+      filename := getFilename (termchar);
       if termchar <> '=' then
         begin
-        ext := getExt (f,defext);
+        ext := getExt (filename, defext);
         if ext = '.his' then
           begin
           { do not reread history file }
@@ -2359,12 +2407,12 @@ var
         else if ext = '.rx' then
           {<<<  text format .rx file}
           begin
-          openTextIn (f);
+          openTextIn (filename);
 
           repeat
             getTextRec (o);
             if o.length > 0 then
-              procrec2;
+              processRecord;
           until eof (textObjectFile) ;
 
           closeTextIn;
@@ -2373,12 +2421,12 @@ var
         else
           {<<<  normal .ro file}
           begin
-          openIn (f);
+          openIn (filename);
 
           repeat
-            getRec (o);
+            getRecord (o);
             if o.length > 0 then
-              procRec2;
+              processRecord;
           until empty;
 
           closeIn;
@@ -2406,24 +2454,24 @@ var
     out := true;
     map := true;
 
+    files := false;
     chat := FALSE;
     quiet := false;
     english := false;
     logging := false;
-    newline := true;
-
     history := FALSE;
-    use_history := FALSE;
-
     modules := false;
-    files := false;
+    escape := true;
+
+    newline := true;
+    usingHistory := FALSE;
+
     fileId := 'no file open.' ;
 
     { set up pointers for common area list }
     com_head := nil;
     prev_com := nil;
 
-    escape := true;
     defext := '.ro';
 
     total := 0;
@@ -2482,38 +2530,6 @@ var
       end;
   end;
   {>>>}
-  {<<<}
-  procedure showMilestone (s: string; ms1, ms2: milestone);
-
-  var
-    temp, cc, ss, mm, hh: integer;
-    time_str: string;
-
-  begin
-    temp := ms1.int_time - ms2.int_time;
-
-    cc := temp MOD 100;
-    temp := temp DIV 100;
-    ss := temp MOD 60;
-
-    temp := temp DIV 60;
-    mm := temp MOD 60;
-
-    temp := temp DIV 60;
-    hh := temp MOD 60;
-
-    write (s);
-    write (ms1.time_of_day,' ',(ms1.mill_time-ms2.mill_time)/1000:7:2);
-    writev (time_str, hh :2, ':', mm :2, ':', ss :2, '.', cc :2 );
-
-    for temp := 1 TO time_str.length DO
-      if time_str[temp] = ' ' then
-        time_str[temp] := '0';
-
-    write ( ' ', time_str );
-    writeln ('  ', ((ms1.mill_time-ms2.mill_time)*100) / (end_link.mill_time-start_link.mill_time):7:2,'%');
-  end;
-  {>>>}
 
 { main }
 {<<<}
@@ -2523,20 +2539,14 @@ begin
   { get command line, set switch settings }
   commandLen := -1;
   P_getcmdline (command, commandLen);
-  Writeln ('command ', command, commandLen);
-
-  for i := 1 to commandLen do
-    writeln (hex(ord(command[i])));
-  Writeln ('command ', command, commandLen);
+  writeln ('command ', command:commandLen, ' len:', commandLen:0);
 
   switchprocess (command);
 
   ext := getExt (command, '.cmd');
   commandRoot := command;
   commandRoot.length := command.length - ext.length;
-  Writeln ('ext:', ext,
-           ' command:', command,
-           ' commandRoot:', commandRoot);
+  writeln ('ext:', ext, ' extLength:', ext.length:0, ' command:', command, ' commandRoot:', commandRoot);
 
   start_link := currentTime;
   start_read_his := currentTime;
