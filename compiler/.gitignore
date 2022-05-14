@@ -16,3 +16,5 @@ ro
 *.rel
 *.local
 *.tree
+*.cmd
+*.ro

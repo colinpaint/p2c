@@ -624,7 +624,7 @@ long maxavail()
 //{{{
 /* (Sets with 32 or fewer elements are normally stored as plain longs.) */
 
-long *P_setunion (d, s1, s2)         /* d := s1 + s2 */
+long* P_setunion (d, s1, s2)         /* d := s1 + s2 */
 register long *d, *s1, *s2;
 {
     long *dbase = d++;
@@ -643,7 +643,7 @@ register long *d, *s1, *s2;
 
 //}}}
 //{{{
-long *P_setint (d, s1, s2)           /* d := s1 * s2 */
+long* P_setint (d, s1, s2)           /* d := s1 * s2 */
 register long *d, *s1, *s2;
 {
     long *dbase = d++;
@@ -656,7 +656,7 @@ register long *d, *s1, *s2;
 }
 //}}}
 //{{{
-long *P_setdiff (d, s1, s2)          /* d := s1 - s2 */
+long* P_setdiff (d, s1, s2)          /* d := s1 - s2 */
 register long *d, *s1, *s2;
 {
     long *dbase = d++;
@@ -673,7 +673,7 @@ register long *d, *s1, *s2;
 }
 //}}}
 //{{{
-long *P_setxor (d, s1, s2)         /* d := s1 / s2 */
+long* P_setxor (d, s1, s2)         /* d := s1 / s2 */
 register long *d, *s1, *s2;
 {
     long *dbase = d++;
@@ -705,7 +705,7 @@ register long *s;
 }
 //}}}
 //{{{
-long *P_addset (s, val)              /* s := s + [val] */
+long* P_addset (s, val)              /* s := s + [val] */
 register long *s;
 register unsigned val;
 {
@@ -726,7 +726,7 @@ register unsigned val;
 }
 //}}}
 //{{{
-long *P_addsetr (s, v1, v2)              /* s := s + [v1..v2] */
+long* P_addsetr (s, v1, v2)              /* s := s + [v1..v2] */
 register long *s;
 register unsigned v1, v2;
 {
@@ -759,7 +759,7 @@ register unsigned v1, v2;
 }
 //}}}
 //{{{
-long *P_remset (s, val)              /* s := s - [val] */
+long* P_remset (s, val)              /* s := s - [val] */
 register long *s;
 register unsigned val;
 {
@@ -803,7 +803,7 @@ register long *s1, *s2;
 }
 //}}}
 //{{{
-long *P_setcpy (d, s)                /* d := s */
+long* P_setcpy (d, s)                /* d := s */
 register long *d, *s;
 {
     register long *save_d = d;
@@ -822,7 +822,7 @@ register long *d, *s;
 /* s is a "smallset", i.e., a 32-bit or less set stored
    directly in a long. */
 
-long *P_expset (d, s)                /* d := s */
+long* P_expset (d, s)                /* d := s */
 register long *d;
 register long s;
 {
@@ -866,8 +866,6 @@ int P_getcmdline (int l, int h, Char* line) {
 
     if (len >= h)
       return len;
-
-    line[len++] = ' ';
     }
 
   return len;
@@ -893,34 +891,32 @@ Void TimeStamp (long* Day, long* Month, long* Year, long* Hour, long* Min, long*
   }
 //}}}
 //{{{
-Void VAXdate (s)
-char *s;
-{
-  time_t clock;
-  char *c;
-  int i;
+Void VAXdate (char* s) {
+
   static int where[] = {8, 9, 0, 4, 5, 6, 0, 20, 21, 22, 23};
 
-  time(&clock);
-  c = ctime(&clock);
-  for (i = 0; i < 11; i++)
-    s[i] = my_toupper(c[where[i]]);
+  time_t clock;
+  time (&clock);
+  char* c = ctime (&clock);
+
+  for (int i = 0; i < 11; i++)
+    s[i] = my_toupper (c[where[i]]);
   s[2] = '-';
   s[6] = '-';
   }
 //}}}
 //{{{
-Void VAXtime (s)
-char *s;
-{
-  time_t clock;
-  char *c;
-  int i;
+Void VAXtime (char* s) {
 
-  time(&clock);
-  c = ctime(&clock);
-  for (i = 0; i < 8; i++)
+
+  time_t clock;
+  time (&clock);
+
+  char* c = ctime (&clock);
+
+  for (int i = 0; i < 8; i++)
     s[i] = c[i+11];
+
   s[8] = '.';
   s[9] = '0';
   s[10] = '0';
