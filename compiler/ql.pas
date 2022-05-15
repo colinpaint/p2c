@@ -141,7 +141,7 @@ var
 
   { switches }
   modules, download, check, bell, xref, map, bin, out, symout : boolean;
-  chat, debug, logging, english, quiet, files, history, escape : boolean;
+  chat, debug, logging, friendly, quiet, files, history, escape : boolean;
 
   duffer: boolean;
   newline: boolean;
@@ -240,6 +240,13 @@ var
   end;
   {>>>}
   {<<<}
+  function isUpper (ch: char): boolean;
+
+  begin
+    isUpper := (ch >= 'A') AND (ch <= 'Z');
+  end;
+  {>>>}
+  {<<<}
   function isAlpha (ch: char): boolean;
 
   begin
@@ -255,20 +262,30 @@ var
   {>>>}
 
   {<<<}
-  function chToHex (ch: char): integer;
+  function toHex (ch: char): integer;
 
   begin
     if (ch >= '0') AND (ch <= '9') then
-      chToHex := ord(ch) - ord('0')
+      toHex := ord(ch) - ord('0')
     else if (ch >= 'a') AND (ch <= 'f') then
-      chToHex := ord(ch) - ord('a') + 10
+      toHex := ord(ch) - ord('a') + 10
     else if (ch >= 'A') AND (ch <= 'F') then
-      chToHex := ord(ch) - ord('A') + 10
+      toHex := ord(ch) - ord('A') + 10
     else
       begin
       writeln ('Duff char ''', ch,'''when hex char expected!');
-      chToHex := 0;
+      toHex := 0;
       end;
+  end;
+  {>>>}
+  {<<<}
+  function toLower (ch: char): char;
+
+  begin
+    if isUpper (ch) then
+      toLower := chr(ord(ch) + ord('a') - ord('A'))
+    else
+      toLower := ch;
   end;
   {>>>}
   {>>>}
@@ -723,7 +740,7 @@ var
     datestring: packed array [1..11] of CHAR;
 
   begin
-    if english then
+    if friendly then
       begin
       writeln (logFile);
 
@@ -875,7 +892,7 @@ var
     bytes := textObjectRecord.length DIV 2;
     objectRecord.length := bytes;
     for i := 1 TO bytes DO
-      objectRecord[i] := chr ((chToHex (textObjectRecord[i*2-1]) * 16) + chToHex (textObjectRecord[i*2]));
+      objectRecord[i] := chr ((toHex (textObjectRecord[i*2-1]) * 16) + toHex (textObjectRecord[i*2]));
   end;
   {>>>}
   {<<<}
@@ -1761,10 +1778,8 @@ var
       {>>>}
 
     begin
-      { convert to lowerCase }
       for i := 1 TO switchLen DO
-        if (lineBuffer[i] >= 'A') AND (lineBuffer[i] <= 'Z') then
-          lineBuffer[i] := chr(ord(lineBuffer[i]) + ord('a') - ord('A'));
+        lineBuffer[i] := toLower (lineBuffer[i]);
 
       pos := start;
       repeat
@@ -1790,7 +1805,7 @@ var
           until (c='/') OR (isNull (c)) OR (pos >= switchLen);
 
         if (tla[1] = 'o') AND (tla[2] >= '0') AND (tla[2] <= '9') then
-          {<<<  section startAddress}
+          {<<<  set section startAddress}
           begin
           if tla[3] = ':' then
             section := ord (tla[2]) - ord('0')
@@ -1809,7 +1824,7 @@ var
             begin
             userbase[section] := 0;
             for i := switchEndPos TO endPos DO
-              userbase[section] := 16 * userbase[section] + chToHex (lineBuffer[i]);
+              userbase[section] := 16 * userbase[section] + toHex (lineBuffer[i]);
             if debug then
               writeln (hex (userbase[section], 6, 6), ' ', section);
             end
@@ -1830,7 +1845,7 @@ var
         else if tla = 'deb' then
           setSwitch (debug) { debug mode}
         else if (tla = 'dld') OR (tla = 'dow') then
-          setSwitch (download) {download to target}
+          setSwitch (download) { download to target}
         else if tla = 'out' then
           setSwitch (out) { generate any output at all!}
         else if tla = 'cha' then
@@ -1838,9 +1853,9 @@ var
         else if tla = 'qui' then
           setSwitch (quiet) { generate minimum output}
         else if tla = 'eng' then
-          setSwitch (english) { say understandable things}
+          setSwitch (friendly) { say understandable things}
         else if tla = 'log' then
-          {<<<  log stuff in .log file}
+          {<<<  generate .log file}
           begin
           setSwitch (logging);
           openloggingFile;
@@ -1860,7 +1875,7 @@ var
           end
           {>>>}
         else if tla = 'che' then
-          setSwitch (check) { check all possible grubbies}
+          setSwitch (check) { check all possible grubbies }
         else if tla = 'esc' then
           setSwitch (escape) { replace all 1B's in code with 1B1B }
         else
@@ -2846,7 +2861,7 @@ var
     files := false;
     chat := FALSE;
     quiet := false;
-    english := false;
+    friendly := false;
     logging := false;
     history := FALSE;
     modules := false;
@@ -2986,17 +3001,17 @@ begin
 
     if sectbase[i] <> 0 then
       begin
-      if NOT english then
+      if NOT friendly then
         write ('Section ',i:2,' Start ',hex(basepos,6,6),' Length ', hex(sectbase[i],6,6));
       baseaddr[i] := basepos;
       basepos := basepos+sectbase[i];
-      if NOT english then
+      if NOT friendly then
         writeln (' Finish  ',hex(basepos,6,6));
       end;
     end;
     {>>>}
 
-  if english then
+  if friendly then
     {<<<  report section usage nicely}
     begin
     writeln;
@@ -3116,7 +3131,7 @@ begin
     writeln ('total CPU time:- ', (endLink.millTime - startLink.millTime) / 1000:7:2);
     end;
     {>>>}
-  if english then
+  if friendly then
     {<<<  report timigs nicely}
     begin
     date (datestring);
