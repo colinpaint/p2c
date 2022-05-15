@@ -68,8 +68,8 @@ type
     end;
   {>>>}
 
-  block = packed array [0..255] of byte;
-  bblock = packed array [0..511] of byte;
+  objectBlockType = packed array [0..255] of byte;
+  binBlockType = packed array [0..511] of byte;
 
   fileListPtr = ^fileListType;
   {<<<}
@@ -93,10 +93,10 @@ type
   historyRecordType = record
     CASE historyType : historyType of
       $historyObj    : (obj_addr : integer;);
-      $historySymbol : (symbol_addr : integer;
-                        symbol_name : symbolNameType;);
-      $historyRef    : (ref_addr: integer;
-                        ref_offset : integer;);
+      $historySymbol : (symbolAddr : integer;
+                        symbolName : symbolNameType;);
+      $historyRef    : (refAddr: integer;
+                        refOffset : integer;);
     end;
   {>>>}
 
@@ -114,6 +114,7 @@ var
   command: string;
   commandLen: word;
 
+  { command line file }
   fileId: string;
   filename: filenameType;
   curFile: filenameType;
@@ -122,21 +123,21 @@ var
   commandRoot: filenameType;
   fullFilename: filenameType;
 
+  { files }
   cmdFile: fileListPtr;
-  logFile: text;
-  objectFile : FILE of block;
+  objectFile : FILE of objectBlockType;
   textObjectFile: text;
-  moduleFile: text;
+  binaryFile: FILE of binBlockType;
+  downloadTargetFile: FILE of binBlockType;
   targetFile: text;
   srFormatFile: text;
-  binaryFile: FILE of bblock;
-  downloadTargetFile: FILE of bblock;
+  logFile: text;
+  moduleFile: text;
 
-  termchar: char;
   smax, checksum, pass, opos, bpos: integer;
 
   blockPtr: integer;
-  o: objectRecordType;
+  objectRecord: objectRecordType;
 
   { switches }
   modules, download, check, bell, xref, map, bin, out, symout : boolean;
@@ -150,35 +151,35 @@ var
   prevCommon: symbolPtr;
   commonHead: symbolPtr;
 
+  { symbols }
   numSymbols: integer;
   numUndefinedSymbols: integer;
   hashTable: array [0..maxHash] of symbolPtr;
 
+  { sections }
   codestart, codelen: integer;
   topESD: integer;
   userbase, sbase, sectbase, baseaddr: array [-1..15] of integer; {element -1 is the ABS section}
-
   esdArray: array [0..255] of integer;
   esdSymbolArray: array [0..255] of symbolPtr;
   outAddrArray: array [0..255] of integer;
   codeArray: array [1..64] of integer;
 
+  { timing }
   startLink, endPass1, endPass2, endLink: milestoneType;
   endMapGen, endHisGen, endSymGen, endSpaceAlloc, endXrefGen: milestoneType;
   startReadHis, endReadHis: milestoneType;
 
   modName: symbolNameType;
 
-  oblock: bblock;
-  bl: block;
-  inblock: block;
+  { object file input }
+  objectBlock: objectBlockType;
   objectEof: boolean;
 
-  sn: symbolNameType;
-  spt: symbolPtr;
-  orec: objectRecordType;
-  total, basepos, i: integer;
+  { .bin file output }
+  binBlock: binBlockType;
 
+  i, total, basepos: integer;
   datestring: packed array [1..11] of CHAR;
 {>>>}
 
@@ -440,7 +441,7 @@ var
   {>>>}
   {<<<}
   procedure clear (var s: packed array [low..high: integer] of char);
-  { clear (S) - initializes string S to objectEof }
+  { clear (S) - initializes string S to 0 }
 
   begin
     if low <> 0 then
@@ -912,7 +913,7 @@ var
   end;
   {>>>}
 
-  { .ro objext file }
+  { .ro object file }
   {<<<}
   procedure openin (filename: filenameType);
 
@@ -921,44 +922,44 @@ var
     reset (objectFile, filename);
 
     blockPtr := 0;
-    read (objectFile, inblock);
+    read (objectFile, objectBlock);
 
     objectEof := false;
   end;
   {>>>}
   {<<<}
-  procedure getRecord (var o: objectRecordType);
+  procedure getRecord (var objectRecord: objectRecordType);
   { .ro files are 256 byte fixed size blocks. Within these blocks, records are
     packed end to end i.e. one record can span a block boundary. Each record
     conisits of a single byte <n> followed by <n> data bytes
   }
   var
-    i, l1:integer;
+    i, l1: integer;
 
   begin
-    o.length := inblock[blockPtr];
+    objectRecord.length := objectBlock[blockPtr];
 
-    if (255-blockPtr) > o.length then
-      l1 := o.length
+    if (255-blockPtr) > objectRecord.length then
+      l1 := objectRecord.length
     else
-      l1 := (255-blockPtr);
+      l1 := 255 - blockPtr;
 
     for i := 1 TO l1 DO
-      o[i] := chr(inblock[blockPtr+i]);
+      objectRecord[i] := chr(objectBlock[blockPtr+i]);
 
-    blockPtr := blockPtr+l1+1;
+    blockPtr := blockPtr + l1 + 1;
     if (blockPtr > 255) then
       begin
       if eof (objectFile) then
         objectEof := true
       else
-        read (objectFile,inblock);
+        read (objectFile, objectBlock);
 
       blockPtr := 0;
       l1 := l1 + 1; {step to start of next xfer}
-      for i := l1 TO o.length DO
-        o[i] := chr (inblock[i - l1]);
-      blockPtr := 1 + o.length - l1;
+      for i := l1 TO objectRecord.length DO
+        objectRecord[i] := chr (objectBlock[i - l1]);
+      blockPtr := 1 + objectRecord.length - l1;
       end;
   end;
   {>>>}
@@ -970,7 +971,7 @@ var
   end;
   {>>>}
 
-  { .rx objext file }
+  { .rx object file }
   {<<<}
   procedure openTextIn (filename: filenameType);
 
@@ -992,10 +993,11 @@ var
 
   begin
     readln (textObjectFile, buff);
+
     bytes := buff.length DIV 2;
-    o.length := bytes;
+    objectRecord.length := bytes;
     for i := 1 TO bytes DO
-      o[i] := chr (chToHex(buff[i*2-1]) * 16 + chToHex(buff[i*2]));
+      objectRecord[i] := chr ((chToHex (buff[i*2-1]) * 16) + chToHex (buff[i*2]));
   end;
   {>>>}
   {<<<}
@@ -1006,20 +1008,62 @@ var
   end;
   {>>>}
 
-  { binary output file }
+  { .bin binary output file }
+  {<<<}
+  procedure openOutput;
+
+  begin
+    opos := 0;
+    inpacket := false;
+
+    if bin then
+      begin
+      if download then
+        begin
+        rewrite (downloadTargetFile, 'target.txt');
+        writeln ('Downloading binary file - target.txt');
+        end;
+
+      if out then
+        begin
+        rewrite (binaryFile, commandRoot + '.bin');
+        if chat OR debug OR (NOT quiet) then
+          writeln ('Making binary file ', commandRoot + '.bin');
+        if logging then
+          writeln (logFile, 'Making binary file ', commandRoot + '.bin');
+        end;
+      end
+
+    else
+      begin
+      if download then
+        begin
+        rewrite (targetFile, 'target.txt');
+        writeln ('Downloading SR file - target.txt');
+        end;
+
+      if out then
+        begin
+        rewrite (srFormatFile, commandRoot+'.sr');
+        writeln ('Making SR file ', commandRoot + '.sr');
+        end;
+      end;
+  end;
+  {>>>}
   {<<<}
   procedure binByte (b: byte);
 
   begin
-    oblock[opos] := b;
+    binBlock[opos] := b;
     opos := opos + 1;
 
     if opos > 511 then
       begin
       if out then
-        write (binaryFile, oblock);
+        write (binaryFile, binBlock);
       if download then
-        write (downloadTargetFile, oblock);
+        write (downloadTargetFile, binBlock);
+
       opos := 0;
       end;
 
@@ -1125,6 +1169,31 @@ var
       end;
   end;
   {>>>}
+  {<<<}
+  procedure closeOutput;
+
+  begin
+    if inpacket then
+      endpacket;
+
+    sendStop;
+
+    if bin then
+      begin
+      if download then
+        close (downloadTargetFile);
+      if out then
+        close (binaryFile);
+      end
+    else
+      begin
+      if download then
+        close (targetFile);
+      if out then
+        close (srFormatFile);
+      end;
+  end;
+  {>>>}
 
   { dump to file }
   {<<<}
@@ -1132,9 +1201,9 @@ var
 
   var
     i:integer;
-    bl: block;
+    bl: objectBlockType;
     symbol: symbolPtr;
-    symbolTableFile: file of block;
+    symbolTableFile: file of objectBlockType;
 
     {<<<}
     procedure pbyte (b: byte);
@@ -1314,80 +1383,98 @@ var
   { disp history and readHistory must have match in file format }
 
   var
-    i, rescount:integer;
-    s_ptr: symbolPtr;
+    i, rescount: integer;
+    symbol: symbolPtr;
     r : resolvePtr;
-
+    historyFile : historyFileType;
     historyRecord : historyRecordType;
     fileHistoryRecord : fileHistoryRecordType;
-    res_file : historyFileType;
 
     {<<<}
-    procedure send_to_file (rec: historyRecordType);
+    procedure writeHistoryFile (historyRecord: historyRecordType);
 
     begin
       fileHistoryRecord.numRecs := fileHistoryRecord.numRecs + 1;
-      fileHistoryRecord.recs[fileHistoryRecord.numRecs] := rec;
+      fileHistoryRecord.recs[fileHistoryRecord.numRecs] := historyRecord;
+
       if fileHistoryRecord.numRecs = recsPerFileRec$ then
         begin
-        Write (res_file, fileHistoryRecord);
+        Write (historyFile, fileHistoryRecord);
         fileHistoryRecord.numRecs := 0;
         end;
     end;
     {>>>}
 
   begin
-    rewrite (res_file, commandRoot + '.his');
+    rewrite (historyFile, commandRoot + '.his');
     fileHistoryRecord.numRecs := 0;
 
     historyRecord.historyType := $historyObj;
     historyRecord.obj_addr := basepos;
 
-    { Write (res_file, historyRecord); }
-    send_to_file (historyRecord);
+    { Write (historyFile, historyRecord); }
+    writeHistoryFile (historyRecord);
 
-    for i:=0 TO maxHash DO
+    for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
         begin
-        s_ptr := hashTable[i];
+        symbol := hashTable[i];
 
         repeat
           begin
-          if s_ptr^.comsize = -1 then { dont dump commons in history }
+          if symbol^.comsize = -1 then { dont dump commons in history }
             begin
             historyRecord.historyType := $historySymbol;
-            historyRecord.symbol_addr := s_ptr^.addr+baseaddr[s_ptr^.section];
-            historyRecord.symbol_name := s_ptr^.symbolName;
-            {historyRecord.mod_name := s_ptr^.modName;}
-            {Write (res_file, historyRecord);}
-            send_to_file (historyRecord);
+            historyRecord.symbolAddr := symbol^.addr+baseaddr[symbol^.section];
+            historyRecord.symbolName := symbol^.symbolName;
+            {historyRecord.mod_name := symbol^.modName;}
+            {Write (historyFile, historyRecord);}
+            writeHistoryFile (historyRecord);
 
-            if s_ptr^.resList <> nil then
+            if symbol^.resList <> nil then
               begin
-              r := s_ptr^.resList;
+              r := symbol^.resList;
               repeat
                 begin
                 historyRecord.historyType := $historyRef;
-                historyRecord.ref_addr := r^.addr;
-                historyRecord.ref_offset := r^.offset;
-                {Write (res_file, historyRecord);}
-                send_to_file (historyRecord);
+                historyRecord.refAddr := r^.addr;
+                historyRecord.refOffset := r^.offset;
+                {Write (historyFile, historyRecord);}
+                writeHistoryFile (historyRecord);
                 r := r^.next;
                 end until r = nil;
               end;
 
             end;
 
-          s_ptr := s_ptr^.nextSymbol;
-          end until s_ptr = nil;
+          symbol := symbol^.nextSymbol;
+          end until symbol = nil;
 
         end;
 
     { Send the last one }
     if fileHistoryRecord.numRecs > 0 then
-      Write (res_file, fileHistoryRecord);
+      Write (historyFile, fileHistoryRecord);
 
-    close (res_file);
+    close (historyFile);
+  end;
+  {>>>}
+
+  { .mod module file }
+  {<<<}
+  procedure openModules;
+
+  begin
+  if modules then
+    rewrite (moduleFile, commandRoot + '.mod');
+  end;
+  {>>>}
+  {<<<}
+  procedure closeModules;
+
+  begin
+  if modules then
+    close (moduleFile);
   end;
   {>>>}
   {>>>}
@@ -1396,7 +1483,7 @@ var
   function getByte: byte;
 
   begin
-    getByte := ord (o[bpos]);
+    getByte := ord (objectRecord[bpos]);
     bpos := bpos  +1;
   end;
   {>>>}
@@ -1600,45 +1687,46 @@ var
   { disp history and readHistory must have match in file format }
 
   var
-    spt : symbolPtr;
-    r : resolvePtr;
+    symbol: symbolPtr;
+    resolve: resolvePtr;
 
-    fileHistory : fileHistoryRecordType;
-    historyFile : historyFileType;
+    fileHistoryRecord: fileHistoryRecordType;
+    historyFile: historyFileType;
 
   begin
-    spt := nil;
+    symbol := nil;
 
     reset (historyFile, filename);
 
     while NOT eof (historyFile) DO
       begin
-      Read (historyFile, fileHistory);
+      Read (historyFile, fileHistoryRecord);
 
-      for i := 1 TO fileHistory.numRecs DO
-        WITH fileHistory.recs[ i ] DO CASE historyType of
-          $historyObj :
-            basepos := obj_addr;
+      for i := 1 TO fileHistoryRecord.numRecs DO
+        WITH fileHistoryRecord.recs[i] DO
+          CASE historyType of
+            $historyObj :
+              basepos := obj_addr;
 
-          $historySymbol :
-            begin
-            if findInsert (symbol_name, spt, true) then;
-            spt^.hist := TRUE;
-            spt^.modName := 'patched!!!';
-            spt^.section := -1;
-            spt^.def := true;
-            spt^.addr := symbol_addr;
+            $historySymbol :
+              begin
+              if findInsert (symbolName, symbol, true) then;
+              symbol^.hist := TRUE;
+              symbol^.modName := 'patched!!!';
+              symbol^.section := -1;
+              symbol^.def := true;
+              symbol^.addr := symbolAddr;
+              end;
+
+            $historyRef :
+              begin
+              new (resolve);
+              resolve^.next := symbol^.resList;
+              resolve^.addr := refAddr;
+              resolve^.offset := refOffset;
+              symbol^.resList := resolve;
+              end;
             end;
-
-          $historyRef :
-            begin
-            new (r);
-            r^.next := spt^.resList;
-            r^.addr := ref_addr;
-            r^.offset := ref_offset;
-            spt^.resList := r;
-            end;
-          end;
 
       end;
 
@@ -1917,7 +2005,7 @@ var
   {>>>}
 
   {<<<}
-  procedure procId;
+  procedure processModuleId;
 
   var
     section: integer;
@@ -1931,7 +2019,7 @@ var
     topESD := 17;
     esdArray[0] := 0;  {unused esd value}
 
-    coerce.ob := o;
+    coerce.ob := objectRecord;
     modName := coerce.id.modName;
 
     { we need to init these esd values, in case of zero length sections}
@@ -1969,6 +2057,7 @@ var
   procedure pass1;
 
   var
+    termchar: char;
     firstFile : boolean;
 
     {<<<}
@@ -1976,7 +2065,7 @@ var
     { pass1 object record processor }
 
       {<<<}
-      procedure procesd;
+      procedure processESD;
 
         {<<<}
         procedure doEsd;
@@ -2157,29 +2246,29 @@ var
 
       begin
         bpos := 2;
-        while bpos < o.length DO
+        while bpos < objectRecord.length DO
           doEsd;
       end;
       {>>>}
       {<<<}
-      procedure proctxt;
+      procedure processText;
 
       begin
       end;
       {>>>}
       {<<<}
-      procedure proceom;
+      procedure processEOM;
 
       begin
       end;
       {>>>}
 
     begin
-      CASE o[1] of
-        '1': procid;
-        '2': procesd;
-        '3': proctxt;
-        '4': proceom;
+      CASE objectRecord[1] of
+        '1': processModuleId;
+        '2': processESD;
+        '3': processText;
+        '4': processEOM;
         end;
     end;
     {>>>}
@@ -2221,8 +2310,8 @@ var
           begin
           openTextIn (filename);
           repeat
-            getTextRec (o);
-            if o.length > 0 then
+            getTextRec (objectRecord);
+            if objectRecord.length > 0 then
               processRecord;
           until eof (textObjectFile) ;
           closeTextIn;
@@ -2232,8 +2321,8 @@ var
           begin
           openIn (filename);
           repeat
-            getRecord (o);
-            if o.length > 0 then
+            getRecord (objectRecord);
+            if objectRecord.length > 0 then
               processRecord;
           until objectEof;
           closeIn;
@@ -2255,90 +2344,9 @@ var
   procedure pass2;
 
   var
+    termchar: char;
     section: integer;
 
-    {<<<}
-    procedure openOutput;
-
-    begin
-      opos := 0;
-      inpacket := false;
-
-      if bin then
-        begin
-        if download then
-          begin
-          rewrite (downloadTargetFile, 'target.txt');
-          writeln ('Downloading binary file - target.txt');
-          end;
-
-        if out then
-          begin
-          rewrite (binaryFile, commandRoot + '.bin');
-          if chat OR debug OR (NOT quiet) then
-            writeln ('Making binary file ', commandRoot + '.bin');
-          if logging then
-            writeln (logFile, 'Making binary file ', commandRoot + '.bin');
-          end;
-        end
-
-      else
-        begin
-        if download then
-          begin
-          rewrite (targetFile, 'target.txt');
-          writeln ('Downloading SR file - target.txt');
-          end;
-
-        if out then
-          begin
-          rewrite (srFormatFile, commandRoot+'.sr');
-          writeln ('Making SR file ', commandRoot + '.sr');
-          end;
-        end;
-    end;
-    {>>>}
-    {<<<}
-    procedure closeOutput;
-
-    begin
-      if inpacket then
-        endpacket;
-
-      sendStop;
-
-      if bin then
-        begin
-        if download then
-          close (downloadTargetFile);
-        if out then
-          close (binaryFile);
-        end
-      else
-        begin
-        if download then
-          close (targetFile);
-        if out then
-          close (srFormatFile);
-        end;
-    end;
-    {>>>}
-    {<<<}
-    procedure openModules;
-
-    begin
-    if modules then
-      rewrite (moduleFile, commandRoot + '.MOD');
-    end;
-    {>>>}
-    {<<<}
-    procedure closeModules;
-
-    begin
-    if modules then
-      close (moduleFile);
-    end;
-    {>>>}
     {<<<}
     procedure processRecord;
     { second pass object record processor }
@@ -2401,26 +2409,26 @@ var
               b := int (uand (%x'FFFF', uint (codeArray[i+pos]))) DIV 256;
               if (b = esc) AND (escape = true) then
                 begin
-                oblock[opos] := b;
+                binBlock[opos] := b;
                 opos := opos + 1;
                 if opos > 511 then
                   begin
                   if out then write
-                    (binaryFile,oblock);
+                    (binaryFile, binBlock);
                   if download then
-                    write (downloadTargetFile, oblock);
+                    write (downloadTargetFile, binBlock);
                   opos := 0;
                   end;
                 end;
 
-              oblock[opos] := b;
+              binBlock[opos] := b;
               opos := opos + 1;
               if opos > 511 then
                 begin
                 if out then
-                  write (binaryFile,oblock);
+                  write (binaryFile, binBlock);
                 if download then
-                  write (downloadTargetFile,oblock);
+                  write (downloadTargetFile, binBlock);
                 opos := 0;
                 end;
 
@@ -2429,26 +2437,26 @@ var
               b := codeArray[i+pos] MOD 256;
               if (b = esc) AND (escape = true) then
                 begin
-                oblock[opos] := b;
+                binBlock[opos] := b;
                 opos := opos + 1;
                 if opos > 511 then
                   begin
                   if out then
-                    write(binaryFile,oblock);
+                    write(binaryFile, binBlock);
                   if download then
-                    write (downloadTargetFile,oblock);
+                    write (downloadTargetFile, binBlock);
                   opos := 0;
                   end;
                 end;
 
-              oblock[opos] := b;
+              binBlock[opos] := b;
               opos := opos + 1;
               if opos > 511 then
                 begin
                 if out then
-                  write(binaryFile,oblock);
+                  write(binaryFile, binBlock);
                 if download then
-                  write(downloadTargetFile, oblock);
+                  write(downloadTargetFile, binBlock);
                 opos := 0;
                 end;
               checksum := ord (uxor (uint(b), uint (checksum)));
@@ -2480,7 +2488,7 @@ var
       end;
       {>>>}
       {<<<}
-      procedure procesd;
+      procedure processESD;
 
         {<<<}
         procedure doesd;
@@ -2610,12 +2618,12 @@ var
 
       begin
         bpos := 2;
-        while bpos < o.length DO
+        while bpos < objectRecord.length DO
           doesd;
       end;
       {>>>}
       {<<<}
-      procedure proctxt;
+      procedure processText;
 
       var
         bitmap, curresd: integer;
@@ -2642,7 +2650,7 @@ var
         begin
           if bitmap >= 0 then
             begin
-            adddata (mvl (ord (o[bpos])) + ord(o[bpos+1]));
+            adddata (mvl (ord (objectRecord[bpos])) + ord(objectRecord[bpos+1]));
             bpos := bpos+2;
             end
 
@@ -2749,7 +2757,7 @@ var
         curresd := getByte;
         codestart := outAddrArray[curresd];
 
-        while bpos < o.length DO
+        while bpos < objectRecord.length DO
           procbyte;
 
         outputData;
@@ -2758,7 +2766,7 @@ var
       end;
       {>>>}
       {<<<}
-      procedure proceom;
+      procedure processEOM;
 
       begin
         if modules then
@@ -2767,11 +2775,11 @@ var
       {>>>}
 
     begin
-      CASE o[1] of
-        '1': procid;
-        '2': procesd;
-        '3': proctxt;
-        '4': proceom;
+      CASE objectRecord[1] of
+        '1': processModuleId;
+        '2': processESD;
+        '3': processText;
+        '4': processEOM;
         end;
     end;
     {>>>}
@@ -2802,8 +2810,8 @@ var
           openTextIn (filename);
 
           repeat
-            getTextRec (o);
-            if o.length > 0 then
+            getTextRec (objectRecord);
+            if objectRecord.length > 0 then
               processRecord;
           until eof (textObjectFile) ;
 
@@ -2816,8 +2824,8 @@ var
           openIn (filename);
 
           repeat
-            getRecord (o);
-            if o.length > 0 then
+            getRecord (objectRecord);
+            if objectRecord.length > 0 then
               processRecord;
           until objectEof;
 
@@ -3004,7 +3012,8 @@ begin
     writeln;
     if sectbase[8] <> 0 then
       begin
-      writeln ('Size of P                 (8)  = ', sectbase[8]:8, ' bytes'); total := total + sectbase[8];
+      writeln ('Size of P                 (8)  = ', sectbase[8]:8, ' bytes');
+      total := total + sectbase[8];
       end;
 
     if sectbase[9] <> 0 then
