@@ -120,8 +120,8 @@ var
   curFile: filenameType;
   ext: filenameType;
   defExt: filenameType;
-  commandRoot: filenameType;
-  fullFilename: filenameType;
+  cmdFileRoot: filenameType;
+  cmdFilename: filenameType;
 
   { files }
   cmdFile: fileListPtr;
@@ -183,37 +183,26 @@ var
   datestring: packed array [1..11] of CHAR;
 {>>>}
 
-  {<<<  utils}
-  {<<<}
-  function seq (f1, f2: filenameType): boolean;
-
-  begin
-    if f1.length <> f2.length then
-      seq := false
-    else
-      seq := f1 = f2;
-  end;
-  {>>>}
-
+  {<<<  bit utils}
   {<<<}
   function ior (i1, i2: integer): integer;
 
   begin
-    ior := ord (uor (uint(i1), uint(i2)));
+    ior := ord (uor (uint (i1), uint (i2)));
   end;
   {>>>}
   {<<<}
   function iand (i1, i2: integer): integer;
 
   begin
-    iand := ord(uand(uint(i1),uint(i2)));
+    iand := ord (uand (uint (i1), uint (i2)));
   end;
   {>>>}
   {<<<}
   function ixor (i1, i2: integer): integer;
 
   begin
-    ixor := ord(uxor(uint(i1),uint(i2)));
+    ixor := ord (uxor (uint(i1), uint(i2)));
   end;
   {>>>}
 
@@ -234,130 +223,52 @@ var
       mvr := (i DIV 256) MOD (%x'1000000');
   end;
   {>>>}
-
+  {>>>}
+  {<<<  char utils}
   {<<<}
-  function null (c: char): boolean;
+  function isNull (ch: char): boolean;
 
   begin
-    null := (c=chr(13)) OR (c=chr(10)) OR (c=' ') OR (c=chr(9)) OR (c=chr(0));
+    isNull := (ch = chr(13)) OR (ch = chr(10)) OR (ch = ' ') OR (ch = chr(9)) OR (ch = chr(0));
   end;
   {>>>}
   {<<<}
-  function digit (c: char): boolean;
+  function isDigit (ch: char): boolean;
 
   begin
-    digit := (c >= '0') AND (c <= '9');
-  end;
-  {>>>}
-
-  {<<<}
-  procedure forceUpperSymbol (var s: symbolNameType);
-
-  var
-    i:integer;
-
-  begin
-    for i := 1 TO 10 DO
-      if (s[i] >= 'a') AND (s[i] <= 'z') then
-        s[i] := chr (ord (s[i]) + ord('A') - ord('a'));
+    isDigit := (ch >= '0') AND (ch <= '9');
   end;
   {>>>}
   {<<<}
-  procedure showModName;
+  function isAlpha (ch: char): boolean;
 
   begin
-    writeln ('in module ''', modName, ''', from file ''', curFile, '''....');
-    if logging then
-      writeln (logFile, 'in module ''', modName, ''', from file ''', curFile, '''....');
+    isAlpha := ((ch >= 'a') AND (ch <= 'z')) OR ((ch >= 'A') AND (ch <= 'Z'));
+  end;
+  {>>>}
+  {<<<}
+  function isAlphaDigit (ch: char): boolean;
+
+  begin
+    isAlphaDigit := isDigit (ch) OR isAlpha (ch) OR (ch = '_');
   end;
   {>>>}
 
   {<<<}
-  function currentTime: milestoneType;
-
-  var
-    ms: milestoneType;
-    temp: integer;
-
-    {<<<}
-    function getNum (startch: integer): integer;
-
-    var
-      temp1, temp2: integer;
-
-    begin
-      temp1 := ORD(ms.timeOfDay[startch]) - ORD('0');
-      temp2 := ORD(ms.timeOfDay[startch + 1] ) - ORD('0');
-      getNum := (temp1 * 10) + temp2;
-    end;
-    {>>>}
+  function chToHex (ch: char): integer;
 
   begin
-    time (ms.timeOfDay);
-
-    { ms.timeOfDay is hh:mm:ss.cc }
-    {                   12 45 78 AB }
-    ms.intTime := 0;
-
-    temp := getNum (1); {hh}
-    ms.intTime := temp;
-
-    temp := getNum (4); {mm}
-    ms.intTime := ms.intTime * 60 + temp;
-
-    temp := getNum (7); {ss}
-    ms.intTime := ms.intTime * 60 + temp;
-
-    temp := getNum (10); {cc}
-    ms.intTime := ms.intTime * 100 + temp;
-
-    currentTime := ms;
-  end;
-  {>>>}
-
-  { milestone }
-  {<<<}
-  procedure clearMilestone (var ms: milestoneType);
-
-  begin
-    ms.millTime := 0;
-    ms.intTime := 0;
-    ms.timeOfDay := '           ';
-  end;
-  {>>>}
-  {<<<}
-  procedure showMilestone (s: string; ms1, ms2: milestoneType);
-
-  var
-    temp, cc, ss, mm, hh: integer;
-    timeString: string;
-
-  begin
-    temp := ms1.intTime - ms2.intTime;
-
-    cc := temp MOD 100;
-    temp := temp DIV 100;
-    ss := temp MOD 60;
-
-    temp := temp DIV 60;
-    mm := temp MOD 60;
-
-    temp := temp DIV 60;
-    hh := temp MOD 60;
-
-    write (s);
-    write (ms1.timeOfDay,' ',(ms1.millTime-ms2.millTime) / 1000:7:2);
-    writev (timeString, hh :2, ':', mm :2, ':', ss :2, '.', cc :2 );
-
-    for temp := 1 TO timeString.length DO
-      if timeString[temp] = ' ' then
-        timeString[temp] := '0';
-
-    write ( ' ', timeString );
-
-    if endLink.millTime - startLink.millTime > 0 then
-      write ('  ', ((ms1.millTime-ms2.millTime)*100) / (endLink.millTime-startLink.millTime):7:2,'%');
-    writeln;
+    if (ch >= '0') AND (ch <= '9') then
+      chToHex := ord(ch) - ord('0')
+    else if (ch >= 'a') AND (ch <= 'f') then
+      chToHex := ord(ch) - ord('a') + 10
+    else if (ch >= 'A') AND (ch <= 'F') then
+      chToHex := ord(ch) - ord('A') + 10
+    else
+      begin
+      writeln ('Duff char ''', ch,'''when hex char expected!');
+      chToHex := 0;
+      end;
   end;
   {>>>}
   {>>>}
@@ -766,39 +677,6 @@ var
       end;
   end;
   {>>>}
-
-  { misc char utils }
-  {<<<}
-  function isAlpha (c: char): boolean;
-
-  begin
-    isAlpha := ((c>='a') AND (c<='z')) OR ((c>='A') AND (c<='Z'));
-  end;
-  {>>>}
-  {<<<}
-  function isAlphaNum (c: char): boolean;
-
-  begin
-    isAlphaNum := digit(c) OR isAlpha(c) OR (c='_');
-  end;
-  {>>>}
-  {<<<}
-  function chToHex (c: char): integer;
-
-  begin
-    if (c >= '0') AND (c <= '9') then
-      chToHex := ord(c)-ord('0')
-    else if (c >= 'a') AND (c <= 'f') then
-      chToHex := ord(c)-ord('a')+10
-    else if (c >= 'A') AND (c <= 'F') then
-      chToHex := ord(c)-ord('A')+10
-    else
-      begin
-      writeln ('Duff char ''', c,'''when hex char expected!');
-      chToHex := 0;
-      end;
-  end;
-  {>>>}
   {>>>}
   {<<<  file utils}
   {<<<}
@@ -812,7 +690,7 @@ var
     i := filename.length;
 
     { search backwards, to see if first non-alpha char is a '.' (i.e. extension)}
-    while (i > 1) AND isAlphaNum (filename[i]) DO
+    while (i > 1) AND isAlphaDigit (filename[i]) DO
       i := i - 1;
 
     if filename[i] = '.' then
@@ -833,8 +711,8 @@ var
   procedure openloggingFile;
 
   begin
-    rewrite (logFile, commandRoot + '.log');
-    writeln (logFile, 'Linking from ', fullFilename);
+    rewrite (logFile, cmdFileRoot + '.log');
+    writeln (logFile, 'Linking from ', cmdFilename);
   end;
   {>>>}
   {<<<}
@@ -989,15 +867,15 @@ var
   }
   var
     bytes, i: integer;
-    buff: varying [255] of char;
+    textObjectRecord: objectRecordType;
 
   begin
-    readln (textObjectFile, buff);
+    readln (textObjectFile, textObjectRecord);
 
-    bytes := buff.length DIV 2;
+    bytes := textObjectRecord.length DIV 2;
     objectRecord.length := bytes;
     for i := 1 TO bytes DO
-      objectRecord[i] := chr ((chToHex (buff[i*2-1]) * 16) + chToHex (buff[i*2]));
+      objectRecord[i] := chr ((chToHex (textObjectRecord[i*2-1]) * 16) + chToHex (textObjectRecord[i*2]));
   end;
   {>>>}
   {<<<}
@@ -1026,11 +904,11 @@ var
 
       if out then
         begin
-        rewrite (binaryFile, commandRoot + '.bin');
+        rewrite (binaryFile, cmdFileRoot + '.bin');
         if chat OR debug OR (NOT quiet) then
-          writeln ('Making binary file ', commandRoot + '.bin');
+          writeln ('Making binary file ', cmdFileRoot + '.bin');
         if logging then
-          writeln (logFile, 'Making binary file ', commandRoot + '.bin');
+          writeln (logFile, 'Making binary file ', cmdFileRoot + '.bin');
         end;
       end
 
@@ -1044,8 +922,8 @@ var
 
       if out then
         begin
-        rewrite (srFormatFile, commandRoot+'.sr');
-        writeln ('Making SR file ', commandRoot + '.sr');
+        rewrite (srFormatFile, cmdFileRoot+'.sr');
+        writeln ('Making SR file ', cmdFileRoot + '.sr');
         end;
       end;
   end;
@@ -1264,7 +1142,7 @@ var
   begin
     bpos := 0;
 
-    rewrite (symbolTableFile, commandRoot + '.sym');
+    rewrite (symbolTableFile, cmdFileRoot + '.sym');
 
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
@@ -1296,7 +1174,7 @@ var
     map_file : text;
 
   begin
-    rewrite (map_file, commandRoot+'.map');
+    rewrite (map_file, cmdFileRoot+'.map');
 
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
@@ -1333,7 +1211,7 @@ var
     r: referencePtr;
 
   begin
-    rewrite (ref_file, commandRoot + '.xrf');
+    rewrite (ref_file, cmdFileRoot + '.xrf');
 
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
@@ -1406,7 +1284,7 @@ var
     {>>>}
 
   begin
-    rewrite (historyFile, commandRoot + '.his');
+    rewrite (historyFile, cmdFileRoot + '.his');
     fileHistoryRecord.numRecs := 0;
 
     historyRecord.historyType := $historyObj;
@@ -1466,7 +1344,7 @@ var
 
   begin
   if modules then
-    rewrite (moduleFile, commandRoot + '.mod');
+    rewrite (moduleFile, cmdFileRoot + '.mod');
   end;
   {>>>}
   {<<<}
@@ -1535,24 +1413,135 @@ var
     symbolHash := hash MOD maxHash;
   end;
   {>>>}
+
   {<<<}
-  function findInsert (var s: symbolNameType; var s_ptr: symbolPtr; ins: boolean): boolean;
+  function getMilestone: milestoneType;
+
+  var
+    ms: milestoneType;
+    temp: integer;
+
+    {<<<}
+    function getNum (startch: integer): integer;
+
+    var
+      temp1, temp2: integer;
+
+    begin
+      temp1 := ORD(ms.timeOfDay[startch]) - ORD('0');
+      temp2 := ORD(ms.timeOfDay[startch + 1] ) - ORD('0');
+      getNum := (temp1 * 10) + temp2;
+    end;
+    {>>>}
+
+  begin
+    time (ms.timeOfDay);
+
+    { ms.timeOfDay is hh:mm:ss.cc }
+    {                   12 45 78 AB }
+    ms.intTime := 0;
+
+    temp := getNum (1); {hh}
+    ms.intTime := temp;
+
+    temp := getNum (4); {mm}
+    ms.intTime := ms.intTime * 60 + temp;
+
+    temp := getNum (7); {ss}
+    ms.intTime := ms.intTime * 60 + temp;
+
+    temp := getNum (10); {cc}
+    ms.intTime := ms.intTime * 100 + temp;
+
+    getMilestone := ms;
+  end;
+  {>>>}
+  {<<<}
+  procedure clearMilestone (var ms: milestoneType);
+
+  begin
+    ms.millTime := 0;
+    ms.intTime := 0;
+    ms.timeOfDay := '           ';
+  end;
+  {>>>}
+  {<<<}
+  procedure showMilestone (s: string; ms1, ms2: milestoneType);
+
+  var
+    temp, cc, ss, mm, hh: integer;
+    timeString: string;
+
+  begin
+    temp := ms1.intTime - ms2.intTime;
+
+    cc := temp MOD 100;
+    temp := temp DIV 100;
+    ss := temp MOD 60;
+
+    temp := temp DIV 60;
+    mm := temp MOD 60;
+
+    temp := temp DIV 60;
+    hh := temp MOD 60;
+
+    write (s);
+    write (ms1.timeOfDay,' ',(ms1.millTime-ms2.millTime) / 1000:7:2);
+    writev (timeString, hh :2, ':', mm :2, ':', ss :2, '.', cc :2 );
+
+    for temp := 1 TO timeString.length DO
+      if timeString[temp] = ' ' then
+        timeString[temp] := '0';
+
+    write ( ' ', timeString );
+
+    if endLink.millTime - startLink.millTime > 0 then
+      write ('  ', ((ms1.millTime-ms2.millTime)*100) / (endLink.millTime-startLink.millTime):7:2,'%');
+    writeln;
+  end;
+  {>>>}
+  {<<<}
+  procedure showModName;
+
+  begin
+    writeln ('in module ''', modName, ''', from file ''', curFile, '''....');
+    if logging then
+      writeln (logFile, 'in module ''', modName, ''', from file ''', curFile, '''....');
+  end;
+  {>>>}
+
+  {<<<}
+  function findInsert (var symbolName: symbolNameType; var symbol: symbolPtr; ins: boolean): boolean;
   var
     found : boolean;
     hash : integer;
 
+    {<<<}
+    procedure forceUpper (var s: symbolNameType);
+
+    var
+      i:integer;
+
+    begin
+      for i := 1 TO 10 DO
+        if (s[i] >= 'a') AND (s[i] <= 'z') then
+          s[i] := chr (ord (s[i]) + ord('A') - ord('a'));
+    end;
+    {>>>}
+
   begin
-    forceUpperSymbol (s);
-    hash := symbolHash (s);
-    s_ptr := hashTable[hash];
+    forceUpper (symbolName);
+
+    hash := symbolHash (symbolName);
+    symbol := hashTable[hash];
 
     found := false;
-    while (NOT found) AND (s_ptr <> nil) DO
+    while (NOT found) AND (symbol <> nil) DO
       begin
-      if s_ptr^.symbolName = s then
+      if symbol^.symbolName = symbolName then
         found := true
       else
-        s_ptr := s_ptr^.nextSymbol;
+        symbol := symbol^.nextSymbol;
       end;
 
     findInsert := found;
@@ -1560,18 +1549,18 @@ var
     if (NOT found) AND ins then
       begin
       numSymbols := numSymbols + 1;
-      new (s_ptr);
-      s_ptr^.nextSymbol := hashTable[hash];
-      hashTable[hash] := s_ptr;
+      new (symbol);
+      symbol^.nextSymbol := hashTable[hash];
+      hashTable[hash] := symbol;
 
-      s_ptr^.def := false;
-      s_ptr^.used := true;
-      s_ptr^.flagged := false;
-      s_ptr^.symbolName := s;
-      s_ptr^.modName := modName;
-      s_ptr^.comsize := -1;
-      s_ptr^.refList := nil;
-      s_ptr^.resList := nil;
+      symbol^.def := false;
+      symbol^.used := true;
+      symbol^.flagged := false;
+      symbol^.symbolName := symbolName;
+      symbol^.modName := modName;
+      symbol^.comsize := -1;
+      symbol^.refList := nil;
+      symbol^.resList := nil;
       end;
   end;
   {>>>}
@@ -1798,7 +1787,7 @@ var
         { skip to next switch }
         repeat
           c := getNextCh;
-          until (c='/') OR (null (c)) OR (pos >= switchLen);
+          until (c='/') OR (isNull (c)) OR (pos >= switchLen);
 
         if (tla[1] = 'o') AND (tla[2] >= '0') AND (tla[2] <= '9') then
           {<<<  section startAddress}
@@ -1876,7 +1865,7 @@ var
           setSwitch (escape) { replace all 1B's in code with 1B1B }
         else
           writeln ('Unknown switch :', tla);
-      until (pos >= switchLen) OR (null (c));
+      until (pos >= switchLen) OR (isNull (c));
     end;
     {>>>}
 
@@ -1975,7 +1964,7 @@ var
            newline := true;
            end;
            {>>>}
-      until (NOT null(c)) OR eof (cmdFile^.f);
+      until (NOT isNull (c)) OR eof (cmdFile^.f);
 
       if eof (cmdFile^.f) then
         if cmdFile^.next <> NIL then
@@ -1984,7 +1973,7 @@ var
           cmdFile := cmdfile^.next;
           end;
 
-      if (c <> '=') AND (c <> ',') AND (c <> '!') AND NOT null(c) then
+      if (c <> '=') AND (c <> ',') AND (c <> '!') AND NOT isNull (c) then
         begin
         filename.length := filename.length+1;
         filename[filename.length] := c;
@@ -2284,7 +2273,7 @@ var
       if termchar = '=' then
         begin
         if firstFile then
-          commandRoot := filename
+          cmdFileRoot := filename
         else
           writeln ('You can''t put an ''='' THERE!');
         end
@@ -2299,9 +2288,9 @@ var
             writeln ('Only one history file, ignoring ', filename)
           else
             begin
-            startReadHis := currentTime;
+            startReadHis := getMilestone;
             readHistory (filename);
-            endReadHis := currentTime;
+            endReadHis := getMilestone;
             end;
           usingHistory := TRUE;
           end
@@ -2337,7 +2326,7 @@ var
       firstFile := false;
       until eof (cmdFile^.f);
 
-    endPass1 := currentTime;
+    endPass1 := getMilestone;
   end;
   {>>>}
   {<<<}
@@ -2838,7 +2827,7 @@ var
     closeModules;
     closeoutput;
 
-    endPass2 := currentTime;
+    endPass2 := getMilestone;
   end;
   {>>>}
 
@@ -2956,12 +2945,14 @@ begin
   switchSettingsProcess (command);
 
   ext := getExt (command, '.cmd');
-  commandRoot := command;
-  commandRoot.length := command.length - ext.length;
-  writeln ('ext:', ext, ' extLength:', ext.length:0, ' command:', command, ' commandRoot:', commandRoot);
+  cmdFilename := command;
 
-  startLink := currentTime;
-  startReadHis := currentTime;
+  cmdFileRoot := command;
+  cmdFileRoot.length := command.length - ext.length;
+  writeln ('ext:', ext, ' extLength:', ext.length:0, ' command:', command, ' cmdFileRoot:', cmdFileRoot);
+
+  startLink := getMilestone;
+  startReadHis := getMilestone;
   endReadHis := startReadHis;
 
   { open .cmd file }
@@ -2970,8 +2961,7 @@ begin
   if chat OR debug then
     writeln ('File given is ', command );
   reset (cmdFile^.f, command);
-  fullFilename := command;
-  writeln ('Linking from ', fullFilename);
+  writeln ('Linking from ', cmdFilename);
 
   pass1;
   allocCom;
@@ -3051,7 +3041,7 @@ begin
     {>>>}
 
   overlapCheck;
-  endSpaceAlloc := currentTime;
+  endSpaceAlloc := getMilestone;
 
   if numUndefinedSymbols <> 0 then
     {<<<  report undefined symbols}
@@ -3076,28 +3066,28 @@ begin
   {<<<  histoy}
   if history then
     dumpHistory;
-  endHisGen := currentTime;
+  endHisGen := getMilestone;
   {>>>}
   {<<<  symbolTable}
   if symout then
     dumpSymbols;
-  endSymGen := currentTime;
+  endSymGen := getMilestone;
   {>>>}
   {<<<  map}
   if map then
     dumpSymbolMap;
-  endMapGen := currentTime;
+  endMapGen := getMilestone;
   {>>>}
   {<<<  xref}
   if xref then
     dumpXreferences;
-  endXrefGen := currentTime;
+  endXrefGen := getMilestone;
   {>>>}
 
   if bell then for i := 1 TO 10 DO
     write (chr(7));
   writeln;
-  endLink := currentTime;
+  endLink := getMilestone;
 
   if chat OR debug OR (NOT quiet) then
     {<<<  report timings}
