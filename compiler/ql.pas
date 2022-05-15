@@ -140,8 +140,8 @@ var
   objectRecord: objectRecordType;
 
   { switches }
-  modules, download, check, bell, xref, map, bin, out, symout : boolean;
-  chat, debug, logging, friendly, quiet, files, history, escape : boolean;
+  modules, download, check, bell, xref, map, bin, out, symout: boolean;
+  chat, debug, logging, friendly, quiet, files, history, escape: boolean;
 
   duffer: boolean;
   newline: boolean;
@@ -166,9 +166,10 @@ var
   codeArray: array [1..64] of integer;
 
   { timing }
-  startLink, endPass1, endPass2, endLink: milestoneType;
-  endMapGen, endHisGen, endSymGen, endSpaceAlloc, endXrefGen: milestoneType;
-  startReadHis, endReadHis: milestoneType;
+  startLinkMilestone, endPass1Milestone, endPass2Milestone, endLinkMilestone: milestoneType;
+  endMapGenMilestone, endHisGenMilestone, endSymGenMilestone: milestoneType;
+  endSpaceAllocMilestone, endXrefGenMilestone: milestoneType;
+  startReadHisMilestone, endReadHisMilestone: milestoneType;
 
   modName: symbolNameType;
 
@@ -192,17 +193,17 @@ var
   end;
   {>>>}
   {<<<}
-  function iand (i1, i2: integer): integer;
-
-  begin
-    iand := ord (uand (uint (i1), uint (i2)));
-  end;
-  {>>>}
-  {<<<}
   function ixor (i1, i2: integer): integer;
 
   begin
     ixor := ord (uxor (uint(i1), uint(i2)));
+  end;
+  {>>>}
+  {<<<}
+  function iand (i1, i2: integer): integer;
+
+  begin
+    iand := ord (uand (uint (i1), uint (i2)));
   end;
   {>>>}
 
@@ -220,7 +221,7 @@ var
     if i < 0 then
       mvr := int (uor (%x'800000', uint (mvr (int (uand (%x'7FFFFFFF', uint(i)))))))
     else
-      mvr := (i DIV 256) MOD (%x'1000000');
+      mvr := (i DIV 256) mod (%x'1000000');
   end;
   {>>>}
   {>>>}
@@ -236,28 +237,28 @@ var
   function isDigit (ch: char): boolean;
 
   begin
-    isDigit := (ch >= '0') AND (ch <= '9');
+    isDigit := (ch >= '0') and (ch <= '9');
   end;
   {>>>}
   {<<<}
   function isUpper (ch: char): boolean;
 
   begin
-    isUpper := (ch >= 'A') AND (ch <= 'Z');
+    isUpper := (ch >= 'A') and (ch <= 'Z');
   end;
   {>>>}
   {<<<}
   function isAlpha (ch: char): boolean;
 
   begin
-    isAlpha := ((ch >= 'a') AND (ch <= 'z')) OR ((ch >= 'A') AND (ch <= 'Z'));
+    isAlpha := ((ch >= 'a') and (ch <= 'z')) or ((ch >= 'A') and (ch <= 'Z'));
   end;
   {>>>}
   {<<<}
   function isAlphaDigit (ch: char): boolean;
 
   begin
-    isAlphaDigit := isDigit (ch) OR isAlpha (ch) OR (ch = '_');
+    isAlphaDigit := isDigit (ch) or isAlpha (ch) or (ch = '_');
   end;
   {>>>}
 
@@ -265,11 +266,11 @@ var
   function toHex (ch: char): integer;
 
   begin
-    if (ch >= '0') AND (ch <= '9') then
+    if (ch >= '0') and (ch <= '9') then
       toHex := ord(ch) - ord('0')
-    else if (ch >= 'a') AND (ch <= 'f') then
+    else if (ch >= 'a') and (ch <= 'f') then
       toHex := ord(ch) - ord('a') + 10
-    else if (ch >= 'A') AND (ch <= 'F') then
+    else if (ch >= 'A') and (ch <= 'F') then
       toHex := ord(ch) - ord('A') + 10
     else
       begin
@@ -290,24 +291,19 @@ var
   {>>>}
   {>>>}
   {<<<  string utils}
-  {<<<}
-  { string variables of  type "packed array [0..n] of char", where n >= 1.
-    The length of the string is stored in element 0, elements 1 to n are the characters of the string.
+  { string vars of type "packed array [0..n] of char", where n >= 1.
+    length of string is in element[0], elements [1] to [n] are chars of string.
 
-    The routines will also accept parameters of type "packed array [1..n] of char", n length of string.
-    Quoted strings in Pascal are considered to be of this type,
-      may be mixed with string variables with calling routines that don't require "var" params.
+    The routines accept parameters of type "packed array [1..n] of char", n length of string.
+    Quoted strings in Pascal are of this type, and can be mixed with string vars with calls that don't need "var" params.
 
-    The start and span parameters define a substring beginning at position start
-      (between characters start-1 and start) with a length of abs(span).
-
-    If span is positive, the substring is to the right of Start
-            if negative, the substring is to the left.
+    start and span define substring beginning at start of length of abs(span).
+      if span is positive, the substring is to the right of start
+      if span is negative, the substring is to the left of start
   }
-  {>>>}
   {<<<}
-  procedure assign (var t: packed array [tlow..thigh: integer] of char;
-                   s: packed array [slow..shigh: integer] of char);
+  procedure assignString (var t: packed array [tlow..thigh: integer] of char;
+                    s: packed array [slow..shigh: integer] of char);
   { Assign (T,S) - Assign string S to the target string T }
   {   useful for assigning a literal string to a variable string }
 
@@ -368,7 +364,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure clear (var s: packed array [low..high: integer] of char);
+  procedure clearString (var s: packed array [low..high: integer] of char);
   { clear (S) - initializes string S to 0 }
 
   begin
@@ -393,7 +389,7 @@ var
   end;
   {>>>}
   {<<<}
-  function equal (s1: packed array [s1low..s1high: integer] of char;
+  function equalString (s1: packed array [s1low..s1high: integer] of char;
                   s2: packed array [s2low..s2high: integer] of char): boolean;
   { Equal (T,S) - Function Equal returns TRUE when T=S, returns FALSE otherwise }
 
@@ -403,10 +399,11 @@ var
     i: integer;
 
   begin
+    equalString := false;
+
     if (s1low <> 0) and (s1low <> 1) or
        (s2low <> 0) and (s2low <> 1) then
       writeln ('equal - bad arguments error')
-
     else
       begin
       if (s1low = 0) then
@@ -426,20 +423,19 @@ var
         while (s2[s2len] = ' ') and (s2len > 1) do
           s2len := s2len - 1;
         end;
-      if s1len <> s2len then
-        equal := false
-      else
+
+      if s1len = s2len then
         begin
         eq := true;
         for i := 1 to s1len do eq := eq and (s1[i] = s2[i]);
-        equal := eq;
+        equalString := eq;
         end;
       end;
   end;
   {>>>}
 
   {<<<}
-  function search (s: packed array [slow..shigh: integer] of char;
+  function searchString (s: packed array [slow..shigh: integer] of char;
                   t: packed array [tlow..thigh: integer] of char;
                   start: integer): integer;
   { search (S,T,Start) - searches string S for the first  }
@@ -452,13 +448,11 @@ var
     uneq: boolean;
 
   begin
+    searchString := 0;
     if (start < 1) or (slow <> 0) and (slow <> 1) or (tlow <> 0) and (tlow <> 1) then
       writeln ('search error')
-
     else
       begin
-      search := 0;
-
       if slow = 0 then
         slen := ord(s[0])
       else
@@ -482,16 +476,16 @@ var
         until (not uneq) or (i = slen - tlen + 1);
 
         if uneq then
-          search := 0
+          searchString := 0
         else
-          search := i;
+          searchString := i;
         end;
       end;
   end;
   {>>>}
 
   {<<<}
-  procedure insert (var t: packed array [tlow..thigh: integer] of char;
+  procedure insertString (var t: packed array [tlow..thigh: integer] of char;
                    s: packed array [slow..shigh: integer] of char;
                    p: integer);
   { insert (T,S,Start) - inserts the string S into the target string T at position Start }
@@ -537,7 +531,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure concatenate (var t: packed array [tlow..thigh: integer] of char;
+  procedure concatenateString (var t: packed array [tlow..thigh: integer] of char;
                          s: packed array [slow..shigh: integer] of char);
   { concatenate (T,S) - appends string S to the target string T. The resulting value is string T }
   {   Overflow results in truncation to StringMax characters }
@@ -800,9 +794,9 @@ var
 
     date (datestring);
     writeln (logFile);
-    writeln (logFile, 'Link started ', startLink.timeOfDay, ' ', datestring);
-    writeln (logFile, 'Link ended   ', endLink.timeOfDay, ' ', datestring);
-    writeln (logFile, 'total CPU time:- ',(endLink.millTime-startLink.millTime)/1000:7:2);
+    writeln (logFile, 'Link started ', startLinkMilestone.timeOfDay, ' ', datestring);
+    writeln (logFile, 'Link ended   ', endLinkMilestone.timeOfDay, ' ', datestring);
+    writeln (logFile, 'total CPU time:- ',(endLinkMilestone.millTime - startLinkMilestone.millTime)/1000:7:2);
 
     close (logFile);
   end;
@@ -1483,14 +1477,14 @@ var
   end;
   {>>>}
   {<<<}
-  procedure showMilestone (s: string; ms1, ms2: milestoneType);
+  procedure showMilestone (s: string; milestone1, milestone2: milestoneType);
 
   var
     temp, cc, ss, mm, hh: integer;
     timeString: string;
 
   begin
-    temp := ms1.intTime - ms2.intTime;
+    temp := milestone1.intTime - milestone2.intTime;
 
     cc := temp MOD 100;
     temp := temp DIV 100;
@@ -1503,7 +1497,7 @@ var
     hh := temp MOD 60;
 
     write (s);
-    write (ms1.timeOfDay,' ',(ms1.millTime-ms2.millTime) / 1000:7:2);
+    write (milestone1.timeOfDay,' ',(milestone1.millTime-milestone2.millTime) / 1000:7:2);
     writev (timeString, hh :2, ':', mm :2, ':', ss :2, '.', cc :2 );
 
     for temp := 1 TO timeString.length DO
@@ -1512,8 +1506,9 @@ var
 
     write ( ' ', timeString );
 
-    if endLink.millTime - startLink.millTime > 0 then
-      write ('  ', ((ms1.millTime-ms2.millTime)*100) / (endLink.millTime-startLink.millTime):7:2,'%');
+    if endLinkMilestone.millTime - startLinkMilestone.millTime > 0 then
+      write ('  ', ((milestone1.millTime - milestone2.millTime) * 100) /
+                    (endLinkMilestone.millTime - startLinkMilestone.millTime):7:2,'%');
     writeln;
   end;
   {>>>}
@@ -2303,9 +2298,9 @@ var
             writeln ('Only one history file, ignoring ', filename)
           else
             begin
-            startReadHis := getMilestone;
+            startReadHisMilestone := getMilestone;
             readHistory (filename);
-            endReadHis := getMilestone;
+            endReadHisMilestone := getMilestone;
             end;
           usingHistory := TRUE;
           end
@@ -2341,7 +2336,7 @@ var
       firstFile := false;
       until eof (cmdFile^.f);
 
-    endPass1 := getMilestone;
+    endPass1Milestone := getMilestone;
   end;
   {>>>}
   {<<<}
@@ -2842,7 +2837,7 @@ var
     closeModules;
     closeoutput;
 
-    endPass2 := getMilestone;
+    endPass2Milestone := getMilestone;
   end;
   {>>>}
 
@@ -2890,17 +2885,17 @@ var
     for i := 0 TO maxHash DO
       hashTable[i] := nil;
 
-    clearMilestone (startLink);
-    clearMilestone (endPass1);
-    clearMilestone (endPass2);
-    clearMilestone (endLink);
-    clearMilestone (endMapGen);
-    clearMilestone (endHisGen);
-    clearMilestone (endSymGen);
-    clearMilestone (endSpaceAlloc);
-    clearMilestone (endXrefGen);
-    clearMilestone (startReadHis);
-    clearMilestone (endReadHis);
+    clearMilestone (startLinkMilestone);
+    clearMilestone (endPass1Milestone);
+    clearMilestone (endPass2Milestone);
+    clearMilestone (endLinkMilestone);
+    clearMilestone (endMapGenMilestone);
+    clearMilestone (endHisGenMilestone);
+    clearMilestone (endSymGenMilestone);
+    clearMilestone (endSpaceAllocMilestone);
+    clearMilestone (endXrefGenMilestone);
+    clearMilestone (startReadHisMilestone);
+    clearMilestone (endReadHisMilestone);
   end;
   {>>>}
   {<<<}
@@ -2957,18 +2952,19 @@ begin
   P_getcmdline (command, commandLen);
   writeln ('command ', command:commandLen, ' len:', commandLen:0);
 
+  { command line switches }
   switchSettingsProcess (command);
 
+  { get .cmd filename }
   ext := getExt (command, '.cmd');
   cmdFilename := command;
-
   cmdFileRoot := command;
   cmdFileRoot.length := command.length - ext.length;
   writeln ('ext:', ext, ' extLength:', ext.length:0, ' command:', command, ' cmdFileRoot:', cmdFileRoot);
 
-  startLink := getMilestone;
-  startReadHis := getMilestone;
-  endReadHis := startReadHis;
+  startLinkMilestone := getMilestone;
+  startReadHisMilestone := getMilestone;
+  endReadHisMilestone := startReadHisMilestone;
 
   { open .cmd file }
   NEW (cmdFile);
@@ -3056,7 +3052,7 @@ begin
     {>>>}
 
   overlapCheck;
-  endSpaceAlloc := getMilestone;
+  endSpaceAllocMilestone := getMilestone;
 
   if numUndefinedSymbols <> 0 then
     {<<<  report undefined symbols}
@@ -3081,54 +3077,54 @@ begin
   {<<<  histoy}
   if history then
     dumpHistory;
-  endHisGen := getMilestone;
+  endHisGenMilestone := getMilestone;
   {>>>}
   {<<<  symbolTable}
   if symout then
     dumpSymbols;
-  endSymGen := getMilestone;
+  endSymGenMilestone := getMilestone;
   {>>>}
   {<<<  map}
   if map then
     dumpSymbolMap;
-  endMapGen := getMilestone;
+  endMapGenMilestone := getMilestone;
   {>>>}
   {<<<  xref}
   if xref then
     dumpXreferences;
-  endXrefGen := getMilestone;
+  endXrefGenMilestone := getMilestone;
   {>>>}
 
   if bell then for i := 1 TO 10 DO
     write (chr(7));
   writeln;
-  endLink := getMilestone;
+  endLinkMilestone := getMilestone;
 
   if chat OR debug OR (NOT quiet) then
     {<<<  report timings}
     begin
-    writeln ('Link started           ', startLink.timeOfDay);
+    writeln ('Link started           ', startLinkMilestone.timeOfDay);
 
-    showMilestone ('Pass 1                 ', endPass1,startLink);
+    showMilestone ('Pass 1                 ', endPass1Milestone, startLinkMilestone);
 
-    if startReadHis.millTime <> endReadHis.millTime then
-      showMilestone ('Reading history file   ', endReadHis, startReadHis );
+    if startReadHisMilestone.millTime <> endReadHisMilestone.millTime then
+      showMilestone ('Reading history file   ', endReadHisMilestone, startReadHisMilestone);
 
-    showMilestone ('Space allocation       ', endSpaceAlloc,endPass1);
-    showMilestone ('Pass 2                 ', endPass2,endSpaceAlloc);
+    showMilestone ('Space allocation       ', endSpaceAllocMilestone, endPass1Milestone);
+    showMilestone ('Pass 2                 ', endPass2Milestone, endSpaceAllocMilestone);
 
     if history then
-      showMilestone ('.HIS generation        ', endHisGen, endPass2);
+      showMilestone ('.HIS generation        ', endHisGenMilestone, endPass2Milestone);
     if symout then
-      showMilestone ('.SYM generation        ', endSymGen, endHisGen);
+      showMilestone ('.SYM generation        ', endSymGenMilestone, endHisGenMilestone);
     if map then
-      showMilestone ('.MAP generation        ', endMapGen, endSymGen);
+      showMilestone ('.MAP generation        ', endMapGenMilestone, endSymGenMilestone);
     if xref then
-      showMilestone ('.XRF generation        ', endXrefGen, endMapGen);
-    showMilestone ('Link ended             ', endLink, startLink);
+      showMilestone ('.XRF generation        ', endXrefGenMilestone, endMapGenMilestone);
+    showMilestone ('Link ended             ', endLinkMilestone, startLinkMilestone);
 
     writeln;
-    writeln ('total CPU time:- ', (endLink.millTime - startLink.millTime) / 1000:7:2);
+    writeln ('total CPU time:- ', (endLinkMilestone.millTime - startLinkMilestone.millTime) / 1000:7:2);
     end;
     {>>>}
   if friendly then
@@ -3136,8 +3132,8 @@ begin
     begin
     date (datestring);
     writeln;
-    writeln ('Link started ', startLink.timeOfDay, ' ', datestring);
-    writeln ('Link ended   ', endLink.timeOfDay, ' ', datestring);
+    writeln ('Link started ', startLinkMilestone.timeOfDay, ' ', datestring);
+    writeln ('Link ended   ', endLinkMilestone.timeOfDay, ' ', datestring);
     end;
     {>>>}
 
