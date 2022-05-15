@@ -1,5 +1,5 @@
 { ql.pas }
-PROGRAM qlink (input,output);
+PROGRAM ql (input,output);
 {<<<}
 const
   maxStringLen = 132;
@@ -25,8 +25,8 @@ type
   symbolNameType = packed array [1..10] of char;
   {<<<}
   idrec = packed record
-    rlen : word;
-    rtype : char;
+    rlen    : word;
+    rtype   : char;
     modName : symbolNameType;
     end;
   {>>>}
@@ -34,30 +34,36 @@ type
   referencePtr = ^reference;
   {<<<}
   reference = packed record
-    nextReference : referencePtr;
-    symbolName    : symbolNameType;
+    next : referencePtr;
+    symbolName : symbolNameType;
     end;
   {>>>}
 
   resolvePtr = ^resolve;
   {<<<}
   resolve = packed record
-    nextResolve : resolvePtr;
-    res_addr    : integer;
-    res_offset  : integer;
+    next : resolvePtr;
+    addr   : integer;
+    offset : integer;
     end;
   {>>>}
 
   symbolPtr = ^symbolType;
   {<<<}
   symbolType = packed record
-    nextSymbol, nextCom    : symbolPtr;
-    sname, mname           : symbolNameType;
-    ssect, saddr, comsize  : integer;
-    sdef, sused            : boolean;
-    sflagged, shist        : boolean;
-    reflist                : referencePtr;
-    reslist                : resolvePtr;
+    nextSymbol : symbolPtr;
+    nextCommon : symbolPtr;
+    symbolName : symbolNameType;
+    modName    : symbolNameType;
+    section    : integer;
+    addr       : integer;
+    comsize    : integer;
+    def        : boolean;
+    used       : boolean;
+    flagged    : boolean;
+    hist       : boolean;
+    refList    : referencePtr;
+    resList    : resolvePtr;
     end;
   {>>>}
 
@@ -67,37 +73,40 @@ type
   fileListPtrType = ^fileListType;
   {<<<}
   fileListType = record
-    nextFile : fileListPtrType;
-    f        : text;
+    next : fileListPtrType;
+    f : text;
     end;
   {>>>}
 
   {<<<}
   milestone = record
-    mill_time, int_time : integer;
-    time_of_day : packed array [1..11] of char;
+    millTime  : integer;
+    intTime   : integer;
+    timeOfDay : packed array [1..11] of char;
     end;
   {>>>}
 
-  history_type_t = ($history_obj, $history_symbol, $history_ref);
+  { history }
+  historyType = ($historyObj, $historySymbol, $historyRef);
   {<<<}
-  history_t = record
-    CASE history_type : history_type_t of
-      $history_obj :    (obj_addr : integer;);
-      $history_symbol : (symbol_addr : integer;
-                         symbol_name : symbolNameType;);
-      $history_ref :    (ref_addr, ref_offset : integer;);
+  historyRecordType = record
+    CASE historyType : historyType of
+      $historyObj    : (obj_addr : integer;);
+      $historySymbol : (symbol_addr : integer;
+                        symbol_name : symbolNameType;);
+      $historyRef    : (ref_addr: integer;
+                        ref_offset : integer;);
     end;
   {>>>}
 
   {<<<}
-  filed_history_t = record CASE boolean of
-    true : (num_recs: integer;
-            recs: ARRAY [1 .. recsPerFileRec$] of history_t);
-    false: (dummy: packed array [1 .. bytesPerFileRec$] of char);
+  filedHistoryRecordType = record CASE boolean of
+    true : (numRecs : integer;
+            recs    : ARRAY [1 .. recsPerFileRec$] of historyRecordType;);
+    false: (dummy   : packed array [1 .. bytesPerFileRec$] of char);
     end;
   {>>>}
-  history_file_t = FILE of filed_history_t;
+  historyFileType = FILE of filedHistoryRecordType;
 {>>>}
 {<<<}
 var
@@ -108,7 +117,7 @@ var
   filename: filenameType;
   curFile: filenameType;
   ext: filenameType;
-  defext: filenameType;
+  defExt: filenameType;
   commandRoot: filenameType;
   fullFilename: filenameType;
 
@@ -124,10 +133,9 @@ var
 
   termchar: char;
   smax, checksum, pass, opos, bpos: integer;
-  o: objrec;
 
-  prev_com : symbolPtr;
-  com_head : symbolPtr;
+  blockPtr: integer;
+  o: objrec;
 
   { switches }
   modules, download, check, bell, xref, map, bin, out, symout : boolean;
@@ -138,26 +146,32 @@ var
   inpacket: boolean;
   usingHistory: boolean;
 
-  hash_table : array [0..maxHash] of symbolPtr;
+  prevCommon: symbolPtr;
+  commonHead: symbolPtr;
 
-  dirend, colonpos : integer;
-  codestart, codelen, topesd, blockpt, undefsym, result, pflag, numsymbols: integer;
+  numSymbols: integer;
+  numUndefinedSymbols: integer;
+  hashTable: array [0..maxHash] of symbolPtr;
+
+  codestart, codelen: integer;
+  topESD: integer;
   userbase, sbase, sectbase, baseaddr: array [-1..15] of integer; {element -1 is the ABS section}
 
-  outaddr: array [0..255] of integer;
-  esdarr: array [0..255] of integer;
-  esdsymarr: array [0..255] of symbolPtr;
-  codearr: array [1..64] of integer;
+  esdArray: array [0..255] of integer;
+  esdSymbolArray: array [0..255] of symbolPtr;
+  outAddrArray: array [0..255] of integer;
+  codeArray: array [1..64] of integer;
 
-  start_link, end_pass_1, end_pass_2, end_link: milestone;
-  end_map_gen, end_his_gen, end_sym_gen, end_space_alloc, end_xref_gen: milestone;
-  start_read_his, end_read_his: milestone;
+  startLink, endPass1, endPass2, endLink: milestone;
+  endMapGen, endHisGen, endSymGen, endSpaceAlloc, endXrefGen: milestone;
+  startReadHis, endReadHis: milestone;
 
   modName: symbolNameType;
 
   oblock: bblock;
-  bl, inblock: block;
-  empty: boolean;
+  bl: block;
+  inblock: block;
+  objectEof: boolean;
 
   sn: symbolNameType;
   spt: symbolPtr;
@@ -220,24 +234,6 @@ var
   {>>>}
 
   {<<<}
-  function hexchr (c: char): integer;
-
-  begin
-    if (c >= '0') AND (c <= '9') then
-      hexchr := ord(c)-ord('0')
-    else if (c >= 'a') AND (c <= 'f') then
-      hexchr := ord(c)-ord('a')+10
-    else if (c >= 'A') AND (c <= 'F') then
-      hexchr := ord(c)-ord('A')+10
-    else
-      begin
-      writeln ('Duff char ''',c,'''when hex char expected!');
-      hexchr := 0;
-      end;
-  end;
-  {>>>}
-
-  {<<<}
   function null (c: char): boolean;
 
   begin
@@ -253,22 +249,7 @@ var
   {>>>}
 
   {<<<}
-  function alpha (c: char): boolean;
-
-  begin
-    alpha := ((c>='a') AND (c<='z')) OR ((c>='A') AND (c<='Z'));
-  end;
-  {>>>}
-  {<<<}
-  function alphanum (c: char): boolean;
-
-  begin
-    alphanum := digit(c) OR alpha(c) OR (c='_');
-  end;
-  {>>>}
-
-  {<<<}
-  procedure forceUp (var s: symbolNameType);
+  procedure forceUpperSymbol (var s: symbolNameType);
 
   var
     i:integer;
@@ -279,53 +260,6 @@ var
         s[i] := chr (ord (s[i]) + ord('A') - ord('a'));
   end;
   {>>>}
-
-  {<<<}
-  procedure subString (var t: packed array [tlow..thigh: integer] of char;
-                       s: packed array [slow..shigh: integer] of char;
-                       start, span: integer);
-  var
-    i, slen: integer;
-
-  begin
-    if (tlow <> 0) or (slow <> 0) and (slow <> 1) then
-      writeln ('substring consistency error1')
-
-    else
-      begin
-      if slow = 0 then
-        slen := ord(s[0])
-      else
-        slen := shigh;
-
-      if span < 0 then
-        begin
-        span := - span;
-        start := start - span
-        end;
-
-      if start < 1 then
-        begin
-        span := span + start - 1;
-        start := 1
-        end;
-
-      if start + span > slen + 1 then
-        span := slen - start + 1;
-
-      if thigh < span then
-        writeln ('substring consistency error2')
-      else if span <= 0 then
-        t[0] := chr(0)
-      else
-        begin
-        for i := 1 to span do t[i] := s[start + i - 1];
-        t[0] := chr(span);
-        end;
-      end;
-  end;
-  {>>>}
-
   {<<<}
   procedure showModName;
 
@@ -350,32 +284,43 @@ var
       temp1, temp2: integer;
 
     begin
-      temp1 := ORD(ms.time_of_day[startch]) - ORD('0');
-      temp2 := ORD(ms.time_of_day[startch + 1] ) - ORD('0');
+      temp1 := ORD(ms.timeOfDay[startch]) - ORD('0');
+      temp2 := ORD(ms.timeOfDay[startch + 1] ) - ORD('0');
       getNum := (temp1 * 10) + temp2;
     end;
     {>>>}
 
   begin
-    time (ms.time_of_day);
+    time (ms.timeOfDay);
 
-    { ms.time_of_day is hh:mm:ss.cc }
+    { ms.timeOfDay is hh:mm:ss.cc }
     {                   12 45 78 AB }
-    ms.int_time := 0;
+    ms.intTime := 0;
 
     temp := getNum (1); {hh}
-    ms.int_time := temp;
+    ms.intTime := temp;
 
     temp := getNum (4); {mm}
-    ms.int_time := ms.int_time * 60 + temp;
+    ms.intTime := ms.intTime * 60 + temp;
 
     temp := getNum (7); {ss}
-    ms.int_time := ms.int_time * 60 + temp;
+    ms.intTime := ms.intTime * 60 + temp;
 
     temp := getNum (10); {cc}
-    ms.int_time := ms.int_time * 100 + temp;
+    ms.intTime := ms.intTime * 100 + temp;
 
     currentTime := ms;
+  end;
+  {>>>}
+
+  { milestone }
+  {<<<}
+  procedure clearMilestone (var ms: milestone);
+
+  begin
+    ms.millTime := 0;
+    ms.intTime := 0;
+    ms.timeOfDay := '           ';
   end;
   {>>>}
   {<<<}
@@ -386,7 +331,7 @@ var
     timeString: string;
 
   begin
-    temp := ms1.int_time - ms2.int_time;
+    temp := ms1.intTime - ms2.intTime;
 
     cc := temp MOD 100;
     temp := temp DIV 100;
@@ -399,7 +344,7 @@ var
     hh := temp MOD 60;
 
     write (s);
-    write (ms1.time_of_day,' ',(ms1.mill_time-ms2.mill_time) / 1000:7:2);
+    write (ms1.timeOfDay,' ',(ms1.millTime-ms2.millTime) / 1000:7:2);
     writev (timeString, hh :2, ':', mm :2, ':', ss :2, '.', cc :2 );
 
     for temp := 1 TO timeString.length DO
@@ -408,9 +353,448 @@ var
 
     write ( ' ', timeString );
 
-    if end_link.mill_time - start_link.mill_time > 0 then
-      write ('  ', ((ms1.mill_time-ms2.mill_time)*100) / (end_link.mill_time-start_link.mill_time):7:2,'%');
+    if endLink.millTime - startLink.millTime > 0 then
+      write ('  ', ((ms1.millTime-ms2.millTime)*100) / (endLink.millTime-startLink.millTime):7:2,'%');
     writeln;
+  end;
+  {>>>}
+  {>>>}
+  {<<<  string utils}
+  {<<<}
+  { string variables of  type "packed array [0..n] of char", where n >= 1.
+    The length of the string is stored in element 0, elements 1 to n are the characters of the string.
+
+    The routines will also accept parameters of type "packed array [1..n] of char", n length of string.
+    Quoted strings in Pascal are considered to be of this type,
+      may be mixed with string variables with calling routines that don't require "var" params.
+
+    The start and span parameters define a substring beginning at position start
+      (between characters start-1 and start) with a length of abs(span).
+
+    If span is positive, the substring is to the right of Start
+            if negative, the substring is to the left.
+  }
+  {>>>}
+  {<<<}
+  procedure assign (var t: packed array [tlow..thigh: integer] of char;
+                   s: packed array [slow..shigh: integer] of char);
+  { Assign (T,S) - Assign string S to the target string T }
+  {   useful for assigning a literal string to a variable string }
+
+  var
+    slen: integer;
+    i: integer;
+
+  begin
+    if (tlow <> 0) and (tlow <> 1) or (slow <> 0) and (slow <> 1) then
+      writeln  ('assign - bad arguments error');
+    if slow = 0 then
+      slen := ord(s[0])
+
+     {User option here - the following code removes all trailing blanks
+      from a literal string when inserting it into a variable string...
+      This may be annoying to some users as you may wish to actually assign
+      blanks to the end of a string in this manner.  To change the code
+      comment out the following :
+
+          else begin
+           slen := shigh;
+           while (s.....
+           end;
+      and replace the "else begin" with
+         else slen := shigh;
+     }
+    else
+      begin
+      slen := shigh;
+      while (s[slen] = ' ') and (slen > 1) do
+        slen := slen - 1;
+      end;
+
+    if slen > thigh then
+      writeln ('assign - destination string too short error');
+
+    for i := 1 to slen
+      do t[i] := s[i];
+
+    if tlow = 0 then
+      t[0] := chr(slen)
+    else
+      if tlow = 1 then
+        for i := slen + 1 to thigh do t[i] := ' ';
+  end;
+  {>>>}
+  {<<<}
+  procedure assignChar (var t: packed array [tlow..thigh: integer] of char; c: char);
+  { AssChar (T,C) - Assign character C to the target string T }
+  {   useful for assigning a single character to a variable string}
+
+  begin
+    if tlow <> 0 then
+      writeln ('assignchar error');
+
+    t[0] := chr(1);
+    t[1] := c;
+  end;
+  {>>>}
+  {<<<}
+  procedure clear (var s: packed array [low..high: integer] of char);
+  { clear (S) - initializes string S to objectEof }
+
+  begin
+    if low <> 0 then
+      writeln ('clear error')
+    else
+      s[0] := chr(0);
+  end;
+  {>>>}
+
+  {<<<}
+  function len (s: packed array [slow..shigh: integer] of char): integer;
+  { Len (S) - a function giving the current length of string S }
+
+  begin
+    if slow = 0 then
+      len := ord (s[0])
+    else if slow = 1 then
+      len := shigh
+    else
+      writeln ('len');
+  end;
+  {>>>}
+  {<<<}
+  function equal (s1: packed array [s1low..s1high: integer] of char;
+                  s2: packed array [s2low..s2high: integer] of char): boolean;
+  { Equal (T,S) - Function Equal returns TRUE when T=S, returns FALSE otherwise }
+
+  var
+    s1len, s2len: integer;
+    eq: boolean;
+    i: integer;
+
+  begin
+    if (s1low <> 0) and (s1low <> 1) or
+       (s2low <> 0) and (s2low <> 1) then
+      writeln ('equal - bad arguments error')
+
+    else
+      begin
+      if (s1low = 0) then
+        s1len := ord(s1[0])
+      else
+        begin
+        s1len := s1high;
+        while (s1[s1len] = ' ') and (s1len > 1) do
+          s1len := s1len - 1;
+        end;
+
+      if (s2low = 0) then
+        s2len := ord(s2[0])
+      else
+        begin
+        s2len := s2high;
+        while (s2[s2len] = ' ') and (s2len > 1) do
+          s2len := s2len - 1;
+        end;
+      if s1len <> s2len then
+        equal := false
+      else
+        begin
+        eq := true;
+        for i := 1 to s1len do eq := eq and (s1[i] = s2[i]);
+        equal := eq;
+        end;
+      end;
+  end;
+  {>>>}
+
+  {<<<}
+  function search (s: packed array [slow..shigh: integer] of char;
+                  t: packed array [tlow..thigh: integer] of char;
+                  start: integer): integer;
+  { search (S,T,Start) - searches string S for the first  }
+  {   occurrence of string T to the right of position Start (characters are numbered beginning with one)}
+  {   returns the position of the first character in the matching substring }
+  {     or the value zero if the string T does not appear }
+
+  var
+    i, j, tlen, slen: integer;
+    uneq: boolean;
+
+  begin
+    if (start < 1) or (slow <> 0) and (slow <> 1) or (tlow <> 0) and (tlow <> 1) then
+      writeln ('search error')
+
+    else
+      begin
+      search := 0;
+
+      if slow = 0 then
+        slen := ord(s[0])
+      else
+        slen := shigh;
+
+      if tlow = 0 then
+        tlen := ord(t[0])
+      else
+        tlen := thigh;
+
+      if (start + tlen <= slen + 1) and (tlen <> 0) then
+        begin
+        i := start - 1;
+        repeat
+          i := i + 1;
+          j := 0;
+          repeat
+            j := j + 1;
+            uneq := t[j] <> s[i + j - 1];
+          until uneq or (j = tlen);
+        until (not uneq) or (i = slen - tlen + 1);
+
+        if uneq then
+          search := 0
+        else
+          search := i;
+        end;
+      end;
+  end;
+  {>>>}
+
+  {<<<}
+  procedure insert (var t: packed array [tlow..thigh: integer] of char;
+                   s: packed array [slow..shigh: integer] of char;
+                   p: integer);
+  { insert (T,S,Start) - inserts the string S into the target string T at position Start }
+  {   Characters are shifted to the right as necessary }
+  {   Overflow produces a truncated target string }
+  {   a Start position which would produce a string which was not contiguous has no effect }
+
+  var
+    i, j, tlen, slen: integer;
+
+  begin
+    if (tlow <> 0) or (slow <> 0) and (slow <> 1) then
+      writeln ('insert error1')
+
+    else
+      begin
+      tlen := ord(t[0]);
+      if slow = 0 then
+        slen := ord(s[0])
+      else
+        slen := shigh;
+      if slen > 0 then
+        if (p > 0) and (p <= tlen + 1) then
+          begin
+          if slen + tlen >= thigh then
+            tlen := thigh
+          else
+            tlen := slen + tlen;
+          for i := tlen downto p + slen do
+            t[i] := t[i - slen];
+
+          if tlen < p + slen then
+            j := tlen
+          else
+            j := p + slen - 1;
+
+          for i := p to j do t[i] := s[i - p + 1];
+          t[0] := chr(tlen);
+          end
+        else
+          writeln  ('insert error2') { error: non-contiguous string } ;
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure concatenate (var t: packed array [tlow..thigh: integer] of char;
+                         s: packed array [slow..shigh: integer] of char);
+  { concatenate (T,S) - appends string S to the target string T. The resulting value is string T }
+  {   Overflow results in truncation to StringMax characters }
+
+  var
+    i, slen, tlen: integer;
+
+  begin
+    if (tlow <> 0) or (slow <> 1) and (slow <> 0) then
+      writeln ('concatenate error')
+
+    else
+      begin
+      if slow = 1 then
+        slen := shigh
+      else
+        slen := ord(s[0]);
+
+      tlen := ord(t[0]);
+      if slen + tlen > thigh then
+        slen := thigh - tlen;
+
+      t[0] := chr(slen + tlen);
+      for i := 1 to slen do
+        t[i + tlen] := s[i];
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure subString (var t: packed array [tlow..thigh: integer] of char;
+                       s: packed array [slow..shigh: integer] of char;
+                       start, span: integer);
+  { Substring (T,S,Start,Span) - the substring of string S defined by Start, Span is assigned to the target string T }
+
+  var
+    i, slen: integer;
+
+  begin
+    if (tlow <> 0) or (slow <> 0) and (slow <> 1) then
+      writeln ('substring error1')
+
+    else
+      begin
+      if slow = 0 then
+        slen := ord(s[0])
+      else
+        slen := shigh;
+
+      if span < 0 then
+        begin
+        span := - span;
+        start := start - span
+        end;
+
+      if start < 1 then
+        begin
+        span := span + start - 1;
+        start := 1
+        end;
+
+      if start + span > slen + 1 then
+        span := slen - start + 1;
+      if thigh < span then
+        writeln ('substring error2')
+      else if span <= 0 then
+        t[0] := chr(0)
+      else
+        begin
+        for i := 1 to span do t[i] := s[start + i - 1];
+        t[0] := chr(span);
+        end;
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure deleteString (var t: packed array [tlow..thigh: integer] of char; start, span: integer);
+  { deleteString (S,Start,Span)   - deletes the substring defined by Start, Span from the string S }
+
+  var
+    i, limit, tlen: integer;
+
+  begin
+    if tlow <> 0 then
+      writeln ('deleteString error')
+
+    else
+      begin
+      tlen := ord(t[0]);
+      if span < 0 then
+        begin
+        span := - span;
+        start := start - span
+        end;
+
+      limit := start + span;
+      if start < 1 then
+        start := 1;
+
+      if limit > tlen + 1 then
+        limit := tlen + 1;
+
+      span := limit - start;
+      if span > 0 then
+        begin
+        for i := 0 to tlen - limit do
+          t[start + i] := t[limit + i];
+        t[0] := chr(ord(t[0]) - span);
+        end;
+      end;
+  end;
+  {>>>}
+
+  {<<<}
+  procedure leftString (var t: packed array [tlow..thigh: integer] of char;
+                        s: packed array [slow..shigh: integer] of char;
+                        last: integer);
+  { Leftstring (T,S,Last)      - the substring of string S to the left of Last is assigned to target string T }
+
+  var
+    i: integer;
+
+  begin
+    if (last >= shigh) or (last < 2) then
+      writeln ('leftstring error')
+
+    else
+      begin
+      for i := 1 to last do
+        t[i] := s[i];
+
+      t[0] := chr(last);
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure rightString (var t: packed array [tlow..thigh: integer] of char;
+                         s: packed array [slow..shigh: integer] of char;
+                         first: integer);
+  { Rightstring (T,S,First)    - the substring of string S to the right of First is assigned to target string T }
+
+  var
+    i: integer;
+
+  begin
+    if (first < 1) or (first >= shigh) then
+      writeln ('rightstring error')
+
+    else
+      begin
+      for i := first to shigh do
+        t[(i + 1) - first] := s[i];
+
+      t[0] := chr(shigh - first + 1);
+      end;
+  end;
+  {>>>}
+
+  { misc char utils }
+  {<<<}
+  function isAlpha (c: char): boolean;
+
+  begin
+    isAlpha := ((c>='a') AND (c<='z')) OR ((c>='A') AND (c<='Z'));
+  end;
+  {>>>}
+  {<<<}
+  function isAlphaNum (c: char): boolean;
+
+  begin
+    isAlphaNum := digit(c) OR isAlpha(c) OR (c='_');
+  end;
+  {>>>}
+  {<<<}
+  function chToHex (c: char): integer;
+
+  begin
+    if (c >= '0') AND (c <= '9') then
+      chToHex := ord(c)-ord('0')
+    else if (c >= 'a') AND (c <= 'f') then
+      chToHex := ord(c)-ord('a')+10
+    else if (c >= 'A') AND (c <= 'F') then
+      chToHex := ord(c)-ord('A')+10
+    else
+      begin
+      writeln ('Duff char ''', c,'''when hex char expected!');
+      chToHex := 0;
+      end;
   end;
   {>>>}
   {>>>}
@@ -426,7 +810,7 @@ var
     i := filename.length;
 
     { search backwards, to see if first non-alpha char is a '.' (i.e. extension)}
-    while (i > 1) AND alphanum (filename[i]) DO
+    while (i > 1) AND isAlphaNum (filename[i]) DO
       i := i - 1;
 
     if filename[i] = '.' then
@@ -519,9 +903,9 @@ var
 
     date (datestring);
     writeln (logFile);
-    writeln (logFile, 'Link started ', start_link.time_of_day, ' ', datestring);
-    writeln (logFile, 'Link ended   ', end_link.time_of_day, ' ', datestring);
-    writeln (logFile, 'total CPU time:- ',(end_link.mill_time-start_link.mill_time)/1000:7:2);
+    writeln (logFile, 'Link started ', startLink.timeOfDay, ' ', datestring);
+    writeln (logFile, 'Link ended   ', endLink.timeOfDay, ' ', datestring);
+    writeln (logFile, 'total CPU time:- ',(endLink.millTime-startLink.millTime)/1000:7:2);
 
     close (logFile);
   end;
@@ -535,10 +919,10 @@ var
     curFile := filename;
     reset (objectFile, filename);
 
-    blockpt := 0;
+    blockPtr := 0;
     read (objectFile, inblock);
 
-    empty := false;
+    objectEof := false;
   end;
   {>>>}
   {<<<}
@@ -551,29 +935,29 @@ var
     i, l1:integer;
 
   begin
-    o.length := inblock[blockpt];
+    o.length := inblock[blockPtr];
 
-    if (255-blockpt) > o.length then
+    if (255-blockPtr) > o.length then
       l1 := o.length
     else
-      l1:=(255-blockpt);
+      l1 := (255-blockPtr);
 
     for i := 1 TO l1 DO
-      o[i] := chr(inblock[blockpt+i]);
+      o[i] := chr(inblock[blockPtr+i]);
 
-    blockpt := blockpt+l1+1;
-    if (blockpt > 255) then
+    blockPtr := blockPtr+l1+1;
+    if (blockPtr > 255) then
       begin
       if eof (objectFile) then
-        empty := true
+        objectEof := true
       else
         read (objectFile,inblock);
 
-      blockpt := 0;
+      blockPtr := 0;
       l1 := l1 + 1; {step to start of next xfer}
       for i := l1 TO o.length DO
         o[i] := chr (inblock[i - l1]);
-      blockpt := 1 + o.length - l1;
+      blockPtr := 1 + o.length - l1;
       end;
   end;
   {>>>}
@@ -610,7 +994,7 @@ var
     bytes := buff.length DIV 2;
     o.length := bytes;
     for i := 1 TO bytes DO
-      o[i] := chr (hexchr(buff[i*2-1]) * 16 + hexchr(buff[i*2]));
+      o[i] := chr (chToHex(buff[i*2-1]) * 16 + chToHex(buff[i*2]));
   end;
   {>>>}
   {<<<}
@@ -801,8 +1185,8 @@ var
     begin
       WITH symbol^ DO
         begin
-        outdata ('1' + mname + 'VRLvvvvuuccccccccffffffffxxtttddd');
-        outdata ('2' + chr(%x'50') + sname + binInt (saddr + baseaddr[ssect]));
+        outdata ('1' + modName + 'VRLvvvvuuccccccccffffffffxxtttddd');
+        outdata ('2' + chr(%x'50') + symbolName + binInt (addr + baseaddr[section]));
         end;
     end;
     {>>>}
@@ -813,9 +1197,9 @@ var
     rewrite (symbolTableFile, commandRoot + '.sym');
 
     for i := 0 TO maxHash DO
-      if hash_table[i] <> nil then
+      if hashTable[i] <> nil then
         begin
-        symbol := hash_table[i];
+        symbol := hashTable[i];
         repeat
           outSymbol (symbol);
           symbol := symbol^.nextSymbol;
@@ -845,19 +1229,19 @@ var
     rewrite (map_file, commandRoot+'.map');
 
     for i := 0 TO maxHash DO
-      if hash_table[i] <> nil then
+      if hashTable[i] <> nil then
         begin
         if debug then
           writeln (map_file, i, ':');
-        s_ptr := hash_table[i];
+        s_ptr := hashTable[i];
 
         repeat
-          write (map_file,s_ptr^.sname,' ',
-          hex (s_ptr^.saddr+baseaddr[s_ptr^.ssect],6,6),' ',s_ptr^.mname);
+          write (map_file,s_ptr^.symbolName,' ',
+          hex (s_ptr^.addr+baseaddr[s_ptr^.section],6,6),' ',s_ptr^.modName);
           if s_ptr^.comsize<>-1 then
             writeln (map_file,' C:', hex (s_ptr^.comsize,4,4))
           else
-            if NOT s_ptr^.sdef then
+            if NOT s_ptr^.def then
               writeln (map_file,' Undef!')
             else
               writeln (map_file);
@@ -882,32 +1266,32 @@ var
     rewrite (ref_file, commandRoot + '.xrf');
 
     for i := 0 TO maxHash DO
-      if hash_table[i] <> nil then
+      if hashTable[i] <> nil then
         begin
         if debug then
           writeln (ref_file,i,':');
-        s_ptr := hash_table[i];
+        s_ptr := hashTable[i];
         REPEAT
           refcount:=0;
-          write (ref_file,s_ptr^.sname,' ',
-                 hex (s_ptr^.saddr + baseaddr[s_ptr^.ssect], 6, 6),' ',s_ptr^.mname);
+          write (ref_file,s_ptr^.symbolName,' ',
+                 hex (s_ptr^.addr + baseaddr[s_ptr^.section], 6, 6),' ',s_ptr^.modName);
           if s_ptr^.comsize<>-1 then
             writeln (ref_file,' C:',hex(s_ptr^.comsize,4,4))
           else
-            if NOT s_ptr^.sdef then
+            if NOT s_ptr^.def then
               writeln (ref_file,' Undef!')
             else
               writeln (ref_file);
 
-          if s_ptr^.reflist<>nil then
+          if s_ptr^.refList<>nil then
             begin
-            r := s_ptr^.reflist;
+            r := s_ptr^.refList;
             REPEAT
               write (ref_file,r^.symbolName,'    ');
               refcount := refcount + 1;
               if refcount MOD 6 = 0 then
                 writeln (ref_file);
-              r := r^.nextReference;
+              r := r^.next;
               until r = nil;
             if refcount MOD 6 <> 0 then
               writeln (ref_file);
@@ -926,68 +1310,68 @@ var
   {>>>}
   {<<<}
   procedure dumpHistory;
-  { disp history and read_history must have match in file format }
+  { disp history and readHistory must have match in file format }
 
   var
     i, rescount:integer;
     s_ptr: symbolPtr;
     r : resolvePtr;
 
-    history_rec : history_t;
-    filed_history_rec : filed_history_t;
-    res_file : history_file_t;
+    historyRecord : historyRecordType;
+    filedHistoryRecord : filedHistoryRecordType;
+    res_file : historyFileType;
 
     {<<<}
-    procedure send_to_file (rec: history_t);
+    procedure send_to_file (rec: historyRecordType);
 
     begin
-      filed_history_rec.num_recs := filed_history_rec.num_recs + 1;
-      filed_history_rec.recs[ filed_history_rec.num_recs ] := rec;
-      if filed_history_rec.num_recs = recsPerFileRec$ then
+      filedHistoryRecord.numRecs := filedHistoryRecord.numRecs + 1;
+      filedHistoryRecord.recs[filedHistoryRecord.numRecs] := rec;
+      if filedHistoryRecord.numRecs = recsPerFileRec$ then
         begin
-        Write (res_file, filed_history_rec);
-        filed_history_rec.num_recs := 0;
+        Write (res_file, filedHistoryRecord);
+        filedHistoryRecord.numRecs := 0;
         end;
     end;
     {>>>}
 
   begin
     rewrite (res_file, commandRoot + '.his');
-    filed_history_rec.num_recs := 0;
+    filedHistoryRecord.numRecs := 0;
 
-    history_rec.history_type := $history_obj;
-    history_rec.obj_addr := basepos;
+    historyRecord.historyType := $historyObj;
+    historyRecord.obj_addr := basepos;
 
-    { Write (res_file, history_rec); }
-    send_to_file ( history_rec );
+    { Write (res_file, historyRecord); }
+    send_to_file (historyRecord);
 
     for i:=0 TO maxHash DO
-      if hash_table[i] <> nil then
+      if hashTable[i] <> nil then
         begin
-        s_ptr := hash_table[i];
+        s_ptr := hashTable[i];
 
         repeat
           begin
           if s_ptr^.comsize = -1 then { dont dump commons in history }
             begin
-            history_rec.history_type := $history_symbol;
-            history_rec.symbol_addr := s_ptr^.saddr+baseaddr[s_ptr^.ssect];
-            history_rec.symbol_name := s_ptr^.sname;
-            {history_rec.mod_name := s_ptr^.mname;}
-            {Write (res_file, history_rec);}
-            send_to_file (history_rec);
+            historyRecord.historyType := $historySymbol;
+            historyRecord.symbol_addr := s_ptr^.addr+baseaddr[s_ptr^.section];
+            historyRecord.symbol_name := s_ptr^.symbolName;
+            {historyRecord.mod_name := s_ptr^.modName;}
+            {Write (res_file, historyRecord);}
+            send_to_file (historyRecord);
 
-            if s_ptr^.reslist <> nil then
+            if s_ptr^.resList <> nil then
               begin
-              r := s_ptr^.reslist;
+              r := s_ptr^.resList;
               repeat
                 begin
-                history_rec.history_type := $history_ref;
-                history_rec.ref_addr := r^.res_addr;
-                history_rec.ref_offset := r^.res_offset;
-                {Write (res_file, history_rec);}
-                send_to_file (history_rec);
-                r := r^.nextResolve;
+                historyRecord.historyType := $historyRef;
+                historyRecord.ref_addr := r^.addr;
+                historyRecord.ref_offset := r^.offset;
+                {Write (res_file, historyRecord);}
+                send_to_file (historyRecord);
+                r := r^.next;
                 end until r = nil;
               end;
 
@@ -998,9 +1382,9 @@ var
 
         end;
 
-    { --- Send the last one. }
-    if filed_history_rec.num_recs > 0 then
-      Write (res_file, filed_history_rec);
+    { Send the last one }
+    if filedHistoryRecord.numRecs > 0 then
+      Write (res_file, filedHistoryRecord);
 
     close (res_file);
   end;
@@ -1013,20 +1397,6 @@ var
   begin
     getByte := ord (o[bpos]);
     bpos := bpos  +1;
-  end;
-  {>>>}
-  {<<<}
-  function getSymbolName: symbolNameType;
-
-  var
-    i: integer;
-    sn: symbolNameType;
-
-  begin
-    for i := 1 TO 10 DO
-      sn[i] := chr(getByte);
-
-    getSymbolName := sn;
   end;
   {>>>}
   {<<<}
@@ -1043,23 +1413,38 @@ var
     getInt := i;
   end;
   {>>>}
-
   {<<<}
-  function hashSymbol (var s: symbolNameType): integer;
+  function getSymbolName: symbolNameType;
 
   var
-    h,i:integer;
+    i: integer;
+    sn: symbolNameType;
 
   begin
-    h := 0;
+    for i := 1 TO 10 DO
+      sn[i] := chr(getByte);
+
+    getSymbolName := sn;
+  end;
+  {>>>}
+
+  {<<<}
+  function symbolHash (var s: symbolNameType): integer;
+
+  var
+    hash, i: integer;
+
+  begin
+    hash := 0;
+
     i := 1;
     while (i < 10) AND (s[i] <> ' ') DO
       begin
-      h := h * 97 +ord(s[i]);
+      hash := hash * 97 + ord(s[i]);
       i := i + 1;
       end;
 
-    hashSymbol := h MOD maxHash;
+    symbolHash := hash MOD maxHash;
   end;
   {>>>}
   {<<<}
@@ -1069,14 +1454,14 @@ var
     hash : integer;
 
   begin
-    forceUp (s);
-    hash := hashSymbol (s);
-    s_ptr := hash_table[hash];
+    forceUpperSymbol (s);
+    hash := symbolHash (s);
+    s_ptr := hashTable[hash];
 
     found := false;
     while (NOT found) AND (s_ptr <> nil) DO
       begin
-      if s_ptr^.sname = s then
+      if s_ptr^.symbolName = s then
         found := true
       else
         s_ptr := s_ptr^.nextSymbol;
@@ -1086,19 +1471,19 @@ var
 
     if (NOT found) AND ins then
       begin
-      numsymbols := numsymbols + 1;
+      numSymbols := numSymbols + 1;
       new (s_ptr);
-      s_ptr^.nextSymbol := hash_table[hash];
-      hash_table[hash] := s_ptr;
+      s_ptr^.nextSymbol := hashTable[hash];
+      hashTable[hash] := s_ptr;
 
-      s_ptr^.sdef := false;
-      s_ptr^.sused := true;
-      s_ptr^.sflagged := false;
-      s_ptr^.sname := s;
-      s_ptr^.mname := modName;
+      s_ptr^.def := false;
+      s_ptr^.used := true;
+      s_ptr^.flagged := false;
+      s_ptr^.symbolName := s;
+      s_ptr^.modName := modName;
       s_ptr^.comsize := -1;
-      s_ptr^.reflist := nil;
-      s_ptr^.reslist := nil;
+      s_ptr^.refList := nil;
+      s_ptr^.resList := nil;
       end;
   end;
   {>>>}
@@ -1109,16 +1494,16 @@ var
     s_ptr : symbolPtr;
 
   begin
-    s_ptr := com_head;
+    s_ptr := commonHead;
     while s_ptr <> nil DO
       begin
-      s_ptr^.saddr := sectbase[s_ptr^.ssect];
-      sectbase[s_ptr^.ssect] := sectbase[s_ptr^.ssect]+s_ptr^.comsize;
+      s_ptr^.addr := sectbase[s_ptr^.section];
+      sectbase[s_ptr^.section] := sectbase[s_ptr^.section]+s_ptr^.comsize;
 
-      if odd(sectbase[s_ptr^.ssect]) then
-        sectbase[s_ptr^.ssect] := sectbase[s_ptr^.ssect]+1;
+      if odd(sectbase[s_ptr^.section]) then
+        sectbase[s_ptr^.section] := sectbase[s_ptr^.section]+1;
 
-      s_ptr := s_ptr^.nextCom;
+      s_ptr := s_ptr^.nextCommon;
       end;
   end;
   {>>>}
@@ -1131,10 +1516,10 @@ var
 
   begin
     new (res_ptr);
-    res_ptr^.nextResolve := s^.reslist;
-    res_ptr^.res_addr := addr;
-    res_ptr^.res_offset := offset;
-    s^.reslist := res_ptr;
+    res_ptr^.next := s^.resList;
+    res_ptr^.addr := addr;
+    res_ptr^.offset := offset;
+    s^.resList := res_ptr;
   end;
   {>>>}
   {<<<}
@@ -1160,7 +1545,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure checkUndef;
+  procedure checkUndefinedSymbols;
 
   var
     i:integer;
@@ -1172,18 +1557,18 @@ var
       writeln (logFile, 'Undefined symbols:-');
 
     for i := 0 TO maxHash DO
-      if hash_table[i] <> nil then
+      if hashTable[i] <> nil then
         begin
-        s_ptr := hash_table[i];
+        s_ptr := hashTable[i];
 
         repeat
-          if NOT s_ptr^.sdef then
+          if NOT s_ptr^.def then
             begin
-            writeln ('''',s_ptr^.sname,''' first referenced in module ''', s_ptr^.mname,'''');
+            writeln ('''',s_ptr^.symbolName,''' first referenced in module ''', s_ptr^.modName,'''');
             if logging then
-              writeln (logFile, '''',s_ptr^.sname,''' first referenced in module ''', s_ptr^.mname,'''');
-            s_ptr^.ssect := -1;
-            s_ptr^.saddr := %X'FAFF';
+              writeln (logFile, '''', s_ptr^.symbolName, ''' first referenced in module ''', s_ptr^.modName, '''');
+            s_ptr^.section := -1;
+            s_ptr^.addr := %X'FAFF';
             end;
 
           s_ptr := s_ptr^.nextSymbol;
@@ -1197,71 +1582,71 @@ var
   begin
     showModName;
 
-    writeln ('Doubly defined label  ''',s^.sname,'''');
-    writeln ('Previously defined in module ''',s^.mname,'''');
+    writeln ('Doubly defined label  ''',s^.symbolName,'''');
+    writeln ('Previously defined in module ''',s^.modName,'''');
 
     if logging then
       begin
-      writeln (logFile, 'Doubly defined label  ''',s^.sname,'''');
-      writeln (logFile, 'Previously defined in module ''',s^.mname,'''');
+      writeln (logFile, 'Doubly defined label  ''',s^.symbolName,'''');
+      writeln (logFile, 'Previously defined in module ''',s^.modName,'''');
       end;
 
-    s^.sflagged := true;
+    s^.flagged := true;
   end;
   {>>>}
   {<<<}
   procedure readHistory (filename: filenameType);
-  { disp history and read_history must have match in file format }
+  { disp history and readHistory must have match in file format }
 
   var
     spt : symbolPtr;
     r : resolvePtr;
 
-    history_rec : filed_history_t;
-    res_file : history_file_t;
+    filedHistory : filedHistoryRecordType;
+    historyFile : historyFileType;
 
   begin
     spt := nil;
 
-    reset (res_file, filename);
+    reset (historyFile, filename);
 
-    while NOT eof (res_file) DO
+    while NOT eof (historyFile) DO
       begin
-      Read (res_file, history_rec);
+      Read (historyFile, filedHistory);
 
-      for i := 1 TO history_rec.num_recs DO
-        WITH history_rec.recs[ i ] DO CASE history_type of
-          $history_obj :
+      for i := 1 TO filedHistory.numRecs DO
+        WITH filedHistory.recs[ i ] DO CASE historyType of
+          $historyObj :
             basepos := obj_addr;
 
-          $history_symbol :
+          $historySymbol :
             begin
             if findInsert (symbol_name, spt, true) then;
-            spt^.shist := TRUE;
-            spt^.mname := 'patched!!!';
-            spt^.ssect := -1;
-            spt^.sdef := true;
-            spt^.saddr := symbol_addr;
+            spt^.hist := TRUE;
+            spt^.modName := 'patched!!!';
+            spt^.section := -1;
+            spt^.def := true;
+            spt^.addr := symbol_addr;
             end;
 
-          $history_ref :
+          $historyRef :
             begin
             new (r);
-            r^.nextResolve := spt^.reslist;
-            r^.res_addr := ref_addr;
-            r^.res_offset := ref_offset;
-            spt^.reslist := r;
+            r^.next := spt^.resList;
+            r^.addr := ref_addr;
+            r^.offset := ref_offset;
+            spt^.resList := r;
             end;
-          end{WITH CASE};
+          end;
 
       end;
 
-    close (res_file);
+    close (historyFile);
   end;
   {>>>}
 
   {<<<}
-  procedure switchProcess (var s: string);
+  procedure switchSettingsProcess (var s: string);
 
   var
     i, j, l: integer;
@@ -1276,7 +1661,9 @@ var
       c : char;
       noflag : boolean;
       tla : packed array [1..3] of char;
-      i, pos, endPos, switchEndPos, sect : integer;
+      i: integer;
+      pos, endPos, switchEndPos: integer;
+      section : integer;
 
       {<<<}
       function getNextCh: char;
@@ -1322,16 +1709,16 @@ var
         { skip to next switch }
         repeat
           c := getNextCh;
-          until (c='/') OR (null (c)) OR (pos >= switchLen); 
+          until (c='/') OR (null (c)) OR (pos >= switchLen);
 
         if (tla[1] = 'o') AND (tla[2] >= '0') AND (tla[2] <= '9') then
           {<<<  section startAddress}
           begin
           if tla[3] = ':' then
-            sect := ord (tla[2]) - ord('0')
+            section := ord (tla[2]) - ord('0')
           else
             begin
-            sect := 10 * (ord(tla[2]) - ord('0')) + (ord(tla[3]) - ord('0'));
+            section := 10 * (ord(tla[2]) - ord('0')) + (ord(tla[3]) - ord('0'));
             switchEndPos := switchEndPos + 1;
             end;
 
@@ -1340,13 +1727,13 @@ var
           else
             endPos := pos;
 
-          if (sect >= 0) AND (sect <= 15) then
+          if (section >= 0) AND (section <= 15) then
             begin
-            userbase[sect] := 0;
+            userbase[section] := 0;
             for i := switchEndPos TO endPos DO
-              userbase[sect] := 16 * userbase[sect] + hexchr (lineBuffer[i]);
+              userbase[section] := 16 * userbase[section] + chToHex (lineBuffer[i]);
             if debug then
-              writeln (hex (userbase[sect],6,6),' ',sect);
+              writeln (hex (userbase[section], 6, 6), ' ', section);
             end
           else
             writeln (' Illegal section number in switch ', tla);
@@ -1430,7 +1817,7 @@ var
   {>>>}
 
   {<<<}
-  function getFilename (var terminator: char): filenameType;
+  function getObjectFilename (var terminator: char): filenameType;
 
   var
     filename: filenameType;
@@ -1464,7 +1851,7 @@ var
               writeln ('File read is ', s );
 
               new (tempfile);
-              tempfile^.nextFile := cmdFile;
+              tempfile^.next := cmdFile;
               cmdFile := tempfile;
               reset (cmdFile^.f, s);
               writeln ('File opened is ', s);
@@ -1473,7 +1860,7 @@ var
             else if (c='/') AND (pass = 1) then
               begin
               s := '/' + s;
-              switchprocess (s);
+              switchSettingsProcess (s);
               end;
 
             if NOT eof (cmdFile^.f) then
@@ -1481,15 +1868,15 @@ var
             end;
 
           if eof (cmdFile^.f) then
-            if cmdFile^.nextFile <> NIL then
+            if cmdFile^.next <> NIL then
               BEGIN
               close (cmdFile^.f);
-              cmdFile := cmdFile^.nextFile;
+              cmdFile := cmdFile^.next;
               end;
           end;
           {>>>}
         if eoln (cmdFile^.f) then
-           {<<<  eoln, eat empty lines}
+           {<<<  eoln, eat objectEof lines}
            begin
 
            readln (cmdFile^.f);
@@ -1502,10 +1889,10 @@ var
       until (NOT null(c)) OR eof (cmdFile^.f);
 
       if eof (cmdFile^.f) then
-        if cmdFile^.nextFile <> NIL then
+        if cmdFile^.next <> NIL then
           begin
           close (cmdFile^.f);
-          cmdFile := cmdfile^.nextFile;
+          cmdFile := cmdfile^.next;
           end;
 
       if (c <> '=') AND (c <> ',') AND (c <> '!') AND NOT null(c) then
@@ -1516,15 +1903,15 @@ var
     until (c = ',') OR (c = '=') OR eof (cmdFile^.f);
 
     if eof (cmdFile^.f) then
-      if cmdFile^.nextFile <> NIL then
+      if cmdFile^.next <> NIL then
         begin
         close (cmdFile^.f);
-        cmdFile := cmdFile^.nextFile;
+        cmdFile := cmdFile^.next;
         end;
 
     terminator := c;
-    getFilename := filename;
-    writeln ('getFilename ', filename, ' terminated by ', c);
+    getObjectFilename := filename;
+    writeln ('getObjectFilename ', filename, ' terminated by ', c);
   end;
   {>>>}
 
@@ -1532,7 +1919,7 @@ var
   procedure procId;
 
   var
-    sect: integer;
+    section: integer;
     coerce: record
       CASE integer of
         0: (ob: objrec);
@@ -1540,8 +1927,8 @@ var
         end;
 
   begin
-    topesd := 17;
-    esdarr[0] := 0;  {unused esd value}
+    topESD := 17;
+    esdArray[0] := 0;  {unused esd value}
 
     coerce.ob := o;
     modName := coerce.id.modName;
@@ -1565,11 +1952,11 @@ var
           end;
         end;
 
-      for sect := 0 TO 15 DO
+      for section := 0 TO 15 DO
         begin
-        esdarr[sect+1] := baseaddr[sect]+sbase[sect];
-        esdsymarr [topesd] := NIL;
-        outaddr[sect+1] := esdarr[sect+1];
+        esdArray[section+1] := baseaddr[section]+sbase[section];
+        esdSymbolArray [topESD] := NIL;
+        outAddrArray[section+1] := esdArray[section+1];
         end;
       end
 
@@ -1595,11 +1982,11 @@ var
 
         var
           ty : byte;
-          sect : integer;
+          section : integer;
           s : symbolNameType;
           b : boolean;
           i:integer;
-          spt : symbolPtr;
+          symbol : symbolPtr;
 
           {<<<}
           procedure addRef (s: symbolPtr; mod_name: symbolNameType);
@@ -1609,16 +1996,16 @@ var
 
           begin
             new (reference);
-            reference^.nextReference := s^.reflist;
+            reference^.next := s^.refList;
             reference^.symbolName := mod_name;
-            s^.reflist := reference;
+            s^.refList := reference;
           end;
           {>>>}
 
         begin
-          spt := nil;
+          symbol := nil;
           ty := getByte;
-          sect := ty MOD 16;
+          section := ty MOD 16;
           ty := ty DIV 16;
 
           CASE ty of
@@ -1628,54 +2015,54 @@ var
               begin { common area symbol }
               s := getSymbolName;
               i := getInt;
-              b := findInsert (s, spt, true);
+              b := findInsert (s, symbol, true);
 
               if debug then
-                writeln ('Common data - section ', sect:2,' ', s, ' length = ', hex(i,6,6));
+                writeln ('Common data - section ', section:2,' ', s, ' length = ', hex(i,6,6));
 
               if xref then
-                addRef (spt, modName);
+                addRef (symbol, modName);
 
-              if NOT spt^.sdef then
+              if NOT symbol^.def then
                 begin
-                if b then undefsym:=undefsym-1;
-                spt^.mname := modName;
-                spt^.ssect := sect;
-                spt^.sdef := true;
-                spt^.comsize := i;
-                if prev_com<>nil then
-                  prev_com^.nextCom := spt
+                if b then numUndefinedSymbols := numUndefinedSymbols-1;
+                symbol^.modName := modName;
+                symbol^.section := section;
+                symbol^.def := true;
+                symbol^.comsize := i;
+                if prevCommon <> nil then
+                  prevCommon^.nextCommon := symbol
                 else
-                  com_head := spt;
-                spt^.nextCom := nil;
-                prev_com := spt;
+                  commonHead := symbol;
+                symbol^.nextCommon := nil;
+                prevCommon := symbol;
                 end
 
               else
-                if (i<>spt^.comsize) then
+                if (i<>symbol^.comsize) then
                   begin
-                  if (NOT spt^.sflagged) AND (spt^.comsize=-1) then
+                  if (NOT symbol^.flagged) AND (symbol^.comsize=-1) then
                     begin
                     showModName;
                     writeln ('Label ''', s, ''' is used double defined - ');
                     writeln ('as a common in module ''', modName, '''');
-                    writeln (' and as an XDEF in module ''', spt^.mname, '''');
-                    spt^.sflagged := true;
+                    writeln (' and as an XDEF in module ''', symbol^.modName, '''');
+                    symbol^.flagged := true;
                    end
 
-                 else if check AND (NOT spt^.sflagged) then
+                 else if check AND (NOT symbol^.flagged) then
                    begin
                    showModName;
                    writeln ('Common area size clash - common ''', s, '''');
                    writeln ('size in this module is ',hex(i,6,6), ' bytes');
-                   writeln ('size in ''', spt^.mname,''' is ', hex (spt^.comsize,6,6), ' bytes');
-                   spt^.sflagged := true;
+                   writeln ('size in ''', symbol^.modName,''' is ', hex (symbol^.comsize,6,6), ' bytes');
+                   symbol^.flagged := true;
                    end;
 
-                 if (i>spt^.comsize) AND (spt^.comsize <> -1) then
+                 if (i>symbol^.comsize) AND (symbol^.comsize <> -1) then
                    begin
-                   spt^.mname := modName;
-                   spt^.comsize := i;
+                   symbol^.modName := modName;
+                   symbol^.comsize := i;
                    end;
                  end;
                end;
@@ -1685,48 +2072,49 @@ var
               begin { section definition and allocation }
               i := getInt;
               if debug then
-                writeln ('Section - ', sect:2,' ', ' length = ', hex(i,6,6));
+                writeln ('Section - ', section:2,' ', ' length = ', hex(i,6,6));
 
-              sectbase[sect] := sectbase[sect]+i;
-              if odd(sectbase[sect]) then
-                sectbase[sect] := sectbase[sect] + 1;
+              sectbase[section] := sectbase[section]+i;
+              if odd(sectbase[section]) then
+                sectbase[section] := sectbase[section] + 1;
               end;
             {>>>}
             {<<<}
             4,5 :
               begin { symbol defintion }
-              if ty = 5 then sect := -1;
+              if ty = 5 then
+                section := -1;
               s := getSymbolName;
-              b := findInsert (s,spt,true);
+              b := findInsert (s, symbol, true);
 
               { this isnt right yet, should fix it }
-              if (spt^.sdef) AND (NOT spt^.sflagged) then
+              if (symbol^.def) AND (NOT symbol^.flagged) then
                 begin
-                if spt^.shist then { previously defined by history file }
+                if symbol^.hist then { previously defined by history file }
                   begin
                   if chat then
                     writeln ('redefining ',s);
                   end
                 else
-                  doubledef(spt)
+                  doubledef(symbol)
                 end
 
               else
                 if b then
                   begin
-                  if spt^.shist then { previously defined by history file }
+                  if symbol^.hist then { previously defined by history file }
                     begin
                     if chat then
                       writeln ('redefining ',s);
                     end
                   else
-                    undefsym := undefsym - 1;
+                    numUndefinedSymbols := numUndefinedSymbols - 1;
                   end;
 
-              spt^.mname := modName;
-              spt^.ssect := sect;
-              spt^.sdef := true;
-              spt^.saddr := getInt + sectbase[sect];
+              symbol^.modName := modName;
+              symbol^.section := section;
+              symbol^.def := true;
+              symbol^.addr := getInt + sectbase[section];
               end;
             {>>>}
             {<<<}
@@ -1735,15 +2123,15 @@ var
               if ty = 6 then
                 begin
                 showModName;
-                writeln ('xref ',sect);
+                writeln ('xref ',section);
                 end;
 
               s := getSymbolName;
-              b := findInsert (s,spt,true);
+              b := findInsert (s, symbol, true);
               if xref then
-                addRef (spt, modName);
+                addRef (symbol, modName);
               if (NOT b) then
-                undefsym := undefsym + 1;
+                numUndefinedSymbols := numUndefinedSymbols + 1;
               end;
             {>>>}
             {<<<}
@@ -1801,7 +2189,7 @@ var
 
     firstFile := true;
     repeat
-      filename := getFilename (termchar);
+      filename := getObjectFilename (termchar);
       if termchar = '=' then
         begin
         if firstFile then
@@ -1812,7 +2200,7 @@ var
       else
         {<<<  process the file}
         begin
-        ext := getExt (filename, defext);
+        ext := getExt (filename, defExt);
 
         if ext = '.his' then { history file of previous link }
           begin
@@ -1820,9 +2208,9 @@ var
             writeln ('Can only use one history file, subsequent ones ignored')
           else
             begin
-            start_read_his := currentTime;
+            startReadHis := currentTime;
             readHistory (filename);
-            end_read_his := currentTime;
+            endReadHis := currentTime;
             end;
 
           usingHistory := TRUE;
@@ -1848,7 +2236,7 @@ var
             getRecord (o);
             if o.length > 0 then
               processRecord;
-          until empty;
+          until objectEof;
 
           closeIn;
           end;
@@ -1859,7 +2247,7 @@ var
       firstFile := false;
       until eof (cmdFile^.f);
 
-    end_pass_1 := currentTime;
+    endPass1 := currentTime;
   end;
   {>>>}
   {<<<}
@@ -2006,7 +2394,7 @@ var
           if bin then
             for i := 1 TO len DO
               begin
-              b := int(uand(%x'FFFF',uint(codearr[i+pos]))) DIV 256;
+              b := int (uand (%x'FFFF', uint (codeArray[i+pos]))) DIV 256;
               if (b = esc) AND (escape = true) then
                 begin
                 oblock[opos] := b;
@@ -2034,7 +2422,7 @@ var
 
               checksum := ord(uxor(uint(b),uint(checksum)));
 
-              b := (codearr[i+pos] MOD 256);
+              b := codeArray[i+pos] MOD 256;
               if (b = esc) AND (escape = true) then
                 begin
                 oblock[opos] := b;
@@ -2064,8 +2452,8 @@ var
           else
             for i := 1 TO len DO
               begin
-              wbyte (mvr(codearr[i+pos]));
-              wbyte (codearr[i+pos] MOD 256);
+              wbyte (mvr (codeArray[i+pos]));
+              wbyte (codeArray[i+pos] MOD 256);
               end;
 
           endPacket;
@@ -2094,30 +2482,32 @@ var
         procedure doesd;
 
         var
-          sect,ty : byte;
+          section : byte;
+          esdType : byte;
           s : symbolNameType;
           b : boolean;
-          patch, i:integer;
-          spt : symbolPtr;
+          patch :integer;
+          i: integer;
+          symbol : symbolPtr;
           r : resolvePtr;
 
         begin
-          ty := getByte;
-          sect := ty MOD 16;
-          ty := ty DIV 16;
+          esdType := getByte;
+          section := esdType MOD 16;
+          esdType := esdType DIV 16;
 
-          CASE ty of
+          CASE esdType of
             {<<<}
             0:
               begin { no idea !! }
               bpos := bpos + 4;
 
               i := getInt;
-              esdarr[topesd] := i;
-              esdsymarr [topesd] := NIL;
+              esdArray[topESD] := i;
+              esdSymbolArray [topESD] := NIL;
 
-              outaddr[topesd] := esdarr[topesd];
-              topesd := topesd + 1;
+              outAddrArray[topESD] := esdArray[topESD];
+              topESD := topESD + 1;
               end;
             {>>>}
             {<<<}
@@ -2126,35 +2516,35 @@ var
               s := getSymbolName;
               bpos := bpos + 4; {skip int}
 
-              b := findInsert (s, spt, false);
+              b := findInsert (s, symbol, false);
               if NOT b then
                 begin
                 showModName;
                 writeln ('internal consistency check failure - lost symbol');
                 end;
 
-              esdarr[topesd] := spt^.saddr + baseaddr[spt^.ssect];
-              esdsymarr [topesd] := spt;
+              esdArray[topESD] := symbol^.addr + baseaddr[symbol^.section];
+              esdSymbolArray [topESD] := symbol;
 
-              outaddr[topesd] := esdarr[topesd];
-              topesd := topesd + 1;
+              outAddrArray[topESD] := esdArray[topESD];
+              topESD := topESD + 1;
               end;
             {>>>}
             {<<<}
             2,3 :
-              begin { section symbol }
+              begin { sectionion symbol }
               i := getInt;
-              esdarr[sect+1] := baseaddr[sect] + sbase[sect];
-              esdsymarr [topesd] := NIL;
+              esdArray[section+1] := baseaddr[section] + sbase[section];
+              esdSymbolArray [topESD] := NIL;
 
-              outaddr[sect+1] := esdarr[sect+1];
+              outAddrArray[section+1] := esdArray[section+1];
               if modules then
-                write (moduleFile,' ',sect:2,':', hex (esdarr[sect+1],6,6),'+', hex(i,6,6));
+                write (moduleFile,' ', section:2,':', hex (esdArray[section+1],6,6),'+', hex(i,6,6));
 
-              sbase[sect] := sbase[sect] + i;
+              sbase[section] := sbase[section] + i;
 
-              if odd (sbase[sect]) then
-                sbase[sect] := sbase[sect] + 1;
+              if odd (sbase[section]) then
+                sbase[section] := sbase[section] + 1;
               end;
             {>>>}
             {<<<}
@@ -2162,25 +2552,26 @@ var
               if usingHistory then
                 begin { symbol defintion, use to make patches on second pass }
                 s := getSymbolName;
-                b := findInsert (s,spt,FALSE); { find it }
+                b := findInsert (s, symbol, FALSE); { find it }
 
-                if spt^.reslist <> nil then
+                if symbol^.resList <> nil then
                   begin
-                  r := spt^.reslist;
+                  r := symbol^.resList;
                   repeat
                     begin
-                    patch := spt^.saddr + baseaddr[spt^.ssect] + r^.res_offset;
-                    if debug then writeln ('patching ',hex(r^.res_addr,6,6), ' with ',
-                                           hex(patch-r^.res_offset,6,6), ' + ', hex(r^.res_offset,6,6));
+                    patch := symbol^.addr + baseaddr[symbol^.section] + r^.offset;
+                    if debug then
+                      writeln ('patching ',hex(r^.addr,6,6), ' with ',
+                                           hex(patch-r^.offset,6,6), ' + ', hex(r^.offset,6,6));
 
-                    codestart := r^.res_addr;
-                    codearr [1] := mvr (mvr (patch));
-                    codearr [2] := patch;
+                    codestart := r^.addr;
+                    codeArray [1] := mvr (mvr (patch));
+                    codeArray [2] := patch;
                     codelen := 2;
                     outputData;
 
-                    r := r^.nextResolve;
-                    end until r=nil;
+                    r := r^.next;
+                    end until r = nil;
                   end;
 
                 bpos := bpos + 4; { skip past offset into module }
@@ -2193,18 +2584,18 @@ var
               begin { symbol reference }
               s := getSymbolName;
 
-              b := findInsert (s, spt, false);
+              b := findInsert (s, symbol, false);
               if NOT b then
                 begin
                 showModName;
                 writeln ('internal check failure - lost symbol');
                 end;
 
-              esdarr[topesd] := spt^.saddr + baseaddr[spt^.ssect];
-              esdsymarr [topesd] := spt;
+              esdArray[topESD] := symbol^.addr + baseaddr[symbol^.section];
+              esdSymbolArray [topESD] := symbol;
 
-              outaddr[topesd] := esdarr[topesd];
-              topesd := topesd + 1;
+              outAddrArray[topesd] := esdArray[topESD];
+              topESD := topESD + 1;
               end;
             {>>>}
             8,9 : bpos := bpos + 5;
@@ -2223,7 +2614,7 @@ var
       procedure proctxt;
 
       var
-        bitmap,curresd:integer;
+        bitmap, curresd: integer;
 
         {<<<}
         procedure procbyte;
@@ -2240,7 +2631,7 @@ var
           begin
             duffer := w = %x'4EBA';
             codelen := codelen + 1;
-            codearr[codelen] := w;
+            codeArray[codelen] := w;
           end;
           {>>>}
 
@@ -2269,16 +2660,16 @@ var
             for i := 1 TO numesds DO
               begin
               thisesd := getByte;
-              if thisesd > topesd then
+              if thisesd > topESD then
                 begin
                 showModName;
                 writeln(' assembler foul-up.. trying to use an undefined ESD : ' , thisesd);
                 end;
 
               if odd(i) then
-                add := add + esdarr[thisesd]
+                add := add + esdArray[thisesd]
               else
-                add := add - esdarr[thisesd];
+                add := add - esdArray[thisesd];
               end;
 
             offset := 0;
@@ -2304,9 +2695,9 @@ var
               if codelen > 0 then
                 outputData;
 
-              outaddr[curresd] := outaddr[curresd] + codelen*2 + offset;
+              outAddrArray[curresd] := outAddrArray[curresd] + codelen*2 + offset;
               codelen := 0;
-              codestart := outaddr[curresd];
+              codestart := outAddrArray[curresd];
               end
 
             else  { numesd <> 0 }
@@ -2320,18 +2711,18 @@ var
                   end;
                 end;
 
-              if esdsymarr [thisesd] <> NIL then { only need named symbols }
-                if modName <> esdsymarr [thisesd]^.mname then { outside module }
+              if esdSymbolArray [thisesd] <> NIL then { only need named symbols }
+                if modName <> esdSymbolArray [thisesd]^.modName then { outside module }
                   begin
                   if history then
                     { address to be resolved LONGWORD only at present}
-                    addRes (esdsymarr [thisesd], codestart + codelen*2, offset);
+                    addRes (esdSymbolArray [thisesd], codestart + codelen*2, offset);
 
                   if debug then
                     writeln ('sym ', longwd,
                              ' ', thisesd:2,
-                             ' ', esdsymarr [thisesd]^.sname,
-                             ' ', hex (add,8,8), ' = ', hex (esdarr[thisesd]),
+                             ' ', esdSymbolArray [thisesd]^.symbolName,
+                             ' ', hex (add,8,8), ' = ', hex (esdArray[thisesd]),
                              ' + ', hex (offset,4,4), ';', hex (offsize, 1, 1),
                              ' at ', hex (codestart + codelen * 2, 8, 8));
                   end;
@@ -2352,14 +2743,14 @@ var
 
         codelen := 0;
         curresd := getByte;
-        codestart := outaddr[curresd];
+        codestart := outAddrArray[curresd];
 
         while bpos < o.length DO
           procbyte;
 
         outputData;
         { dont forget convert to bytes}
-        outaddr[curresd] := outaddr[curresd]+(codelen*2);
+        outAddrArray[curresd] := outAddrArray[curresd]+(codelen*2);
       end;
       {>>>}
       {<<<}
@@ -2396,16 +2787,16 @@ var
       sbase[i] := 0;
 
     repeat
-      filename := getFilename (termchar);
+      filename := getObjectFilename (termchar);
       if termchar <> '=' then
         begin
-        ext := getExt (filename, defext);
+        ext := getExt (filename, defExt);
         if ext = '.his' then
           begin
           { do not reread history file }
           end
         else if ext = '.rx' then
-          {<<<  text format .rx file}
+          {<<<  .rx file}
           begin
           openTextIn (filename);
 
@@ -2419,7 +2810,7 @@ var
           end
           {>>>}
         else
-          {<<<  normal .ro file}
+          {<<<  .ro file}
           begin
           openIn (filename);
 
@@ -2427,7 +2818,7 @@ var
             getRecord (o);
             if o.length > 0 then
               processRecord;
-          until empty;
+          until objectEof;
 
           closeIn;
           end;
@@ -2438,7 +2829,7 @@ var
     closeModules;
     closeoutput;
 
-    end_pass_2 := currentTime;
+    endPass2 := currentTime;
   end;
   {>>>}
 
@@ -2469,13 +2860,13 @@ var
     fileId := 'no file open.' ;
 
     { set up pointers for common area list }
-    com_head := nil;
-    prev_com := nil;
+    commonHead := nil;
+    prevCommon := nil;
 
-    defext := '.ro';
+    defExt := '.ro';
 
     total := 0;
-    undefsym := 0;
+    numUndefinedSymbols := 0;
 
     for i := -1 TO 15 DO
       begin
@@ -2484,7 +2875,19 @@ var
       end;
 
     for i := 0 TO maxHash DO
-      hash_table[i] := nil;
+      hashTable[i] := nil;
+
+    clearMilestone (startLink);
+    clearMilestone (endPass1);
+    clearMilestone (endPass2);
+    clearMilestone (endLink);
+    clearMilestone (endMapGen);
+    clearMilestone (endHisGen);
+    clearMilestone (endSymGen);
+    clearMilestone (endSpaceAlloc);
+    clearMilestone (endXrefGen);
+    clearMilestone (startReadHis);
+    clearMilestone (endReadHis);
   end;
   {>>>}
   {<<<}
@@ -2502,11 +2905,11 @@ var
       depth_used[ depth ] := 0;
 
     for i := 0 TO maxHash DO
-      if hash_table[i] <> nil then
+      if hashTable[i] <> nil then
         begin
         hash_used := hash_used + 1;
         depth := 0;
-        s_ptr := hash_table[i];
+        s_ptr := hashTable[i];
         repeat
           depth := depth + 1;
           s_ptr := s_ptr^.nextSymbol;
@@ -2536,25 +2939,25 @@ var
 begin
   init;
 
-  { get command line, set switch settings }
+  { get command line }
   commandLen := -1;
   P_getcmdline (command, commandLen);
   writeln ('command ', command:commandLen, ' len:', commandLen:0);
 
-  switchprocess (command);
+  switchSettingsProcess (command);
 
   ext := getExt (command, '.cmd');
   commandRoot := command;
   commandRoot.length := command.length - ext.length;
   writeln ('ext:', ext, ' extLength:', ext.length:0, ' command:', command, ' commandRoot:', commandRoot);
 
-  start_link := currentTime;
-  start_read_his := currentTime;
-  end_read_his := start_read_his;
+  startLink := currentTime;
+  startReadHis := currentTime;
+  endReadHis := startReadHis;
 
   { open .cmd file }
   NEW (cmdFile);
-  cmdFile^.nextFile := NIL;
+  cmdFile^.next := NIL;
   if chat OR debug then
     writeln ('File given is ', command );
   reset (cmdFile^.f, command);
@@ -2568,10 +2971,10 @@ begin
   if chat OR debug OR (NOT quiet) then
     {<<<  report symbolTable}
     begin
-    writeln (numsymbols:5,' in symbol table');
+    writeln (numSymbols:5,' in symbol table');
 
     if logging then
-      writeln (logFile, numsymbols:5,' in symbol table');
+      writeln (logFile, numSymbols:5,' in symbol table');
     end;
     {>>>}
 
@@ -2638,15 +3041,17 @@ begin
     {>>>}
 
   overlapCheck;
-  end_space_alloc := currentTime;
+  endSpaceAlloc := currentTime;
 
-  if undefsym <> 0 then
+  if numUndefinedSymbols <> 0 then
     {<<<  report undefined symbols}
     begin
-    writeln('Number of undefined symbols:- ',undefsym);
+    writeln('Number of undefined symbols:- ', numUndefinedSymbols);
+
     if logging then
-      writeln (logFile, 'Number of undefined symbols:- ',undefsym);
-    checkUndef;
+      writeln (logFile, 'Number of undefined symbols:- ', numUndefinedSymbols);
+
+    checkUndefinedSymbols;
     end;
     {>>>}
 
@@ -2661,51 +3066,54 @@ begin
   {<<<  histoy}
   if history then
     dumpHistory;
-  end_his_gen := currentTime;
+  endHisGen := currentTime;
   {>>>}
   {<<<  symbolTable}
   if symout then
     dumpSymbols;
-  end_sym_gen := currentTime;
+  endSymGen := currentTime;
   {>>>}
   {<<<  map}
   if map then
     dumpSymbolMap;
-  end_map_gen := currentTime;
+  endMapGen := currentTime;
   {>>>}
   {<<<  xref}
   if xref then
     dumpXreferences;
-  end_xref_gen := currentTime;
+  endXrefGen := currentTime;
   {>>>}
 
   if bell then for i := 1 TO 10 DO
     write (chr(7));
   writeln;
-  end_link := currentTime;
+  endLink := currentTime;
 
   if chat OR debug OR (NOT quiet) then
     {<<<  report timings}
     begin
-    writeln ('Link started           ', start_link.time_of_day);
+    writeln ('Link started           ', startLink.timeOfDay);
 
-    showMilestone ('Pass 1                 ', end_pass_1,start_link);
-    if start_read_his.mill_time <> end_read_his.mill_time then
-      showMilestone ('Reading history file   ', end_read_his, start_read_his );
-    showMilestone ('Space allocation       ', end_space_alloc,end_pass_1);
-    showMilestone ('Pass 2                 ', end_pass_2,end_space_alloc);
+    showMilestone ('Pass 1                 ', endPass1,startLink);
+
+    if startReadHis.millTime <> endReadHis.millTime then
+      showMilestone ('Reading history file   ', endReadHis, startReadHis );
+
+    showMilestone ('Space allocation       ', endSpaceAlloc,endPass1);
+    showMilestone ('Pass 2                 ', endPass2,endSpaceAlloc);
+
     if history then
-      showMilestone ('.HIS generation        ', end_his_gen,end_pass_2);
+      showMilestone ('.HIS generation        ', endHisGen, endPass2);
     if symout then
-      showMilestone ('.SYM generation        ', end_sym_gen,end_his_gen);
+      showMilestone ('.SYM generation        ', endSymGen, endHisGen);
     if map then
-      showMilestone ('.MAP generation        ', end_map_gen,end_sym_gen);
+      showMilestone ('.MAP generation        ', endMapGen, endSymGen);
     if xref then
-      showMilestone ('.XRF generation        ', end_xref_gen,end_map_gen);
-    showMilestone ( 'Link ended             ', end_link, start_link);
+      showMilestone ('.XRF generation        ', endXrefGen, endMapGen);
+    showMilestone ('Link ended             ', endLink, startLink);
 
     writeln;
-    writeln ('total CPU time:- ', (end_link.mill_time - start_link.mill_time) / 1000:7:2);
+    writeln ('total CPU time:- ', (endLink.millTime - startLink.millTime) / 1000:7:2);
     end;
     {>>>}
   if english then
@@ -2713,8 +3121,8 @@ begin
     begin
     date (datestring);
     writeln;
-    writeln ('Link started ', start_link.time_of_day, ' ', datestring);
-    writeln ('Link ended   ', end_link.time_of_day, ' ', datestring);
+    writeln ('Link started ', startLink.timeOfDay, ' ', datestring);
+    writeln ('Link ended   ', endLink.timeOfDay, ' ', datestring);
     end;
     {>>>}
 
