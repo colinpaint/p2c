@@ -849,24 +849,24 @@ register long *s;
 
 // Oregon Software Pascal extensions, courtesy of William Bader
 //{{{
-int P_getcmdline (int l, int h, Char* line) {
+int P_getcmdline (int low, int high, Char* line) {
 
-  int i, len;
-  char* s;
+  int maxLen = high - low + 1;
 
-  h = h - l + 1;
-  len = 0;
-  for (i = 1; i < P_argc; i++) {
-    s = P_argv[i];
-    while (*s) {
-      if (len >= h)
-        return len;
-      line[len++] = *s++;
+  int len = 0;
+  int index = (low == 0) ? 1 : low;
+
+  for (int i = 1; i < P_argc; i++) {
+    char* s = P_argv[i];
+    while (*s && (len < maxLen)) {
+      line[index] = *s++;
+      index++;
+      len++;
       }
-
-    if (len >= h)
-      return len;
     }
+
+  if (low == 0)
+    line[0] = len;
 
   return len;
   }
