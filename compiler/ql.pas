@@ -7,7 +7,7 @@ const
   maxHash = 4095;
 
   esc = 27;
-  startbase = %x'400';
+  startBase = %x'400';
 
   { probably chosen to match ethernet download packet size }
   bytesPerFileRec$ = 1536;
@@ -20,28 +20,29 @@ type
 
   filenameType = varying [80] of char;
   string = varying [maxStringLen] of char;
-  objrec = varying [255] of char;
+
+  objectRecordType = varying [255] of char;
 
   symbolNameType = packed array [1..10] of char;
   {<<<}
-  idrec = packed record
+  idRecord = packed record
     rlen    : word;
     rtype   : char;
     modName : symbolNameType;
     end;
   {>>>}
 
-  referencePtr = ^reference;
+  referencePtr = ^referenceType;
   {<<<}
-  reference = packed record
+  referenceType = packed record
     next : referencePtr;
     symbolName : symbolNameType;
     end;
   {>>>}
 
-  resolvePtr = ^resolve;
+  resolvePtr = ^resolveType;
   {<<<}
-  resolve = packed record
+  resolveType = packed record
     next : resolvePtr;
     addr   : integer;
     offset : integer;
@@ -70,18 +71,18 @@ type
   block = packed array [0..255] of byte;
   bblock = packed array [0..511] of byte;
 
-  fileListPtrType = ^fileListType;
+  fileListPtr = ^fileListType;
   {<<<}
   fileListType = record
-    next : fileListPtrType;
+    next : fileListPtr;
     f : text;
     end;
   {>>>}
 
   {<<<}
-  milestone = record
-    millTime  : integer;
+  milestoneType = record
     intTime   : integer;
+    millTime  : integer;
     timeOfDay : packed array [1..11] of char;
     end;
   {>>>}
@@ -100,13 +101,13 @@ type
   {>>>}
 
   {<<<}
-  filedHistoryRecordType = record CASE boolean of
+  fileHistoryRecordType = record CASE boolean of
     true : (numRecs : integer;
             recs    : ARRAY [1 .. recsPerFileRec$] of historyRecordType;);
     false: (dummy   : packed array [1 .. bytesPerFileRec$] of char);
     end;
   {>>>}
-  historyFileType = FILE of filedHistoryRecordType;
+  historyFileType = FILE of fileHistoryRecordType;
 {>>>}
 {<<<}
 var
@@ -121,7 +122,7 @@ var
   commandRoot: filenameType;
   fullFilename: filenameType;
 
-  cmdFile: fileListPtrType;
+  cmdFile: fileListPtr;
   logFile: text;
   objectFile : FILE of block;
   textObjectFile: text;
@@ -135,7 +136,7 @@ var
   smax, checksum, pass, opos, bpos: integer;
 
   blockPtr: integer;
-  o: objrec;
+  o: objectRecordType;
 
   { switches }
   modules, download, check, bell, xref, map, bin, out, symout : boolean;
@@ -162,9 +163,9 @@ var
   outAddrArray: array [0..255] of integer;
   codeArray: array [1..64] of integer;
 
-  startLink, endPass1, endPass2, endLink: milestone;
-  endMapGen, endHisGen, endSymGen, endSpaceAlloc, endXrefGen: milestone;
-  startReadHis, endReadHis: milestone;
+  startLink, endPass1, endPass2, endLink: milestoneType;
+  endMapGen, endHisGen, endSymGen, endSpaceAlloc, endXrefGen: milestoneType;
+  startReadHis, endReadHis: milestoneType;
 
   modName: symbolNameType;
 
@@ -175,7 +176,7 @@ var
 
   sn: symbolNameType;
   spt: symbolPtr;
-  orec: objrec;
+  orec: objectRecordType;
   total, basepos, i: integer;
 
   datestring: packed array [1..11] of CHAR;
@@ -271,10 +272,10 @@ var
   {>>>}
 
   {<<<}
-  function currentTime: milestone;
+  function currentTime: milestoneType;
 
   var
-    ms: milestone;
+    ms: milestoneType;
     temp: integer;
 
     {<<<}
@@ -315,7 +316,7 @@ var
 
   { milestone }
   {<<<}
-  procedure clearMilestone (var ms: milestone);
+  procedure clearMilestone (var ms: milestoneType);
 
   begin
     ms.millTime := 0;
@@ -324,7 +325,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure showMilestone (s: string; ms1, ms2: milestone);
+  procedure showMilestone (s: string; ms1, ms2: milestoneType);
 
   var
     temp, cc, ss, mm, hh: integer;
@@ -926,7 +927,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure getRecord (var o: objrec);
+  procedure getRecord (var o: objectRecordType);
   { .ro files are 256 byte fixed size blocks. Within these blocks, records are
     packed end to end i.e. one record can span a block boundary. Each record
     conisits of a single byte <n> followed by <n> data bytes
@@ -979,7 +980,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure getTextRec (var o: objrec);
+  procedure getTextRec (var o: objectRecordType);
   { .rx files are a text version of the .ro file. Each record is a single line
     of text, written out as hex characters i.e. 2 characters per byte. The record
     length is derived from the bytes on the line. This format is provided to allow
@@ -1297,12 +1298,12 @@ var
               writeln (ref_file);
           end
         else
-          writeln(ref_file,'Not referenced ANYWHERE!');
+          writeln (ref_file,'Not referenced ANYWHERE!');
 
         writeln
           (ref_file,'--------------------------------------------------------------------------');
-        s_ptr:=s_ptr^.nextSymbol;
-        until s_ptr=nil;
+        s_ptr := s_ptr^.nextSymbol;
+        until s_ptr = nil;
       end;
 
     close (ref_file);
@@ -1318,26 +1319,26 @@ var
     r : resolvePtr;
 
     historyRecord : historyRecordType;
-    filedHistoryRecord : filedHistoryRecordType;
+    fileHistoryRecord : fileHistoryRecordType;
     res_file : historyFileType;
 
     {<<<}
     procedure send_to_file (rec: historyRecordType);
 
     begin
-      filedHistoryRecord.numRecs := filedHistoryRecord.numRecs + 1;
-      filedHistoryRecord.recs[filedHistoryRecord.numRecs] := rec;
-      if filedHistoryRecord.numRecs = recsPerFileRec$ then
+      fileHistoryRecord.numRecs := fileHistoryRecord.numRecs + 1;
+      fileHistoryRecord.recs[fileHistoryRecord.numRecs] := rec;
+      if fileHistoryRecord.numRecs = recsPerFileRec$ then
         begin
-        Write (res_file, filedHistoryRecord);
-        filedHistoryRecord.numRecs := 0;
+        Write (res_file, fileHistoryRecord);
+        fileHistoryRecord.numRecs := 0;
         end;
     end;
     {>>>}
 
   begin
     rewrite (res_file, commandRoot + '.his');
-    filedHistoryRecord.numRecs := 0;
+    fileHistoryRecord.numRecs := 0;
 
     historyRecord.historyType := $historyObj;
     historyRecord.obj_addr := basepos;
@@ -1383,8 +1384,8 @@ var
         end;
 
     { Send the last one }
-    if filedHistoryRecord.numRecs > 0 then
-      Write (res_file, filedHistoryRecord);
+    if fileHistoryRecord.numRecs > 0 then
+      Write (res_file, fileHistoryRecord);
 
     close (res_file);
   end;
@@ -1602,7 +1603,7 @@ var
     spt : symbolPtr;
     r : resolvePtr;
 
-    filedHistory : filedHistoryRecordType;
+    fileHistory : fileHistoryRecordType;
     historyFile : historyFileType;
 
   begin
@@ -1612,10 +1613,10 @@ var
 
     while NOT eof (historyFile) DO
       begin
-      Read (historyFile, filedHistory);
+      Read (historyFile, fileHistory);
 
-      for i := 1 TO filedHistory.numRecs DO
-        WITH filedHistory.recs[ i ] DO CASE historyType of
+      for i := 1 TO fileHistory.numRecs DO
+        WITH fileHistory.recs[ i ] DO CASE historyType of
           $historyObj :
             basepos := obj_addr;
 
@@ -1821,9 +1822,9 @@ var
 
   var
     filename: filenameType;
-    c : char;
-    s : string;
-    tempfile: fileListPtrType;
+    c: char;
+    s: string;
+    tempfile: fileListPtr;
 
   begin
     filename := '';
@@ -1922,8 +1923,8 @@ var
     section: integer;
     coerce: record
       CASE integer of
-        0: (ob: objrec);
-        1: (id: idrec);
+        0: (ob: objectRecordType);
+        1: (id: idRecord);
         end;
 
   begin
@@ -1937,7 +1938,7 @@ var
     if pass = 2 then
       begin
       if chat OR debug then
-        writeln ('Pass 2 of ', modName,':');
+        writeln ('Pass2 of ', modName,':');
 
       if modules then
         begin
@@ -1954,25 +1955,25 @@ var
 
       for section := 0 TO 15 DO
         begin
-        esdArray[section+1] := baseaddr[section]+sbase[section];
+        esdArray[section+1] := baseaddr[section] + sbase[section];
         esdSymbolArray [topESD] := NIL;
         outAddrArray[section+1] := esdArray[section+1];
         end;
       end
 
     else if chat OR debug then
-      writeln ('Pass 1 of ', modName,':');
+      writeln ('Pass1 of ', modName,':');
   end;
   {>>>}
   {<<<}
-  procedure firstPass;
+  procedure pass1;
 
   var
     firstFile : boolean;
 
     {<<<}
     procedure processRecord;
-    { first pass object record processor }
+    { pass1 object record processor }
 
       {<<<}
       procedure procesd;
@@ -2185,7 +2186,8 @@ var
 
   begin
     pass := 1;
-    basepos := startbase;
+
+    basepos := startBase;
 
     firstFile := true;
     repeat
@@ -2205,18 +2207,17 @@ var
         if ext = '.his' then { history file of previous link }
           begin
           if usingHistory then
-            writeln ('Can only use one history file, subsequent ones ignored')
+            writeln ('Only one history file, ignoring ', filename)
           else
             begin
             startReadHis := currentTime;
             readHistory (filename);
             endReadHis := currentTime;
             end;
-
           usingHistory := TRUE;
           end
 
-        else if ext = '.rx' then { text format .rx file }
+        else if ext = '.rx' then
           begin
           openTextIn (filename);
           repeat
@@ -2224,22 +2225,22 @@ var
             if o.length > 0 then
               processRecord;
           until eof (textObjectFile) ;
-
           closeTextIn;
           end
 
-        else { normal .ro file }
+        else  if ext = '.ro' then
           begin
           openIn (filename);
-
           repeat
             getRecord (o);
             if o.length > 0 then
               processRecord;
           until objectEof;
-
           closeIn;
-          end;
+          end
+
+        else
+          Writeln ('Pass 1 - unrecognised file type', filename);
 
         end;
         {>>>}
@@ -2251,7 +2252,10 @@ var
   end;
   {>>>}
   {<<<}
-  procedure secondPass;
+  procedure pass2;
+
+  var
+    section: integer;
 
     {<<<}
     procedure openOutput;
@@ -2783,19 +2787,16 @@ var
     newline := true;
 
     { init sections }
-    for i := 0 TO 15 DO
-      sbase[i] := 0;
+    for section := 0 TO 15 DO
+      sbase[section] := 0;
 
     repeat
       filename := getObjectFilename (termchar);
       if termchar <> '=' then
         begin
+        { only .ro, .rx on second pass }
         ext := getExt (filename, defExt);
-        if ext = '.his' then
-          begin
-          { do not reread history file }
-          end
-        else if ext = '.rx' then
+        if ext = '.rx' then
           {<<<  .rx file}
           begin
           openTextIn (filename);
@@ -2809,7 +2810,7 @@ var
           closeTextIn;
           end
           {>>>}
-        else
+        else if ext = '.ro' then
           {<<<  .ro file}
           begin
           openIn (filename);
@@ -2964,7 +2965,7 @@ begin
   fullFilename := command;
   writeln ('Linking from ', fullFilename);
 
-  firstPass;
+  pass1;
   allocCom;
   reportHash;
 
@@ -3061,7 +3062,7 @@ begin
     smax := 16; { s-format max line size }
 
   if modules OR out OR download then
-    secondPass;
+    pass2;
 
   {<<<  histoy}
   if history then
