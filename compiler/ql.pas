@@ -458,115 +458,6 @@ var
   end;
   {>>>}
 
-  { .ro obj file }
-  {<<<}
-  procedure openin (fileNameString: string);
-
-  begin
-    cmdFileNameString := fileNameString;
-    reset (objFile, fileNameString);
-
-    read (objFile, objBlock);
-    objBlockIndex := 0;
-
-    objEof := false;
-  end;
-  {>>>}
-  {<<<}
-  procedure getObjRecord (var objRecord: objRecordType);
-  { .ro files are 256 byte fixed size blocks. Within these blocks, records are
-    packed end to end i.e. one record can span a block boundary. Each record
-    conisits of a single byte <n> followed by <n> data bytes
-  }
-  var
-    i: integer;
-    numBytes: integer;
-
-  begin
-    { read objRecord length from objBlock }
-    objRecord.length := objBlock[objBlockIndex];
-    objBlockIndex := objBlockIndex + 1;
-    objRecord.recordType := objBlock[objBlockIndex];
-    objBlockIndex := objBlockIndex + 1;
-
-    if objRecord.length < (256 - objBlockIndex) then
-      numBytes := objRecord.length
-    else
-      numBytes := 255 - objBlockIndex;
-
-    { copy from objBlock to objRecord }
-    for i := 1 TO numBytes DO
-      begin
-      objRecord.block[i-1] := chr(objBlock[objBlockIndex]);
-      objBlockIndex := objBlockIndex + 1;
-      end;
-
-    if (objBlockIndex > 256) then
-      begin
-      { need new objBlock }
-      if eof (objFile) then
-        objEof := true
-      else
-        begin
-        { read next objBlock from objFile }
-        read (objFile, objBlock);
-        objBlockIndex := 0;
-
-        { if more objRecord bytes needed, copy from latest objBlock to rest of objRecord }
-        for i := numBytes+1 TO objRecord.length DO
-          begin
-          objRecord.block[i] := objBlock[objBlockIndex];
-          objBlockIndex := objBlockIndex + 1;
-          end;
-        end;
-      end;
-  end;
-  {>>>}
-  {<<<}
-  procedure closeIn;
-
-  begin
-    close (objFile);
-  end;
-  {>>>}
-
-  { .rx obj file }
-  {<<<}
-  procedure openTextIn (fileNameString: string);
-
-  begin
-    cmdFileNameString := fileNameString;
-    reset (textObjFile, fileNameString);
-  end;
-  {>>>}
-  {<<<}
-  procedure getTextRec (var o: objRecordType);
-  { .rx files are a text version of the .ro file. Each record is a single line
-    of text, written out as hex characters i.e. 2 characters per byte. The record
-    length is derived from the bytes on the line. This format is provided to allow
-    .rx files to be easily ported from other systems e.g. Unix
-  }
-  var
-    bytes, i: integer;
-    textObjRecord: string;
-
-  begin
-    readln (textObjFile, textObjRecord);
-
-    bytes := textObjRecord.length DIV 2;
-    objRecord.length := bytes;
-    for i := 1 TO bytes DO
-      objRecord.block[i] := chr ((toHex (textObjRecord[i*2-1]) * 16) + toHex (textObjRecord[i*2]));
-  end;
-  {>>>}
-  {<<<}
-  procedure closeTextIn;
-
-  begin
-    close (textObjFile);
-  end;
-  {>>>}
-
   { .bin binary output file }
   {<<<}
   procedure openOutput;
@@ -1591,6 +1482,158 @@ var
       end;
   end;
   {>>>}
+  {<<<}
+  procedure getObjFileName (var fileName: string);
+
+  var
+    line: string;
+    lineIndex: integer;
+    lineLength: integer;
+    fileNameIndex: integer;
+    objFileFound: boolean;
+
+  begin
+    objFileFound := false;
+    fileNameIndex := 1;
+
+    repeat
+      readln (cmdFile, line);
+      lineIndex := 1;
+      lineLength := line.length;
+
+      if line[lineIndex] = '!' then
+        Writeln ('comment - ', line)
+      else if line[lineIndex] = '@' then
+        Writeln ('@ in .cmd not implemented')
+      else if line[lineIndex] = '/' then
+        begin
+        if pass = 1 then
+          switchSettingsProcess (line);
+        end
+      else
+        begin
+        objFileFound := true;
+        while ((lineIndex <= lineLength) and not (line[lineIndex] = ',')) do
+          begin
+          { copy obj fileName from .cmd file line }
+          fileName[fileNameIndex] := line[lineIndex];
+          fileNameIndex := fileNameIndex + 1;
+          lineIndex := lineIndex + 1;
+          end;
+        end
+    until objFileFound or eof (cmdFile);
+
+    { terminate string with 0 }
+    fileName[fileNameIndex] := 0;
+  end;
+  {>>>}
+
+  {<<<}
+  procedure openin (fileNameString: string);
+
+  begin
+    cmdFileNameString := fileNameString;
+    reset (objFile, fileNameString);
+
+    read (objFile, objBlock);
+    objBlockIndex := 0;
+
+    objEof := false;
+  end;
+  {>>>}
+  {<<<}
+  procedure getObjRecord (var objRecord: objRecordType);
+  { .ro files are 256 byte fixed size blocks. Within these blocks, records are
+    packed end to end i.e. one record can span a block boundary. Each record
+    conisits of a single byte <n> followed by <n> data bytes
+  }
+  var
+    i: integer;
+    numBytes: integer;
+
+  begin
+    { read objRecord length from objBlock }
+    objRecord.length := objBlock[objBlockIndex];
+    objBlockIndex := objBlockIndex + 1;
+    objRecord.recordType := objBlock[objBlockIndex];
+    objBlockIndex := objBlockIndex + 1;
+
+    if objRecord.length < (256 - objBlockIndex) then
+      numBytes := objRecord.length
+    else
+      numBytes := 255 - objBlockIndex;
+
+    { copy from objBlock to objRecord }
+    for i := 1 TO numBytes DO
+      begin
+      objRecord.block[i-1] := chr(objBlock[objBlockIndex]);
+      objBlockIndex := objBlockIndex + 1;
+      end;
+
+    if (objBlockIndex > 256) then
+      begin
+      { need new objBlock }
+      if eof (objFile) then
+        objEof := true
+      else
+        begin
+        { read next objBlock from objFile }
+        read (objFile, objBlock);
+        objBlockIndex := 0;
+
+        { if more objRecord bytes needed, copy from latest objBlock to rest of objRecord }
+        for i := numBytes+1 TO objRecord.length DO
+          begin
+          objRecord.block[i] := objBlock[objBlockIndex];
+          objBlockIndex := objBlockIndex + 1;
+          end;
+        end;
+      end;
+  end;
+  {>>>}
+  {<<<}
+  procedure closeIn;
+
+  begin
+    close (objFile);
+  end;
+  {>>>}
+
+  {<<<}
+  procedure openTextIn (fileNameString: string);
+
+  begin
+    cmdFileNameString := fileNameString;
+    reset (textObjFile, fileNameString);
+  end;
+  {>>>}
+  {<<<}
+  procedure getTextRec (var o: objRecordType);
+  { .rx files are a text version of the .ro file. Each record is a single line
+    of text, written out as hex characters i.e. 2 characters per byte. The record
+    length is derived from the bytes on the line. This format is provided to allow
+    .rx files to be easily ported from other systems e.g. Unix
+  }
+  var
+    bytes, i: integer;
+    textObjRecord: string;
+
+  begin
+    readln (textObjFile, textObjRecord);
+
+    bytes := textObjRecord.length DIV 2;
+    objRecord.length := bytes;
+    for i := 1 TO bytes DO
+      objRecord.block[i] := chr ((toHex (textObjRecord[i*2-1]) * 16) + toHex (textObjRecord[i*2]));
+  end;
+  {>>>}
+  {<<<}
+  procedure closeTextIn;
+
+  begin
+    close (textObjFile);
+  end;
+  {>>>}
 
   {<<<}
   procedure processModuleId;
@@ -1639,53 +1682,6 @@ var
 
     else if chat OR debug then
       writeln ('Pass1 of ', modName,':');
-  end;
-  {>>>}
-  {<<<}
-  procedure getObjFileName (var objFileName: string);
-
-  var
-    found: boolean;
-    cmdFileLine: string;
-    cmdFileLineIndex: integer;
-    cmdFileLineLength: integer;
-    objFileNameIndex: integer;
-
-  begin
-    found := false;
-    objFileNameIndex := 1;
-
-    repeat
-      readln (cmdFile, cmdFileLine);
-
-      cmdFileLineIndex := 1;
-      cmdFileLineLength := cmdFileLine.length;
-
-      if cmdFileLine[cmdFileLineIndex] = '!' then
-        Writeln ('comment - ', cmdFileLine)
-      else if cmdFileLine[cmdFileLineIndex] = '@' then
-        Writeln ('@ in .cmd not implemented yet')
-      else if cmdFileLine[cmdFileLineIndex] = '/' then
-        begin
-        if pass = 1 then
-          switchSettingsProcess (cmdFileLine);
-        end
-      else
-        begin
-        while ((cmdFileLineIndex <= cmdFileLineLength) and not (cmdFileLine[cmdFileLineIndex] = ',')) do
-          begin
-          objFileName[objFileNameIndex] := cmdFileLine[cmdFileLineIndex];
-          objFileNameIndex := objFileNameIndex + 1;
-          cmdFileLineIndex := cmdFileLineIndex + 1;
-          end;
-        found := true;
-        end
-    until found or eof (cmdFile);
-
-    objFileName[objFileNameIndex] := 0;
-
-    {writeln ('getObjFileName:', objFileName);
-    }
   end;
   {>>>}
   {<<<}
