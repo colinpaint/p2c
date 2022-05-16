@@ -73,14 +73,6 @@ type
     end;
   {>>>}
 
-  fileListPtr = ^fileListType;
-  {<<<}
-  fileListType = record
-    next : fileListPtr;
-    f : text;
-    end;
-  {>>>}
-
   {<<<}
   milestoneType = record
     intTime   : integer;
@@ -117,15 +109,15 @@ var
   cmd: packed array [0..100] of char;
   cmdLen: word;
   cmdString: string;
-  cmdFilenameString: string;
   cmdFileRootString: string;
   cmdFileExtString: string;
+  cmdFileNameString: string;
 
-  curFilenameString: string;
+  curFileNameString: string;
   fileIdString: string;
 
   { files }
-  cmdFile: fileListPtr;
+  cmdFile: text;
   objFile : FILE of objBlockType;
   textObjFile: text;
   binaryFile: FILE of binBlockType;
@@ -135,14 +127,14 @@ var
   logFile: text;
   moduleFile: text;
 
-  smax, checksum, pass: integer;
-  opos, bpos: integer;
+  pass: integer;
 
   { obj file input }
   objEof: boolean;
   objBlockIndex: integer;
   objBlock: objBlockType;
 
+  objRecordBlockIndex: integer;
   objRecord: objRecordType;
 
   { switches }
@@ -150,7 +142,6 @@ var
   chat, debug, logging, friendly, quiet, files, history, escape: boolean;
 
   duffer: boolean;
-  newline: boolean;
   inpacket: boolean;
   usingHistory: boolean;
 
@@ -180,7 +171,11 @@ var
   modName: symbolNameType;
 
   { .bin file output }
+  binBlockIndex: integer;
   binBlock: binBlockType;
+
+  outputMaxSize: integer;
+  outputChecksum: integer;
 
   i, total, basepos: integer;
   datestring: packed array [1..11] of CHAR;
@@ -229,38 +224,38 @@ var
   {>>>}
   {<<<  char utils}
   {<<<}
-  function isNull (ch: char): boolean;
+  function null (ch: char): boolean;
 
   begin
-    isNull := (ch = chr(13)) OR (ch = chr(10)) OR (ch = ' ') OR (ch = chr(9)) OR (ch = chr(0));
+    null := (ch = chr(13)) OR (ch = chr(10)) OR (ch = ' ') OR (ch = chr(9)) OR (ch = chr(0));
   end;
   {>>>}
   {<<<}
-  function isDigit (ch: char): boolean;
+  function digit (ch: char): boolean;
 
   begin
-    isDigit := (ch >= '0') and (ch <= '9');
+    digit := (ch >= '0') and (ch <= '9');
   end;
   {>>>}
   {<<<}
-  function isUpper (ch: char): boolean;
+  function upper (ch: char): boolean;
 
   begin
-    isUpper := (ch >= 'A') and (ch <= 'Z');
+    upper := (ch >= 'A') and (ch <= 'Z');
   end;
   {>>>}
   {<<<}
-  function isAlpha (ch: char): boolean;
+  function alpha (ch: char): boolean;
 
   begin
-    isAlpha := ((ch >= 'a') and (ch <= 'z')) or ((ch >= 'A') and (ch <= 'Z'));
+    alpha := ((ch >= 'a') and (ch <= 'z')) or ((ch >= 'A') and (ch <= 'Z'));
   end;
   {>>>}
   {<<<}
-  function isAlphaDigit (ch: char): boolean;
+  function alphaDigit (ch: char): boolean;
 
   begin
-    isAlphaDigit := isDigit (ch) or isAlpha (ch) or (ch = '_');
+    alphaDigit := digit (ch) or alpha (ch) or (ch = '_');
   end;
   {>>>}
 
@@ -285,73 +280,97 @@ var
   function toLower (ch: char): char;
 
   begin
-    if isUpper (ch) then
+    if upper (ch) then
       toLower := chr(ord(ch) + ord('a') - ord('A'))
     else
       toLower := ch;
   end;
   {>>>}
-  {>>>}
+
   {<<<}
-  procedure subString (var t: string; s: string; start, span: integer);
-  { Substring (T,S,Start,Span) - the substring of string S defined by Start, Span is assigned to the target string T }
+  procedure copySubString (var d: string; var s: string; start, span: integer);
 
   var
-    i, slen: integer;
+    i: integer;
 
   begin
-    t = '';
+    {writeln ('copySubString ', s, ' ', start:0, ' ', span:0);
+    }
 
+    { negative span ? }
     if span < 0 then
       begin
       span := -span;
       start := start - span
       end;
 
+    { constrain start and span to be within s }
     if start < 1 then
       begin
       span := span + start - 1;
       start := 1
       end;
-
-    if start + span > s.length + 1 then
-      span := slen - start + 1;
+    if start + span - 1 > s.length then
+      span := s.length - start + 1;
 
     for i := 1 to span do
-      t := t + s[start + i - 1];
+      d[i] := s[start + i - 1];
+
+    d[span+1] := 0;
   end;
+  {>>>}
+  {<<<}
+  procedure concatStrings (var d: string; var s1: string; var s2: string);
+
+  var
+    i, len1: integer;
+
+  begin
+    len1 := s1.length;
+
+    for i := 1 to len1 do
+      d[i] := s1[i];
+
+    for i := 1 to s2.length do
+      d[len1 + i] := s2[i];
+
+    d[len1 + s2.length + 1] := 0;
+  end;
+  {>>>}
   {>>>}
   {<<<  file utils}
   {<<<}
-  procedure getFileStrings (filename: string; defaultExt: string;
-                            var root: string; var ext: string; var fullFilename: string);
-
+  procedure getFileStrings (var fileName: string; var defaultExt: string;
+                            var root: string; var ext: string; var fullFileName: string);
   var
-  i: integer;
+    i: integer;
 
   begin
-    writeln ('getFileStrings string:', filename, ' len:', filename.length:0,
-             ' ext:', defaultExt, ' len:', defaultExt.length:0);
+    {writeln ('getFileStrings fileName:', fileName, ' len:', fileName.length:0,
+             ' defaultExt:', defaultExt, ' len:', defaultExt.length:0);
+    }
 
-    { search backwards, to find first non-alpha char is a '.' }
-    i := filename.length;
-    while (i > 0) AND isAlphaDigit (filename[i]) DO
+    { search backwards, to find first non-alpha char }
+    i := fileName.length;
+    while (i > 0) and alphaDigit (fileName[i]) do
       i := i - 1;
 
-    if (i > 1) and (filename[i] = '.') then
+    { first non alpha is extension . }
+    if (i > 1) and (fileName[i] = '.') then
       begin
-      writeln ('has ext:', i:0, 'of:', filename.length);
-      subString (root, filename, 1, i - 1);
-      subString (ext, filename, i, filename.length - i + 1);
-      fullFilename = filename;
+      { writeln ('has ext:', i:0, ' of:', fileName.length:0);
+      }
+      copySubString (root, fileName, 1, i - 1);
+      copySubString (ext, fileName, i, fileName.length - i + 1);
+      copySubString (fullFileName, fileName, 1, fileName.length);
       end
     else
       begin
-      writeln ('no ext:', i:0, 'of:', filename.length);
-      root := filename;
-      ext = defaultExt;
-      fullFilename := filename;
-      concatenateString (fullFilename, defaultExt);
+      {writeln ('no ext:', i:0, ' of:', fileName.length:0);
+      }
+      copySubString (root, fileName, 1, fileName.length);
+      copySubString (ext, defaultExt, 1, defaultExt.length);
+      concatStrings (fullFileName, fileName, defaultExt);
       end;
   end;
   {>>>}
@@ -361,13 +380,12 @@ var
   procedure openloggingFile;
 
   var
-    filenameString: string;
+    fullFileName: string;
 
   begin
-    filenameString := cmdFileRootString;
-    concatenateString (filenameString, '.log');
-    rewrite (logFile, filenameString);
-    writeln (logFile, 'Linking from ', cmdFilenameString);
+    concatStrings (fullFileName, cmdFileRootString, '.log');
+    rewrite (logFile, fullFileName);
+    writeln (logFile, 'Linking from ', cmdFileNameString);
   end;
   {>>>}
   {<<<}
@@ -448,11 +466,11 @@ var
 
   { .ro obj file }
   {<<<}
-  procedure openin (filenameString: string);
+  procedure openin (fileNameString: string);
 
   begin
-    cmdFilenameString := filenameString;
-    reset (objFile, filenameString);
+    cmdFileNameString := fileNameString;
+    reset (objFile, fileNameString);
 
     read (objFile, objBlock);
     objBlockIndex := 0;
@@ -518,11 +536,11 @@ var
 
   { .rx obj file }
   {<<<}
-  procedure openTextIn (filenameString: string);
+  procedure openTextIn (fileNameString: string);
 
   begin
-    cmdFilenameString := filenameString;
-    reset (textObjFile, filenameString);
+    cmdFileNameString := fileNameString;
+    reset (textObjFile, fileNameString);
   end;
   {>>>}
   {<<<}
@@ -558,29 +576,29 @@ var
   procedure openOutput;
 
   var
-    filenameString: string;
+    fullFileName: string;
 
   begin
-    opos := 0;
+    binBlockIndex := 0;
     inpacket := false;
 
     if bin then
       begin
       if download then
         begin
-        rewrite (downloadTargetFile, 'target.txt');
         writeln ('Downloading binary file - target.txt');
+        rewrite (downloadTargetFile, 'target.txt');
         end;
 
       if out then
         begin
-        filenameString := cmdFileRootString;
-        concatenateString (filenameString, '.bin');
-        rewrite (binaryFile, filenameString);
+        concatStrings (fullFileName, cmdFileRootString, '.bin');
+
         if chat OR debug OR (NOT quiet) then
-          writeln ('Making binary file ', filenameString);
+          writeln ('Making binary file ', fullFileName);
         if logging then
-          writeln (logFile, 'Making binary file ', filenameString);
+          writeln (logFile, 'Making binary file ', fullFileName);
+        rewrite (binaryFile, fullFileName);
         end;
       end
 
@@ -588,16 +606,15 @@ var
       begin
       if download then
         begin
-        rewrite (targetFile, 'target.txt');
         writeln ('Downloading SR file - target.txt');
+        rewrite (targetFile, 'target.txt');
         end;
 
       if out then
         begin
-        filenameString := cmdFileRootString;
-        concatenateString (filenameString, '.sr');
-        rewrite (srFormatFile, filenameString);
-        writeln ('Making SR file ', filenameString);
+        concatStrings (fullFileName, cmdFileRootString, '.sr');
+        writeln ('Making SR file ', fullFileName);
+        rewrite (srFormatFile, fullFileName);
         end;
       end;
   end;
@@ -606,17 +623,17 @@ var
   procedure binByte (b: byte);
 
   begin
-    binBlock[opos] := b;
-    opos := opos + 1;
+    binBlock[binBlockIndex] := b;
+    binBlockIndex := binBlockIndex + 1;
 
-    if opos > 511 then
+    if binBlockIndex > 511 then
       begin
       if out then
         write (binaryFile, binBlock);
       if download then
         write (downloadTargetFile, binBlock);
 
-      opos := 0;
+      binBlockIndex := 0;
       end;
 
   end;
@@ -661,13 +678,13 @@ var
     if bin then
       begin
       sendbin (b);
-      checksum := ixor (checksum,b);
+      outputChecksum := ixor (outputChecksum,b);
       end
     else
       begin
       s := hex (b,2,2);
       sendsform (s);
-      checksum := checksum + b;
+      outputChecksum := outputChecksum + b;
       end;
   end;
   {>>>}
@@ -679,10 +696,10 @@ var
 
   begin
     if bin then
-      sendbin (checksum)
+      sendbin (outputChecksum)
     else
       begin
-      s := hex (255 - (checksum MOD 256),2,2);
+      s := hex (255 - (outputChecksum MOD 256),2,2);
       sendsform (s);
       sendsfnewline;
       end;
@@ -698,7 +715,7 @@ var
   begin
     if bin then
       BEGIN
-      checksum := 0;
+      outputChecksum := 0;
       binbyte (esc);
       binbyte (0);
       wbyte (2);
@@ -752,23 +769,26 @@ var
   procedure dumpSymbols;
 
   var
-    i:integer;
-    bl: objBlockType;
+    i: integer;
     symbol: symbolPtr;
+
+    symBlockIndex: integer;
+    symBlock: objBlockType;
     symbolTableFile: file of objBlockType;
-    filenameString: string;
+
+    fullFileName: string;
 
     {<<<}
     procedure pbyte (b: byte);
 
     begin
-      bl[bpos] := b;
-      bpos := bpos + 1;
+      symBlock[symBlockIndex] := b;
+      symBlockIndex := symBlockIndex + 1;
 
-      if bpos > 255 then
+      if symBlockIndex > 255 then
         begin
-        write (symbolTableFile, bl);
-        bpos := 0;
+        write (symbolTableFile, symBlock);
+        symBlockIndex := 0;
         end;
     end;
     {>>>}
@@ -814,11 +834,10 @@ var
     {>>>}
 
   begin
-    bpos := 0;
+    symBlockIndex := 0;
 
-    filenameString := cmdFileRootString;
-    concatenateString (filenameString, '.sym');
-    rewrite (symbolTableFile, filenameString);
+    concatStrings (fullFileName, cmdFileRootString, '.sym');
+    rewrite (symbolTableFile, fullFileName);
 
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
@@ -831,11 +850,11 @@ var
         end;
 
       outdata ('4' + chr(17) + binInt(0)); { module end record }
-      if bpos > 0 then
+      if symBlockIndex > 0 then
         begin
-        for i := bpos TO 255 DO
-          bl[i] := 0;
-        write (symbolTableFile, bl);
+        for i := symBlockIndex TO 255 DO
+          symBlock[i] := 0;
+        write (symbolTableFile, symBlock);
         end;
 
     close (symbolTableFile);
@@ -848,12 +867,11 @@ var
     i:integer;
     s_ptr: symbolPtr;
     map_file : text;
-    filenameString: string;
+    fullFileName: string;
 
   begin
-    filenameString := cmdFileRootString;
-    concatenateString (filenameString, '.map');
-    rewrite (map_file, filenameString);
+    concatStrings (fullFileName, cmdFileRootString, '.map');
+    rewrite (map_file, fullFileName);
 
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
@@ -888,12 +906,11 @@ var
     s_ptr: symbolPtr;
     ref_file: text;
     r: referencePtr;
-    filenameString: string;
+    fullFileName: string;
 
   begin
-    filenameString := cmdFileRootString;
-    concatenateString (filenameString, '.xrf');
-    rewrite (ref_file, filenameString);
+    concatStrings (fullFileName, cmdFileRootString, '.xrf');
+    rewrite (ref_file, fullFileName);
 
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
@@ -949,7 +966,7 @@ var
     historyFile : historyFileType;
     historyRecord : historyRecordType;
     fileHistoryRecord : fileHistoryRecordType;
-    filenameString: string;
+    fullFileName: string;
 
     {<<<}
     procedure writeHistoryFile (historyRecord: historyRecordType);
@@ -967,9 +984,8 @@ var
     {>>>}
 
   begin
-    filenameString := cmdFileRootString;
-    concatenateString (filenameString, '.his');
-    rewrite (historyFile, filenameString);
+    concatStrings (fullFileName, cmdFileRootString, '.his');
+    rewrite (historyFile, fullFileName);
     fileHistoryRecord.numRecs := 0;
 
     historyRecord.historyType := $historyObj;
@@ -1028,14 +1044,13 @@ var
   procedure openModules;
 
   var
-    filenameString: string;
+    fullFileName: string;
 
   begin
   if modules then
     begin
-    filenameString := cmdFileRootString;
-    concatenateString (filenameString, '.sym');
-    rewrite (moduleFile, filenameString);
+    concatStrings (fullFileName, cmdFileRootString, '.mod');
+     rewrite (moduleFile, fullFileName);
     end;
   end;
   {>>>}
@@ -1053,8 +1068,8 @@ var
   function getByte: byte;
 
   begin
-    getByte := objRecord.block[bpos];
-    bpos := bpos + 1;
+    getByte := objRecord.block[objRecordBlockIndex];
+    objRecordBlockIndex := objRecordBlockIndex + 1;
   end;
   {>>>}
   {<<<}
@@ -1191,9 +1206,9 @@ var
   procedure showModName;
 
   begin
-    writeln ('in module:', modName, ' from file:', curFilenameString);
+    writeln ('in module:', modName, ' from file:', curFileNameString);
     if logging then
-      writeln (logFile, 'in module:', modName, ' from file:', curFilenameString);
+      writeln (logFile, 'in module:', modName, ' from file:', curFileNameString);
   end;
   {>>>}
 
@@ -1359,7 +1374,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure readHistory (filename: string);
+  procedure readHistory (fileName: string);
   { disp history and readHistory must have match in file format }
 
   var
@@ -1372,7 +1387,7 @@ var
   begin
     symbol := nil;
 
-    reset (historyFile, filename);
+    reset (historyFile, fileName);
 
     while NOT eof (historyFile) DO
       begin
@@ -1472,7 +1487,7 @@ var
         { skip to next switch }
         repeat
           c := getNextCh;
-          until (c='/') OR (isNull (c)) OR (pos >= switchLen);
+          until (c='/') OR (null (c)) OR (pos >= switchLen);
 
         if (tla[1] = 'o') AND (tla[2] >= '0') AND (tla[2] <= '9') then
           {<<<  set section startAddress}
@@ -1532,7 +1547,7 @@ var
           end
           {>>>}
         else if tla = 'fil' then
-          setSwitch (files) { generate put filenames in mod file }
+          setSwitch (files) { generate put fileNames in mod file }
         else if tla = 'his' then
           setSwitch (history) { generate history file }
         else if tla = 'bel' then
@@ -1550,11 +1565,13 @@ var
           setSwitch (escape) { replace all 1B's in code with 1B1B }
         else
           writeln ('Unknown switch :', tla);
-      until (pos >= switchLen) OR (isNull (c));
+      until (pos >= switchLen) OR (null (c));
     end;
     {>>>}
 
   begin
+    Writeln ('switchSettingsProcess ', s);
+
     l := s.length;
     i := 1;
     slashfound := false;
@@ -1574,103 +1591,8 @@ var
       if i = 1 then
         s := ''
       else
-        subString (s, s, 1, i-1);
+        copySubString (s, s, 1, i-1);
       end;
-  end;
-  {>>>}
-
-  {<<<}
-  function getObjFilename (var terminator: char): string;
-
-  var
-    filename: string;
-    c: char;
-    s: string;
-    tempfile: fileListPtr;
-
-  begin
-    filename := '';
-    repeat
-      { Get the next char that is part of a filename }
-      repeat
-        { Read the next char }
-        read (cmdFile^.f, c);
-        if newline then
-          {<<<  if it's at the start of a line, handle switches and comments}
-          begin
-          newline := false;
-
-          { Read sequence of comment/control lines }
-          while ((c='!') OR (c='/') or (c = '@')) and not eof (cmdFile^.f) do { comment/control line}
-            begin
-            readln (cmdFile^.f,s);
-
-            if c = '@' then
-              begin
-              {writeln( 'Line read is ', s );}
-              while NOT (s.length IN [ 'A' .. 'Z', 'a' .. 'z', '0' .. '9', '-', '_' ]) DO
-                s.length = s.length - 1;
-              writeln ('File read is ', s );
-
-              new (tempfile);
-              tempfile^.next := cmdFile;
-              cmdFile := tempfile;
-              reset (cmdFile^.f, s);
-              writeln ('File opened is ', s);
-              end
-
-            else if (c='/') AND (pass = 1) then
-              begin
-              s := '/' + s;
-              switchSettingsProcess (s);
-              end;
-
-            if NOT eof (cmdFile^.f) then
-              read (cmdFile^.f, c);
-            end;
-
-          if eof (cmdFile^.f) then
-            if cmdFile^.next <> NIL then
-              BEGIN
-              close (cmdFile^.f);
-              cmdFile := cmdFile^.next;
-              end;
-          end;
-          {>>>}
-        if eoln (cmdFile^.f) then
-           {<<<  eoln, eat objEof lines}
-           begin
-
-           readln (cmdFile^.f);
-           while eoln (cmdFile^.f) AND NOT eof (cmdFile^.f) DO
-             readln (cmdFile^.f);
-
-           newline := true;
-           end;
-           {>>>}
-      until (NOT isNull (c)) OR eof (cmdFile^.f);
-
-      if eof (cmdFile^.f) then
-        if cmdFile^.next <> NIL then
-          begin
-          close (cmdFile^.f);
-          cmdFile := cmdfile^.next;
-          end;
-
-      if (c <> '=') AND (c <> ',') AND (c <> '!') AND NOT isNull (c) then
-        appendChar (filename, c);
-    until (c = ',') OR (c = '=') OR eof (cmdFile^.f);
-
-    if eof (cmdFile^.f) then
-      if cmdFile^.next <> NIL then
-        begin
-        close (cmdFile^.f);
-        cmdFile := cmdFile^.next;
-        end;
-
-    terminator := c;
-    getObjFilename := filename;
-    writeln ('getObjFilename ', filename, ' terminated by ', c);
   end;
   {>>>}
 
@@ -1724,11 +1646,57 @@ var
   end;
   {>>>}
   {<<<}
+  procedure getObjFileName (var d: string);
+
+  var
+    found: boolean;
+    cmdFileLine: string;
+    cmdFileLineIndex: integer;
+    cmdFileLineLength: integer;
+    objFileNameIndex: integer;
+
+  begin
+    found := false;
+    objFileNameIndex := 1;
+
+    repeat
+      readln (cmdFile, cmdFileLine);
+
+      cmdFileLineIndex := 1;
+      cmdFileLineLength := cmdFileLine.length;
+
+      if cmdFileLine[cmdFileLineIndex] = '!' then
+        Writeln (cmdFileLine)
+      else if cmdFileLine[cmdFileLineIndex] = '@' then
+        Writeln ('@ in .cmd not implemented yet')
+      else if cmdFileLine[cmdFileLineIndex] = '/' then
+        begin
+        if pass = 1 then
+          switchSettingsProcess (cmdFileLine);
+        end
+      else
+        begin
+        while ((cmdFileLineIndex <= cmdFileLineLength) and not (cmdFileLine[cmdFileLineIndex] = ',')) do
+          begin
+          d[objFileNameIndex] := cmdFileLine[cmdFileLineIndex];
+          objFileNameIndex := objFileNameIndex + 1;
+          cmdFileLineIndex := cmdFileLineIndex + 1;
+          end;
+        found := true;
+        end
+    until found or eof (cmdFile);
+
+    d[objFileNameIndex] := 0;
+
+    {writeln ('getObjFileName:', d);
+    }
+  end;
+  {>>>}
+  {<<<}
   procedure pass1;
 
   var
-    termchar: char;
-    objFilename, objRootString, objExtString, objFullFilenameString: string;
+    fileName, root, ext, fullFileName: string;
 
     {<<<}
     procedure processRecord;
@@ -1769,7 +1737,7 @@ var
           ty := ty DIV 16;
 
           CASE ty of
-            0 : bpos := bpos + 8;
+            0 : objRecordBlockIndex := objRecordBlockIndex + 8;
             {<<<}
             1:
               begin { common area symbol }
@@ -1899,7 +1867,7 @@ var
               begin
               showModName;
               writeln ('cl address');
-              bpos := bpos + 5;
+              objRecordBlockIndex := objRecordBlockIndex + 5;
               end;
             {>>>}
             {<<<}
@@ -1907,7 +1875,7 @@ var
               begin
               showModName;
               writeln ('cl addr common');
-              bpos := bpos + 15;
+              objRecordBlockIndex := objRecordBlockIndex + 15;
               end;
             {>>>}
             end;
@@ -1915,21 +1883,9 @@ var
         {>>>}
 
       begin
-        bpos := 2;
-        while bpos < objRecord.length DO
+        objRecordBlockIndex := 1;
+        while objRecordBlockIndex < objRecord.length DO
           doEsd;
-      end;
-      {>>>}
-      {<<<}
-      procedure processText;
-
-      begin
-      end;
-      {>>>}
-      {<<<}
-      procedure processEOM;
-
-      begin
       end;
       {>>>}
 
@@ -1937,39 +1893,41 @@ var
       CASE chr(objRecord.block[0]) of
         '1': processModuleId;
         '2': processESD;
-        '3': processText;
-        '4': processEOM;
+        '3': {processText};
+        '4': {processEOM};
         end;
     end;
     {>>>}
 
   begin
     pass := 1;
-
     basepos := startBase;
 
-    repeat
-      objFilename := getObjFilename (termchar);
-      {<<<  process the file}
-      begin
-      getFileStrings (objFilename, '.ro', objRootString, objExtString, objFullFilenameString);
+    reset (cmdFile);
 
-      if objExtString = '.his' then { history file of previous link }
+    repeat
+      getObjFileName (fileName);
+      getFileStrings (fileName, '.ro', root, ext, fullFileName);
+      Writeln ('pass1 read:', fullFileName);
+
+      if ext = '.his' then { history file of previous link }
+        {<<<  .his}
         begin
         if usingHistory then
-          writeln ('Only one history file, ignoring ', objFullFilenameString)
+          writeln ('Only one history file, ignoring ', fullFileName)
         else
           begin
           startReadHisMilestone := getMilestone;
-          readHistory (objFullFilenameString);
+          readHistory (fullFileName);
           endReadHisMilestone := getMilestone;
           end;
         usingHistory := TRUE;
         end
-
-      else if objExtString = '.rx' then
+        {>>>}
+      else if ext = '.rx' then
+        {<<<  .rx}
         begin
-        openTextIn (objFullFilenameString);
+        openTextIn (fullFileName);
 
         repeat
           getTextRec (objRecord);
@@ -1979,10 +1937,11 @@ var
 
         closeTextIn;
         end
-
-      else if objExtString = '.ro' then
+        {>>>}
+      else if ext = '.ro' then
+        {<<<  .ro}
         begin
-        openIn (objFullFilenameString);
+        openIn (fullFileName);
 
         repeat
           getRecord (objRecord);
@@ -1991,11 +1950,11 @@ var
         until objEof;
 
         closeIn;
-        end;
+        end
+        {>>>}
+    until eof (cmdFile);
 
-      end;
-      {>>>}
-      until eof (cmdFile^.f);
+    close (cmdFile);
 
     endPass1Milestone := getMilestone;
   end;
@@ -2004,9 +1963,8 @@ var
   procedure pass2;
 
   var
-    termchar: char;
     section: integer;
-    objFilename, objRootString, objExtString, objFullFilenameString: string;
+    fileName, root, ext, fullFileName: string;
 
     {<<<}
     procedure processRecord;
@@ -2061,7 +2019,7 @@ var
           {>>>}
 
         begin
-          checksum := 0;
+          outputChecksum := 0;
           startpacket;
 
           if bin then
@@ -2070,57 +2028,57 @@ var
               b := int (uand (%x'FFFF', uint (codeArray[i+pos]))) DIV 256;
               if (b = esc) AND (escape = true) then
                 begin
-                binBlock[opos] := b;
-                opos := opos + 1;
-                if opos > 511 then
+                binBlock[binBlockIndex] := b;
+                binBlockIndex := binBlockIndex + 1;
+                if binBlockIndex > 511 then
                   begin
                   if out then write
                     (binaryFile, binBlock);
                   if download then
                     write (downloadTargetFile, binBlock);
-                  opos := 0;
+                  binBlockIndex := 0;
                   end;
                 end;
 
-              binBlock[opos] := b;
-              opos := opos + 1;
-              if opos > 511 then
+              binBlock[binBlockIndex] := b;
+              binBlockIndex := binBlockIndex + 1;
+              if binBlockIndex > 511 then
                 begin
                 if out then
                   write (binaryFile, binBlock);
                 if download then
                   write (downloadTargetFile, binBlock);
-                opos := 0;
+                binBlockIndex := 0;
                 end;
 
-              checksum := ord(uxor(uint(b),uint(checksum)));
+              outputChecksum := ord(uxor(uint(b),uint(outputChecksum)));
 
               b := codeArray[i+pos] MOD 256;
               if (b = esc) AND (escape = true) then
                 begin
-                binBlock[opos] := b;
-                opos := opos + 1;
-                if opos > 511 then
+                binBlock[binBlockIndex] := b;
+                binBlockIndex := binBlockIndex + 1;
+                if binBlockIndex > 511 then
                   begin
                   if out then
                     write(binaryFile, binBlock);
                   if download then
                     write (downloadTargetFile, binBlock);
-                  opos := 0;
+                  binBlockIndex := 0;
                   end;
                 end;
 
-              binBlock[opos] := b;
-              opos := opos + 1;
-              if opos > 511 then
+              binBlock[binBlockIndex] := b;
+              binBlockIndex := binBlockIndex + 1;
+              if binBlockIndex > 511 then
                 begin
                 if out then
                   write(binaryFile, binBlock);
                 if download then
                   write(downloadTargetFile, binBlock);
-                opos := 0;
+                binBlockIndex := 0;
                 end;
-              checksum := ord (uxor (uint(b), uint (checksum)));
+              outputChecksum := ord (uxor (uint(b), uint (outputChecksum)));
               end
           else
             for i := 1 TO len DO
@@ -2137,11 +2095,11 @@ var
         c := codelen;
 
         pos := 0;
-        while c > smax DO
+        while c > outputMaxSize DO
           begin
-          srFormat (pos, smax);
-          pos := pos + smax;
-          c := c - smax;
+          srFormat (pos, outputMaxSize);
+          pos := pos + outputMaxSize;
+          c := c - outputMaxSize;
           end;
 
         if c > 0 then
@@ -2152,17 +2110,18 @@ var
       procedure processESD;
 
         {<<<}
-        procedure doesd;
+        procedure doESD;
 
         var
-          section : byte;
-          esdType : byte;
-          s : symbolNameType;
-          b : boolean;
-          patch :integer;
           i: integer;
-          symbol : symbolPtr;
-          r : resolvePtr;
+          section: byte;
+          esdType: byte;
+
+          s: symbolNameType;
+          b: boolean;
+          patch: integer;
+          symbol: symbolPtr;
+          r: resolvePtr;
 
         begin
           esdType := getByte;
@@ -2172,8 +2131,8 @@ var
           CASE esdType of
             {<<<}
             0:
-              begin { no idea !! }
-              bpos := bpos + 4;
+              begin
+              objRecordBlockIndex := objRecordBlockIndex + 4;
 
               i := getInt;
               esdArray[topESD] := i;
@@ -2187,7 +2146,7 @@ var
             1:
               begin { common area symbol }
               s := getSymbolName;
-              bpos := bpos + 4; {skip int}
+              objRecordBlockIndex := objRecordBlockIndex + 4; {skip int}
 
               b := findInsert (s, symbol, false);
               if NOT b then
@@ -2247,10 +2206,10 @@ var
                     end until r = nil;
                   end;
 
-                bpos := bpos + 4; { skip past offset into module }
+                objRecordBlockIndex := objRecordBlockIndex + 4; { skip past offset into module }
                 end
               else
-                bpos := bpos + 14; { skip past offset into module }
+                objRecordBlockIndex := objRecordBlockIndex + 14; { skip past offset into module }
             {>>>}
             {<<<}
             6,7 :
@@ -2271,16 +2230,16 @@ var
               topESD := topESD + 1;
               end;
             {>>>}
-            8,9 : bpos := bpos + 5;
-            10  : bpos := bpos + 15;
+            8,9 : objRecordBlockIndex := objRecordBlockIndex + 5;
+            10  : objRecordBlockIndex := objRecordBlockIndex + 15;
             end;
         end;
         {>>>}
 
       begin
-        bpos := 2;
-        while bpos < objRecord.length DO
-          doesd;
+        objRecordBlockIndex := 1;
+        while objRecordBlockIndex < objRecord.length DO
+          doESD;
       end;
       {>>>}
       {<<<}
@@ -2311,8 +2270,8 @@ var
         begin
           if bitmap >= 0 then
             begin
-            adddata (mvl (ord (objRecord.block[bpos])) + ord(objRecord.block[bpos+1]));
-            bpos := bpos + 2;
+            adddata (mvl (ord (objRecord.block[objRecordBlockIndex])) + ord(objRecord.block[objRecordBlockIndex+1]));
+            objRecordBlockIndex := objRecordBlockIndex + 2;
             end
 
           else
@@ -2411,14 +2370,14 @@ var
         {>>>}
 
       begin
-        bpos := 2;
+        objRecordBlockIndex := 12;
         bitmap := getInt;
 
         codelen := 0;
         curresd := getByte;
         codestart := outAddrArray[curresd];
 
-        while bpos < objRecord.length DO
+        while objRecordBlockIndex < objRecord.length DO
           procbyte;
 
         outputData;
@@ -2446,56 +2405,50 @@ var
     {>>>}
 
   begin
-
     openoutput;
     openModules;
-
-    { read .cmd file again }
-    reset (cmdFile^.f);
-    newline := true;
 
     { init sections }
     for section := 0 TO 15 DO
       sbase[section] := 0;
 
+    reset (cmdFile);
     repeat
-      objFilename := getObjFilename (termchar);
-      if termchar <> '=' then
+      getObjFileName (fileName);
+      getFileStrings (fileName, '.ro', root, ext, fullFileName);
+      if ext = '.his' then
         begin
-        getFileStrings (objFilename, '.ro', objRootString, objExtString, objFullFilenameString);
-        if objExtString = '.his' then
-          begin
-          end
-        else if objExtString = '.rx' then
-          {<<<  .rx file}
-          begin
-          openTextIn (objFullFilenameString);
+        end
+      else if ext = '.rx' then
+        {<<<  .rx file}
+        begin
+        openTextIn (fullFileName);
 
-          repeat
-            getTextRec (objRecord);
-            if objRecord.length > 0 then
-              processRecord;
-          until eof (textObjFile) ;
+        repeat
+          getTextRec (objRecord);
+          if objRecord.length > 0 then
+            processRecord;
+        until eof (textObjFile) ;
 
-          closeTextIn;
-          end
-          {>>>}
-        else if objExtString = '.ro' then
-          {<<<  .ro file}
-          begin
-          openIn (objFullFilenameString);
+        closeTextIn;
+        end
+        {>>>}
+      else if ext = '.ro' then
+        {<<<  .ro file}
+        begin
+        openIn (fullFileName);
 
-          repeat
-            getRecord (objRecord);
-            if objRecord.length > 0 then
-              processRecord;
-          until objEof;
+        repeat
+          getRecord (objRecord);
+          if objRecord.length > 0 then
+            processRecord;
+        until objEof;
 
-          closeIn;
-          end;
-          {>>>}
-        end;
-      until eof (cmdFile^.f);
+        closeIn;
+        end
+        {>>>}
+    until eof (cmdFile);
+    close (cmdFile);
 
     closeModules;
     closeoutput;
@@ -2525,9 +2478,7 @@ var
     modules := false;
     escape := true;
 
-    newline := true;
     usingHistory := FALSE;
-
     fileIdString := 'no file open.' ;
 
     { set up pointers for common area list }
@@ -2536,6 +2487,8 @@ var
 
     total := 0;
     numUndefinedSymbols := 0;
+
+    pass := 0;
 
     for i := -1 TO 15 DO
       begin
@@ -2557,6 +2510,11 @@ var
     clearMilestone (endXrefGenMilestone);
     clearMilestone (startReadHisMilestone);
     clearMilestone (endReadHisMilestone);
+
+    outputMaxSize :=  0;
+    outputChecksum := 0;
+    total := 0;
+    basepos := 0;
   end;
   {>>>}
   {<<<}
@@ -2620,8 +2578,8 @@ begin
   { cmd line switches }
   switchSettingsProcess (cmdString);
 
-  { get cmdFilenameString, cmdFileRootString, cmdFileextString from cmdString and ext }
-  getFileStrings (cmdString, '.cmd', cmdFileRootString, cmdFileExtString, cmdFilenameString);
+  { get cmdFileNameString, cmdFileRootString, cmdFileextString from cmdString and ext }
+  getFileStrings (cmdString, '.cmd', cmdFileRootString, cmdFileExtString, cmdFileNameString);
   writeln ('cmdString:', cmdString,
            ' cmdFileRootString:', cmdFileRootString,
            ' cmdFileExtString:', cmdFileExtString,
@@ -2632,12 +2590,10 @@ begin
   endReadHisMilestone := startReadHisMilestone;
 
   { open .cmd file }
-  NEW (cmdFile);
-  cmdFile^.next := NIL;
   if chat OR debug then
-    writeln ('File given is ', cmdFilenameString);
-  reset (cmdFile^.f, cmdFilenameString);
-  writeln ('Linking from ', cmdFilenameString);
+    writeln ('File given is ', cmdFileNameString);
+  reset (cmdFile, cmdFileNameString);
+  writeln ('Linking from ', cmdFileNameString);
 
   pass1;
   allocCom;
@@ -2732,9 +2688,9 @@ begin
     {>>>}
 
   if bin then
-    smax := 512 { randomly large number! }
+    outputMaxSize := 512 { big number }
   else
-    smax := 16; { s-format max line size }
+    outputMaxSize := 16; { s-format max line size }
 
   if modules OR out OR download then
     pass2;

@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dumpInter", "dumpInter.vcxp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ql", "ql.vcxproj", "{EEFD7CB6-3087-4190-8C26-5671855F1545}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pasmat", "pasmat.vcxproj", "{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -63,14 +61,6 @@ Global
 		{EEFD7CB6-3087-4190-8C26-5671855F1545}.Release|x64.Build.0 = Release|x64
 		{EEFD7CB6-3087-4190-8C26-5671855F1545}.Release|x86.ActiveCfg = Release|Win32
 		{EEFD7CB6-3087-4190-8C26-5671855F1545}.Release|x86.Build.0 = Release|Win32
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Debug|x64.ActiveCfg = Debug|x64
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Debug|x64.Build.0 = Debug|x64
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Debug|x86.ActiveCfg = Debug|Win32
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Debug|x86.Build.0 = Debug|Win32
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Release|x64.ActiveCfg = Release|x64
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Release|x64.Build.0 = Release|x64
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Release|x86.ActiveCfg = Release|Win32
-		{FE009F1E-D90C-45AF-9F23-2C6B5FBDEFFF}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
