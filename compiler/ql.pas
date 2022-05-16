@@ -18,24 +18,18 @@ type
   byte = 0..255;
   word = -32768..32767;
 
+  symbolNameType = packed array [1..10] of char;
+
   objBlockType = packed array [0..255] of byte;
   {<<<}
   objRecordType = packed record
     length: integer;
+    recordType: char;
     block: objBlockType;
     end;
   {>>>}
 
   binBlockType = packed array [0..511] of byte;
-
-  symbolNameType = packed array [1..10] of char;
-  {<<<}
-  idRecord = packed record
-    rlen    : word;
-    rtype   : char;
-    modName : symbolNameType;
-    end;
-  {>>>}
 
   referencePtr = ^referenceType;
   {<<<}
@@ -479,7 +473,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure getRecord (var objRecord: objRecordType);
+  procedure getObjRecord (var objRecord: objRecordType);
   { .ro files are 256 byte fixed size blocks. Within these blocks, records are
     packed end to end i.e. one record can span a block boundary. Each record
     conisits of a single byte <n> followed by <n> data bytes
@@ -491,6 +485,8 @@ var
   begin
     { read objRecord length from objBlock }
     objRecord.length := objBlock[objBlockIndex];
+    objBlockIndex := objBlockIndex + 1;
+    objRecord.recordType := objBlock[objBlockIndex];
     objBlockIndex := objBlockIndex + 1;
 
     if objRecord.length < (256 - objBlockIndex) then
@@ -865,7 +861,7 @@ var
 
   var
     i:integer;
-    s_ptr: symbolPtr;
+    symbol: symbolPtr;
     map_file : text;
     fullFileName: string;
 
@@ -878,20 +874,20 @@ var
         begin
         if debug then
           writeln (map_file, i, ':');
-        s_ptr := hashTable[i];
+        symbol := hashTable[i];
 
         repeat
-          write (map_file,s_ptr^.symbolName,' ',
-          hex (s_ptr^.addr+baseaddr[s_ptr^.section],6,6),' ',s_ptr^.modName);
-          if s_ptr^.comsize<>-1 then
-            writeln (map_file,' C:', hex (s_ptr^.comsize,4,4))
+          write (map_file,symbol^.symbolName,' ',
+          hex (symbol^.addr+baseaddr[symbol^.section],6,6),' ',symbol^.modName);
+          if symbol^.comsize<>-1 then
+            writeln (map_file,' C:', hex (symbol^.comsize,4,4))
           else
-            if NOT s_ptr^.def then
+            if NOT symbol^.def then
               writeln (map_file,' Undef!')
             else
               writeln (map_file);
-          s_ptr := s_ptr^.nextSymbol;
-          until s_ptr = nil;
+          symbol := symbol^.nextSymbol;
+          until symbol = nil;
       end;
 
     close (map_file);
@@ -903,7 +899,7 @@ var
 
   var
     i,refcount: integer;
-    s_ptr: symbolPtr;
+    symbol: symbolPtr;
     ref_file: text;
     r: referencePtr;
     fullFileName: string;
@@ -917,24 +913,24 @@ var
         begin
         if debug then
           writeln (ref_file,i,':');
-        s_ptr := hashTable[i];
+        symbol := hashTable[i];
         REPEAT
           refcount:=0;
-          write (ref_file,s_ptr^.symbolName,' ',
-                 hex (s_ptr^.addr + baseaddr[s_ptr^.section], 6, 6),' ',s_ptr^.modName);
-          if s_ptr^.comsize<>-1 then
-            writeln (ref_file,' C:',hex(s_ptr^.comsize,4,4))
+          write (ref_file,symbol^.symbolName,' ',
+                 hex (symbol^.addr + baseaddr[symbol^.section], 6, 6),' ', symbol^.modName);
+          if symbol^.comsize<>-1 then
+            writeln (ref_file,' C:',hex(symbol^.comsize,4,4))
           else
-            if NOT s_ptr^.def then
+            if NOT symbol^.def then
               writeln (ref_file,' Undef!')
             else
               writeln (ref_file);
 
-          if s_ptr^.refList<>nil then
+          if symbol^.refList<>nil then
             begin
-            r := s_ptr^.refList;
+            r := symbol^.refList;
             REPEAT
-              write (ref_file,r^.symbolName,'    ');
+              write (ref_file,r^.symbolName, '    ');
               refcount := refcount + 1;
               if refcount MOD 6 = 0 then
                 writeln (ref_file);
@@ -944,12 +940,12 @@ var
               writeln (ref_file);
           end
         else
-          writeln (ref_file,'Not referenced ANYWHERE!');
+          writeln (ref_file, 'Not referenced ANYWHERE!');
 
         writeln
           (ref_file,'--------------------------------------------------------------------------');
-        s_ptr := s_ptr^.nextSymbol;
-        until s_ptr = nil;
+        symbol := symbol^.nextSymbol;
+        until symbol = nil;
       end;
 
     close (ref_file);
@@ -1270,19 +1266,19 @@ var
   procedure allocCom;
 
   var
-    s_ptr : symbolPtr;
+    symbol : symbolPtr;
 
   begin
-    s_ptr := commonHead;
-    while s_ptr <> nil DO
+    symbol := commonHead;
+    while symbol <> nil DO
       begin
-      s_ptr^.addr := sectbase[s_ptr^.section];
-      sectbase[s_ptr^.section] := sectbase[s_ptr^.section]+s_ptr^.comsize;
+      symbol^.addr := sectbase[symbol^.section];
+      sectbase[symbol^.section] := sectbase[symbol^.section]+symbol^.comsize;
 
-      if odd(sectbase[s_ptr^.section]) then
-        sectbase[s_ptr^.section] := sectbase[s_ptr^.section]+1;
+      if odd(sectbase[symbol^.section]) then
+        sectbase[symbol^.section] := sectbase[symbol^.section]+1;
 
-      s_ptr := s_ptr^.nextCommon;
+      symbol := symbol^.nextCommon;
       end;
   end;
   {>>>}
@@ -1328,7 +1324,7 @@ var
 
   var
     i:integer;
-    s_ptr: symbolPtr;
+    symbol: symbolPtr;
 
   begin
     writeln ('Undefined symbols:-');
@@ -1338,20 +1334,20 @@ var
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
         begin
-        s_ptr := hashTable[i];
+        symbol := hashTable[i];
 
         repeat
-          if NOT s_ptr^.def then
+          if NOT symbol^.def then
             begin
-            writeln ('''',s_ptr^.symbolName,''' first referenced in module ''', s_ptr^.modName,'''');
+            writeln ('''',symbol^.symbolName,''' first referenced in module ''', symbol^.modName,'''');
             if logging then
-              writeln (logFile, '''', s_ptr^.symbolName, ''' first referenced in module ''', s_ptr^.modName, '''');
-            s_ptr^.section := -1;
-            s_ptr^.addr := %X'FAFF';
+              writeln (logFile, '''', symbol^.symbolName, ''' first referenced in module ''', symbol^.modName, '''');
+            symbol^.section := -1;
+            symbol^.addr := %X'FAFF';
             end;
 
-          s_ptr := s_ptr^.nextSymbol;
-          until s_ptr = nil;
+          symbol := symbol^.nextSymbol;
+          until symbol = nil;
         end;
   end;
   {>>>}
@@ -1603,16 +1599,16 @@ var
     section: integer;
     coerce: record
       CASE integer of
-        0: (ob: objRecordType);
-        1: (id: idRecord);
+        0: (objBlock: objBlockType);
+        1: (modName: symbolNameType);
         end;
 
   begin
     topESD := 17;
     esdArray[0] := 0;  {unused esd value}
 
-    coerce.ob := objRecord;
-    modName := coerce.id.modName;
+    coerce.objBlock := objRecord.block;
+    modName := coerce.modName;
 
     { we need to init these esd values, in case of zero length sections}
     if pass = 2 then
@@ -1646,7 +1642,7 @@ var
   end;
   {>>>}
   {<<<}
-  procedure getObjFileName (var d: string);
+  procedure getObjFileName (var objFileName: string);
 
   var
     found: boolean;
@@ -1666,7 +1662,7 @@ var
       cmdFileLineLength := cmdFileLine.length;
 
       if cmdFileLine[cmdFileLineIndex] = '!' then
-        Writeln (cmdFileLine)
+        Writeln ('comment - ', cmdFileLine)
       else if cmdFileLine[cmdFileLineIndex] = '@' then
         Writeln ('@ in .cmd not implemented yet')
       else if cmdFileLine[cmdFileLineIndex] = '/' then
@@ -1678,7 +1674,7 @@ var
         begin
         while ((cmdFileLineIndex <= cmdFileLineLength) and not (cmdFileLine[cmdFileLineIndex] = ',')) do
           begin
-          d[objFileNameIndex] := cmdFileLine[cmdFileLineIndex];
+          objFileName[objFileNameIndex] := cmdFileLine[cmdFileLineIndex];
           objFileNameIndex := objFileNameIndex + 1;
           cmdFileLineIndex := cmdFileLineIndex + 1;
           end;
@@ -1686,9 +1682,9 @@ var
         end
     until found or eof (cmdFile);
 
-    d[objFileNameIndex] := 0;
+    objFileName[objFileNameIndex] := 0;
 
-    {writeln ('getObjFileName:', d);
+    {writeln ('getObjFileName:', objFileName);
     }
   end;
   {>>>}
@@ -1702,197 +1698,195 @@ var
     procedure processRecord;
     { pass1 obj record processor }
 
+    var
+      esdType: byte;
+      section: integer;
+      symbolName: symbolNameType;
+      b: boolean;
+      i: integer;
+      symbol: symbolPtr;
+
       {<<<}
-      procedure processESD;
+      procedure addRef (symbol: symbolPtr; modName: symbolNameType);
 
-        {<<<}
-        procedure doEsd;
-
-        var
-          ty : byte;
-          section : integer;
-          s : symbolNameType;
-          b : boolean;
-          i:integer;
-          symbol : symbolPtr;
-
-          {<<<}
-          procedure addRef (s: symbolPtr; mod_name: symbolNameType);
-
-          var
-            reference: referencePtr;
-
-          begin
-            new (reference);
-            reference^.next := s^.refList;
-            reference^.symbolName := mod_name;
-            s^.refList := reference;
-          end;
-          {>>>}
-
-        begin
-          symbol := nil;
-          ty := getByte;
-          section := ty MOD 16;
-          ty := ty DIV 16;
-
-          CASE ty of
-            0 : objRecordBlockIndex := objRecordBlockIndex + 8;
-            {<<<}
-            1:
-              begin { common area symbol }
-              s := getSymbolName;
-              i := getInt;
-              b := findInsert (s, symbol, true);
-
-              if debug then
-                writeln ('Common data - section ', section:2,' ', s, ' length = ', hex(i,6,6));
-
-              if xref then
-                addRef (symbol, modName);
-
-              if NOT symbol^.def then
-                begin
-                if b then numUndefinedSymbols := numUndefinedSymbols-1;
-                symbol^.modName := modName;
-                symbol^.section := section;
-                symbol^.def := true;
-                symbol^.comsize := i;
-                if prevCommon <> nil then
-                  prevCommon^.nextCommon := symbol
-                else
-                  commonHead := symbol;
-                symbol^.nextCommon := nil;
-                prevCommon := symbol;
-                end
-
-              else
-                if (i<>symbol^.comsize) then
-                  begin
-                  if (NOT symbol^.flagged) AND (symbol^.comsize=-1) then
-                    begin
-                    showModName;
-                    writeln ('Label ''', s, ''' is used double defined - ');
-                    writeln ('as a common in module ''', modName, '''');
-                    writeln (' and as an XDEF in module ''', symbol^.modName, '''');
-                    symbol^.flagged := true;
-                   end
-
-                 else if check AND (NOT symbol^.flagged) then
-                   begin
-                   showModName;
-                   writeln ('Common area size clash - common ''', s, '''');
-                   writeln ('size in this module is ',hex(i,6,6), ' bytes');
-                   writeln ('size in ''', symbol^.modName,''' is ', hex (symbol^.comsize,6,6), ' bytes');
-                   symbol^.flagged := true;
-                   end;
-
-                 if (i>symbol^.comsize) AND (symbol^.comsize <> -1) then
-                   begin
-                   symbol^.modName := modName;
-                   symbol^.comsize := i;
-                   end;
-                 end;
-               end;
-            {>>>}
-            {<<<}
-            2,3 :
-              begin { section definition and allocation }
-              i := getInt;
-              if debug then
-                writeln ('Section - ', section:2,' ', ' length = ', hex(i,6,6));
-
-              sectbase[section] := sectbase[section]+i;
-              if odd(sectbase[section]) then
-                sectbase[section] := sectbase[section] + 1;
-              end;
-            {>>>}
-            {<<<}
-            4,5 :
-              begin { symbol defintion }
-              if ty = 5 then
-                section := -1;
-              s := getSymbolName;
-              b := findInsert (s, symbol, true);
-
-              { this isnt right yet, should fix it }
-              if (symbol^.def) AND (NOT symbol^.flagged) then
-                begin
-                if symbol^.hist then { previously defined by history file }
-                  begin
-                  if chat then
-                    writeln ('redefining ',s);
-                  end
-                else
-                  doubledef(symbol)
-                end
-
-              else
-                if b then
-                  begin
-                  if symbol^.hist then { previously defined by history file }
-                    begin
-                    if chat then
-                      writeln ('redefining ',s);
-                    end
-                  else
-                    numUndefinedSymbols := numUndefinedSymbols - 1;
-                  end;
-
-              symbol^.modName := modName;
-              symbol^.section := section;
-              symbol^.def := true;
-              symbol^.addr := getInt + sectbase[section];
-              end;
-            {>>>}
-            {<<<}
-            6,7 :
-              begin { symbol reference }
-              if ty = 6 then
-                begin
-                showModName;
-                writeln ('xref ',section);
-                end;
-
-              s := getSymbolName;
-              b := findInsert (s, symbol, true);
-              if xref then
-                addRef (symbol, modName);
-              if (NOT b) then
-                numUndefinedSymbols := numUndefinedSymbols + 1;
-              end;
-            {>>>}
-            {<<<}
-            8,9 :
-              begin
-              showModName;
-              writeln ('cl address');
-              objRecordBlockIndex := objRecordBlockIndex + 5;
-              end;
-            {>>>}
-            {<<<}
-            10 :
-              begin
-              showModName;
-              writeln ('cl addr common');
-              objRecordBlockIndex := objRecordBlockIndex + 15;
-              end;
-            {>>>}
-            end;
-        end;
-        {>>>}
+      var
+        reference: referencePtr;
 
       begin
-        objRecordBlockIndex := 1;
-        while objRecordBlockIndex < objRecord.length DO
-          doEsd;
+        new (reference);
+        reference^.next := symbol^.refList;
+        reference^.symbolName := modName;
+        symbol^.refList := reference;
       end;
       {>>>}
 
     begin
-      CASE chr(objRecord.block[0]) of
-        '1': processModuleId;
-        '2': processESD;
+      CASE chr(objRecord.recordType) of
+        '1':
+          processModuleId;
+
+        '2':
+           {<<<  processESD}
+           begin
+           objRecordBlockIndex := 0;
+           while objRecordBlockIndex < objRecord.length DO
+             begin
+             symbol := nil;
+             esdType := getByte;
+             section := esdType MOD 16;
+             esdType := esdType DIV 16;
+
+             CASE esdType of
+               {<<<}
+               0:   { not sure }
+                 objRecordBlockIndex := objRecordBlockIndex + 8;
+               {>>>}
+               {<<<}
+               1:   { common area symbol }
+                 begin
+                 symbolName := getSymbolName;
+                 i := getInt;
+                 b := findInsert (symbolName, symbol, true);
+
+                 if debug then
+                   writeln ('Common data - section ', section:2,' ', symbolName, ' length = ', hex(i,6,6));
+
+                 if xref then
+                   addRef (symbol, modName);
+
+                 if NOT symbol^.def then
+                   begin
+                   if b then
+                     numUndefinedSymbols := numUndefinedSymbols-1;
+                   symbol^.modName := modName;
+                   symbol^.section := section;
+                   symbol^.def := true;
+                   symbol^.comsize := i;
+                   if prevCommon <> nil then
+                     prevCommon^.nextCommon := symbol
+                   else
+                     commonHead := symbol;
+                   symbol^.nextCommon := nil;
+                   prevCommon := symbol;
+                   end
+
+                 else
+                   if (i<>symbol^.comsize) then
+                     begin
+                     if (NOT symbol^.flagged) AND (symbol^.comsize=-1) then
+                       begin
+                       showModName;
+                       writeln ('Label ''', symbolName, ''' is used double defined - ');
+                       writeln ('as a common in module ''', modName, '''');
+                       writeln (' and as an XDEF in module ''', symbol^.modName, '''');
+                       symbol^.flagged := true;
+                      end
+
+                    else if check AND (NOT symbol^.flagged) then
+                      begin
+                      showModName;
+                      writeln ('Common area size clash - common ''', symbolName, '''');
+                      writeln ('size in this module is ',hex(i,6,6), ' bytes');
+                      writeln ('size in ''', symbol^.modName,''' is ', hex (symbol^.comsize,6,6), ' bytes');
+                      symbol^.flagged := true;
+                      end;
+
+                    if (i > symbol^.comsize) AND (symbol^.comsize <> -1) then
+                      begin
+                      symbol^.modName := modName;
+                      symbol^.comsize := i;
+                      end;
+                    end;
+                  end;
+               {>>>}
+               {<<<}
+               2,3: { section definition and allocation }
+                 begin
+                 i := getInt;
+                 if debug then
+                   writeln ('Section - ', section:2,' ', ' length = ', hex(i,6,6));
+
+                 sectbase[section] := sectbase[section]+i;
+                 if odd(sectbase[section]) then
+                   sectbase[section] := sectbase[section] + 1;
+                 end;
+               {>>>}
+               {<<<}
+               4,5: { symbol defintion }
+                 begin
+                 if esdType = 5 then
+                   section := -1;
+                 symbolName := getSymbolName;
+                 b := findInsert (symbolName, symbol, true);
+
+                 { this isnt right yet, should fix it }
+                 if (symbol^.def) AND (NOT symbol^.flagged) then
+                   begin
+                   if symbol^.hist then { previously defined by history file }
+                     begin
+                     if chat then
+                       writeln ('redefining ', symbolName);
+                     end
+                   else
+                     doubledef(symbol)
+                   end
+
+                 else
+                   if b then
+                     begin
+                     if symbol^.hist then { previously defined by history file }
+                       begin
+                       if chat then
+                         writeln ('redefining ',symbolName);
+                       end
+                     else
+                       numUndefinedSymbols := numUndefinedSymbols - 1;
+                     end;
+
+                 symbol^.modName := modName;
+                 symbol^.section := section;
+                 symbol^.def := true;
+                 symbol^.addr := getInt + sectbase[section];
+                 end;
+               {>>>}
+               {<<<}
+               6,7: { symbol reference }
+                 begin
+                 if esdType = 6 then
+                   begin
+                   showModName;
+                   writeln ('xref ',section);
+                   end;
+
+                 symbolName := getSymbolName;
+                 b := findInsert (symbolName, symbol, true);
+                 if xref then
+                   addRef (symbol, modName);
+                 if (NOT b) then
+                   numUndefinedSymbols := numUndefinedSymbols + 1;
+                 end;
+               {>>>}
+               {<<<}
+               8,9: { clAddress }
+                 begin
+                 showModName;
+                 writeln ('cl address');
+                 objRecordBlockIndex := objRecordBlockIndex + 5;
+                 end;
+               {>>>}
+               {<<<}
+               10:  { cl addr common }
+                 begin
+                 showModName;
+                 writeln ('cl addr common');
+                 objRecordBlockIndex := objRecordBlockIndex + 15;
+                 end;
+               {>>>}
+               end;
+             end;
+           end;
+           {>>>}
+
         '3': {processText};
         '4': {processEOM};
         end;
@@ -1910,9 +1904,10 @@ var
       getFileStrings (fileName, '.ro', root, ext, fullFileName);
       Writeln ('pass1 read:', fullFileName);
 
-      if ext = '.his' then { history file of previous link }
+      if ext = '.his' then
         {<<<  .his}
         begin
+
         if usingHistory then
           writeln ('Only one history file, ignoring ', fullFileName)
         else
@@ -1921,7 +1916,22 @@ var
           readHistory (fullFileName);
           endReadHisMilestone := getMilestone;
           end;
+
         usingHistory := TRUE;
+        end
+        {>>>}
+      else if ext = '.ro' then
+        {<<<  .ro}
+        begin
+        openIn (fullFileName);
+
+        repeat
+          getObjRecord (objRecord);
+          if objRecord.length > 0 then
+            processRecord;
+        until objEof;
+
+        closeIn;
         end
         {>>>}
       else if ext = '.rx' then
@@ -1936,20 +1946,6 @@ var
         until eof (textObjFile) ;
 
         closeTextIn;
-        end
-        {>>>}
-      else if ext = '.ro' then
-        {<<<  .ro}
-        begin
-        openIn (fullFileName);
-
-        repeat
-          getRecord (objRecord);
-          if objRecord.length > 0 then
-            processRecord;
-        until objEof;
-
-        closeIn;
         end
         {>>>}
     until eof (cmdFile);
@@ -2395,7 +2391,7 @@ var
       {>>>}
 
     begin
-      CASE chr(objRecord.block[0]) of
+      CASE chr(objRecord.recordType) of
         '1': processModuleId;
         '2': processESD;
         '3': processText;
@@ -2419,6 +2415,20 @@ var
       if ext = '.his' then
         begin
         end
+      else if ext = '.ro' then
+        {<<<  .ro file}
+        begin
+        openIn (fullFileName);
+
+        repeat
+          getObjRecord (objRecord);
+          if objRecord.length > 0 then
+            processRecord;
+        until objEof;
+
+        closeIn;
+        end
+        {>>>}
       else if ext = '.rx' then
         {<<<  .rx file}
         begin
@@ -2431,20 +2441,6 @@ var
         until eof (textObjFile) ;
 
         closeTextIn;
-        end
-        {>>>}
-      else if ext = '.ro' then
-        {<<<  .ro file}
-        begin
-        openIn (fullFileName);
-
-        repeat
-          getRecord (objRecord);
-          if objRecord.length > 0 then
-            processRecord;
-        until objEof;
-
-        closeIn;
         end
         {>>>}
     until eof (cmdFile);
@@ -2523,7 +2519,7 @@ var
   var
     depth, i, hash_used: integer;
     depth_used: array[ 0 .. 10 ] of integer;
-    s_ptr: symbolPtr;
+    symbol: symbolPtr;
 
   begin
     hash_used := 0;
@@ -2536,11 +2532,11 @@ var
         begin
         hash_used := hash_used + 1;
         depth := 0;
-        s_ptr := hashTable[i];
+        symbol := hashTable[i];
         repeat
           depth := depth + 1;
-          s_ptr := s_ptr^.nextSymbol;
-        until s_ptr = nil;
+          symbol := symbol^.nextSymbol;
+        until symbol = nil;
 
         if depth > 10 then
           begin
