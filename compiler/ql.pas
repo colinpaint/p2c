@@ -1157,16 +1157,21 @@ var
     if (NOT found) AND ins then
       begin
       numSymbols := numSymbols + 1;
+
       new (symbol);
       symbol^.nextSymbol := hashTable[hash];
       hashTable[hash] := symbol;
 
+      symbol^.nextCommon := nil;
+      symbol^.symbolName := symbolName;
+      symbol^.modName := modName;
+      symbol^.section := 0;
+      symbol^.addr := -1;
+      symbol^.comsize := -1;
       symbol^.def := false;
       symbol^.used := true;
       symbol^.flagged := false;
-      symbol^.symbolName := symbolName;
-      symbol^.modName := modName;
-      symbol^.comsize := -1;
+      symbol^.hist := false;
       symbol^.refList := nil;
       symbol^.resList := nil;
       end;
@@ -1193,18 +1198,18 @@ var
   end;
   {>>>}
   {<<<}
-  procedure addRes (s: symbolPtr; addr, offset : integer);
+  procedure addRes (symbol: symbolPtr; addr, offset : integer);
   { add a resolved symbol reference to list held per symbol }
 
   var
-    res_ptr: resolvePtr;
+    resolve: resolvePtr;
 
   begin
-    new (res_ptr);
-    res_ptr^.next := s^.resList;
-    res_ptr^.addr := addr;
-    res_ptr^.offset := offset;
-    s^.resList := res_ptr;
+    new (resolve);
+    resolve^.next := symbol^.resList;
+    resolve^.addr := addr;
+    resolve^.offset := offset;
+    symbol^.resList := resolve;
   end;
   {>>>}
   {<<<}
@@ -1217,8 +1222,8 @@ var
     function clash (i, j: integer):boolean;
 
     begin
-      clash := NOT (((sectbase[i]+baseaddr[i])<=baseaddr[j]) OR
-                    ((sectbase[j]+baseaddr[j])<=baseaddr[i]));
+      clash := NOT (((sectbase[i] + baseaddr[i]) <= baseaddr[j]) OR
+                    ((sectbase[j] + baseaddr[j]) <= baseaddr[i]));
     end;
     {>>>}
 
@@ -1262,21 +1267,21 @@ var
   end;
   {>>>}
   {<<<}
-  procedure doubleDef (s: symbolPtr);
+  procedure doubleDef (symbol: symbolPtr);
 
   begin
     showModName;
 
-    writeln ('Doubly defined label  ', s^.symbolName);
-    writeln ('Previously defined in module ', s^.modName);
+    writeln ('Doubly defined label  ', symbol^.symbolName);
+    writeln ('Previously defined in module ', symbol^.modName);
 
     if logging then
       begin
-      writeln (logFile, 'Doubly defined label  ', s^.symbolName);
-      writeln (logFile, 'Previously defined in module ', s^.modName);
+      writeln (logFile, 'Doubly defined label  ', symbol^.symbolName);
+      writeln (logFile, 'Previously defined in module ', symbol^.modName);
       end;
 
-    s^.flagged := true;
+    symbol^.flagged := true;
   end;
   {>>>}
   {<<<}
@@ -1595,6 +1600,7 @@ var
 
     bytes := textObjRecord.length DIV 2;
     objRecord.length := bytes;
+
     for i := 1 TO bytes DO
       objRecord.block[i] := chr ((toHex (textObjRecord[i*2-1]) * 16) + toHex (textObjRecord[i*2]));
   end;
@@ -1605,18 +1611,13 @@ var
 
   var
     section: integer;
-    coerce: record
-      CASE integer of
-        0: (objBlock: objBlockType);
-        1: (modName: symbolNameType);
-        end;
 
   begin
     topESD := 17;
     esdArray[0] := 0;  {unused esd value}
 
-    coerce.objBlock := objRecord.block;
-    modName := coerce.modName;
+    objRecordBlockIndex := 0;
+    modName := getSymbolName;
 
     if chat OR debugInfo then
       writeln ('Pass ', pass:0, ' of ', modName);
