@@ -604,7 +604,7 @@ var
       sendbin (outputChecksum)
     else
       begin
-      s := hex (255 - (outputChecksum MOD 256),2,2);
+      s := hex (255 - (outputChecksum MOD 256), 2, 2);
       sendsform (s);
       sendsfnewline;
       end;
@@ -787,9 +787,9 @@ var
 
         repeat
           write (map_file,symbol^.symbolName,' ',
-          hex (symbol^.addr+baseaddr[symbol^.section],6,6),' ',symbol^.modName);
+          hex (symbol^.addr+baseaddr[symbol^.section], 6, 6),' ',symbol^.modName);
           if symbol^.comsize<>-1 then
-            writeln (map_file,' C:', hex (symbol^.comsize,4,4))
+            writeln (map_file,' C:', hex (symbol^.comsize, 4, 4))
           else
             if NOT symbol^.def then
               writeln (map_file,' Undef!')
@@ -828,7 +828,7 @@ var
           write (ref_file,symbol^.symbolName,' ',
                  hex (symbol^.addr + baseaddr[symbol^.section], 6, 6),' ', symbol^.modName);
           if symbol^.comsize<>-1 then
-            writeln (ref_file,' C:',hex(symbol^.comsize,4,4))
+            writeln (ref_file,' C:',hex(symbol^.comsize, 4, 4))
           else
             if NOT symbol^.def then
               writeln (ref_file,' Undef!')
@@ -996,13 +996,13 @@ var
 
   var
     i: integer;
-    sn: symbolNameType;
+    symbolName: symbolNameType;
 
   begin
-    for i := 1 TO 10 DO
-      sn[i] := chr(getByte);
+    for i := 1 TO symbolNameLength DO
+      symbolName[i] := chr(getByte);
 
-    getSymbolName := sn;
+    getSymbolName := symbolName;
   end;
   {>>>}
 
@@ -1107,6 +1107,7 @@ var
     writeln;
   end;
   {>>>}
+
   {<<<}
   procedure showModName;
 
@@ -1500,6 +1501,7 @@ var
       end;
   end;
   {>>>}
+
   {<<<}
   procedure getObjFileName (var fileName: string);
 
@@ -1512,8 +1514,8 @@ var
 
   begin
     objFileFound := false;
-    fileNameIndex := 1;
 
+    fileNameIndex := 1;
     repeat
       readln (cmdFile, line);
       lineIndex := 1;
@@ -1545,15 +1547,6 @@ var
     fileName[fileNameIndex] := 0;
   end;
   {>>>}
-
-  {<<<}
-  procedure openin (fileNameString: string);
-
-  begin
-    cmdFileNameString := fileNameString;
-    reset (objFile, fileNameString);
-  end;
-  {>>>}
   {<<<}
   procedure getObjRecord (var objRecord: objRecordType);
   { .ro files are 256 byte fixed size blocks. Within these blocks, records are
@@ -1581,24 +1574,9 @@ var
       if moreDebugInfo then
         Write (hex (objRecord.block[i]));
       end;
+
     if moreDebugInfo then
       Writeln;
-  end;
-  {>>>}
-  {<<<}
-  procedure closeIn;
-
-  begin
-    close (objFile);
-  end;
-  {>>>}
-
-  {<<<}
-  procedure openTextIn (fileNameString: string);
-
-  begin
-    cmdFileNameString := fileNameString;
-    reset (textObjFile, fileNameString);
   end;
   {>>>}
   {<<<}
@@ -1621,13 +1599,6 @@ var
       objRecord.block[i] := chr ((toHex (textObjRecord[i*2-1]) * 16) + toHex (textObjRecord[i*2]));
   end;
   {>>>}
-  {<<<}
-  procedure closeTextIn;
-
-  begin
-    close (textObjFile);
-  end;
-  {>>>}
 
   {<<<}
   procedure processModuleId;
@@ -1647,23 +1618,17 @@ var
     coerce.objBlock := objRecord.block;
     modName := coerce.modName;
 
+    if chat OR debugInfo then
+      writeln ('Pass ', pass:0, ' of ', modName);
+
     { we need to init these esd values, in case of zero length sections}
     if pass = 2 then
       begin
-      if chat OR debugInfo then
-        writeln ('Pass2 of ', modName);
-
       if modules then
         begin
         write (moduleFile, modName, ':');
         if files then
-          begin
-          {if fileId.length < 50 then
-            write (moduleFile, pad(fileId, ' ', 50 ), ':' )
-          else
-          }
           write (moduleFile, fileIdString, ':' );
-          end;
         end;
 
       for section := 0 TO 15 DO
@@ -1672,10 +1637,7 @@ var
         esdSymbolArray[topESD] := NIL;
         outAddrArray[section+1] := esdArray[section+1];
         end;
-      end
-
-    else if chat OR debugInfo then
-      writeln ('Pass1 of ', modName);
+      end;
   end;
   {>>>}
   {<<<}
@@ -1772,8 +1734,8 @@ var
                    begin
                    showModName;
                    writeln ('Common area size clash - common ', symbolName);
-                   writeln ('size in this module is ',hex(i,6,6), ' bytes');
-                   writeln ('size in ', symbol^.modName,' is ', hex (symbol^.comsize,6,6), ' bytes');
+                   writeln ('size in this module is ',hex (i, 6, 6), ' bytes');
+                   writeln ('size in ', symbol^.modName,' is ', hex (symbol^.comsize, 6, 6), ' bytes');
                    symbol^.flagged := true;
                    end;
 
@@ -1790,7 +1752,7 @@ var
               begin
               i := getInt;
               if debugInfo then
-                writeln ('section:', section:2, ' length:', hex(i,6,6));
+                writeln ('section:', section:2, ' length:', hex (i, 6, 6));
 
               sectbase[section] := sectbase[section]+i;
               if odd(sectbase[section]) then
@@ -1928,25 +1890,27 @@ var
       else if ext = '.ro' then
         {<<<  .ro}
         begin
-        openIn (fullFileName);
+        cmdFileNameString := fullFileName;
+        reset (objFile, fullFileName);
 
         repeat
           getObjRecord (objRecord);
         until processRecord;
 
-        closeIn;
+        close (objFile);
         end
         {>>>}
       else if ext = '.rx' then
         {<<<  .rx}
         begin
-        openTextIn (fullFileName);
+        cmdFileNameString := fullFileName;
+        reset (textObjFile, fullFileName);
 
         repeat
           getTextRec (objRecord);
-          until processRecord;
+        until processRecord;
 
-        closeTextIn;
+        close (textObjFile);
         end
         {>>>}
     until eof (cmdFile);
@@ -2166,7 +2130,7 @@ var
 
               outAddrArray[section+1] := esdArray[section+1];
               if modules then
-                write (moduleFile, ' ', section:2, ':', hex (esdArray[section+1],6,6), '+', hex(i,6,6));
+                write (moduleFile, ' ', section:2, ':', hex (esdArray[section+1], 6, 6), '+', hex (i, 6, 6));
 
               sbase[section] := sbase[section] + i;
 
@@ -2188,8 +2152,8 @@ var
                     begin
                     patch := symbol^.addr + baseaddr[symbol^.section] + r^.offset;
                     if debugInfo then
-                      writeln ('patching ',hex(r^.addr,6,6), ' with ',
-                                           hex(patch-r^.offset,6,6), ' + ', hex(r^.offset,6,6));
+                      writeln ('patching ',hex (r^.addr, 6, 6), ' with ',
+                                           hex (patch-r^.offset, 6, 6), ' + ', hex (r^.offset, 6, 6));
 
                     codestart := r^.addr;
                     codeArray [1] := mvr (mvr (patch));
@@ -2317,7 +2281,7 @@ var
                 begin
                 showModName;
                 writeln ('odd fix-up offset - assembler error .', offset, curresd);
-                writeln ('>>', hex(codestart, 6, 6));
+                writeln ('>>', hex (codestart, 6, 6));
                 offset := offset + 1;
                 end;
 
@@ -2351,8 +2315,8 @@ var
                     writeln ('sym ', longwd,
                              ' ', thisesd:2,
                              ' ', esdSymbolArray [thisesd]^.symbolName,
-                             ' ', hex (add,8,8), ' = ', hex (esdArray[thisesd]),
-                             ' + ', hex (offset,4,4), ';', hex (offsize, 1, 1),
+                             ' ', hex (add, 8, 8), ' = ', hex (esdArray[thisesd]),
+                             ' + ', hex (offset, 4, 4), ';', hex (offsize, 1, 1),
                              ' at ', hex (codestart + codelen * 2, 8, 8));
                   end;
 
@@ -2397,10 +2361,13 @@ var
       CASE objRecord.recordType of
         '1':
           processModuleId;
+
         '2':
           processESD;
+
         '3':
           processText;
+
         '4':
           begin
           processEOM;
@@ -2432,25 +2399,27 @@ var
       else if ext = '.ro' then
         {<<<  .ro file}
         begin
-        openIn (fullFileName);
+        cmdFileNameString := fullFileName;
+        reset (objFile, fullFileName);
 
         repeat
           getObjRecord (objRecord);
         until processRecord;
 
-        closeIn;
+        close (objFile);
         end
         {>>>}
       else if ext = '.rx' then
         {<<<  .rx file}
         begin
-        openTextIn (fullFileName);
+        cmdFileNameString := fullFileName;
+        reset (textObjFile, fullFileName);
 
         repeat
           getTextRec (objRecord);
-        until  processRecord;
+        until processRecord;
 
-        closeTextIn;
+        close (textObjFile);
         end
         {>>>}
     until eof (cmdFile);
@@ -2635,8 +2604,8 @@ begin
       begin
       if not friendly then
         write ('section:', i:2,
-               ' start:', hex (basepos,6,6),
-               ' length:', hex (sectbase[i],6,6));
+               ' start:', hex (basepos, 6, 6),
+               ' length:', hex (sectbase[i], 6, 6));
 
       baseaddr[i] := basepos;
       basepos := basepos + sectbase[i];
