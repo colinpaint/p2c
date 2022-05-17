@@ -282,7 +282,7 @@ var
       toHex := ord(ch) - ord('A') + 10
     else
       begin
-      writeln ('Duff char ''', ch,'''when hex char expected!');
+      writeln ('Duff char ', ch,'when hex char expected!');
       toHex := 0;
       end;
   end;
@@ -1248,9 +1248,9 @@ var
         repeat
           if NOT symbol^.def then
             begin
-            writeln ('''',symbol^.symbolName,''' first referenced in module ''', symbol^.modName,'''');
+            writeln (symbol^.symbolName,' first referenced in module ', symbol^.modName);
             if logging then
-              writeln (logFile, '''', symbol^.symbolName, ''' first referenced in module ''', symbol^.modName, '''');
+              writeln (logFile, symbol^.symbolName, ' first referenced in module ', symbol^.modName);
             symbol^.section := -1;
             symbol^.addr := %X'FAFF';
             end;
@@ -1266,13 +1266,13 @@ var
   begin
     showModName;
 
-    writeln ('Doubly defined label  ''', s^.symbolName, '''');
-    writeln ('Previously defined in module ''', s^.modName, '''');
+    writeln ('Doubly defined label  ', s^.symbolName);
+    writeln ('Previously defined in module ', s^.modName);
 
     if logging then
       begin
-      writeln (logFile, 'Doubly defined label  ''', s^.symbolName, '''');
-      writeln (logFile, 'Previously defined in module ''', s^.modName, '''');
+      writeln (logFile, 'Doubly defined label  ', s^.symbolName);
+      writeln (logFile, 'Previously defined in module ', s^.modName);
       end;
 
     s^.flagged := true;
@@ -1762,18 +1762,18 @@ var
                   if (NOT symbol^.flagged) AND (symbol^.comsize=-1) then
                     begin
                     showModName;
-                    writeln ('Label ''', symbolName, ''' is used double defined - ');
-                    writeln ('as a common in module ''', modName, '''');
-                    writeln (' and as an XDEF in module ''', symbol^.modName, '''');
+                    writeln ('Label ', symbolName, ' is used double defined - ');
+                    writeln ('as a common in module ', modName);
+                    writeln (' and as an XDEF in module ', symbol^.modName);
                     symbol^.flagged := true;
                    end
 
                  else if check AND (NOT symbol^.flagged) then
                    begin
                    showModName;
-                   writeln ('Common area size clash - common ''', symbolName, '''');
+                   writeln ('Common area size clash - common ', symbolName);
                    writeln ('size in this module is ',hex(i,6,6), ' bytes');
-                   writeln ('size in ''', symbol^.modName,''' is ', hex (symbol^.comsize,6,6), ' bytes');
+                   writeln ('size in ', symbol^.modName,' is ', hex (symbol^.comsize,6,6), ' bytes');
                    symbol^.flagged := true;
                    end;
 
