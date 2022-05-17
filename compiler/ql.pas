@@ -103,7 +103,7 @@ var
   { switches }
   modules, download, check, bell: boolean;
   xref, map, bin, out, symout: boolean;
-  chat, debug, logging, friendly, quiet, files, history, escape: boolean;
+  chat, debugInfo, logging, friendly, quiet, files, history, escape: boolean;
 
   { command line }
   cmd: packed array [0..100] of char;
@@ -148,12 +148,19 @@ var
   hashTable: array [0..maxHash] of symbolPtr;
 
   { sections }
-  codestart, codelen: integer;
+  codestart: integer;
+  codelen: integer;
   topESD: integer;
-  userbase, sbase, sectbase, baseaddr: array [-1..15] of integer; {element -1 is the ABS section}
-  esdArray: array [0..255] of integer;
+
+  userbase: array [-1..15] of integer;
+  sectbase: array [-1..15] of integer;
+  baseaddr: array [-1..15] of integer;
+  sbase:array [-1..15] of integer;
+
   esdSymbolArray: array [0..255] of symbolPtr;
   outAddrArray: array [0..255] of integer;
+  esdArray: array [0..255] of integer;
+
   codeArray: array [1..64] of integer;
 
   { timing }
@@ -443,10 +450,10 @@ var
 
     else for i:=0 TO 15 DO
       if sectbase[i] <> 0 then
-        begin
-        write (logFile, 'Section ',i:2,' Start ', hex(baseaddr[i], 6, 6), ' Length ', hex(sectbase[i],6,6));
-        writeln (logFile, ' Finish  ', hex(baseaddr[i] + sectbase[i], 6 ,6));
-        end;
+        writeln (logFile, 'section:', i:2,
+                          ' start:',  hex (baseaddr[i], 6, 6),
+                          ' length:', hex (sectbase[i], 6, 6),
+                          ' finish:', hex (baseaddr[i] + sectbase[i], 6, 6));
 
     date (datestring);
     writeln (logFile);
@@ -481,7 +488,7 @@ var
         begin
         concatStrings (fullFileName, cmdFileRootString, '.bin');
 
-        if chat OR debug OR (NOT quiet) then
+        if chat OR debugInfo OR (NOT quiet) then
           writeln ('Making binary file ', fullFileName);
         if logging then
           writeln (logFile, 'Making binary file ', fullFileName);
@@ -763,7 +770,7 @@ var
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
         begin
-        if debug then
+        if debugInfo then
           writeln (map_file, i, ':');
         symbol := hashTable[i];
 
@@ -802,8 +809,8 @@ var
     for i := 0 TO maxHash DO
       if hashTable[i] <> nil then
         begin
-        if debug then
-          writeln (ref_file,i,':');
+        if debugInfo then
+          writeln (ref_file, i, ':');
         symbol := hashTable[i];
         REPEAT
           refcount:=0;
@@ -1207,7 +1214,7 @@ var
     for i := 0 TO 14 DO
       for j := i+1 TO 15 DO
         if clash (i,j) then
-          writeln ('Sections ',i:2,' and ',j:2,' overlap!');
+          writeln ('Sections', i:2,' and ', j:2, ' overlap!');
   end;
   {>>>}
   {<<<}
@@ -1397,7 +1404,7 @@ var
             userbase[section] := 0;
             for i := switchEndPos TO endPos DO
               userbase[section] := 16 * userbase[section] + toHex (lineBuffer[i]);
-            if debug then
+            if debugInfo then
               writeln (hex (userbase[section], 6, 6), ' ', section);
             end
           else
@@ -1415,7 +1422,7 @@ var
         else if tla = 'mod' then
           setSwitch (modules) { module list}
         else if tla = 'deb' then
-          setSwitch (debug) { debug mode}
+          setSwitch (debugInfo) { debugInfo mode}
         else if (tla = 'dld') OR (tla = 'dow') then
           setSwitch (download) { download to target}
         else if tla = 'out' then
@@ -1629,8 +1636,8 @@ var
     { we need to init these esd values, in case of zero length sections}
     if pass = 2 then
       begin
-      if chat OR debug then
-        writeln ('Pass2 of ', modName,':');
+      if chat OR debugInfo then
+        writeln ('Pass2 of ', modName);
 
       if modules then
         begin
@@ -1648,13 +1655,13 @@ var
       for section := 0 TO 15 DO
         begin
         esdArray[section+1] := baseaddr[section] + sbase[section];
-        esdSymbolArray [topESD] := NIL;
+        esdSymbolArray[topESD] := NIL;
         outAddrArray[section+1] := esdArray[section+1];
         end;
       end
 
-    else if chat OR debug then
-      writeln ('Pass1 of ', modName,':');
+    else if chat OR debugInfo then
+      writeln ('Pass1 of ', modName);
   end;
   {>>>}
   {<<<}
@@ -1713,8 +1720,8 @@ var
               i := getInt;
               b := findInsert (symbolName, symbol, true);
 
-              if debug then
-                writeln ('Common data - section ', section:2,' ', symbolName, ' length = ', hex(i,6,6));
+              if debugInfo then
+                writeln ('Common data - section ', section:2, ' ', symbolName, ' length = ', hex (i, 6, 6));
 
               if xref then
                 addRef (symbol, modName);
@@ -1768,8 +1775,8 @@ var
             2,3: { section definition and allocation }
               begin
               i := getInt;
-              if debug then
-                writeln ('Section - ', section:2,' ', ' length = ', hex(i,6,6));
+              if debugInfo then
+                writeln ('section:', section:2, ' length:', hex(i,6,6));
 
               sectbase[section] := sectbase[section]+i;
               if odd(sectbase[section]) then
@@ -2144,7 +2151,7 @@ var
 
               outAddrArray[section+1] := esdArray[section+1];
               if modules then
-                write (moduleFile,' ', section:2,':', hex (esdArray[section+1],6,6),'+', hex(i,6,6));
+                write (moduleFile, ' ', section:2, ':', hex (esdArray[section+1],6,6), '+', hex(i,6,6));
 
               sbase[section] := sbase[section] + i;
 
@@ -2165,7 +2172,7 @@ var
                   repeat
                     begin
                     patch := symbol^.addr + baseaddr[symbol^.section] + r^.offset;
-                    if debug then
+                    if debugInfo then
                       writeln ('patching ',hex(r^.addr,6,6), ' with ',
                                            hex(patch-r^.offset,6,6), ' + ', hex(r^.offset,6,6));
 
@@ -2210,7 +2217,7 @@ var
         {>>>}
 
       begin
-        objRecordBlockIndex := 1;
+        objRecordBlockIndex := 0;
         while objRecordBlockIndex < objRecord.length DO
           doESD;
       end;
@@ -2325,7 +2332,7 @@ var
                     { address to be resolved LONGWORD only at present}
                     addRes (esdSymbolArray [thisesd], codestart + codelen*2, offset);
 
-                  if debug then
+                  if debugInfo then
                     writeln ('sym ', longwd,
                              ' ', thisesd:2,
                              ' ', esdSymbolArray [thisesd]^.symbolName,
@@ -2346,7 +2353,7 @@ var
         {>>>}
 
       begin
-        objRecordBlockIndex := 12;
+        objRecordBlockIndex := 0;
         bitmap := getInt;
 
         codelen := 0;
@@ -2355,10 +2362,10 @@ var
 
         while objRecordBlockIndex < objRecord.length DO
           procbyte;
-
         outputData;
+
         { dont forget convert to bytes}
-        outAddrArray[curresd] := outAddrArray[curresd]+(codelen*2);
+        outAddrArray[curresd] := outAddrArray[curresd] + (codelen * 2);
       end;
       {>>>}
       {<<<}
@@ -2389,6 +2396,7 @@ var
     {>>>}
 
   begin
+    Writeln ('pass2');
     openOutput;
     openModules;
 
@@ -2455,7 +2463,7 @@ var
     symout := false;
 
     chat := false;
-    debug := false;
+    debugInfo := false;
     logging := false;
     friendly := false;
     quiet := false;
@@ -2475,13 +2483,22 @@ var
 
     pass := 0;
 
-    for i := -1 TO 15 DO
+    for i := -1 TO 15 do
       begin
-      sectbase[i] := 0;
       userbase[i] := -1;  { set up user bases as not needed }
+      sectbase[i] := 0;
+      sbase[i] := 0;
+      baseaddr[i] := 0;
       end;
 
-    for i := 0 TO maxHash DO
+    for i := 0 TO 255 do
+      begin
+      esdSymbolArray[i] = nil;
+      esdArray[i] := 0;
+      outAddrArray[i] = 0;
+      end;
+
+    for i := 0 TO maxHash do
       hashTable[i] := nil;
 
     clearMilestone (startLinkMilestone);
@@ -2498,6 +2515,7 @@ var
 
     outputMaxSize :=  0;
     outputChecksum := 0;
+
     total := 0;
     basepos := 0;
   end;
@@ -2535,7 +2553,7 @@ var
         depth_used[ depth ] := depth_used[ depth ] + 1;
         end;
 
-    if chat OR debug then
+    if chat OR debugInfo then
       begin
       writeln (hash_used :0, ' out of ', maxHash:0, ' hash table entries used');
       for depth := 0 TO 10 DO
@@ -2574,7 +2592,7 @@ begin
   startReadHisMilestone := getMilestone;
   endReadHisMilestone := startReadHisMilestone;
 
-  if chat OR debug then
+  if chat OR debugInfo then
     writeln ('File given is ', cmdFileNameString);
   writeln ('Linking from ', cmdFileNameString);
 
@@ -2585,7 +2603,7 @@ begin
   { report on pass1 }
   allocCom;
   reportHash;
-  if chat OR debug OR (NOT quiet) then
+  if chat OR debugInfo OR (NOT quiet) then
     {<<<  report symbolTable}
     begin
     writeln (numSymbols:5,' in symbol table');
@@ -2603,14 +2621,17 @@ begin
 
     if sectbase[i] <> 0 then
       begin
-      if NOT friendly then
-        write ('Section ',i:2,' Start ', hex (basepos,6,6),' Length ', hex (sectbase[i],6,6));
+      if not friendly then
+        write ('section:', i:2,
+               ' start:', hex (basepos,6,6),
+               ' length:', hex (sectbase[i],6,6));
 
       baseaddr[i] := basepos;
-      basepos := basepos+sectbase[i];
+      basepos := basepos + sectbase[i];
 
-      if NOT friendly then
-        writeln (' Finish  ', hex (basepos, 6, 6));
+      if not friendly then
+        writeln (' finish  ', hex (basepos, 6, 6));
+
       end;
     end;
     {>>>}
@@ -2674,6 +2695,7 @@ begin
   if modules OR out OR download then
     {<<<  run pass2}
     begin
+
     if bin then
       outputMaxSize := 512 { big number }
     else
@@ -2716,7 +2738,7 @@ begin
   writeln;
   endLinkMilestone := getMilestone;
 
-  if chat OR debug OR (NOT quiet) then
+  if chat OR debugInfo OR (NOT quiet) then
     {<<<  report timings}
     begin
     writeln ('Link started           ', startLinkMilestone.timeOfDay);
