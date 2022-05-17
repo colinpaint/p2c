@@ -14,6 +14,8 @@ const
   bytesPerFileRec$ = 1536;
   recsPerFileRec$ = {102} (bytesPerFileRec$ - 4) DIV 15;
 {>>>}
+const
+  moreDebugInfo = false;
 {<<<}
 type
   byte = 0..255;
@@ -103,7 +105,8 @@ var
   { switches }
   modules, download, check, bell: boolean;
   xref, map, bin, out, symout: boolean;
-  chat, debugInfo, logging, friendly, quiet, files, history, escape: boolean;
+  debugInfo, chat, logging, friendly, quiet: boolean;
+  files, history, escape: boolean;
 
   { command line }
   cmd: packed array [0..100] of char;
@@ -259,6 +262,13 @@ var
     alphaDigit := digit (ch) or alpha (ch) or (ch = '_');
   end;
   {>>>}
+  {<<<}
+  function fileNameChar (ch: char): boolean;
+
+  begin
+    fileNameChar := alphaDigit (ch) or (ch = '.') or (ch = '/');
+  end;
+  {>>>}
 
   {<<<}
   function toHex (ch: char): integer;
@@ -347,9 +357,10 @@ var
     i: integer;
 
   begin
-    {writeln ('getFileStrings fileName:', fileName, ' len:', fileName.length:0,
-             ' defaultExt:', defaultExt, ' len:', defaultExt.length:0);
-    }
+    if moreDebugInfo then
+      writeln ('getFileStrings fileName:', fileName, ' len:', fileName.length:0,
+               ' defaultExt:', defaultExt, ' len:', defaultExt.length:0);
+
 
     { search backwards, to find first non-alpha char }
     i := fileName.length;
@@ -367,8 +378,8 @@ var
       end
     else
       begin
-      {writeln ('no ext:', i:0, ' of:', fileName.length:0);
-      }
+      if moreDebugInfo then
+        writeln ('no ext:', i:0, ' of:', fileName.length:0);
       copySubString (root, fileName, 1, fileName.length);
       copySubString (ext, defaultExt, 1, defaultExt.length);
       concatStrings (fullFileName, fileName, defaultExt);
@@ -1520,7 +1531,7 @@ var
       else
         begin
         objFileFound := true;
-        while ((lineIndex <= lineLength) and not (line[lineIndex] = ',')) do
+        while ((lineIndex <= lineLength) and fileNameChar (line[lineIndex])) do
           begin
           { copy obj fileName from .cmd file line }
           fileName[fileNameIndex] := line[lineIndex];
@@ -1560,15 +1571,18 @@ var
 
     read (objFile, b);
     objRecord.recordType := chr(b);
-    {Writeln ('getObjRecord len:', objRecord.length:0, ' type:', objRecord.recordType); }
+    if moreDebugInfo then
+      Writeln ('getObjRecord len:', objRecord.length:0, ' type:', objRecord.recordType);
 
     for i := 0 TO objRecord.length-2 do
       begin
       read (objFile, b);
       objRecord.block[i] := b;
-      {Write (hex (objRecord.block[i])); }
+      if moreDebugInfo then
+        Write (hex (objRecord.block[i]));
       end;
-    {Writeln;}
+    if moreDebugInfo then
+      Writeln;
   end;
   {>>>}
   {<<<}
@@ -1873,13 +1887,14 @@ var
 
         '3':
            begin
-           { do nothing }
-           {writeln ('processText'); }
+           if moreDebugInfo then
+             writeln ('processText');
            end;
 
         '4':
            begin
-           {writeln ('processEOM');}
+           if moreDebugInfo then
+             writeln ('processEOM');
            processRecord := true;
            end;
         end;
@@ -2462,11 +2477,12 @@ var
     out := true;
     symout := false;
 
-    chat := false;
     debugInfo := false;
+    chat := false;
     logging := false;
     friendly := false;
     quiet := false;
+
     files := false;
     history := false;
     escape := true;
@@ -2583,11 +2599,7 @@ begin
 
   { get cmdFileNameString, cmdFileRootString, cmdFileextString from cmdString and ext }
   getFileStrings (cmdString, '.cmd', cmdFileRootString, cmdFileExtString, cmdFileNameString);
-  {writeln ('cmdString:', cmdString,
-           ' cmdFileRootString:', cmdFileRootString,
-           ' cmdFileExtString:', cmdFileExtString,
-           ' cmdFileNameString:', cmdFileNameString);
-  }
+
   startLinkMilestone := getMilestone;
   startReadHisMilestone := getMilestone;
   endReadHisMilestone := startReadHisMilestone;

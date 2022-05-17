@@ -440,7 +440,7 @@ int P_peek (FILE* f) {
 //}}}
 //{{{
 int P_eof (FILE* f) {
-// Check if at end of file, using Pascal "eof" semantics.  
+// Check if at end of file, using Pascal "eof" semantics.
 // End-of-file for stdin is broken; remove the special case for it to be broken in a different way.
 
   int ch;
@@ -945,132 +945,176 @@ int _NilCheck()
 
 // The following is suitable for the HP Pascal operating system
 //{{{
-char *_ShowEscape (buf, code, ior, prefix)
-char *buf, *prefix;
-int code, ior;
-{
-    char *bufp;
+char *_ShowEscape (char* buf, int code, int ior, char* prefix) {
 
-    if (prefix && *prefix) {
-        strcpy(buf, prefix);
-  strcat(buf, ": ");
-        bufp = buf + strlen(buf);
-    } else {
-        bufp = buf;
-    }
-    if (code == -10) {
-        sprintf(bufp, "Pascal system I/O error %d", ior);
-        switch (ior) {
-            case 3:
-                strcat(buf, " (illegal I/O request)");
-                break;
-            case 7:
-                strcat(buf, " (bad file name)");
-                break;
-            case FileNotFound:   /*10*/
-                strcat(buf, " (file not found)");
-                break;
-            case FileNotOpen:    /*13*/
-                strcat(buf, " (file not open)");
-                break;
-            case BadInputFormat: /*14*/
-                strcat(buf, " (bad input format)");
-                break;
-            case 24:
-                strcat(buf, " (not open for reading)");
-                break;
-            case 25:
-                strcat(buf, " (not open for writing)");
-                break;
-            case 26:
-                strcat(buf, " (not open for direct access)");
-                break;
-            case 28:
-                strcat(buf, " (string subscript out of range)");
-                break;
-            case EndOfFile:      /*30*/
-                strcat(buf, " (end-of-file)");
-                break;
-            case FileWriteError: /*38*/
-    strcat(buf, " (file write error)");
-    break;
-        }
-    } else {
-        sprintf(bufp, "Pascal system error %d", code);
-        switch (code) {
-            case -2:
-                strcat(buf, " (out of memory)");
-                break;
-            case -3:
-                strcat(buf, " (reference to NIL pointer)");
-                break;
-            case -4:
-                strcat(buf, " (integer overflow)");
-                break;
-            case -5:
-                strcat(buf, " (divide by zero)");
-                break;
-            case -6:
-                strcat(buf, " (real math overflow)");
-                break;
-            case -8:
-                strcat(buf, " (value range error)");
-                break;
-            case -9:
-                strcat(buf, " (CASE value range error)");
-                break;
-            case -12:
-                strcat(buf, " (bus error)");
-                break;
-            case -20:
-                strcat(buf, " (stopped by user)");
-                break;
-        }
-    }
-    return buf;
-}
-//}}}
-//{{{
-int _Escape (code)
-int code;
-{
-    char buf[100];
+  char* bufp;
 
-    P_escapecode = code;
-    if (__top_jb) {
-  __p2c_jmp_buf *jb = __top_jb;
-  __top_jb = jb->next;
-  longjmp(jb->jbuf, 1);
+  if (prefix && *prefix) {
+    strcpy (buf, prefix);
+    strcat (buf, ": ");
+    bufp = buf + strlen (buf);
     }
-    if (code == 0)
-        exit(EXIT_SUCCESS);
-    if (code == -1)
-        exit(EXIT_FAILURE);
-    fprintf(stderr, "%s\n", _ShowEscape(buf, P_escapecode, P_ioresult, ""));
-    exit(EXIT_FAILURE);
-}
+  else
+    bufp = buf;
+
+  if (code == -10) {
+    sprintf (bufp, "Pascal system I/O error %d", ior);
+    switch (ior) {
+      //{{{
+      case 3:
+          strcat(buf, " (illegal I/O request)");
+          break;
+      //}}}
+      //{{{
+      case 7:
+          strcat(buf, " (bad file name)");
+          break;
+      //}}}
+      //{{{
+      case FileNotFound:   /*10*/
+          strcat(buf, " (file not found)");
+          break;
+      //}}}
+      //{{{
+      case FileNotOpen:    /*13*/
+          strcat(buf, " (file not open)");
+          break;
+      //}}}
+      //{{{
+      case BadInputFormat: /*14*/
+          strcat(buf, " (bad input format)");
+          break;
+      //}}}
+      //{{{
+      case 24:
+          strcat(buf, " (not open for reading)");
+          break;
+      //}}}
+      //{{{
+      case 25:
+          strcat(buf, " (not open for writing)");
+          break;
+      //}}}
+      //{{{
+      case 26:
+          strcat(buf, " (not open for direct access)");
+          break;
+      //}}}
+      //{{{
+      case 28:
+          strcat(buf, " (string subscript out of range)");
+          break;
+      //}}}
+      //{{{
+      case EndOfFile:      /*30*/
+          strcat(buf, " (end-of-file)");
+          break;
+      //}}}
+      //{{{
+      case FileWriteError: /*38*/
+          strcat(buf, " (file write error)");
+          break;
+      //}}}
+      }
+    }
+  else {
+    sprintf (bufp, "Pascal system error %d", code);
+    switch (code) {
+      //{{{
+      case -2:
+          strcat(buf, " (out of memory)");
+          break;
+      //}}}
+      //{{{
+      case -3:
+          strcat(buf, " (reference to NIL pointer)");
+          break;
+      //}}}
+      //{{{
+      case -4:
+          strcat(buf, " (integer overflow)");
+          break;
+      //}}}
+      //{{{
+      case -5:
+          strcat(buf, " (divide by zero)");
+          break;
+      //}}}
+      //{{{
+      case -6:
+          strcat(buf, " (real math overflow)");
+          break;
+      //}}}
+      //{{{
+      case -8:
+          strcat(buf, " (value range error)");
+          break;
+      //}}}
+      //{{{
+      case -9:
+          strcat(buf, " (CASE value range error)");
+          break;
+      //}}}
+      //{{{
+      case -12:
+          strcat(buf, " (bus error)");
+          break;
+      //}}}
+      //{{{
+      case -20:
+          strcat(buf, " (stopped by user)");
+          break;
+      //}}}
+      }
+    }
+
+  printf ("looping for debug");
+  for (;;)
+    printf ("- loop");
+  return buf;
+  }
 //}}}
 //{{{
-int _EscIO (code)
-int code;
-{
-    P_ioresult = code;
-    return _Escape(-10);
-}
-//}}}
-//{{{
-int _EscIO2 (code, name)
-int code;
-char *name;
-{
-    P_ioresult = code;
-    if (!__top_jb && name && *name) {
+int _Escape (int code) {
+
   char buf[100];
-  fprintf(stderr, "%s: %s\n",
-    name, _ShowEscape(buf, P_escapecode, P_ioresult, ""));
-  exit(EXIT_FAILURE);
-    }
-    return _Escape(-10);
-}
 
+  P_escapecode = code;
+
+  if (__top_jb) {
+    __p2c_jmp_buf *jb = __top_jb;
+    __top_jb = jb->next;
+    longjmp (jb->jbuf, 1);
+    }
+
+  if (code == 0)
+    exit (EXIT_SUCCESS);
+
+  if (code == -1)
+    exit (EXIT_FAILURE);
+
+  fprintf (stderr, "%s\n", _ShowEscape(buf, P_escapecode, P_ioresult, ""));
+
+  exit (EXIT_FAILURE);
+  }
+//}}}
+//{{{
+int _EscIO (int code) {
+
+  P_ioresult = code;
+  return _Escape(-10);
+  }
+//}}}
+//{{{
+int _EscIO2 (int code, char* name) {
+
+  P_ioresult = code;
+  if (!__top_jb && name && *name) {
+    char buf[100];
+    fprintf (stderr, "%s: %s\n", name, _ShowEscape(buf, P_escapecode, P_ioresult, ""));
+    exit (EXIT_FAILURE);
+    }
+
+  return _Escape(-10);
+  }
 //}}}
