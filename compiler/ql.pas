@@ -4,6 +4,7 @@ PROGRAM ql (input,output);
 const
   maxStringLength = 100;
 
+  symbolNameLength = 10;
   maxHash = 4095;
 
   esc = 27;
@@ -18,7 +19,7 @@ type
   byte = 0..255;
   word = -32768..32767;
 
-  symbolNameType = packed array [1..10] of char;
+  symbolNameType = packed array [1..symbolNameLength] of char;
 
   objBlockType = packed array [0..255] of byte;
   {<<<}
@@ -99,6 +100,11 @@ type
 {>>>}
 {<<<}
 var
+  { switches }
+  modules, download, check, bell: boolean;
+  xref, map, bin, out, symout: boolean;
+  chat, debug, logging, friendly, quiet, files, history, escape: boolean;
+
   { command line }
   cmd: packed array [0..100] of char;
   cmdLen: word;
@@ -112,7 +118,7 @@ var
 
   { files }
   cmdFile: text;
-  objFile : FILE of objBlockType;
+  objFile : FILE of byte;
   textObjFile: text;
   binaryFile: FILE of binBlockType;
   downloadTargetFile: FILE of binBlockType;
@@ -124,16 +130,10 @@ var
   pass: integer;
 
   { obj file input }
-  objEof: boolean;
-  objBlockIndex: integer;
   objBlock: objBlockType;
 
   objRecordBlockIndex: integer;
   objRecord: objRecordType;
-
-  { switches }
-  modules, download, check, bell, xref, map, bin, out, symout: boolean;
-  chat, debug, logging, friendly, quiet, files, history, escape: boolean;
 
   duffer: boolean;
   inpacket: boolean;
@@ -992,19 +992,19 @@ var
   function symbolHash (var s: symbolNameType): integer;
 
   var
-    hash, i: integer;
+    i: integer;
+    hash: integer;
 
   begin
     hash := 0;
-
     i := 1;
-    while (i < 10) AND (s[i] <> ' ') DO
+    while (i <= symbolNameLength) and (s[i] <> ' ') do
       begin
-      hash := hash * 97 + ord(s[i]);
+      hash := hash * 97 + ord (s[i]);
       i := i + 1;
       end;
 
-    symbolHash := hash MOD maxHash;
+    symbolHash := uint(hash) mod maxHash;
   end;
   {>>>}
 
@@ -1534,11 +1534,6 @@ var
   begin
     cmdFileNameString := fileNameString;
     reset (objFile, fileNameString);
-
-    read (objFile, objBlock);
-    objBlockIndex := 0;
-
-    objEof := false;
   end;
   {>>>}
   {<<<}
@@ -1548,47 +1543,25 @@ var
     conisits of a single byte <n> followed by <n> data bytes
   }
   var
+    b: byte;
     i: integer;
     numBytes: integer;
 
   begin
-    { read objRecord length from objBlock }
-    objRecord.length := objBlock[objBlockIndex];
-    objBlockIndex := objBlockIndex + 1;
-    objRecord.recordType := objBlock[objBlockIndex];
-    objBlockIndex := objBlockIndex + 1;
+    read (objFile, b);
+    objRecord.length := b;
 
-    if objRecord.length < (256 - objBlockIndex) then
-      numBytes := objRecord.length
-    else
-      numBytes := 255 - objBlockIndex;
+    read (objFile, b);
+    objRecord.recordType := chr(b);
+    {Writeln ('getObjRecord len:', objRecord.length:0, ' type:', objRecord.recordType); }
 
-    { copy from objBlock to objRecord }
-    for i := 1 TO numBytes DO
+    for i := 0 TO objRecord.length-2 do
       begin
-      objRecord.block[i-1] := chr(objBlock[objBlockIndex]);
-      objBlockIndex := objBlockIndex + 1;
+      read (objFile, b);
+      objRecord.block[i] := b;
+      {Write (hex (objRecord.block[i])); }
       end;
-
-    if (objBlockIndex > 256) then
-      begin
-      { need new objBlock }
-      if eof (objFile) then
-        objEof := true
-      else
-        begin
-        { read next objBlock from objFile }
-        read (objFile, objBlock);
-        objBlockIndex := 0;
-
-        { if more objRecord bytes needed, copy from latest objBlock to rest of objRecord }
-        for i := numBytes+1 TO objRecord.length DO
-          begin
-          objRecord.block[i] := objBlock[objBlockIndex];
-          objBlockIndex := objBlockIndex + 1;
-          end;
-        end;
-      end;
+    {Writeln;}
   end;
   {>>>}
   {<<<}
@@ -1691,201 +1664,217 @@ var
     fileName, root, ext, fullFileName: string;
 
     {<<<}
-    procedure processRecord;
-    { pass1 obj record processor }
+    function processRecord: boolean;
+    { pass1 obj record processor, return true on EOM }
 
-    var
-      esdType: byte;
-      section: integer;
-      symbolName: symbolNameType;
-      b: boolean;
-      i: integer;
-      symbol: symbolPtr;
-
-      {<<<}
-      procedure addRef (symbol: symbolPtr; modName: symbolNameType);
+      {<<<  processESD}
+      procedure processESD;
 
       var
-        reference: referencePtr;
+        esdType: byte;
+        section: integer;
+        symbolName: symbolNameType;
+        b: boolean;
+        i: integer;
+        symbol: symbolPtr;
+
+        {<<<}
+        procedure addRef (symbol: symbolPtr; modName: symbolNameType);
+
+        var
+          reference: referencePtr;
+
+        begin
+          new (reference);
+          reference^.next := symbol^.refList;
+          reference^.symbolName := modName;
+          symbol^.refList := reference;
+        end;
+        {>>>}
 
       begin
-        new (reference);
-        reference^.next := symbol^.refList;
-        reference^.symbolName := modName;
-        symbol^.refList := reference;
-      end;
-      {>>>}
-
-    begin
-      CASE chr(objRecord.recordType) of
-        '1':
-          processModuleId;
-        '2':
-          {<<<  processESD}
+        objRecordBlockIndex := 0;
+        while objRecordBlockIndex < objRecord.length DO
           begin
-          objRecordBlockIndex := 0;
-          while objRecordBlockIndex < objRecord.length DO
-            begin
-            symbol := nil;
-            esdType := getByte;
-            section := esdType MOD 16;
-            esdType := esdType DIV 16;
+          symbol := nil;
+          esdType := getByte;
+          section := esdType MOD 16;
+          esdType := esdType DIV 16;
 
-            CASE esdType of
-              {<<<}
-              0:   { not sure }
-                objRecordBlockIndex := objRecordBlockIndex + 8;
-              {>>>}
-              {<<<}
-              1:   { common area symbol }
+          CASE esdType of
+            {<<<}
+            0:   { not sure }
+              objRecordBlockIndex := objRecordBlockIndex + 8;
+            {>>>}
+            {<<<}
+            1:   { common area symbol }
+              begin
+              symbolName := getSymbolName;
+              i := getInt;
+              b := findInsert (symbolName, symbol, true);
+
+              if debug then
+                writeln ('Common data - section ', section:2,' ', symbolName, ' length = ', hex(i,6,6));
+
+              if xref then
+                addRef (symbol, modName);
+
+              if NOT symbol^.def then
                 begin
-                symbolName := getSymbolName;
-                i := getInt;
-                b := findInsert (symbolName, symbol, true);
-
-                if debug then
-                  writeln ('Common data - section ', section:2,' ', symbolName, ' length = ', hex(i,6,6));
-
-                if xref then
-                  addRef (symbol, modName);
-
-                if NOT symbol^.def then
-                  begin
-                  if b then
-                    numUndefinedSymbols := numUndefinedSymbols-1;
-                  symbol^.modName := modName;
-                  symbol^.section := section;
-                  symbol^.def := true;
-                  symbol^.comsize := i;
-                  if prevCommon <> nil then
-                    prevCommon^.nextCommon := symbol
-                  else
-                    commonHead := symbol;
-                  symbol^.nextCommon := nil;
-                  prevCommon := symbol;
-                  end
-
+                if b then
+                  numUndefinedSymbols := numUndefinedSymbols-1;
+                symbol^.modName := modName;
+                symbol^.section := section;
+                symbol^.def := true;
+                symbol^.comsize := i;
+                if prevCommon <> nil then
+                  prevCommon^.nextCommon := symbol
                 else
-                  if (i<>symbol^.comsize) then
+                  commonHead := symbol;
+                symbol^.nextCommon := nil;
+                prevCommon := symbol;
+                end
+
+              else
+                if (i <> symbol^.comsize) then
+                  begin
+                  if (NOT symbol^.flagged) AND (symbol^.comsize=-1) then
                     begin
-                    if (NOT symbol^.flagged) AND (symbol^.comsize=-1) then
-                      begin
-                      showModName;
-                      writeln ('Label ''', symbolName, ''' is used double defined - ');
-                      writeln ('as a common in module ''', modName, '''');
-                      writeln (' and as an XDEF in module ''', symbol^.modName, '''');
-                      symbol^.flagged := true;
-                     end
+                    showModName;
+                    writeln ('Label ''', symbolName, ''' is used double defined - ');
+                    writeln ('as a common in module ''', modName, '''');
+                    writeln (' and as an XDEF in module ''', symbol^.modName, '''');
+                    symbol^.flagged := true;
+                   end
 
-                   else if check AND (NOT symbol^.flagged) then
-                     begin
-                     showModName;
-                     writeln ('Common area size clash - common ''', symbolName, '''');
-                     writeln ('size in this module is ',hex(i,6,6), ' bytes');
-                     writeln ('size in ''', symbol^.modName,''' is ', hex (symbol^.comsize,6,6), ' bytes');
-                     symbol^.flagged := true;
-                     end;
+                 else if check AND (NOT symbol^.flagged) then
+                   begin
+                   showModName;
+                   writeln ('Common area size clash - common ''', symbolName, '''');
+                   writeln ('size in this module is ',hex(i,6,6), ' bytes');
+                   writeln ('size in ''', symbol^.modName,''' is ', hex (symbol^.comsize,6,6), ' bytes');
+                   symbol^.flagged := true;
+                   end;
 
-                   if (i > symbol^.comsize) AND (symbol^.comsize <> -1) then
-                     begin
-                     symbol^.modName := modName;
-                     symbol^.comsize := i;
-                     end;
+                 if (i > symbol^.comsize) AND (symbol^.comsize <> -1) then
+                   begin
+                   symbol^.modName := modName;
+                   symbol^.comsize := i;
                    end;
                  end;
-              {>>>}
-              {<<<}
-              2,3: { section definition and allocation }
+               end;
+            {>>>}
+            {<<<}
+            2,3: { section definition and allocation }
+              begin
+              i := getInt;
+              if debug then
+                writeln ('Section - ', section:2,' ', ' length = ', hex(i,6,6));
+
+              sectbase[section] := sectbase[section]+i;
+              if odd(sectbase[section]) then
+                sectbase[section] := sectbase[section] + 1;
+              end;
+            {>>>}
+            {<<<}
+            4,5: { symbol defintion }
+              begin
+              if esdType = 5 then
+                section := -1;
+
+              symbolName := getSymbolName;
+              b := findInsert (symbolName, symbol, true);
+
+              { this isnt right yet, should fix it }
+              if (symbol^.def) AND (NOT symbol^.flagged) then
                 begin
-                i := getInt;
-                if debug then
-                  writeln ('Section - ', section:2,' ', ' length = ', hex(i,6,6));
+                if symbol^.hist then { previously defined by history file }
+                  begin
+                  if chat then
+                    writeln ('redefining ', symbolName);
+                  end
+                else
+                  doubledef(symbol)
+                end
 
-                sectbase[section] := sectbase[section]+i;
-                if odd(sectbase[section]) then
-                  sectbase[section] := sectbase[section] + 1;
-                end;
-              {>>>}
-              {<<<}
-              4,5: { symbol defintion }
-                begin
-                if esdType = 5 then
-                  section := -1;
-
-                symbolName := getSymbolName;
-                b := findInsert (symbolName, symbol, true);
-
-                { this isnt right yet, should fix it }
-                if (symbol^.def) AND (NOT symbol^.flagged) then
+              else
+                if b then
                   begin
                   if symbol^.hist then { previously defined by history file }
                     begin
                     if chat then
-                      writeln ('redefining ', symbolName);
+                      writeln ('redefining ',symbolName);
                     end
                   else
-                    doubledef(symbol)
-                  end
-
-                else
-                  if b then
-                    begin
-                    if symbol^.hist then { previously defined by history file }
-                      begin
-                      if chat then
-                        writeln ('redefining ',symbolName);
-                      end
-                    else
-                      numUndefinedSymbols := numUndefinedSymbols - 1;
-                    end;
-
-                symbol^.modName := modName;
-                symbol^.section := section;
-                symbol^.def := true;
-                symbol^.addr := getInt + sectbase[section];
-                end;
-              {>>>}
-              {<<<}
-              6,7: { symbol reference }
-                begin
-                if esdType = 6 then
-                  begin
-                  showModName;
-                  writeln ('xref ',section);
+                    numUndefinedSymbols := numUndefinedSymbols - 1;
                   end;
 
-                symbolName := getSymbolName;
-                b := findInsert (symbolName, symbol, true);
-
-                if xref then
-                  addRef (symbol, modName);
-
-                if (NOT b) then
-                  numUndefinedSymbols := numUndefinedSymbols + 1;
-                end;
-              {>>>}
-              {<<<}
-              8,9: { clAddress }
-                begin
-                showModName;
-                writeln ('cl address');
-                objRecordBlockIndex := objRecordBlockIndex + 5;
-                end;
-              {>>>}
-              {<<<}
-              10:  { cl addr common }
-                begin
-                showModName;
-                writeln ('cl addr common');
-                objRecordBlockIndex := objRecordBlockIndex + 15;
-                end;
-              {>>>}
+              symbol^.modName := modName;
+              symbol^.section := section;
+              symbol^.def := true;
+              symbol^.addr := getInt + sectbase[section];
               end;
+            {>>>}
+            {<<<}
+            6,7: { symbol reference }
+              begin
+              if esdType = 6 then
+                begin
+                showModName;
+                writeln ('xref ',section);
+                end;
+
+              symbolName := getSymbolName;
+              b := findInsert (symbolName, symbol, true);
+
+              if xref then
+                addRef (symbol, modName);
+
+              if (NOT b) then
+                numUndefinedSymbols := numUndefinedSymbols + 1;
+              end;
+            {>>>}
+            {<<<}
+            8,9: { clAddress }
+              begin
+              showModName;
+              writeln ('cl address');
+              objRecordBlockIndex := objRecordBlockIndex + 5;
+              end;
+            {>>>}
+            {<<<}
+            10:  { cl addr common }
+              begin
+              showModName;
+              writeln ('cl addr common');
+              objRecordBlockIndex := objRecordBlockIndex + 15;
+              end;
+            {>>>}
             end;
           end;
-          {>>>}
-        '3': {processText};
-        '4': {processEOM};
+      end;
+      {>>>}
+
+    begin
+      processRecord := false;
+      CASE objRecord.recordType of
+        '1':
+          processModuleId;
+
+        '2':
+          processESD;
+
+        '3':
+           begin
+           { do nothing }
+           {writeln ('processText'); }
+           end;
+
+        '4':
+           begin
+           {writeln ('processEOM');}
+           processRecord := true;
+           end;
         end;
     end;
     {>>>}
@@ -1894,12 +1883,9 @@ var
     pass := 1;
     basepos := startBase;
 
-    reset (cmdFile);
-
     repeat
       getObjFileName (fileName);
       getFileStrings (fileName, '.ro', root, ext, fullFileName);
-      Writeln ('pass1 read:', fullFileName);
 
       if ext = '.his' then
         {<<<  .his}
@@ -1924,9 +1910,7 @@ var
 
         repeat
           getObjRecord (objRecord);
-          if objRecord.length > 0 then
-            processRecord;
-        until objEof;
+        until processRecord;
 
         closeIn;
         end
@@ -1938,16 +1922,12 @@ var
 
         repeat
           getTextRec (objRecord);
-          if objRecord.length > 0 then
-            processRecord;
-        until eof (textObjFile) ;
+          until processRecord;
 
         closeTextIn;
         end
         {>>>}
     until eof (cmdFile);
-
-    close (cmdFile);
 
     endPass1Milestone := getMilestone;
   end;
@@ -1956,12 +1936,12 @@ var
   procedure pass2;
 
   var
-    section: integer;
     fileName, root, ext, fullFileName: string;
+    section: integer;
 
     {<<<}
-    procedure processRecord;
-    { second pass obj record processor }
+    function processRecord: boolean;
+    { pass2 obj record processor, return true on EOM }
 
       {<<<}
       procedure outputData;
@@ -2177,7 +2157,7 @@ var
               if usingHistory then
                 begin { symbol defintion, use to make patches on second pass }
                 s := getSymbolName;
-                b := findInsert (s, symbol, FALSE); { find it }
+                b := findInsert (s, symbol, false); { find it }
 
                 if symbol^.resList <> nil then
                   begin
@@ -2246,12 +2226,12 @@ var
 
         var
           longwd : boolean;
-          offset,add,i,numesds,offsize : integer;
-          thisesd,w:integer;
+          offset, add, i, numesds, offsize : integer;
+          thisesd, w: integer;
           flag : byte;
 
           {<<<}
-          procedure adddata(w:integer);
+          procedure adddata (w:integer);
 
           begin
             duffer := w = %x'4EBA';
@@ -2278,7 +2258,7 @@ var
             flag := getByte;
             numesds := flag DIV 32;
             offsize := flag MOD 8;
-            {    writeln('num esds, ',numesds,'  offset size ',offsize);}
+            { writeln('num esds, ',numesds,'  offset size ',offsize);}
             longwd := ((flag DIV 8) MOD 2) = 1;
 
             add := 0;
@@ -2288,7 +2268,7 @@ var
               if thisesd > topESD then
                 begin
                 showModName;
-                writeln(' assembler foul-up.. trying to use an undefined ESD : ' , thisesd);
+                writeln (' assembler foul-up.. trying to use an undefined ESD : ' , thisesd);
                 end;
 
               if odd(i) then
@@ -2301,15 +2281,17 @@ var
             for i := 1 TO offsize DO offset := mvl(offset) + getByte;
             CASE offsize of
               0,4:;
-              1: if offset > 127   then offset := int (uor (uint (offset),%X'FFFFFF00'));
-              2: if offset > 32767 then offset := int (uor (uint (offset),%X'FFFF0000'));
+              1: if offset > 127   then
+                  offset := int (uor (uint (offset),%X'FFFFFF00'));
+              2: if offset > 32767 then
+                  offset := int (uor (uint (offset),%X'FFFF0000'));
               end;
-            {    writeln('ofFSET ',hex(add,6,6),'+',hex(offset,6,6),'=',hex(add+offset,6,6));
-            }
+
+            {writeln('ofFSET ',hex(add,6,6),'+',hex(offset,6,6),'=',hex(add+offset,6,6)); }
             add := add + offset;
             if numesds = 0 then
               begin
-              if odd(offset) then
+              if odd (offset) then
                 begin
                 showModName;
                 writeln ('odd fix-up offset - assembler error .', offset, curresd);
@@ -2325,7 +2307,7 @@ var
               codestart := outAddrArray[curresd];
               end
 
-            else  { numesd <> 0 }
+            else { numesd <> 0 }
               begin
               if NOT longwd then
                 begin
@@ -2358,7 +2340,8 @@ var
               adddata (add);
               end;
             end;
-          bitmap := bitmap*2;
+
+          bitmap := bitmap * 2;
         end;
         {>>>}
 
@@ -2388,27 +2371,38 @@ var
       {>>>}
 
     begin
-      CASE chr(objRecord.recordType) of
-        '1': processModuleId;
-        '2': processESD;
-        '3': processText;
-        '4': processEOM;
+      processRecord := false;
+      CASE objRecord.recordType of
+        '1':
+          processModuleId;
+        '2':
+          processESD;
+        '3':
+          processText;
+        '4':
+          begin
+          processEOM;
+          processRecord := true;
+          end;
         end;
     end;
     {>>>}
 
   begin
-    openoutput;
+    openOutput;
     openModules;
 
     { init sections }
     for section := 0 TO 15 DO
       sbase[section] := 0;
 
+    { open .cmd file again for second pass }
     reset (cmdFile);
+
     repeat
       getObjFileName (fileName);
       getFileStrings (fileName, '.ro', root, ext, fullFileName);
+
       if ext = '.his' then
         begin
         end
@@ -2419,9 +2413,7 @@ var
 
         repeat
           getObjRecord (objRecord);
-          if objRecord.length > 0 then
-            processRecord;
-        until objEof;
+        until processRecord;
 
         closeIn;
         end
@@ -2433,15 +2425,12 @@ var
 
         repeat
           getTextRec (objRecord);
-          if objRecord.length > 0 then
-            processRecord;
-        until eof (textObjFile) ;
+        until  processRecord;
 
         closeTextIn;
         end
         {>>>}
     until eof (cmdFile);
-    close (cmdFile);
 
     closeModules;
     closeoutput;
@@ -2454,24 +2443,27 @@ var
   procedure init;
 
   begin
-    xref := false;
-    symout := false;
-    bin := false;
+    modules := false;
+    download := false;
     check := false;
     bell := false;
-    out := true;
-    map := true;
+    xref := false;
 
-    files := false;
-    chat := FALSE;
-    quiet := false;
-    friendly := false;
+    map := true;
+    bin := false;
+    out := true;
+    symout := false;
+
+    chat := false;
+    debug := false;
     logging := false;
-    history := FALSE;
-    modules := false;
+    friendly := false;
+    quiet := false;
+    files := false;
+    history := false;
     escape := true;
 
-    usingHistory := FALSE;
+    usingHistory := false;
     fileIdString := 'no file open.' ;
 
     { set up pointers for common area list }
@@ -2582,16 +2574,17 @@ begin
   startReadHisMilestone := getMilestone;
   endReadHisMilestone := startReadHisMilestone;
 
-  { open .cmd file }
   if chat OR debug then
     writeln ('File given is ', cmdFileNameString);
-  reset (cmdFile, cmdFileNameString);
   writeln ('Linking from ', cmdFileNameString);
 
+  { open .cmd file for first pass }
+  reset (cmdFile, cmdFileNameString);
   pass1;
+
+  { report on pass1 }
   allocCom;
   reportHash;
-
   if chat OR debug OR (NOT quiet) then
     {<<<  report symbolTable}
     begin
@@ -2601,7 +2594,6 @@ begin
       writeln (logFile, numSymbols:5,' in symbol table');
     end;
     {>>>}
-
   baseaddr[-1] := 0;      {set up base of absolute section}
   for i := 0 TO 15 DO
     {<<<  report section}
@@ -2612,15 +2604,16 @@ begin
     if sectbase[i] <> 0 then
       begin
       if NOT friendly then
-        write ('Section ',i:2,' Start ',hex(basepos,6,6),' Length ', hex(sectbase[i],6,6));
+        write ('Section ',i:2,' Start ', hex (basepos,6,6),' Length ', hex (sectbase[i],6,6));
+
       baseaddr[i] := basepos;
       basepos := basepos+sectbase[i];
+
       if NOT friendly then
-        writeln (' Finish  ',hex(basepos,6,6));
+        writeln (' Finish  ', hex (basepos, 6, 6));
       end;
     end;
     {>>>}
-
   if friendly then
     {<<<  report section usage nicely}
     begin
@@ -2664,48 +2657,57 @@ begin
     writeln ('Total size                     = ', total:8, ' bytes');
     end;
     {>>>}
-
   overlapCheck;
   endSpaceAllocMilestone := getMilestone;
-
   if numUndefinedSymbols <> 0 then
     {<<<  report undefined symbols}
     begin
-    writeln('Number of undefined symbols:- ', numUndefinedSymbols);
+    writeln ('undefined symbols:', numUndefinedSymbols:0);
 
     if logging then
-      writeln (logFile, 'Number of undefined symbols:- ', numUndefinedSymbols);
+      writeln (logFile, 'undefined symbols:', numUndefinedSymbols:0);
 
     checkUndefinedSymbols;
     end;
     {>>>}
 
-  if bin then
-    outputMaxSize := 512 { big number }
-  else
-    outputMaxSize := 16; { s-format max line size }
-
   if modules OR out OR download then
-    pass2;
+    {<<<  run pass2}
+    begin
+    if bin then
+      outputMaxSize := 512 { big number }
+    else
+      outputMaxSize := 16; { s-format max line size }
 
-  {<<<  histoy}
+    pass2;
+    end;
+    {>>>}
+
+  { close .cmd file after second pass }
+  close (cmdFile);
+
+  {<<<  report histoy}
   if history then
     dumpHistory;
+
   endHisGenMilestone := getMilestone;
   {>>>}
-  {<<<  symbolTable}
+  {<<<  report symbolTable}
   if symout then
     dumpSymbols;
+
   endSymGenMilestone := getMilestone;
   {>>>}
-  {<<<  map}
+  {<<<  report map}
   if map then
     dumpSymbolMap;
+
   endMapGenMilestone := getMilestone;
   {>>>}
-  {<<<  xref}
+  {<<<  report xref}
   if xref then
     dumpXreferences;
+
   endXrefGenMilestone := getMilestone;
   {>>>}
 

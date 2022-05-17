@@ -24,19 +24,10 @@
 #include <sys/types.h>
 #include <string.h>
 
-#if defined(NON_ANSI_CAT) && !defined(ANSI_CAT)
-  #pragma message("NON_ANSI_CAT && !ANSI_CAT")
-
-  #ifdef NON_ANSI_CAT_ALTERNATE
-    #define __CAT__(a,b)a/**/b
-  #else
-    #define __ID__(a)a
-    #define __CAT__(a,b)__ID__(a)b
-  #endif
-#else
-  //#pragma message("CAT is a##b")
-  #define __CAT__(a,b)a##b
-#endif
+#define __CAT__(a,b)a##b
+//#define __CAT__(a,b)a/**/b
+//#define __ID__(a)a
+//#define __CAT__(a,b)__ID__(a)b
 
 #define LACK_LABS       /* Undefine these if your library has these */
 #define LACK_MEMMOVE

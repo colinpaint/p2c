@@ -209,7 +209,7 @@ double a, b;
 /* Store in "ret" the substring of length "len" starting from "pos" (1-based).
    Store a shorter or null string if out-of-range.  Return "ret". */
 
-char *strsub (ret, s, pos, len)
+char* strsub (ret, s, pos, len)
 register char *ret, *s;
 register int pos, len;
 {
@@ -289,7 +289,7 @@ register char *s1, *s2;
 //{{{
 /* Trim blanks at left end of string. */
 
-char *strltrim (s)
+char* strltrim (s)
 register char *s;
 {
     while (Isspace(*s++)) ;
@@ -299,7 +299,7 @@ register char *s;
 //{{{
 /* Trim blanks at right end of string. */
 
-char *strrtrim (s)
+char* strrtrim (s)
 register char *s;
 {
     register char *s2 = s;
@@ -315,7 +315,7 @@ register char *s;
 //{{{
 /* Store in "ret" "num" copies of string "s".  Return "ret". */
 
-char *strrpt (ret, s, num)
+char* strrpt (ret, s, num)
 char *ret;
 register char *s;
 register int num;
@@ -333,7 +333,7 @@ register int num;
 //}}}
 //{{{
 /* Store in "ret" string "s" with enough pad chars added to reach "size". */
-char *strpad (ret, s, padchar, num)
+char* strpad (ret, s, padchar, num)
 char *ret;
 register char *s;
 register int padchar, num;
@@ -427,30 +427,25 @@ register int pos;
 
 // File functions
 //{{{
-/* Peek at next character of input stream; return EOF at end-of-file. */
-int P_peek (f)
-FILE *f;
-{
-  int ch;
+int P_peek (FILE* f) {
+// Peek at next character of input stream; return EOF at end-of-file
 
-  ch = getc(f);
+  int ch = getc (f);
   if (ch == EOF)
     return EOF;
-  ungetc(ch, f);
+
+  ungetc (ch, f);
   return (ch == '\n') ? ' ' : ch;
-}
+  }
 //}}}
 //{{{
-/* Check if at end of file, using Pascal "eof" semantics.  End-of-file for
-   stdin is broken; remove the special case for it to be broken in a
-   different way. */
+int P_eof (FILE* f) {
+// Check if at end of file, using Pascal "eof" semantics.  
+// End-of-file for stdin is broken; remove the special case for it to be broken in a different way.
 
-int P_eof (f)
-FILE *f;
-{
-  register int ch;
+  int ch;
 
-  if (feof(f))
+  if (feof (f))
     return 1;
 
   #ifdef HAVE_ISATTY
@@ -460,140 +455,128 @@ FILE *f;
   #endif
     return 0;    /* not safe to look-ahead on the keyboard! */
 
-  ch = getc(f);
+  ch = getc (f);
   if (ch == EOF)
     return 1;
 
-  ungetc(ch, f);
+  ungetc (ch, f);
   return 0;
-}
+  }
 //}}}
 //{{{
-/* Check if at end of line (or end of entire file). */
-int P_eoln (f)
-FILE *f;
-{
-  register int ch;
+int P_eoln (FILE* f) {
+// Check if at end of line (or end of entire file)
 
-  ch = getc(f);
+  int ch = getc(f);
   if (ch == EOF)
     return 1;
-  ungetc(ch, f);
+
+  ungetc (ch, f);
   return (ch == '\n');
-}
+  }
 //}}}
 
 //{{{
-/* Skip whitespace (including newlines) in a file. */
+FILE* _skipnlspaces (FILE* f) {
+// Skip whitespace (including newlines) in a file
 
-FILE* _skipnlspaces (f)
-FILE *f;
-{
   register int ch;
 
   do {
     ch = getc(f);
-  } while (ch == ' ' || ch == '\t' || ch == '\n');
+    } while (ch == ' ' || ch == '\t' || ch == '\n');
+
   if (ch != EOF)
     ungetc(ch, f);
+
   return f;
-}
+  }
 //}}}
 //{{{
-/* Skip whitespace (not including newlines) in a file. */
+FILE* _skipspaces (FILE* f) {
+// Skip whitespace (not including newlines) in a file
 
-FILE* _skipspaces (f)
-FILE *f;
-{
-  register int ch;
-
+  int ch;
   do {
     ch = getc(f);
-  } while (ch == ' ' || ch == '\t');
+    } while (ch == ' ' || ch == '\t');
+
   if (ch != EOF)
-    ungetc(ch, f);
+    ungetc (ch, f);
+
   return f;
-}
+  }
 //}}}
 //{{{
-/* Read a packed array of characters from a file. */
+Void P_readpaoc (FILE* f, char* s, int len) {
+// Read a packed array of characters from a file
 
-Void P_readpaoc (f, s, len)
-FILE *f;
-char *s;
-int len;
-{
-    int ch;
-
-    for (;;) {
-  if (len <= 0)
+  int ch;
+  for (;;) {
+    if (len <= 0)
       return;
-  ch = getc(f);
-  if (ch == EOF || ch == '\n')
+    ch = getc(f);
+    if (ch == EOF || ch == '\n')
       break;
-  *s++ = ch;
-  --len;
+    *s++ = ch;
+    --len;
     }
-    while (--len >= 0)
-  *s++ = ' ';
-    if (ch != EOF)
-  ungetc(ch, f);
-}
+
+  while (--len >= 0)
+    *s++ = ' ';
+
+  if (ch != EOF)
+    ungetc(ch, f);
+  }
 //}}}
 //{{{
-Void P_readlnpaoc (f, s, len)
-FILE *f;
-char *s;
-int len;
-{
-    int ch;
+Void P_readlnpaoc (FILE* f, char* s, int len) {
 
-    for (;;) {
-  ch = getc(f);
-  if (ch == EOF || ch == '\n')
+  int ch;
+
+  for (;;) {
+    ch = getc(f);
+    if (ch == EOF || ch == '\n')
       break;
-  if (len > 0) {
+    if (len > 0) {
       *s++ = ch;
       --len;
-  }
-    }
-    while (--len >= 0)
+      }
+    } while (--len >= 0)
+
   *s++ = ' ';
-}
+  }
 //}}}
 //{{{
-/* Compute maximum legal "seek" index in file (0-based). */
+long P_maxpos (FILE* f) {
+// Compute maximum legal "seek" index in file (0-based)
 
-long P_maxpos (f)
-FILE *f;
-{
-    long savepos = ftell(f);
-    long val;
+  long savepos = ftell(f);
+  long val;
 
-    if (fseek(f, 0L, SEEK_END))
-        return -1;
-    val = ftell(f);
-    if (fseek(f, savepos, SEEK_SET))
-        return -1;
-    return val;
-}
+  if (fseek(f, 0L, SEEK_END))
+    return -1;
+
+  val = ftell(f);
+  if (fseek(f, savepos, SEEK_SET))
+    return -1;
+
+  return val;
+  }
 //}}}
 //{{{
-/* Use packed array of char for a file name. */
+Char* P_trimname (Char* fn, int len) {
+// Use packed array of char for a file name
 
-Char* P_trimname (fn, len)
-register Char *fn;
-register int len;
-{
-    static Char fnbuf[256];
-    register Char *cp = fnbuf;
+  static Char fnbuf[256];
+  Char *cp = fnbuf;
 
-    while (--len >= 0 && *fn && !isspace(*fn))
-  *cp++ = *fn++;
-    *cp = 0;
-    return fnbuf;
-}
+  while (--len >= 0 && *fn && !isspace(*fn))
+    *cp++ = *fn++;
+  *cp = 0;
 
+  return fnbuf;
+  }
 //}}}
 
 //{{{

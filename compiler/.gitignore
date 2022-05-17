@@ -21,4 +21,5 @@ ro
 *.bin
 *.map
 *.xref
+*.xrf
 *.mod
