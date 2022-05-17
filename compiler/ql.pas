@@ -1007,7 +1007,7 @@ var
   {>>>}
 
   {<<<}
-  function symbolHash (var s: symbolNameType): integer;
+  function symbolHash (var symbolName: symbolNameType): integer;
 
   var
     i: integer;
@@ -1016,9 +1016,9 @@ var
   begin
     hash := 0;
     i := 1;
-    while (i <= symbolNameLength) and (s[i] <> ' ') do
+    while (i <= symbolNameLength) and (symbolName[i] <> ' ') do
       begin
-      hash := hash * 97 + ord (s[i]);
+      hash := hash * 97 + ord (symbolName[i]);
       i := i + 1;
       end;
 
