@@ -5,22 +5,24 @@
 
 #include <string>
 
-#include <vector>
 #include <array>
+#include <vector>
+#include <map>
 
 #include <fstream>
 
 using namespace std;
 //}}}
-
-//{{{  const, enum
-// const
+//{{{  debug flags
 constexpr bool kSwitchDebug = false;
 constexpr bool kCmdLineDebug = false;
 constexpr bool kObjFileDebug = false;
+
+constexpr bool kPassDebug = false;
 constexpr bool kPass1Debug = true;
 constexpr bool kPass2Debug = true;
-
+//}}}
+//{{{  const, enum
 // switches, easier to use as globals
 enum eSwitches { eChat, eDebug, eMod, eMap, eBell, eXref, eCheck, eBin, eLastSwitch };
 constexpr size_t kNumSwitches = eLastSwitch; // for enum arrays to play nice
@@ -32,6 +34,47 @@ constexpr size_t kNumSections = 16;
 constexpr size_t kMaxSymbolNameLength = 10;
 //}}}
 
+//{{{
+class cSymbol {
+public:
+  cSymbol() {}
+  virtual ~cSymbol() = default;
+
+private:
+  string mName;
+  string mModName;
+  int section = 0;
+  int addr = 0;
+  int comsize = 0;
+  bool def = false;
+  bool used = false;
+  bool flagged = false;
+  bool hist = false;
+  };
+//}}}
+//{{{
+class cLink {
+public:
+  cLink() {}
+  virtual ~cLink() = default;
+
+  void setCurModName (const string& modName) {
+    mCurModName = modName;
+    }
+
+  void addSymbol (const string& symbol) {
+    mNumSymbols++;
+    }
+  void dump() {
+    printf ("symbols:%d %d\n", mNumSymbols, (int)mSymbols.size());
+    }
+
+private:
+  int mNumSymbols = 0;
+  string mCurModName;
+  map <string, cSymbol> mSymbols;
+  };
+//}}}
 //{{{
 class cSwitches {
 public:
@@ -149,7 +192,7 @@ private:
 
   // var
   array <bool, kNumSwitches> mSwitches = { false };
-  array <int, kNumSections> mSectionBaseAddress = { 0 };
+  array <uint32_t, kNumSections> mSectionBaseAddress = { 0 };
 
   size_t mTokenIndex = 0;
   string mToken;
@@ -163,9 +206,10 @@ public:
 
   enum eRecordType { eNone, eId, eESD, eObjectText, eEnd };
 
+  int getDataLeft() { return mLength - mBlockIndex - 1; }
   eRecordType getType() { return mType; }
   //{{{
-  bool getRO (ifstream& stream) {
+  bool loadRoFormat (ifstream& stream) {
   // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
 
     mBlockIndex = 0;
@@ -215,13 +259,15 @@ public:
   string getSymbolName() {
 
     string name;
-    //name.resize (kMaxSymbolNameLength);
 
+    // read maxSymbolNameLength, only add up to first space in string
+    bool terminated = false;
     for (int i = 0; i < kMaxSymbolNameLength; i++) {
       char byte = getByte();
       if (byte == ' ')
-        break;
-      name = name + byte;
+        terminated = true;
+      if (!terminated)
+        name = name + byte;
       }
 
     return name;
@@ -229,11 +275,131 @@ public:
   //}}}
 
   //{{{
-  string processModuleId() {
+  void processModuleId (const cSwitches& switches, cLink& link) {
     string modName = getSymbolName();
-    return modName;
+    link.setCurModName (modName);
+
+    if (kPassDebug)
+      printf ("ModuleId - modName:%s\n", modName.c_str());
     }
   //}}}
+  //{{{
+  void processEsdPass1 (const cSwitches& switches, cLink& link) {
+  // process External Symbol Definition record
+
+    while (getDataLeft() > 0) {
+      uint8_t byte = getByte();
+
+      size_t section = byte % 16;
+      uint8_t esdType = byte / 16;
+
+      switch (esdType) {
+        //{{{
+        case  0: { // absolute section
+          uint32_t size = getInt();
+          uint32_t start = getInt();
+
+          if (kPass1Debug)
+            printf ("Absolute %08x %08x\n", size, start);
+
+          break;
+          }
+        //}}}
+        //{{{
+        case  1: { // common section xx
+          string commonSymbolName = getSymbolName();
+          uint32_t size = getInt();
+
+          if (kPass1Debug)
+            printf ("common data - section:%2d %8s size:%08x\n", (int)section, commonSymbolName.c_str(), size);
+
+          link.addSymbol (commonSymbolName);
+          break;
+          }
+        //}}}
+        case 2:         // standard relocatable section xx
+        //{{{
+        case  3: { // short address relocatable section xx
+          uint32_t size = getInt();
+          if (kPass1Debug)
+            printf ("section def - section:%2d size:%08x\n", (int)section, size);
+          break;
+          }
+        //}}}
+        case 4:         // external symbol defintion in relocatble section xx
+        //{{{
+        case  5: { // external symbol defintion in absolute section
+          string xdefSymbolName = getSymbolName();
+          uint32_t address = getInt();
+
+          if (kPass1Debug)
+            printf ("symbol xdef - section:%2d %8s address:%08x\n", (int)section, xdefSymbolName.c_str(), address);
+
+          link.addSymbol (xdefSymbolName);
+
+          break;
+          }
+        //}}}
+        case 6:         // external symbol reference to section xx
+        //{{{
+        case  7: { // external symbol reference to any section
+          string xrefSymbolName = getSymbolName();
+
+          if (kPass1Debug)
+            printf ("symbol xref - section:%2d %8s\n", (int)section, xrefSymbolName.c_str());
+          break;
+          }
+        //}}}
+        //{{{
+        case  8: { // command line address in section
+          if (kPass1Debug)
+            printf ("command Line address section\n");
+
+          for (int i = 0; i < 15; i++)
+            getByte();
+
+          break;
+          }
+        //}}}
+        //{{{
+        case  9: { // command line address in absolute section
+          if (kPass1Debug)
+            printf ("command Line address absolute section\n");
+
+          for (int i = 0; i < 5; i++)
+            getByte();
+
+          break;
+          }
+        //}}}
+        //{{{
+        case 10: { // command line address in common section in section xx
+          if (kPass1Debug)
+            printf ("command Line address common section\n");
+
+          for (int i = 0; i < 15; i++)
+            getByte();
+
+          break;
+          }
+        //}}}
+        //{{{
+        default:
+          printf ("unknown esdType %d\n", esdType);
+        //}}}
+        }
+      }
+    }
+  //}}}
+  //{{{
+  void processEsdPass2 (const cSwitches& switches, cLink& link) {
+    }
+  //}}}
+  //{{{
+  void processTextPass2 (const cSwitches& switches, cLink& link) {
+    }
+  //}}}
+
   //{{{
   void dump() {
 
@@ -241,7 +407,7 @@ public:
       printf ("end\n");
 
     else {
-      printf ("len:%d type:%d\n", (int)mLength, (int)mType);
+      printf ("len:%d type:%d\n", mLength, (int)mType);
 
       // dump block
       for (int i = 0; i < mLength-1; i++) {
@@ -259,39 +425,11 @@ public:
   //}}}
 
 private:
-
-  uint8_t mLength = 0;
+  int mLength = 0;
   eRecordType mType = eNone;
 
-  uint8_t mBlockIndex = 0;
+  int mBlockIndex = 0;
   array <uint8_t,256> mBlock = {0};
-  };
-//}}}
-//{{{
-class cSymbol {
-public:
-  cSymbol() {}
-  virtual ~cSymbol() = default;
-
-private:
-  string mName;
-  string mModName;
-  int section = 0;
-  int addr = 0;
-  int comsize = 0;
-  bool def = false;
-  bool used = false;
-  bool flagged = false;
-  bool hist = false;
-  };
-//}}}
-//{{{
-class cLink {
-public:
-  cLink() {}
-  virtual ~cLink() = default;
-
-private:
   };
 //}}}
 
@@ -330,81 +468,7 @@ void processObjFile (const string& line, vector <string>& objFiles) {
 //}}}
 
 //{{{
-void processESD (cObjRecord& objRecord, cSwitches& switches, const cLink& link) {
-// process External Symbol Definition record
-
-  uint8_t byte = objRecord.getByte();
-  size_t section = byte % 16;
-  uint8_t esdType = byte / 16;
-
-  switch (esdType) {
-    //{{{
-    case 0: { // absolute section
-      uint32_t size = objRecord.getInt();
-      uint32_t start = objRecord.getInt();
-      printf ("Absolute %08x %08x\n", size, start);
-      break;
-      }
-    //}}}
-    //{{{
-    case 1: { // common section xx
-      string commonSymbolName = objRecord.getSymbolName();
-      uint32_t size = objRecord.getInt();
-      printf ("common data - section:%2d %s size:%08x\n", (int)section, commonSymbolName.c_str(), size);
-      break;
-      }
-    //}}}
-    case 2:        // standard relocatable section xx
-    //{{{
-    case 3: { // short address relocatable section xx
-      uint32_t size = objRecord.getInt();
-      printf ("section def - section:%2d size:%08x\n", (int)section, size);
-      break;
-      }
-    //}}}
-    case 4:        // external symbol defintion in relocatble section xx
-    //{{{
-    case 5: { // external symbol defintion in absolute section
-      string xdefSymbolName = objRecord.getSymbolName();
-      uint32_t address = objRecord.getInt();
-      printf ("symbol xdef - section:%2d %s address:%08x\n", (int)section, xdefSymbolName.c_str(), address);
-      }
-    //}}}
-    case 6:        // external symbol reference to section xx
-    //{{{
-    case 7: { // external symbol reference to any section
-      string xrefSymbolName = objRecord.getSymbolName();
-      printf ("symbol xref - section:%2d %s\n", (int)section, xrefSymbolName.c_str());
-      break;
-      }
-    //}}}
-    case 8:        // command line address in section
-    //{{{
-    case 9:  {// command line address in absolute section
-      printf ("clAddress\n");
-      for (int i = 0; i < 5; i++)
-        objRecord.getByte();
-      break;
-      }
-    //}}}
-    //{{{
-    case 10: {// command line address in a a common section in section xx
-      printf ("clAddr common\n");
-      for (int i = 0; i < 15; i++)
-        objRecord.getByte();
-      break;
-      }
-    //}}}
-    //{{{
-    default:
-      printf ("unknown esdType %d\n", esdType);
-    //}}}
-    }
-  }
-//}}}
-
-//{{{
-void pass1File (const string& fileName, cSwitches& switches, const cLink& link) {
+void pass1File (const string& fileName, cSwitches& switches, cLink& link) {
 
   if (kPass1Debug)
     printf ("pass1file %s\n", fileName.c_str());
@@ -414,24 +478,26 @@ void pass1File (const string& fileName, cSwitches& switches, const cLink& link) 
   bool eom = false;
   cObjRecord objRecord;
   while (!eom) {
-    eom = objRecord.getRO (objFileStream);
+    eom = objRecord.loadRoFormat (objFileStream);
     if (!eom) {
       if (kObjFileDebug)
         objRecord.dump();
 
       switch (objRecord.getType()) {
-        case cObjRecord::eId: {
-          string modName = objRecord.processModuleId();
-          printf ("ModuleId - modName:%s\n", modName.c_str());
+        case cObjRecord::eId:
+          objRecord.processModuleId (switches, link);
           break;
-          }
+
         case cObjRecord::eESD:
-          processESD (objRecord, switches, link);
+          objRecord.processEsdPass1 (switches, link);
           break;
+
         case cObjRecord::eObjectText:
           break;
+
         case cObjRecord::eEnd:
           break;
+
         default:
           printf ("unrecognised objRecord %d\n", objRecord.getType());
           break;
@@ -443,7 +509,7 @@ void pass1File (const string& fileName, cSwitches& switches, const cLink& link) 
   }
 //}}}
 //{{{
-void pass2File (const string& fileName, cSwitches& switches, const cLink& link) {
+void pass2File (const string& fileName, cSwitches& switches, cLink& link) {
 
   if (kPass2Debug)
     printf ("pass2file %s\n", fileName.c_str());
@@ -453,20 +519,24 @@ void pass2File (const string& fileName, cSwitches& switches, const cLink& link) 
   bool eom = false;
   cObjRecord objRecord;
   while (!eom) {
-    eom = objRecord.getRO (objFileStream);
+    eom = objRecord.loadRoFormat (objFileStream);
     if (!eom) {
-      if (kObjFileDebug)
-        objRecord.dump();
-
       switch (objRecord.getType()) {
         case cObjRecord::eId:
+          objRecord.processModuleId (switches, link);
           break;
+
         case cObjRecord::eESD:
+          objRecord.processEsdPass2 (switches, link);
           break;
+
         case cObjRecord::eObjectText:
+          objRecord.processTextPass2 (switches, link);
           break;
+
         case cObjRecord::eEnd:
           break;
+
         default:
           break;
         }
@@ -518,10 +588,11 @@ int main (int numArgs, char* args[]) {
 
   switches.dump();
 
-  // read symbols and accumulates section sizes
+  // read symbols and accumulate section sizes
   cLink link;
   for (auto& objFile : objFiles)
     pass1File (objFile.c_str(), switches, link);
+  link.dump();
 
   // resolve addresses and output .bin
   for (auto& objFile : objFiles)
