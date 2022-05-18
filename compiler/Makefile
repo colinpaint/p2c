@@ -16,6 +16,12 @@ p68: $(OBJ) $(DEP) $(SRC)
 ql: ql.o $(SRC)
 	$(CC) $(LFLAGS) ql.o ../p2clib.a -o ql
 
+qlcpp: qlcpp.o
+	$(CC) $(LFLAGS) qlcpp.o -lstdc++ -o qlcpp
+
+p68: $(OBJ) $(DEP) $(SRC)
+	$(CC) $(LFLAGS) $(OBJ) ../p2clib.a -o p68
+
 pmt: $(PMT_OBJ)
 	$(CC) $(LFLAGS) pasmat.o ../p2clib.a -o pmt
 
@@ -28,13 +34,16 @@ dumpInter: dumpInter.o $(DEP) $(SRC)
 dumpPseudo: dumpPseudo.o $(DEP) $(SRC)
 	$(CC) $(LFLAGS) dumpPseudo.o common.o ../p2clib.a -o dumpPseudo
 
+%.o: %.cpp
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 %.c: %.pas $(DEP)
 	./../p2c -q $<
 
-all: p68 ql dumpToken dumpInter dumpPseudo
+all: p68 ql dumpToken dumpInter dumpPseudo qlcppa
 
 rebuild:
 	make clean
