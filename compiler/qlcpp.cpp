@@ -53,10 +53,10 @@ private:
   };
 //}}}
 //{{{
-class cLink {
+class cLinker {
 public:
-  cLink() {}
-  virtual ~cLink() = default;
+  cLinker() {}
+  virtual ~cLinker() = default;
 
   void setCurModName (const string& modName) {
     mCurModName = modName;
@@ -275,16 +275,17 @@ public:
   //}}}
 
   //{{{
-  void processModuleId (const cSwitches& switches, cLink& link) {
+  void processModuleId (const cSwitches& switches, cLinker& linker) {
+
     string modName = getSymbolName();
-    link.setCurModName (modName);
+    linker.setCurModName (modName);
 
     if (kPassDebug)
       printf ("ModuleId - modName:%s\n", modName.c_str());
     }
   //}}}
   //{{{
-  void processEsdPass1 (const cSwitches& switches, cLink& link) {
+  void processEsdPass1 (const cSwitches& switches, cLinker& linker) {
   // process External Symbol Definition record
 
     while (getDataLeft() > 0) {
@@ -313,7 +314,7 @@ public:
           if (kPass1Debug)
             printf ("common data - section:%2d %8s size:%08x\n", (int)section, commonSymbolName.c_str(), size);
 
-          link.addSymbol (commonSymbolName);
+          linker.addSymbol (commonSymbolName);
           break;
           }
         //}}}
@@ -335,7 +336,7 @@ public:
           if (kPass1Debug)
             printf ("symbol xdef - section:%2d %8s address:%08x\n", (int)section, xdefSymbolName.c_str(), address);
 
-          link.addSymbol (xdefSymbolName);
+          linker.addSymbol (xdefSymbolName);
 
           break;
           }
@@ -392,11 +393,11 @@ public:
     }
   //}}}
   //{{{
-  void processEsdPass2 (const cSwitches& switches, cLink& link) {
+  void processEsdPass2 (const cSwitches& switches, cLinker& linker) {
     }
   //}}}
   //{{{
-  void processTextPass2 (const cSwitches& switches, cLink& link) {
+  void processTextPass2 (const cSwitches& switches, cLinker& linker) {
     }
   //}}}
 
@@ -427,7 +428,6 @@ public:
 private:
   int mLength = 0;
   eRecordType mType = eNone;
-
   int mBlockIndex = 0;
   array <uint8_t,256> mBlock = {0};
   };
@@ -468,7 +468,7 @@ void processObjFile (const string& line, vector <string>& objFiles) {
 //}}}
 
 //{{{
-void pass1File (const string& fileName, cSwitches& switches, cLink& link) {
+void pass1File (const string& fileName, const cSwitches& switches, cLinker& linker) {
 
   if (kPass1Debug)
     printf ("pass1file %s\n", fileName.c_str());
@@ -485,11 +485,11 @@ void pass1File (const string& fileName, cSwitches& switches, cLink& link) {
 
       switch (objRecord.getType()) {
         case cObjRecord::eId:
-          objRecord.processModuleId (switches, link);
+          objRecord.processModuleId (switches, linker);
           break;
 
         case cObjRecord::eESD:
-          objRecord.processEsdPass1 (switches, link);
+          objRecord.processEsdPass1 (switches, linker);
           break;
 
         case cObjRecord::eObjectText:
@@ -509,7 +509,7 @@ void pass1File (const string& fileName, cSwitches& switches, cLink& link) {
   }
 //}}}
 //{{{
-void pass2File (const string& fileName, cSwitches& switches, cLink& link) {
+void pass2File (const string& fileName, const cSwitches& switches, cLinker& linker) {
 
   if (kPass2Debug)
     printf ("pass2file %s\n", fileName.c_str());
@@ -523,15 +523,15 @@ void pass2File (const string& fileName, cSwitches& switches, cLink& link) {
     if (!eom) {
       switch (objRecord.getType()) {
         case cObjRecord::eId:
-          objRecord.processModuleId (switches, link);
+          objRecord.processModuleId (switches, linker);
           break;
 
         case cObjRecord::eESD:
-          objRecord.processEsdPass2 (switches, link);
+          objRecord.processEsdPass2 (switches, linker);
           break;
 
         case cObjRecord::eObjectText:
-          objRecord.processTextPass2 (switches, link);
+          objRecord.processTextPass2 (switches, linker);
           break;
 
         case cObjRecord::eEnd:
@@ -589,14 +589,14 @@ int main (int numArgs, char* args[]) {
   switches.dump();
 
   // read symbols and accumulate section sizes
-  cLink link;
+  cLinker linker;
   for (auto& objFile : objFiles)
-    pass1File (objFile.c_str(), switches, link);
-  link.dump();
+    pass1File (objFile.c_str(), switches, linker);
+  linker.dump();
 
   // resolve addresses and output .bin
   for (auto& objFile : objFiles)
-    pass2File (objFile.c_str(), switches, link);
+    pass2File (objFile.c_str(), switches, linker);
 
   return 0;
   }
