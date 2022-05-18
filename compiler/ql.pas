@@ -1188,7 +1188,7 @@ var
     while symbol <> nil DO
       begin
       symbol^.addr := sectbase[symbol^.section];
-      sectbase[symbol^.section] := sectbase[symbol^.section]+symbol^.comsize;
+      sectbase[symbol^.section] := sectbase[symbol^.section] + symbol^.comsize;
 
       if odd(sectbase[symbol^.section]) then
         sectbase[symbol^.section] := sectbase[symbol^.section]+1;

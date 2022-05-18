@@ -27,126 +27,11 @@ constexpr size_t kNumSwitches = eLastSwitch; // for enum arrays to play nice
 
 // sections
 constexpr size_t kNumSections = 16;
+
+// symbol
+constexpr size_t kMaxSymbolNameLength = 10;
 //}}}
 
-//{{{
-class cObjRecord {
-public:
-  cObjRecord() {}
-  virtual ~cObjRecord() = default;
-
-  enum eRecordType { eNone, eModule, eESD, eText, eEOM };
-
-  //{{{
-  bool getRO (ifstream& stream) {
-
-    mLength = stream.get();
-    uint8_t b = stream.get();
-    mBlockIndex = 0;
-
-    if ((b > '0') && (b <= '4')) {
-      mType = (eRecordType)(b - uint8_t('0'));
-      if (mType < eEOM)
-        for (int i = 0; i < mLength-1; i++)
-          mBlock[i] = stream.get();
-
-      return mType == eEOM;
-      }
-
-    else {
-      mType = eNone;
-      return true;
-      }
-    }
-  //}}}
-
-  eRecordType getType() { return mType; }
-  //{{{
-  string getSymbolName() {
-
-    string name;
-    name.resize (10);
-
-    for (int i = 0; i < 10; i++) {
-      char ch = getByte();
-      if (ch == ' ')
-        break;
-      name = name + ch;
-      }
-
-    return name;
-    }
-  //}}}
-
-  //{{{
-  void report() {
-
-    if (mType == eEOM)
-      printf ("EOM\n");
-
-    else {
-      printf ("len:%d type:%d\n", (int)mLength, (int)mType);
-
-      // report block
-      for (int i = 0; i < mLength-1; i++) {
-        if ((i % 32) == 0) // indent
-          printf ("  %03x  ", i);
-
-        printf ("%02x ", mBlock[i]);
-        if ((i % 32) == 31)
-          printf ("\n");
-        }
-
-      printf ("\n");
-      }
-    }
-  //}}}
-
-  //{{{
-  string processModuleId() {
-    string modName = getSymbolName();
-    return modName;
-    }
-  //}}}
-
-private:
-  //{{{
-  uint8_t getByte() {
-
-    if (mBlockIndex >= mLength) {
-      printf ("cObjRecord::getByte past end of block\n");
-      return 0;
-      }
-
-    return mBlock[mBlockIndex++];
-    }
-  //}}}
-
-  uint8_t mLength = 0;
-  eRecordType mType = eNone;
-
-  array <uint8_t,255> mBlock = {0};
-  uint8_t mBlockIndex = 0;
-  };
-//}}}
-//{{{
-class cSymbol {
-public:
-  cSymbol() {}
-  virtual ~cSymbol() = default;
-
-private:
-  string mName;
-  string mModName;
-  int section = 0;
-  int addr = 0;
-  int comsize = 0;
-  bool def = false;
-  bool used = false;
-  bool flagged = false;
-  bool hist = false;
-  };
-//}}}
 //{{{
 class cSwitches {
 public:
@@ -163,16 +48,16 @@ public:
     size_t start = 1;
     size_t found = line.find ('/', start);
     while (found != string::npos)  {
-      processSwitch (line.substr (start, found-start));
+      processToken (line.substr (start, found-start));
       start = found + 1;
       found = line.find ('/', start);
       }
 
-    processSwitch (line.substr (start, found));
+    processToken (line.substr (start, found));
     }
   //}}}
   //{{{
-  void report() {
+  void dump() {
 
     printf ("switches ");
     for (int switchIndex = eChat; switchIndex <= eBin; switchIndex++)
@@ -227,10 +112,10 @@ private:
   //}}}
 
   //{{{
-  void processSwitch (const string& token) {
+  void processToken (const string& token) {
 
-    mToken = token;
     mTokenIndex = 0;
+    mToken = token;
 
     bool found = false;
     for (int switchIndex = eChat; switchIndex <= eBin; switchIndex++)
@@ -258,16 +143,133 @@ private:
     }
   //}}}
 
-  //{{{  const
+  // const
   const array <string, kNumSwitches> kSwitchNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin"};
   const array <string, kNumSwitches> kSwitchAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   ""   };
-  //}}}
 
+  // var
   array <bool, kNumSwitches> mSwitches = { false };
   array <int, kNumSections> mSectionBaseAddress = { 0 };
 
-  string mToken;
   size_t mTokenIndex = 0;
+  string mToken;
+  };
+//}}}
+//{{{
+class cObjRecord {
+public:
+  cObjRecord() {}
+  virtual ~cObjRecord() = default;
+
+  enum eRecordType { eNone, eModule, eESD, eText, eEOM };
+
+  eRecordType getType() { return mType; }
+  //{{{
+  bool getRO (ifstream& stream) {
+  // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
+
+    mBlockIndex = 0;
+
+    mLength = stream.get();
+    uint8_t b = stream.get();
+    if ((b > '0') && (b <= '4')) {
+      mType = (eRecordType)(b - uint8_t('0'));
+      if (mType < eEOM)
+        for (size_t i = 0; i < mLength-1; i++)
+          mBlock[i] = stream.get();
+
+      return mType == eEOM;
+      }
+
+    else {
+      mType = eNone;
+      return true;
+      }
+    }
+  //}}}
+  //{{{
+  string getSymbolName() {
+
+    string name;
+    name.resize (kMaxSymbolNameLength);
+
+    for (int i = 0; i < kMaxSymbolNameLength; i++) {
+      char ch = getByte();
+      if (ch == ' ')
+        break;
+      name = name + ch;
+      }
+
+    return name;
+    }
+  //}}}
+
+  //{{{
+  string processModuleId() {
+    string modName = getSymbolName();
+    return modName;
+    }
+  //}}}
+  //{{{
+  void dump() {
+
+    if (mType == eEOM)
+      printf ("EOM\n");
+
+    else {
+      printf ("len:%d type:%d\n", (int)mLength, (int)mType);
+
+      // dump block
+      for (int i = 0; i < mLength-1; i++) {
+        if ((i % 32) == 0) // indent
+          printf ("  %03x  ", i);
+
+        printf ("%02x ", mBlock[i]);
+        if ((i % 32) == 31)
+          printf ("\n");
+        }
+
+      printf ("\n");
+      }
+    }
+  //}}}
+
+private:
+  //{{{
+  uint8_t getByte() {
+
+    if (mBlockIndex >= mLength) {
+      printf ("cObjRecord::getByte past end of record data\n");
+      return 0;
+      }
+
+    return mBlock[mBlockIndex++];
+    }
+  //}}}
+
+  uint8_t mLength = 0;
+  eRecordType mType = eNone;
+
+  uint8_t mBlockIndex = 0;
+  array <uint8_t,255> mBlock = {0};
+  };
+//}}}
+//{{{
+class cSymbol {
+public:
+  cSymbol() {}
+  virtual ~cSymbol() = default;
+
+private:
+  string mName;
+  string mModName;
+  int section = 0;
+  int addr = 0;
+  int comsize = 0;
+  bool def = false;
+  bool used = false;
+  bool flagged = false;
+  bool hist = false;
   };
 //}}}
 //{{{
@@ -303,7 +305,7 @@ void processObjFile (const string& line, vector <string>& objFiles) {
   // look for trailing comma
   size_t foundComma = line.find (',');
 
-  // look for extension dot, assumes only dot
+  // look for extension dot, assumes only one dot, !!! could search backwards !!!
   size_t foundDot = line.find ('.');
   if (foundDot == string::npos) // no dot, use default ext
     objFiles.push_back (line.substr (0, foundComma) + ".ro");
@@ -326,7 +328,7 @@ void pass1File (const string& fileName, cSwitches& switches, const cLink& link) 
     eom = objRecord.getRO (objFileStream);
     if (!eom) {
       if (kObjFileDebug)
-        objRecord.report();
+        objRecord.dump();
 
       switch (objRecord.getType()) {
         case cObjRecord::eModule: {
@@ -364,7 +366,7 @@ void pass2File (const string& fileName, cSwitches& switches, const cLink& link) 
     eom = objRecord.getRO (objFileStream);
     if (!eom) {
       if (kObjFileDebug)
-        objRecord.report();
+        objRecord.dump();
 
       switch (objRecord.getType()) {
         case cObjRecord::eModule:
@@ -388,10 +390,9 @@ void pass2File (const string& fileName, cSwitches& switches, const cLink& link) 
 //{{{
 int main (int numArgs, char* args[]) {
 
+  // get command line args
   string cmdFileName;
   cSwitches switches;
-
-  // get cmd line args
   for (int i = 1; i < numArgs; i++)
     if (args[i][0] == '/')
       switches.process (args[i]);
@@ -408,9 +409,8 @@ int main (int numArgs, char* args[]) {
   printf ("using cmdFileName %s\n", cmdFileName.c_str());
 
   // get objFiles from .cmd file
-  vector <string> objFiles;
   string line;
-
+  vector <string> objFiles;
   ifstream cmdFileStream (cmdFileName + ".cmd", ifstream::in);
   while (getline (cmdFileStream, line)) {
     if (line[0] == '/')
@@ -426,13 +426,14 @@ int main (int numArgs, char* args[]) {
     }
   cmdFileStream.close();
 
-  switches.report();
+  switches.dump();
 
-  // process object files
+  // read symbols and accumulates section sizes
   cLink link;
-
   for (auto& objFile : objFiles)
     pass1File (objFile.c_str(), switches, link);
+
+  // resolve addresses and output .bin
   for (auto& objFile : objFiles)
     pass2File (objFile.c_str(), switches, link);
 
