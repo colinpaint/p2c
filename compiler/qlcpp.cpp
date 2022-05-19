@@ -13,16 +13,16 @@
 using namespace std;
 //}}}
 //{{{  debug flags
-constexpr bool kSwitchDebug = false;
+constexpr bool kOptionDebug = false;
 constexpr bool kCmdLineDebug = false;
 constexpr bool kObjFileDebug = false;
 
 constexpr bool kPassDebug = false;
 //}}}
 //{{{  const, enum
-// switches, easier to use as globals
-enum eSwitches { eChat, eDebug, eMod, eMap, eBell, eXref, eCheck, eBin, eLastSwitch };
-constexpr size_t kNumSwitches = eLastSwitch; // for enum arrays to play nice
+// options, easier to use as globals
+enum eOption { eChat, eDebug, eMod, eMap, eBell, eXref, eCheck, eBin, eLastOption };
+constexpr size_t kNumOptions = eLastOption; // for enum arrays to play nice
 
 // sections
 constexpr size_t kNumSections = 16;
@@ -34,11 +34,16 @@ constexpr uint32_t kStartBase = 0x400;
 //}}}
 
 //{{{
-class cSwitches {
+class cOptions {
 public:
-  cSwitches() {}
-  virtual ~cSwitches() = default;
+  cOptions() {}
+  virtual ~cOptions() = default;
 
+  //{{{
+  bool getEnabled (eOption option) {
+    return mEnabled[option];
+    }
+  //}}}
   //{{{
   uint32_t getSectionBaseAddress (size_t section) {
     return mSectionBaseAddress[section];
@@ -48,10 +53,10 @@ public:
   //{{{
   void process (const string& line) {
 
-    if (kSwitchDebug)
-      printf ("processSwitches %s\n", line.c_str());
+    if (kOptionDebug)
+      printf ("processOptions %s\n", line.c_str());
 
-    // parse into individual switches, stripping out /
+    // parse into individual options, stripping out /
     size_t start = 1;
     size_t found = line.find ('/', start);
     while (found != string::npos)  {
@@ -66,10 +71,10 @@ public:
   //{{{
   void dump() {
 
-    printf ("switches ");
-    for (int switchIndex = eChat; switchIndex <= eBin; switchIndex++)
-      if (mSwitches[switchIndex])
-        printf ("%s ", kSwitchNames [switchIndex].c_str());
+    printf ("options ");
+    for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
+      if (mEnabled[optionIndex])
+        printf ("%s ", kOptionNames [optionIndex].c_str());
     printf ("\n");
 
     for (int section = 0;  section <= 15; section++)
@@ -125,9 +130,9 @@ private:
     mToken = token;
 
     bool found = false;
-    for (int switchIndex = eChat; switchIndex <= eBin; switchIndex++)
-      if ((token == kSwitchNames[switchIndex]) ||(token == kSwitchAltNames[switchIndex])) {
-        mSwitches[switchIndex] = true;
+    for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
+      if ((token == kOptionNames[optionIndex]) ||(token == kOptionAltNames[optionIndex])) {
+        mEnabled[optionIndex] = true;
         found = true;
         break;
         }
@@ -141,21 +146,21 @@ private:
         if ((section >= 0) && (section <= 15))
           mSectionBaseAddress[section] = address;
 
-        if (kSwitchDebug)
-          printf ("processSwitch section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
+        if (kOptionDebug)
+          printf ("processOption section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
         }
       else
-        printf ("processSwitch - unrecognised switch %s\n", token.c_str());
+        printf ("processOption - unrecognised option %s\n", token.c_str());
       }
     }
   //}}}
 
   // const
-  const array <string, kNumSwitches> kSwitchNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin"};
-  const array <string, kNumSwitches> kSwitchAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   ""   };
+  const array <string, kNumOptions> kOptionNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin"};
+  const array <string, kNumOptions> kOptionAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   ""   };
 
   // var
-  array <bool, kNumSwitches> mSwitches = { false };
+  array <bool, kNumOptions> mEnabled = { false };
   array <uint32_t, kNumSections> mSectionBaseAddress = { 0 };
 
   size_t mTokenIndex = 0;
@@ -240,7 +245,7 @@ public:
   // allocate common section addresses
 
     for (auto& symbol : mCommonSymbols) {
-      mBasePosition = switches.getSectionBaseAddress (symbol->mSection);
+      mBasePosition = mOptions.getSectionBaseAddress (symbol->mSection);
 
       symbol->mAddr = mSectBase[symbol->mSection];
       mSectBase[symbol->mSection] = mSectBase[symbol->mSection] + uint32_t(symbol->mComSize);
@@ -267,7 +272,7 @@ public:
   void dumpSections() {
 
     for (size_t section = 0; section < 16; section++) {
-      uint32_t baseAddress = switches.getSectionBaseAddress (section);
+      uint32_t baseAddress = mOptions.getSectionBaseAddress (section);
       if (baseAddress)
         mBasePosition = baseAddress;
 
@@ -278,11 +283,11 @@ public:
         }
       }
 
-    printf ("          finish:%6x size:%6x\n", mBasePosition, mBasePosition - switches.getSectionBaseAddress(0));
+    printf ("          finish:%6x size:%6x\n", mBasePosition, mBasePosition - mOptions.getSectionBaseAddress(0));
     }
   //}}}
 
-  cSwitches switches;
+  cOptions mOptions;
 
   uint32_t mBasePosition = kStartBase;
 
@@ -752,8 +757,8 @@ void processComment (const string& line) {
   }
 //}}}
 //{{{
-void processInclude (const string& line) {
-// should extract includee filename and add its contents to the objFilesfile list
+void processInclude (const string& line, vector <string>& objFiles) {
+// extract include filename and add its contents to the objFilesfile list
 
   printf ("processInclude %s not implented\n", line.c_str());
   }
@@ -829,7 +834,7 @@ int main (int numArgs, char* args[]) {
   string cmdFileName;
   for (int i = 1; i < numArgs; i++)
     if (args[i][0] == '/')
-      linker.switches.process (args[i]);
+      linker.mOptions.process (args[i]);
     else
       cmdFileName = args[i];
 
@@ -848,18 +853,18 @@ int main (int numArgs, char* args[]) {
   ifstream cmdFileStream (cmdFileName + ".cmd", ifstream::in);
   while (getline (cmdFileStream, line))
     if (line[0] == '/')
-      linker.switches.process (line);
+      linker.mOptions.process (line);
     else if (line[0] == '!')
       processComment (line);
     else if (line[0] == '#')
       processComment (line);
     else if (line[0] == '@')
-      processInclude (line);
+      processInclude (line, objFiles);
     else
       processObjFile (line, objFiles);
   cmdFileStream.close();
 
-  linker.switches.dump();
+  linker.mOptions.dump();
 
   // read symbols, accumulate section sizes
   for (auto& objFile : objFiles)
