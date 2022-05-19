@@ -18,8 +18,6 @@ constexpr bool kCmdLineDebug = false;
 constexpr bool kObjFileDebug = false;
 
 constexpr bool kPassDebug = false;
-constexpr bool kPass1Debug = false;
-constexpr bool kPass2Debug = true;
 //}}}
 //{{{  const, enum
 // switches, easier to use as globals
@@ -31,6 +29,8 @@ constexpr size_t kNumSections = 16;
 
 // symbol
 constexpr size_t kMaxSymbolNameLength = 10;
+
+constexpr uint32_t kStartBase = 0x400;
 //}}}
 
 //{{{
@@ -38,6 +38,12 @@ class cSwitches {
 public:
   cSwitches() {}
   virtual ~cSwitches() = default;
+
+  //{{{
+  uint32_t getSectionBaseAddress (size_t section) {
+    return mSectionBaseAddress[section];
+    }
+  //}}}
 
   //{{{
   void process (const string& line) {
@@ -200,20 +206,27 @@ public:
   //}}}
 
   //{{{
-  cSymbol* addSymbol (const string& symbolName, bool& symbolFound) {
+  cSymbol* findSymbol (const string& symbolName) {
+  // find symbol, return nullptr if not found
 
     auto it = mSymbolMap.find (symbolName);
-    symbolFound = it != mSymbolMap.end();
+    return (it == mSymbolMap.end()) ? nullptr : (*it).second;
+    }
+  //}}}
+  //{{{
+  cSymbol* findInsertSymbol (const string& symbolName, bool& symbolFound) {
 
-    if (symbolFound) {
+    cSymbol* symbol = findSymbol (symbolName);
+
+    symbolFound = symbol != nullptr;
+    if (symbolFound)
       printf ("symbol already defined %8s\n", symbolName.c_str());
-      return (*it).second;
-      }
     else {
-      cSymbol* symbol = new cSymbol (symbolName);
+      symbol = new cSymbol (symbolName);
       mSymbolMap.emplace (symbolName, symbol);
-      return symbol;
       }
+
+    return symbol;
     }
   //}}}
   //{{{
@@ -223,7 +236,23 @@ public:
   //}}}
 
   //{{{
-  void dump() {
+  void allocCommon() {
+  // allocate common section addresses
+
+    for (auto& symbol : mCommonSymbols) {
+      mBasePosition = switches.getSectionBaseAddress (symbol->mSection);
+
+      symbol->mAddr = mSectBase[symbol->mSection];
+      mSectBase[symbol->mSection] = mSectBase[symbol->mSection] + uint32_t(symbol->mComSize);
+
+      if (mSectBase[symbol->mSection] & 1)
+        mSectBase[symbol->mSection] = mSectBase[symbol->mSection] + 1;
+      }
+    }
+  //}}}
+
+  //{{{
+  void dumpSymbols() {
 
     int numUndefined = 0;
 
@@ -234,8 +263,28 @@ public:
     printf ("%d symbols undefined of %d\n", numUndefined, (int)mSymbolMap.size());
     }
   //}}}
+  //{{{
+  void dumpSections() {
+
+    for (size_t section = 0; section < 16; section++) {
+      uint32_t baseAddress = switches.getSectionBaseAddress (section);
+      if (baseAddress)
+        mBasePosition = baseAddress;
+
+      if (mSectBase[section]) {
+        printf ("section:%2d start:%6x size:%6x\n", (int)section, mBasePosition, mSectBase[section]);
+        mBaseAddr[section] = mBasePosition;
+        mBasePosition = mBasePosition + mSectBase[section];
+        }
+      }
+
+    printf ("          finish:%6x size:%6x\n", mBasePosition, mBasePosition - switches.getSectionBaseAddress(0));
+    }
+  //}}}
 
   cSwitches switches;
+
+  uint32_t mBasePosition = kStartBase;
 
   array <uint32_t,16> mSectBase = { 0 };
 
@@ -243,13 +292,12 @@ public:
   array <uint32_t, 256> mOutAddrArray = { 0 };
   array <uint32_t, 256> mEsdArray = { 0 };
 
-  array <uint32_t, 16> mUserBase = { 0 };
   array <uint32_t, 16> mBaseAddr = { 0 };
   array <uint32_t, 16> mSbase = { 0 };
 
   uint32_t mCodeStart = 0;
   uint32_t mCodeLen = 0;
-  int mTopESD = 0;
+  int mTopEsd = 0;
 
 private:
   string mModName;
@@ -263,36 +311,19 @@ public:
   cObjRecord() {}
   virtual ~cObjRecord() = default;
 
-  enum eRecordType { eNone, eId, eESD, eObjectText, eEnd };
+  enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
 
-  int getDataLeft() { return mLength - mBlockIndex - 1; }
-  eRecordType getType() { return mType; }
+  // gets
   //{{{
-  bool loadRoFormat (ifstream& stream) {
-  // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
-
-    mBlockIndex = 0;
-
-    mLength = stream.get();
-    uint8_t b = stream.get();
-
-    if ((b > '0') && (b <= '4')) {
-      // recognised record type
-      mType = (eRecordType)(b - uint8_t('0'));
-      if (mType < eEnd)
-        for (size_t i = 0; i < mLength-1; i++)
-          mBlock[i] = stream.get();
-
-      return mType == eEnd;
-      }
-
-    else {
-      mType = eNone;
-      return true;
-      }
+  eRecordType getType() {
+    return mType;
     }
   //}}}
-
+  //{{{
+  int getDataLeft() {
+    return mLength - mBlockIndex - 1;
+    }
+  //}}}
   //{{{
   uint8_t getByte() {
 
@@ -333,11 +364,39 @@ public:
     }
   //}}}
 
+  // load
   //{{{
-  void processModuleId (cLinker& linker, bool pass1) {
+  bool loadRoFormat (ifstream& stream) {
+  // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
 
-    linker.mTopESD = 17;
-    linker.mEsdArray[0] = 0;  // unused esd value
+    mBlockIndex = 0;
+
+    mLength = stream.get();
+    uint8_t b = stream.get();
+
+    if ((b > '0') && (b <= '4')) {
+      // recognised record type
+      mType = (eRecordType)(b - uint8_t('0'));
+      if (mType < eEnd)
+        for (size_t i = 0; i < mLength-1; i++)
+          mBlock[i] = stream.get();
+
+      return mType == eEnd;
+      }
+
+    else {
+      mType = eNone;
+      return true;
+      }
+    }
+  //}}}
+
+  // process
+  //{{{
+  void processId (cLinker& linker, bool pass1) {
+
+    linker.mTopEsd = 17;
+    linker.mEsdArray[0] = 0;  // unused Esd value
 
     string modName = getSymbolName();
     linker.setModName (modName);
@@ -345,7 +404,7 @@ public:
     if (kPassDebug)
       printf ("ModuleId - modName:%s\n", modName.c_str());
 
-    // we need to init these esd values, in case of zero length sections
+    // we need to init these Esd values, in case of zero length sections
     if (!pass1) {
       //if modules then
       //  write (moduleFile, modName, ':');
@@ -355,14 +414,14 @@ public:
 
       for (int section = 0; section < 16; section++) {
         linker.mEsdArray[section+1] = linker.mBaseAddr[section] + linker.mSbase[section];
-        linker.mEsdSymbolArray[linker.mTopESD] = nullptr;
+        linker.mEsdSymbolArray[linker.mTopEsd] = nullptr;
         linker.mOutAddrArray[section+1] = linker.mEsdArray[section+1];
         }
       }
     }
   //}}}
   //{{{
-  void processEsdPass (cLinker& linker, bool pass1) {
+  void processEsd (cLinker& linker, bool pass1) {
   // process External Symbol Definition record
 
     while (getDataLeft() > 0) {
@@ -381,11 +440,11 @@ public:
             printf ("Absolute %08x %08x\n", size, start);
 
           if (!pass1) {
-            linker.mEsdArray[linker.mTopESD] = start;
-            linker.mEsdSymbolArray [linker.mTopESD] = nullptr;
+            linker.mEsdArray[linker.mTopEsd] = start;
+            linker.mEsdSymbolArray [linker.mTopEsd] = nullptr;
 
-            linker.mOutAddrArray[linker.mTopESD] = linker.mEsdArray[linker.mTopESD];
-            linker.mTopESD = linker.mTopESD + 1;
+            linker.mOutAddrArray[linker.mTopEsd] = linker.mEsdArray[linker.mTopEsd];
+            linker.mTopEsd = linker.mTopEsd + 1;
             }
 
           break;
@@ -402,7 +461,7 @@ public:
           if (pass1) {
             //{{{  pass1
             bool symbolFound;
-            cSymbol* symbol = linker.addSymbol (commonSymbolName, symbolFound);
+            cSymbol* symbol = linker.findInsertSymbol (commonSymbolName, symbolFound);
             symbol->addReference (linker.getModName());
 
             if (!symbol->mDefined) {
@@ -454,7 +513,7 @@ public:
         case  3: { // short address relocatable section xx
           uint32_t size = getInt();
 
-          if (kPass1Debug)
+          if (kPassDebug)
             printf ("section def - section:%2d size:%08x\n", (int)section, size);
 
           if (pass1) {
@@ -462,7 +521,19 @@ public:
             if (linker.mSectBase[section] & 1)
               linker.mSectBase[section] = linker.mSectBase[section] + 1;
             }
+
           else {
+            linker.mEsdArray[section+1] = linker.mBaseAddr[section] + linker.mSbase[section];
+            linker.mEsdSymbolArray [linker.mTopEsd] = nullptr;
+
+            linker.mOutAddrArray[section+1] = linker.mEsdArray[section+1];
+            //if modules then
+            //  write (moduleFile, ' ', section:2, ':', hex (linker.mEsdArray[section+1], 6, 6), '+', hex (i, 6, 6));
+
+            linker.mSbase[section] = linker.mSbase[section] + size;
+
+            if (linker.mSbase[section] & 1)
+              linker.mSbase[section] = linker.mSbase[section] + 1;
             }
 
           break;
@@ -475,13 +546,13 @@ public:
           string xdefSymbolName = getSymbolName();
           uint32_t address = getInt();
 
-          if (kPass1Debug)
+          if (kPassDebug)
             printf ("symbol xdef - section:%2d %8s address:%08x\n", (int)section, xdefSymbolName.c_str(), address);
 
           if (pass1) {
             //{{{  pass1
             bool symbolFound;
-            cSymbol* symbol = linker.addSymbol (xdefSymbolName, symbolFound);
+            cSymbol* symbol = linker.findInsertSymbol (xdefSymbolName, symbolFound);
 
             // !!! this isnt right yet !!!
             if (symbol->mDefined && !symbol->mFlagged) {
@@ -511,32 +582,62 @@ public:
             }
             //}}}
           else {
+            //if usingHistory then
+            //  begin { symbol defintion, use to make patches on second pass }
+            //  b := findInsert (s, symbol, false); { find it }
+            //  if symbol^.resList <> nil then
+            //    begin
+            //    r := symbol^.resList;
+            //    repeat
+            //      begin
+            //      patch := symbol^.addr + baseaddr[symbol^.section] + r^.offset;
+            //      if debugInfo then
+            //        writeln ('patching ',hex (r^.addr, 6, 6), ' with ',
+            //                             hex (patch-r^.offset, 6, 6), ' + ', hex (r^.offset, 6, 6));
+            //      codestart := r^.addr;
+            //      codeArray [1] := mvr (mvr (patch));
+            //      codeArray [2] := patch;
+            //      codelen := 2;
+            //      outputData;
+            //      r := r^.next;
+            //      end until r = nil;
+            //    end;
             }
-
           break;
           }
         //}}}
 
         case 6:         // xRef symbol to section xx
+          //showModName;
+          printf ("xref%d\n", int(section));
+          // fall through to
         //{{{
         case  7: { // xRef symbol to any section
-          if (esdType == 6) {
-            //showModName;
-            printf ("xref%d\n", int(section));
-            }
-
           string xrefSymbolName = getSymbolName();
 
-          if (kPass1Debug)
+          if (kPassDebug)
             printf ("symbol xref - section:%2d %8s\n", (int)section, xrefSymbolName.c_str());
 
           if (pass1) {
+            // pass1 action
             bool symbolFound;
-            cSymbol* symbol = linker.addSymbol (xrefSymbolName, symbolFound);
-
+            cSymbol* symbol = linker.findInsertSymbol (xrefSymbolName, symbolFound);
             symbol->addReference (linker.getModName());
             }
+
           else {
+            // pass2 action
+            cSymbol* symbol = linker.findSymbol (xrefSymbolName);
+            if (!symbol) {
+              //showModName;
+              printf ("internal check failure - lost symbol\n");
+              }
+
+            linker.mEsdArray[linker.mTopEsd] = symbol->mAddr + linker.mBaseAddr[symbol->mSection];
+            linker.mEsdSymbolArray [linker.mTopEsd] = symbol;
+
+            linker.mOutAddrArray[linker.mTopEsd] = linker.mEsdArray[linker.mTopEsd];
+            linker.mTopEsd = linker.mTopEsd + 1;
             }
 
           break;
@@ -545,7 +646,7 @@ public:
 
         //{{{
         case  8: { // commandLineAddress in section
-          if (kPass1Debug)
+          if (kPassDebug)
             printf ("command Line address section\n");
 
           for (int i = 0; i < 15; i++)
@@ -561,7 +662,7 @@ public:
         //}}}
         //{{{
         case  9: { // commandLineAddress in absolute section
-          if (kPass1Debug)
+          if (kPassDebug)
             printf ("command Line address absolute section\n");
 
           for (int i = 0; i < 5; i++)
@@ -577,7 +678,7 @@ public:
         //}}}
         //{{{
         case 10: { // commandLineAddress in common section in section xx
-          if (kPass1Debug)
+          if (kPassDebug)
             printf ("command Line address common section\n");
 
           for (int i = 0; i < 15; i++)
@@ -595,20 +696,21 @@ public:
         //{{{
         default:
           if (pass1)
-            printf ("unknown esdType %d\n", esdType);
+            printf ("unknown EsdType %d\n", esdType);
         //}}}
         }
       }
     }
   //}}}
   //{{{
-  void processTextPass (cLinker& linker, bool pass1) {
+  void processText (cLinker& linker, bool pass1) {
 
     if (!pass1) {
       }
     }
   //}}}
 
+  // dump
   //{{{
   void dump() {
 
@@ -636,6 +738,7 @@ public:
 private:
   int mLength = 0;
   eRecordType mType = eNone;
+
   int mBlockIndex = 0;
   array <uint8_t,256> mBlock = {0};
   };
@@ -674,9 +777,8 @@ void processObjFile (const string& line, vector <string>& objFiles) {
     objFiles.push_back (line.substr (0, foundTerminator));
   }
 //}}}
-
 //{{{
-void passFile (cLinker& linker, const string& fileName, bool pass1) {
+void processLinker (cLinker& linker, const string& fileName, bool pass1) {
 
   if (kPassDebug)
     printf ("passFile %s\n", fileName.c_str());
@@ -694,15 +796,15 @@ void passFile (cLinker& linker, const string& fileName, bool pass1) {
     if (!eom) {
       switch (objRecord.getType()) {
         case cObjRecord::eId:
-          objRecord.processModuleId (linker, pass1);
+          objRecord.processId (linker, pass1);
           break;
 
-        case cObjRecord::eESD:
-          objRecord.processEsdPass (linker, pass1);
+        case cObjRecord::eEsd:
+          objRecord.processEsd (linker, pass1);
           break;
 
         case cObjRecord::eObjectText:
-          objRecord.processTextPass (linker, pass1);
+          objRecord.processText (linker, pass1);
           break;
 
         case cObjRecord::eEnd:
@@ -717,6 +819,10 @@ void passFile (cLinker& linker, const string& fileName, bool pass1) {
   objFileStream.close();
   }
 //}}}
+
+
+  //baseaddr[-1] := 0;      {set up base of absolute section}
+
 
 //{{{
 int main (int numArgs, char* args[]) {
@@ -744,7 +850,7 @@ int main (int numArgs, char* args[]) {
   string line;
   vector <string> objFiles;
   ifstream cmdFileStream (cmdFileName + ".cmd", ifstream::in);
-  while (getline (cmdFileStream, line)) {
+  while (getline (cmdFileStream, line))
     if (line[0] == '/')
       linker.switches.process (line);
     else if (line[0] == '!')
@@ -755,19 +861,21 @@ int main (int numArgs, char* args[]) {
       processInclude (line);
     else
       processObjFile (line, objFiles);
-    }
   cmdFileStream.close();
 
   linker.switches.dump();
 
   // read symbols and accumulate section sizes
   for (auto& objFile : objFiles)
-    passFile (linker, objFile.c_str(), true);
-  linker.dump();
+    processLinker (linker, objFile.c_str(), true);
+
+  linker.dumpSymbols();
+  linker.allocCommon();
+  linker.dumpSections();
 
   // resolve addresses and output .bin
   for (auto& objFile : objFiles)
-    passFile (linker, objFile.c_str(), false);
+    processLinker (linker, objFile.c_str(), false);
 
   return 0;
   }
