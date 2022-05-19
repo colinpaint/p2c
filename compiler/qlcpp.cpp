@@ -1,4 +1,4 @@
-// qlCpp.cpp
+// qlCpp.cpp - no handling of abolute sections
 //{{{  includes
 #include <cstdio>
 #include <cstdint>
@@ -820,10 +820,6 @@ void processLinker (cLinker& linker, const string& fileName, bool pass1) {
   }
 //}}}
 
-
-  //baseaddr[-1] := 0;      {set up base of absolute section}
-
-
 //{{{
 int main (int numArgs, char* args[]) {
 
@@ -865,11 +861,13 @@ int main (int numArgs, char* args[]) {
 
   linker.switches.dump();
 
-  // read symbols and accumulate section sizes
+  // read symbols, accumulate section sizes
   for (auto& objFile : objFiles)
     processLinker (linker, objFile.c_str(), true);
 
   linker.dumpSymbols();
+
+  // allocate section sizes
   linker.allocCommon();
   linker.dumpSections();
 
