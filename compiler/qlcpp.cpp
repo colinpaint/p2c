@@ -26,9 +26,11 @@ constexpr size_t kNumOptions = eLastOption; // for enum arrays to play nice
 // sections
 constexpr size_t kNumSections = 16;
 
-// symbol
-constexpr size_t kMaxSymbolNameLength = 10;
+// symbol - actually 8 chars for pascal compiler, always at least 2 trailing spaces
+constexpr size_t kActualSymbolNameLength = 8;
+constexpr size_t kObjSymbolNameLength = 10;
 
+// default section start address, no idea why its this number, VersaDos history ?
 constexpr uint32_t kStartBase = 0x400;
 //}}}
 
@@ -46,8 +48,8 @@ public:
   string mModName;
 
   size_t mSection = 0;
-  int mAddr = 0;
-  size_t mComSize = 0;
+  uint32_t mAddress = 0;
+  uint32_t mComSize = 0;
 
   bool mDefined = false;
   bool mComSizeDefined = false;
@@ -112,7 +114,7 @@ public:
     for (auto& symbol : mCommonSymbols) {
       mBasePosition = mOptions.getSectionBaseAddress (symbol->mSection);
 
-      symbol->mAddr = mSectBase[symbol->mSection];
+      symbol->mAddress = mSectBase[symbol->mSection];
       mSectBase[symbol->mSection] = mSectBase[symbol->mSection] + uint32_t(symbol->mComSize);
 
       if (mSectBase[symbol->mSection] & 1)
@@ -363,17 +365,24 @@ public:
   //}}}
   //{{{
   string getSymbolName() {
+  // 10 bytes but oonly 8 have ascii chars, trailing spaces pad
 
     string name;
+    name.reserve (kActualSymbolNameLength);
 
     // read maxSymbolNameLength, only add up to first space in string
     bool terminated = false;
-    for (int i = 0; i < kMaxSymbolNameLength; i++) {
+    for (int i = 0; i < kObjSymbolNameLength; i++) {
       char byte = getByte();
       if (byte == ' ')
         terminated = true;
-      if (!terminated)
-        name = name + byte;
+
+      if (!terminated) {
+        if (i < kActualSymbolNameLength)
+          name = name + byte;
+        else
+          printf ("symbolName trailing space problem pos:%d value:%02x\n", i, byte);
+        }
       }
 
     return name;
@@ -468,16 +477,16 @@ public:
         //}}}
         //{{{
         case  1: { // common section xx
-          string commonSymbolName = getSymbolName();
+          string symbolName = getSymbolName();
           uint32_t size = getInt();
 
           if (kPassDebug)
-            printf ("common data - section:%2d %8s size:%08x\n", (int)section, commonSymbolName.c_str(), size);
+            printf ("common data - section:%2d %8s size:%08x\n", (int)section, symbolName.c_str(), size);
 
           if (pass1) {
             //{{{  pass1
             bool symbolFound;
-            cSymbol* symbol = linker.findCreateSymbol (commonSymbolName, symbolFound);
+            cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
             symbol->addReference (linker.getModName());
 
             if (!symbol->mDefined) {
@@ -492,7 +501,7 @@ public:
               if (size != symbol->mComSize) {
                 if (!symbol->mFlagged && !symbol->mComSizeDefined) {
                   //showModName;
-                  printf ("Label %s is used double defined\n", commonSymbolName.c_str());
+                  printf ("Label %s is used double defined\n", symbolName.c_str());
                   printf ("as a common in module %s\n", linker.getModName().c_str());
                   printf (" and as an XDEF in module %s\n", symbol->mModName.c_str());
                   symbol->mFlagged = true;
@@ -500,7 +509,7 @@ public:
 
                 else if (!symbol->mFlagged) {  // and check
                   //showModName;
-                  printf ("Common area size clash - common %s\n ", commonSymbolName.c_str());
+                  printf ("Common area size clash - common %s\n ", symbolName.c_str());
                   printf ("size in this module is %x bytes", int(size));
                   printf ("size in %s %d bytes\n", symbol->mModName.c_str(), int(symbol->mComSize));
                   symbol->mFlagged = true;
@@ -559,16 +568,16 @@ public:
         case 4:         // xDef symbol in relocatble section xx
         //{{{
         case  5: { // xDef symbol in absolute section
-          string xdefSymbolName = getSymbolName();
+          string symbolName = getSymbolName();
           uint32_t address = getInt();
 
           if (kPassDebug)
-            printf ("symbol xdef - section:%2d %8s address:%08x\n", (int)section, xdefSymbolName.c_str(), address);
+            printf ("symbol xdef - section:%2d %8s address:%08x\n", (int)section, symbolName.c_str(), address);
 
           if (pass1) {
             //{{{  pass1
             bool symbolFound;
-            cSymbol* symbol = linker.findCreateSymbol (xdefSymbolName, symbolFound);
+            cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
 
             // !!! this isnt right yet !!!
             if (symbol->mDefined && !symbol->mFlagged) {
@@ -594,7 +603,7 @@ public:
             symbol->mModName = linker.getModName();
             symbol->mSection = section;
             symbol->mDefined = true;
-            symbol->mAddr = address + linker.mSectBase[section];
+            symbol->mAddress = address + linker.mSectBase[section];
             }
             //}}}
           else {
@@ -629,31 +638,29 @@ public:
           // fall through to
         //{{{
         case  7: { // xRef symbol to any section
-          string xrefSymbolName = getSymbolName();
+          string symbolName = getSymbolName();
 
           if (kPassDebug)
-            printf ("symbol xref - section:%2d %8s\n", (int)section, xrefSymbolName.c_str());
+            printf ("symbol xref - section:%2d %8s\n", (int)section, symbolName.c_str());
 
           if (pass1) {
             // pass1 action
             bool symbolFound;
-            cSymbol* symbol = linker.findCreateSymbol (xrefSymbolName, symbolFound);
+            cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
             symbol->addReference (linker.getModName());
             }
 
           else {
             // pass2 action
-            cSymbol* symbol = linker.findSymbol (xrefSymbolName);
-            if (!symbol) {
-              //showModName;
-              printf ("internal check failure - lost symbol\n");
+            cSymbol* symbol = linker.findSymbol (symbolName);
+            if (symbol) {
+              linker.mEsdArray[linker.mTopEsd] = symbol->mAddress + linker.mBaseAddr[symbol->mSection];
+              linker.mEsdSymbolArray [linker.mTopEsd] = symbol;
+              linker.mOutAddrArray[linker.mTopEsd] = linker.mEsdArray[linker.mTopEsd];
+              linker.mTopEsd = linker.mTopEsd + 1;
               }
-
-            linker.mEsdArray[linker.mTopEsd] = symbol->mAddr + linker.mBaseAddr[symbol->mSection];
-            linker.mEsdSymbolArray [linker.mTopEsd] = symbol;
-
-            linker.mOutAddrArray[linker.mTopEsd] = linker.mEsdArray[linker.mTopEsd];
-            linker.mTopEsd = linker.mTopEsd + 1;
+            else
+              printf ("internal check failure - lost symbol\n");
             }
 
           break;
@@ -668,11 +675,6 @@ public:
           for (int i = 0; i < 15; i++)
             getByte();
 
-          if (pass1) {
-            }
-          else {
-            }
-
           break;
           }
         //}}}
@@ -684,11 +686,6 @@ public:
           for (int i = 0; i < 5; i++)
             getByte();
 
-          if (pass1) {
-            }
-          else {
-            }
-
           break;
           }
         //}}}
@@ -699,11 +696,6 @@ public:
 
           for (int i = 0; i < 15; i++)
             getByte();
-
-          if (pass1) {
-            }
-          else {
-            }
 
           break;
           }
@@ -1023,17 +1015,16 @@ int main (int numArgs, char* args[]) {
 
   linker.dumpOptions();
 
-  // read symbols, accumulate section sizes
+  // pass 1 - read symbols, accumulate section sizes
   for (auto& objFile : objFiles)
     processLinker (linker, objFile.c_str(), true);
-
   linker.dumpSymbols();
 
   // allocate section sizes
   linker.allocCommon();
   linker.dumpSections();
 
-  // resolve addresses and output .bin
+  // pass 2 - resolve addresses and output .bin
   for (auto& objFile : objFiles)
     processLinker (linker, objFile.c_str(), false);
 
