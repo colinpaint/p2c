@@ -16,7 +16,6 @@ using namespace std;
 constexpr bool kOptionDebug = false;
 constexpr bool kCmdLineDebug = false;
 constexpr bool kObjFileDebug = false;
-
 constexpr bool kPassDebug = false;
 //}}}
 //{{{  const, enum
@@ -33,140 +32,6 @@ constexpr size_t kMaxSymbolNameLength = 10;
 constexpr uint32_t kStartBase = 0x400;
 //}}}
 
-//{{{
-class cOptions {
-public:
-  cOptions() {}
-  virtual ~cOptions() = default;
-
-  //{{{
-  bool getEnabled (eOption option) {
-    return mEnabled[option];
-    }
-  //}}}
-  //{{{
-  uint32_t getSectionBaseAddress (size_t section) {
-    return mSectionBaseAddress[section];
-    }
-  //}}}
-
-  //{{{
-  void process (const string& line) {
-
-    if (kOptionDebug)
-      printf ("processOptions %s\n", line.c_str());
-
-    // parse into individual options, stripping out /
-    size_t start = 1;
-    size_t found = line.find ('/', start);
-    while (found != string::npos)  {
-      processToken (line.substr (start, found-start));
-      start = found + 1;
-      found = line.find ('/', start);
-      }
-
-    processToken (line.substr (start, found));
-    }
-  //}}}
-  //{{{
-  void dump() {
-
-    printf ("options ");
-    for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
-      if (mEnabled[optionIndex])
-        printf ("%s ", kOptionNames [optionIndex].c_str());
-    printf ("\n");
-
-    for (int section = 0;  section <= 15; section++)
-      if (mSectionBaseAddress[section])
-        printf ("  section %d baseAddress:%06x\n", section, mSectionBaseAddress[section]);
-    }
-  //}}}
-
-private:
-  //{{{
-  char getCh() {
-    if (mTokenIndex < mToken.size())
-      return mToken[mTokenIndex++];
-    else // space if no more chars in token, easy to parse
-      return ' ';
-    }
-  //}}}
-  //{{{
-  size_t getSection() {
-
-    int value = 0;
-    while (true) {
-      char ch = getCh();
-      if ((ch >= '0') && (ch <= '9'))
-        value = (value * 10) + (ch - '0');
-      else
-        return value;
-      }
-    }
-  //}}}
-  //{{{
-  uint32_t getHex() {
-
-    uint32_t value = 0;
-    while (true) {
-      char ch = getCh();
-      if ((ch >= '0') && (ch <= '9'))
-        value = (value << 4) + (ch - '0');
-      else if ((ch >= 'A') && (ch <= 'F'))
-        value = (value << 4) + ((ch - 'A') + 10);
-      else if ((ch >= 'a') && (ch <= 'f'))
-        value = (value << 4) + ((ch - 'a') + 10);
-      else
-        return value;
-      }
-    }
-  //}}}
-
-  //{{{
-  void processToken (const string& token) {
-
-    mTokenIndex = 0;
-    mToken = token;
-
-    bool found = false;
-    for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
-      if ((token == kOptionNames[optionIndex]) ||(token == kOptionAltNames[optionIndex])) {
-        mEnabled[optionIndex] = true;
-        found = true;
-        break;
-        }
-
-    if (!found) {
-      // maybe section abase address
-      char ch = getCh();
-      if (ch == 'o') {
-        size_t section = getSection();
-        uint32_t address = getHex();
-        if ((section >= 0) && (section <= 15))
-          mSectionBaseAddress[section] = address;
-
-        if (kOptionDebug)
-          printf ("processOption section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
-        }
-      else
-        printf ("processOption - unrecognised option %s\n", token.c_str());
-      }
-    }
-  //}}}
-
-  // const
-  const array <string, kNumOptions> kOptionNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin"};
-  const array <string, kNumOptions> kOptionAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   ""   };
-
-  // var
-  array <bool, kNumOptions> mEnabled = { false };
-  array <uint32_t, kNumSections> mSectionBaseAddress = { 0 };
-
-  size_t mTokenIndex = 0;
-  string mToken;
-  };
-//}}}
 //{{{
 class cSymbol {
 public:
@@ -219,7 +84,7 @@ public:
     }
   //}}}
   //{{{
-  cSymbol* findInsertSymbol (const string& symbolName, bool& symbolFound) {
+  cSymbol* findCreateSymbol (const string& symbolName, bool& symbolFound) {
 
     cSymbol* symbol = findSymbol (symbolName);
 
@@ -257,6 +122,17 @@ public:
   //}}}
 
   //{{{
+  void processOptions (const string& line) {
+    mOptions.process (line);
+    }
+  //}}}
+
+  //{{{
+  void dumpOptions() {
+    mOptions.dump();
+    }
+  //}}}
+  //{{{
   void dumpSymbols() {
 
     int numUndefined = 0;
@@ -287,8 +163,6 @@ public:
     }
   //}}}
 
-  cOptions mOptions;
-
   uint32_t mBasePosition = kStartBase;
 
   array <uint32_t,16> mSectBase = { 0 };
@@ -305,6 +179,143 @@ public:
   int mTopEsd = 0;
 
 private:
+  //{{{
+  class cOptions {
+  public:
+    cOptions() {}
+    virtual ~cOptions() = default;
+
+    //{{{
+    bool getEnabled (eOption option) {
+      return mEnabled[option];
+      }
+    //}}}
+    //{{{
+    uint32_t getSectionBaseAddress (size_t section) {
+      return mSectionBaseAddress[section];
+      }
+    //}}}
+
+    //{{{
+    void process (const string& line) {
+
+      if (kOptionDebug)
+        printf ("processOptions %s\n", line.c_str());
+
+      // parse into individual options, stripping out /
+      size_t start = 1;
+      size_t found = line.find ('/', start);
+      while (found != string::npos)  {
+        processToken (line.substr (start, found-start));
+        start = found + 1;
+        found = line.find ('/', start);
+        }
+
+      processToken (line.substr (start, found));
+      }
+    //}}}
+    //{{{
+    void dump() {
+
+      printf ("options ");
+      for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
+        if (mEnabled[optionIndex])
+          printf ("%s ", kOptionNames [optionIndex].c_str());
+      printf ("\n");
+
+      for (int section = 0;  section <= 15; section++)
+        if (mSectionBaseAddress[section])
+          printf ("  section %d baseAddress:%06x\n", section, mSectionBaseAddress[section]);
+      }
+    //}}}
+
+  private:
+    //{{{
+    char getCh() {
+      if (mTokenIndex < mToken.size())
+        return mToken[mTokenIndex++];
+      else // space if no more chars in token, easy to parse
+        return ' ';
+      }
+    //}}}
+    //{{{
+    uint32_t getHex() {
+
+      uint32_t value = 0;
+      while (true) {
+        char ch = getCh();
+        if ((ch >= '0') && (ch <= '9'))
+          value = (value << 4) + (ch - '0');
+        else if ((ch >= 'A') && (ch <= 'F'))
+          value = (value << 4) + ((ch - 'A') + 10);
+        else if ((ch >= 'a') && (ch <= 'f'))
+          value = (value << 4) + ((ch - 'a') + 10);
+        else
+          return value;
+        }
+      }
+    //}}}
+    //{{{
+    size_t getSection() {
+
+      int value = 0;
+      while (true) {
+        char ch = getCh();
+        if ((ch >= '0') && (ch <= '9'))
+          value = (value * 10) + (ch - '0');
+        else
+          return value;
+        }
+      }
+    //}}}
+
+    //{{{
+    void processToken (const string& token) {
+
+      mTokenIndex = 0;
+      mToken = token;
+
+      bool found = false;
+      for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
+        if ((token == kOptionNames[optionIndex]) ||(token == kOptionAltNames[optionIndex])) {
+          mEnabled[optionIndex] = true;
+          found = true;
+          break;
+          }
+
+      if (!found) {
+        // maybe section abase address
+        char ch = getCh();
+        if (ch == 'o') {
+          size_t section = getSection();
+          uint32_t address = getHex();
+          if ((section >= 0) && (section <= 15))
+            mSectionBaseAddress[section] = address;
+
+          if (kOptionDebug)
+            printf ("processOption section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
+          }
+        else
+          printf ("processOption - unrecognised option %s\n", token.c_str());
+        }
+      }
+    //}}}
+
+    // const
+    const array <string, kNumOptions> kOptionNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin"};
+    const array <string, kNumOptions> kOptionAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   ""   };
+
+    // var
+    array <bool, kNumOptions> mEnabled = { false };
+    array <uint32_t, kNumSections> mSectionBaseAddress = { 0 };
+
+    size_t mTokenIndex = 0;
+    string mToken;
+    };
+  //}}}
+
+  cOptions mOptions;
+
   string mModName;
   map <string, cSymbol*> mSymbolMap;
   vector <cSymbol*> mCommonSymbols;
@@ -466,7 +477,7 @@ public:
           if (pass1) {
             //{{{  pass1
             bool symbolFound;
-            cSymbol* symbol = linker.findInsertSymbol (commonSymbolName, symbolFound);
+            cSymbol* symbol = linker.findCreateSymbol (commonSymbolName, symbolFound);
             symbol->addReference (linker.getModName());
 
             if (!symbol->mDefined) {
@@ -557,7 +568,7 @@ public:
           if (pass1) {
             //{{{  pass1
             bool symbolFound;
-            cSymbol* symbol = linker.findInsertSymbol (xdefSymbolName, symbolFound);
+            cSymbol* symbol = linker.findCreateSymbol (xdefSymbolName, symbolFound);
 
             // !!! this isnt right yet !!!
             if (symbol->mDefined && !symbol->mFlagged) {
@@ -589,7 +600,7 @@ public:
           else {
             //if usingHistory then
             //  begin { symbol defintion, use to make patches on second pass }
-            //  b := findInsert (s, symbol, false); { find it }
+            //  b := findCreate (s, symbol, false); { find it }
             //  if symbol^.resList <> nil then
             //    begin
             //    r := symbol^.resList;
@@ -626,7 +637,7 @@ public:
           if (pass1) {
             // pass1 action
             bool symbolFound;
-            cSymbol* symbol = linker.findInsertSymbol (xrefSymbolName, symbolFound);
+            cSymbol* symbol = linker.findCreateSymbol (xrefSymbolName, symbolFound);
             symbol->addReference (linker.getModName());
             }
 
@@ -709,6 +720,152 @@ public:
   //}}}
   //{{{
   void processText (cLinker& linker, bool pass1) {
+    //{{{  pascal
+    //procedure processText;
+
+    //var
+      //bitmap, curresd: integer;
+
+      //{<<<}
+      //procedure procbyte;
+
+      //var
+        //longwd : boolean;
+        //offset, add, i, numesds, offsize : integer;
+        //thisesd, w: integer;
+        //flag : byte;
+
+        //{<<<}
+        //procedure adddata (w:integer);
+
+        //begin
+          //duffer := w = %x'4EBA';
+          //codelen := codelen + 1;
+          //codeArray[codelen] := w;
+        //end;
+        //{>>>}
+
+      //begin
+        //if bitmap >= 0 then
+          //begin
+          //adddata (mvl (ord (objRecord.block[objRecordBlockIndex])) + ord(objRecord.block[objRecordBlockIndex+1]));
+          //objRecordBlockIndex := objRecordBlockIndex + 2;
+          //end
+
+        //else
+          //begin
+          //if duffer then
+            //begin
+            //showModName;
+            //writeln ('Warning - possible assembler foul-up');
+            //end;
+
+          //flag := getByte;
+          //numesds := flag DIV 32;
+          //offsize := flag MOD 8;
+          //{ writeln('num esds, ',numesds,'  offset size ',offsize);}
+          //longwd := ((flag DIV 8) MOD 2) = 1;
+
+          //add := 0;
+          //for i := 1 TO numesds DO
+            //begin
+            //thisesd := getByte;
+            //if thisesd > topESD then
+              //begin
+              //showModName;
+              //writeln (' assembler foul-up.. trying to use an undefined ESD : ' , thisesd);
+              //end;
+
+            //if odd(i) then
+              //add := add + esdArray[thisesd]
+            //else
+              //add := add - esdArray[thisesd];
+            //end;
+
+          //offset := 0;
+          //for i := 1 TO offsize DO offset := mvl(offset) + getByte;
+          //CASE offsize of
+            //0,4:;
+            //1: if offset > 127   then
+                //offset := int (uor (uint (offset),%X'FFFFFF00'));
+            //2: if offset > 32767 then
+                //offset := int (uor (uint (offset),%X'FFFF0000'));
+            //end;
+
+          //{writeln('ofFSET ',hex(add,6,6),'+',hex(offset,6,6),'=',hex(add+offset,6,6)); }
+          //add := add + offset;
+          //if numesds = 0 then
+            //begin
+            //if odd (offset) then
+              //begin
+              //showModName;
+              //writeln ('odd fix-up offset - assembler error .', offset, curresd);
+              //writeln ('>>', hex (codestart, 6, 6));
+              //offset := offset + 1;
+              //end;
+
+            //if codelen > 0 then
+              //outputData;
+
+            //outAddrArray[curresd] := outAddrArray[curresd] + codelen*2 + offset;
+            //codelen := 0;
+            //codestart := outAddrArray[curresd];
+            //end
+
+          //else { numesd <> 0 }
+            //begin
+            //if NOT longwd then
+              //begin
+              //if (add > 32767) OR (add < -32768) then
+                //begin
+                //showModName;
+                //writeln ('Long address generated into word location :', hex (add, 8, 8));
+                //end;
+              //end;
+
+            //if esdSymbolArray [thisesd] <> NIL then { only need named symbols }
+              //if modName <> esdSymbolArray [thisesd]^.modName then { outside module }
+                //begin
+                //if history then
+                  //{ address to be resolved LONGWORD only at present}
+                  //addRes (esdSymbolArray [thisesd], codestart + codelen*2, offset);
+
+                //if debugInfo then
+                  //writeln ('sym ', longwd,
+                           //' ', thisesd:2,
+                           //' ', esdSymbolArray [thisesd]^.symbolName,
+                           //' ', hex (add, 8, 8), ' = ', hex (esdArray[thisesd]),
+                           //' + ', hex (offset, 4, 4), ';', hex (offsize, 1, 1),
+                           //' at ', hex (codestart + codelen * 2, 8, 8));
+                //end;
+
+            //{ generate resolved address }
+            //if longwd then
+              //adddata (mvr (mvr (add)));
+            //adddata (add);
+            //end;
+          //end;
+
+        //bitmap := bitmap * 2;
+      //end;
+      //{>>>}
+
+    //begin
+      //objRecordBlockIndex := 0;
+      //bitmap := getInt;
+
+      //codelen := 0;
+      //curresd := getByte;
+      //codestart := outAddrArray[curresd];
+
+      //while objRecordBlockIndex < objRecord.length DO
+        //procbyte;
+      //outputData;
+
+      //{ dont forget convert to bytes}
+      //outAddrArray[curresd] := outAddrArray[curresd] + (codelen * 2);
+    //end;
+    //}}}
 
     if (!pass1) {
       }
@@ -834,7 +991,7 @@ int main (int numArgs, char* args[]) {
   string cmdFileName;
   for (int i = 1; i < numArgs; i++)
     if (args[i][0] == '/')
-      linker.mOptions.process (args[i]);
+      linker.processOptions (args[i]);
     else
       cmdFileName = args[i];
 
@@ -853,7 +1010,7 @@ int main (int numArgs, char* args[]) {
   ifstream cmdFileStream (cmdFileName + ".cmd", ifstream::in);
   while (getline (cmdFileStream, line))
     if (line[0] == '/')
-      linker.mOptions.process (line);
+      linker.processOptions (line);
     else if (line[0] == '!')
       processComment (line);
     else if (line[0] == '#')
@@ -864,7 +1021,7 @@ int main (int numArgs, char* args[]) {
       processObjFile (line, objFiles);
   cmdFileStream.close();
 
-  linker.mOptions.dump();
+  linker.dumpOptions();
 
   // read symbols, accumulate section sizes
   for (auto& objFile : objFiles)
