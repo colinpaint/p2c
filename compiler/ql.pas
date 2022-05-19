@@ -1729,24 +1729,24 @@ var
                     writeln ('as a common in module ', modName);
                     writeln (' and as an XDEF in module ', symbol^.modName);
                     symbol^.flagged := true;
-                   end
+                    end
 
-                 else if check AND (NOT symbol^.flagged) then
-                   begin
-                   showModName;
-                   writeln ('Common area size clash - common ', symbolName);
-                   writeln ('size in this module is ',hex (i, 6, 6), ' bytes');
-                   writeln ('size in ', symbol^.modName,' is ', hex (symbol^.comsize, 6, 6), ' bytes');
-                   symbol^.flagged := true;
-                   end;
+                  else if check AND (NOT symbol^.flagged) then
+                    begin
+                    showModName;
+                    writeln ('Common area size clash - common ', symbolName);
+                    writeln ('size in this module is ',hex (i, 6, 6), ' bytes');
+                    writeln ('size in ', symbol^.modName,' is ', hex (symbol^.comsize, 6, 6), ' bytes');
+                    symbol^.flagged := true;
+                    end;
 
-                 if (i > symbol^.comsize) AND (symbol^.comsize <> -1) then
-                   begin
-                   symbol^.modName := modName;
-                   symbol^.comsize := i;
-                   end;
-                 end;
-               end;
+                  if (i > symbol^.comsize) AND (symbol^.comsize <> -1) then
+                    begin
+                    symbol^.modName := modName;
+                    symbol^.comsize := i;
+                    end;
+                  end;
+              end;
             {>>>}
             {<<<}
             2,3: { section definition and allocation }
