@@ -10,6 +10,7 @@ ro
 *.log
 *.sa
 *.ro
+*.sr
 *.tmp
 *.token
 *.inter

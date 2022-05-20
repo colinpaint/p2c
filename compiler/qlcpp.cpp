@@ -15,8 +15,9 @@ using namespace std;
 //{{{  debug flags
 constexpr bool kOptionDebug = false;
 constexpr bool kCmdLineDebug = false;
-constexpr bool kObjFileDebug = false;
+constexpr bool kObjectFileDebug = false;
 constexpr bool kPassDebug = false;
+constexpr bool kOutDebug = true;
 //}}}
 //{{{  const, enum
 // options, easier to use as globals
@@ -28,11 +29,17 @@ constexpr size_t kNumSections = 16;
 
 // symbol - actually 8 chars for pascal compiler, always at least 2 trailing spaces
 constexpr size_t kActualSymbolNameLength = 8;
-constexpr size_t kObjSymbolNameLength = 10;
+constexpr size_t kObjectSymbolNameLength = 10;
 
 // default section start address, no idea why its this number, VersaDos history ?
 constexpr uint32_t kStartBase = 0x400;
+
+constexpr uint8_t esc = 0x1B;
 //}}}
+constexpr bool out = true;
+constexpr bool bin = false;
+constexpr bool download = false;
+constexpr bool escape = false;
 
 //{{{
 class cSymbol {
@@ -40,14 +47,16 @@ public:
   cSymbol (const string& name) : mName(name) {}
   virtual ~cSymbol() = default;
 
+  //{{{
   void addReference (const string& modName) {
     mReferences.push_back (modName);
     }
+  //}}}
 
   string mName;
   string mModName;
 
-  size_t mSection = 0;
+  uint8_t mSection = 0;
   uint32_t mAddress = 0;
   uint32_t mComSize = 0;
 
@@ -149,7 +158,7 @@ public:
   //{{{
   void dumpSections() {
 
-    for (size_t section = 0; section < 16; section++) {
+    for (uint8_t section = 0; section < 16; section++) {
       uint32_t baseAddress = mOptions.getSectionBaseAddress (section);
       if (baseAddress)
         mBasePosition = baseAddress;
@@ -177,8 +186,9 @@ public:
   array <uint32_t, 16> mSbase = { 0 };
 
   uint32_t mCodeStart = 0;
-  uint32_t mCodeLen = 0;
   int mTopEsd = 0;
+
+  string mModName;
 
 private:
   //{{{
@@ -193,7 +203,7 @@ private:
       }
     //}}}
     //{{{
-    uint32_t getSectionBaseAddress (size_t section) {
+    uint32_t getSectionBaseAddress (uint8_t section) {
       return mSectionBaseAddress[section];
       }
     //}}}
@@ -258,9 +268,9 @@ private:
       }
     //}}}
     //{{{
-    size_t getSection() {
+    uint8_t getSection() {
 
-      int value = 0;
+      uint8_t value = 0;
       while (true) {
         char ch = getCh();
         if ((ch >= '0') && (ch <= '9'))
@@ -318,16 +328,15 @@ private:
 
   cOptions mOptions;
 
-  string mModName;
   map <string, cSymbol*> mSymbolMap;
   vector <cSymbol*> mCommonSymbols;
   };
 //}}}
 //{{{
-class cObjRecord {
+class cObjectRecord {
 public:
-  cObjRecord() {}
-  virtual ~cObjRecord() = default;
+  cObjectRecord() : mOutputMaxSize (bin ? 512 : 16) {}
+  virtual ~cObjectRecord() = default;
 
   enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
 
@@ -337,16 +346,18 @@ public:
     return mType;
     }
   //}}}
+
   //{{{
   int getDataLeft() {
     return mLength - mBlockIndex - 1;
     }
   //}}}
   //{{{
-  uint8_t getByte() {
+  uint8_t getUint8() {
+  // get 1 bytes to form uint8_t result
 
     if (mBlockIndex >= mLength) {
-      printf ("cObjRecord::getByte past end of record data\n");
+      printf ("cObjectRecord::getUint8 past end of record data\n");
       return 0;
       }
 
@@ -354,32 +365,34 @@ public:
     }
   //}}}
   //{{{
-  uint32_t getInt() {
+  uint32_t getUint32() {
+  // get 4 bytes to form uint32_t result
 
     uint32_t value = 0;
-    for (int i = 0; i < 4; i++)
-      value = (value << 8) + getByte();
+    for (int i = 1; i <= 4; i++)
+      value = (value << 8) + getUint8();
 
     return value;
     }
   //}}}
   //{{{
   string getSymbolName() {
-  // 10 bytes but oonly 8 have ascii chars, trailing spaces pad
+  // 10 bytes but only 8 have ascii chars, trailing spaces pad
+  // force upperCase
 
     string name;
     name.reserve (kActualSymbolNameLength);
 
-    // read maxSymbolNameLength, only add up to first space in string
-    bool terminated = false;
-    for (int i = 0; i < kObjSymbolNameLength; i++) {
-      char byte = getByte();
+    // read maxSymbolNameLength, but only append to name up to first space in string
+    bool spaceTerminated = false;
+    for (int i = 0; i < kObjectSymbolNameLength; i++) {
+      char byte = getUint8();
       if (byte == ' ')
-        terminated = true;
+        spaceTerminated = true;
 
-      if (!terminated) {
+      if (!spaceTerminated) {
         if (i < kActualSymbolNameLength)
-          name = name + byte;
+          name = name + char(toupper (byte));
         else
           printf ("symbolName trailing space problem pos:%d value:%02x\n", i, byte);
         }
@@ -450,16 +463,15 @@ public:
   // process External Symbol Definition record
 
     while (getDataLeft() > 0) {
-      uint8_t byte = getByte();
-
-      size_t section = byte % 16;
-      uint8_t esdType = byte / 16;
+      uint8_t byte = getUint8();
+      uint8_t section = byte & 0x0F;
+      uint8_t esdType = byte >> 4;
 
       switch (esdType) {
         //{{{
         case  0: { // absolute section
-          uint32_t size = getInt();
-          uint32_t start = getInt();
+          uint32_t size = getUint32();
+          uint32_t start = getUint32();
 
           if (kPassDebug)
             printf ("Absolute %08x %08x\n", size, start);
@@ -478,7 +490,7 @@ public:
         //{{{
         case  1: { // common section xx
           string symbolName = getSymbolName();
-          uint32_t size = getInt();
+          uint32_t size = getUint32();
 
           if (kPassDebug)
             printf ("common data - section:%2d %8s size:%08x\n", (int)section, symbolName.c_str(), size);
@@ -536,7 +548,7 @@ public:
         case 2:         // standard relocatable section xx
         //{{{
         case  3: { // short address relocatable section xx
-          uint32_t size = getInt();
+          uint32_t size = getUint32();
 
           if (kPassDebug)
             printf ("section def - section:%2d size:%08x\n", (int)section, size);
@@ -569,7 +581,7 @@ public:
         //{{{
         case  5: { // xDef symbol in absolute section
           string symbolName = getSymbolName();
-          uint32_t address = getInt();
+          uint32_t address = getUint32();
 
           if (kPassDebug)
             printf ("symbol xdef - section:%2d %8s address:%08x\n", (int)section, symbolName.c_str(), address);
@@ -619,11 +631,11 @@ public:
             //      if debugInfo then
             //        writeln ('patching ',hex (r^.addr, 6, 6), ' with ',
             //                             hex (patch-r^.offset, 6, 6), ' + ', hex (r^.offset, 6, 6));
-            //      codestart := r^.addr;
+            //      linker->mCodeStart := r^.addr;
             //      codeArray [1] := mvr (mvr (patch));
             //      codeArray [2] := patch;
-            //      codelen := 2;
-            //      outputData;
+            //      mCodeLen := 2;
+            //      outputCode;
             //      r := r^.next;
             //      end until r = nil;
             //    end;
@@ -632,10 +644,9 @@ public:
           }
         //}}}
 
-        case 6:         // xRef symbol to section xx
-          //showModName;
-          printf ("xref%d\n", int(section));
-          // fall through to
+        case 6:         // xRef symbol to section xx - unexpected
+          printf ("xref to section:%d\n", int(section));
+          [[fallthrough]];
         //{{{
         case  7: { // xRef symbol to any section
           string symbolName = getSymbolName();
@@ -668,39 +679,38 @@ public:
         //}}}
 
         //{{{
-        case  8: { // commandLineAddress in section
+        case  8: { // commandLineAddress in section - unexpected
           if (kPassDebug)
             printf ("command Line address section\n");
 
           for (int i = 0; i < 15; i++)
-            getByte();
+            getUint8();
 
           break;
           }
         //}}}
         //{{{
-        case  9: { // commandLineAddress in absolute section
+        case  9: { // commandLineAddress in absolute section - unexpected
           if (kPassDebug)
             printf ("command Line address absolute section\n");
 
           for (int i = 0; i < 5; i++)
-            getByte();
+            getUint8();
 
           break;
           }
         //}}}
         //{{{
-        case 10: { // commandLineAddress in common section in section xx
+        case 10: { // commandLineAddress in common section in section xx - unexpected
           if (kPassDebug)
             printf ("command Line address common section\n");
 
           for (int i = 0; i < 15; i++)
-            getByte();
+            getUint8();
 
           break;
           }
         //}}}
-
         //{{{
         default:
           if (pass1)
@@ -711,156 +721,131 @@ public:
     }
   //}}}
   //{{{
-  void processText (cLinker& linker, bool pass1) {
-    //{{{  pascal
-    //procedure processText;
+  void processText (cLinker& linker, ofstream& stream) {
+  // process text record, to out stream, pass 2 only
 
-    //var
-      //bitmap, curresd: integer;
+    uint32_t bitmap = getUint32();
+    uint8_t curEsd = getUint8();
+    linker.mCodeStart = linker.mOutAddrArray[curEsd];
 
-      //{<<<}
-      //procedure procbyte;
+    if (kOutDebug)
+      printf ("output bitmap:%08x curEsd:%d\n", bitmap, curEsd);
 
-      //var
-        //longwd : boolean;
-        //offset, add, i, numesds, offsize : integer;
-        //thisesd, w: integer;
-        //flag : byte;
+    mCodeLen = 0;
+    uint8_t thisEsd = 0;
+    while (getDataLeft() > 0) {
+      if (bitmap & 0x80000000) {
+        //{{{  get rest of record
+        uint8_t byte = getUint8();
+        uint8_t numEsds = byte >> 5;
+        uint8_t offsetSize = byte & 0x07;
 
-        //{<<<}
-        //procedure adddata (w:integer);
+        if (kOutDebug)
+          printf ("numEsds:%d offsetSize:%d\n", numEsds, offsetSize);
 
-        //begin
-          //duffer := w = %x'4EBA';
-          //codelen := codelen + 1;
-          //codeArray[codelen] := w;
-        //end;
-        //{>>>}
+        bool longWd = offsetSize & 0x08;
 
-      //begin
-        //if bitmap >= 0 then
-          //begin
-          //adddata (mvl (ord (objRecord.block[objRecordBlockIndex])) + ord(objRecord.block[objRecordBlockIndex+1]));
-          //objRecordBlockIndex := objRecordBlockIndex + 2;
-          //end
+        uint32_t add = 0;
+        for (int i = 1; i <= numEsds; i++) {
+          thisEsd = getUint8();
+          if (kOutDebug)
+            printf ("thisEsd:%d topEsd:%d\n", thisEsd, linker.mTopEsd);
+          if (thisEsd > linker.mTopEsd) {
+            //{{{  foulup
+            // showModName;
+            printf ("trying to use an undefined ESD %d of %d\n", thisEsd, linker.mTopEsd);
+            }
+            //}}}
 
-        //else
-          //begin
-          //if duffer then
-            //begin
+          if (i & 0x1)
+            add = add + linker.mEsdArray[thisEsd];
+          else
+            add = add - linker.mEsdArray[thisEsd];
+          }
+
+        uint32_t offset = 0;
+        for (int i = 1; i <= offsetSize; i++)
+          offset = (offset << 8) + getUint8();
+
+        switch (offsetSize) {
+          case 1: if (offset > 127)
+                    offset = offset | 0xFFFFFF00;
+                  break;
+          case 2: if (offset > 32767)
+                    offset = offset | 0xFFFF0000;
+                   break;
+          default:;
+          }
+        // printf ("ofFSET %08x + %08x = %08x\n", add, offset, add+offset);
+
+        add = add + offset;
+        if (numEsds == 0) {
+          //{{{  numEsds == 0
+          if (offset & 0x01) {
             //showModName;
-            //writeln ('Warning - possible assembler foul-up');
-            //end;
+            printf ("odd fix-up offset - assembler error %6x %d, %6x\n", offset, curEsd, linker.mCodeStart);
+            offset = offset + 1;
+            }
 
-          //flag := getByte;
-          //numesds := flag DIV 32;
-          //offsize := flag MOD 8;
-          //{ writeln('num esds, ',numesds,'  offset size ',offsize);}
-          //longwd := ((flag DIV 8) MOD 2) = 1;
+          if (mCodeLen > 0)
+            outputCode (stream);
+          linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + mCodeLen*2 + offset;
 
-          //add := 0;
-          //for i := 1 TO numesds DO
-            //begin
-            //thisesd := getByte;
-            //if thisesd > topESD then
-              //begin
+          mCodeLen = 0;
+          mCodeStart = linker.mOutAddrArray[curEsd];
+          }
+          //}}}
+        else {
+          if (!longWd) {
+            if ((add > 32767) || (add < -32768)) {
+              //{{{  foulup
               //showModName;
-              //writeln (' assembler foul-up.. trying to use an undefined ESD : ' , thisesd);
-              //end;
+              printf ("Long address generated into word location:%6x\n", add);
+              }
+              //}}}
+            }
 
-            //if odd(i) then
-              //add := add + esdArray[thisesd]
-            //else
-              //add := add - esdArray[thisesd];
-            //end;
+          if (linker.mEsdSymbolArray [thisEsd] != nullptr) {
+            // only need named symbols
+            if (linker.mModName != linker.mEsdSymbolArray [thisEsd]->mModName) {
+              //{{{  outside module
+              //if history then
+              //  { address to be resolved LONGWORD only at present}
+              //  addRes (esdSymbolArray [thisesd], linker.mCodeStart + mCodeLen*2, offset);
 
-          //offset := 0;
-          //for i := 1 TO offsize DO offset := mvl(offset) + getByte;
-          //CASE offsize of
-            //0,4:;
-            //1: if offset > 127   then
-                //offset := int (uor (uint (offset),%X'FFFFFF00'));
-            //2: if offset > 32767 then
-                //offset := int (uor (uint (offset),%X'FFFF0000'));
-            //end;
+              //if debugInfo then
+              //  writeln ('sym ', longwd,
+              //           ' ', thisesd:2,
+              //           ' ', esdSymbolArray [thisesd]^.symbolName,
+              //           ' ', hex (add, 8, 8), ' = ', hex (esdArray[thisesd]),
+              //           ' + ', hex (offset, 4, 4), ';', hex (offsetSize, 1, 1),
+              //           ' at ', hex (linker.mCodeStart + mCodeLen * 2, 8, 8));
+              }
+              //}}}
 
-          //{writeln('ofFSET ',hex(add,6,6),'+',hex(offset,6,6),'=',hex(add+offset,6,6)); }
-          //add := add + offset;
-          //if numesds = 0 then
-            //begin
-            //if odd (offset) then
-              //begin
-              //showModName;
-              //writeln ('odd fix-up offset - assembler error .', offset, curresd);
-              //writeln ('>>', hex (codestart, 6, 6));
-              //offset := offset + 1;
-              //end;
+            // generate resolved address
+            if (longWd)
+              mCodeArray[++mCodeLen] = add >> 16;
+            mCodeArray[++mCodeLen] = add;
+            }
+          }
+        }
+        //}}}
+      else {
+        //{{{  add word of code to codeArray
+        uint16_t value = getUint8() << 8;
+        value |= getUint8();
 
-            //if codelen > 0 then
-              //outputData;
-
-            //outAddrArray[curresd] := outAddrArray[curresd] + codelen*2 + offset;
-            //codelen := 0;
-            //codestart := outAddrArray[curresd];
-            //end
-
-          //else { numesd <> 0 }
-            //begin
-            //if NOT longwd then
-              //begin
-              //if (add > 32767) OR (add < -32768) then
-                //begin
-                //showModName;
-                //writeln ('Long address generated into word location :', hex (add, 8, 8));
-                //end;
-              //end;
-
-            //if esdSymbolArray [thisesd] <> NIL then { only need named symbols }
-              //if modName <> esdSymbolArray [thisesd]^.modName then { outside module }
-                //begin
-                //if history then
-                  //{ address to be resolved LONGWORD only at present}
-                  //addRes (esdSymbolArray [thisesd], codestart + codelen*2, offset);
-
-                //if debugInfo then
-                  //writeln ('sym ', longwd,
-                           //' ', thisesd:2,
-                           //' ', esdSymbolArray [thisesd]^.symbolName,
-                           //' ', hex (add, 8, 8), ' = ', hex (esdArray[thisesd]),
-                           //' + ', hex (offset, 4, 4), ';', hex (offsize, 1, 1),
-                           //' at ', hex (codestart + codelen * 2, 8, 8));
-                //end;
-
-            //{ generate resolved address }
-            //if longwd then
-              //adddata (mvr (mvr (add)));
-            //adddata (add);
-            //end;
-          //end;
-
-        //bitmap := bitmap * 2;
-      //end;
-      //{>>>}
-
-    //begin
-      //objRecordBlockIndex := 0;
-      //bitmap := getInt;
-
-      //codelen := 0;
-      //curresd := getByte;
-      //codestart := outAddrArray[curresd];
-
-      //while objRecordBlockIndex < objRecord.length DO
-        //procbyte;
-      //outputData;
-
-      //{ dont forget convert to bytes}
-      //outAddrArray[curresd] := outAddrArray[curresd] + (codelen * 2);
-    //end;
-    //}}}
-
-    if (!pass1) {
+        mCodeArray[++mCodeLen] = value;
+        }
+        //}}}
+      bitmap = bitmap << 1;
       }
+
+    outputCode (stream);
+
+    // convert to bytes}
+    linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + (mCodeLen * 2);
     }
   //}}}
 
@@ -890,11 +875,180 @@ public:
   //}}}
 
 private:
+  //{{{
+  string toHex (uint8_t byte) {
+    string result;
+
+    uint8_t digit = byte >> 4;
+    result += digit > 9 ? 'a' + digit - 10 : '0' + digit;
+
+    digit = byte & 0x0F;
+    result += digit > 9 ? 'a' + digit - 10 : '0' + digit;
+
+    return  result;
+    }
+  //}}}
+  //{{{
+  void sendBin (ofstream& stream, uint8_t b) {
+
+    if ((b == esc) && escape)
+      stream.put (b);
+
+    stream.put (b);
+    }
+  //}}}
+  //{{{
+  void wbyte (ofstream& stream, uint8_t b) {
+
+    if (bin) {
+      sendBin (stream, b);
+      outputChecksum ^= b;
+      }
+    else {
+      string s = toHex (b);
+      stream.write (s.c_str(), s.length());
+      outputChecksum += b;
+      }
+    }
+  //}}}
+  //{{{
+  void outputPacket (ofstream& stream, uint32_t pos, uint32_t len) {
+  // output single packet of codeArray
+
+    mPos = pos;
+    mLen = len;
+    uint32_t codeStart = mCodeStart + mPos*2;
+    uint32_t packetLen = mLen*2 + 4; // this happens to be right for both
+
+    if (bin) {
+      //{{{
+      sendBin (stream, esc);
+      sendBin (stream, 0);
+      wbyte (stream, 1);
+      wbyte (stream, packetLen >> 8);
+      wbyte (stream, packetLen & 0xFF);
+      wbyte (stream, codeStart >> 24);
+      wbyte (stream, codeStart >> 16);
+      wbyte (stream, codeStart >> 8);
+      wbyte (stream, codeStart & 0xFF);
+
+      //b,cstart,i:integer;
+      //outputChecksum := 0;
+
+      //for (int i = 1; i <= len; i++) {
+        //b = int (uand (%x'FFFF', uint (codeArray[i+pos]))) DIV 256;
+        //if (b = esc) AND (escape = true) then
+          //begin
+          //binBlock[binBlockIndex] := b;
+          //binBlockIndex := binBlockIndex + 1;
+          //if binBlockIndex > 511 then
+            //begin
+            //if out then write
+              //(binaryFile, binBlock);
+            //if download then
+              //write (downloadTargetFile, binBlock);
+            //binBlockIndex := 0;
+            //end;
+          //end;
+
+        //binBlock[binBlockIndex] := b;
+        //binBlockIndex := binBlockIndex + 1;
+        //if binBlockIndex > 511 then
+          //begin
+          //if out then
+            //write (binaryFile, binBlock);
+          //if download then
+            //write (downloadTargetFile, binBlock);
+          //binBlockIndex := 0;
+          //end;
+
+        //outputChecksum := ord(uxor(uint(b),uint(outputChecksum)));
+
+        //b := codeArray[i+pos] MOD 256;
+        //if (b = esc) AND (escape = true) then
+          //begin
+          //binBlock[binBlockIndex] := b;
+          //binBlockIndex := binBlockIndex + 1;
+          //if binBlockIndex > 511 then
+            //begin
+            //if out then
+              //write(binaryFile, binBlock);
+            //if download then
+              //write (downloadTargetFile, binBlock);
+            //binBlockIndex := 0;
+            //end;
+          //end;
+
+        //binBlock[binBlockIndex] := b;
+        //binBlockIndex := binBlockIndex + 1;
+        //if binBlockIndex > 511 then
+          //begin
+          //if out then
+            //write(binaryFile, binBlock);
+          //if download then
+            //write(downloadTargetFile, binBlock);
+          //binBlockIndex := 0;
+          //end;
+        //outputChecksum := ord (uxor (uint(b), uint (outputChecksum)));
+        //end
+
+      sendBin (stream, outputChecksum);
+      }
+      //}}}
+    else {
+      // packet start
+      stream.write ("S2", 2);
+      wbyte (stream, packetLen);
+      wbyte (stream, codeStart >> 16);
+      wbyte (stream, codeStart >> 8);
+      wbyte (stream, codeStart & 0xFF);
+
+      // packet
+      for (uint8_t i = 1; i <= len; i++) {
+        wbyte (stream, (mCodeArray[i+pos]) >> 8);
+        wbyte (stream, mCodeArray[i+pos] & 0xFF);
+        }
+
+      // packet end
+      string s = toHex (0xFF - (outputChecksum & 0xFF));
+      stream.write (s.c_str(), s.length());
+      stream.put ('\n');
+      }
+    }
+  //}}}
+  //{{{
+  void outputCode (ofstream& stream) {
+  // output codeArray
+
+    uint32_t len = mCodeLen;
+
+    mPos = 0;
+    while (len > mOutputMaxSize) {
+      outputPacket (stream, mPos, mOutputMaxSize);
+      mPos = mPos + mOutputMaxSize;
+      len = len - mOutputMaxSize;
+      }
+
+    if (len > 0)
+      outputPacket (stream, mPos, len);
+    }
+  //}}}
+
   int mLength = 0;
   eRecordType mType = eNone;
 
   int mBlockIndex = 0;
-  array <uint8_t,256> mBlock = {0};
+  array <uint8_t,256> mBlock = { 0 };
+
+  int outputChecksum = 0;
+  uint32_t mOutputMaxSize = 0;
+
+  uint32_t mPos = 0;
+  uint32_t mLen = 0;
+
+  uint32_t mCodeStart = 0;
+  uint32_t mCodeLen = 0;
+  array <uint32_t, 64> mCodeArray;
   };
 //}}}
 
@@ -906,16 +1060,16 @@ void processComment (const string& line) {
   }
 //}}}
 //{{{
-void processInclude (const string& line, vector <string>& objFiles) {
+void processInclude (const string& line, vector <string>& objectFiles) {
 // extract include filename and add its contents to the objFilesfile list
 
   printf ("processInclude %s not implented\n", line.c_str());
   }
 //}}}
 //{{{
-void processObjFile (const string& line, vector <string>& objFiles) {
+void processObjFile (const string& line, vector <string>& objectFiles) {
 
-  if (kObjFileDebug)
+  if (kObjectFileDebug)
     printf ("processLine %s\n", line.c_str());
 
   // find any trailing comma
@@ -926,13 +1080,13 @@ void processObjFile (const string& line, vector <string>& objFiles) {
   // look for extension dot, assumes only one dot, !!! could search backwards !!!
   size_t foundDot = line.find ('.');
   if (foundDot == string::npos) // no dot, use default ext
-    objFiles.push_back (line.substr (0, foundTerminator) + ".ro");
+    objectFiles.push_back (line.substr (0, foundTerminator) + ".ro");
   else
-    objFiles.push_back (line.substr (0, foundTerminator));
+    objectFiles.push_back (line.substr (0, foundTerminator));
   }
 //}}}
 //{{{
-void processLinker (cLinker& linker, const string& fileName, bool pass1) {
+void processLinker1 (cLinker& linker, const string& fileName) {
 
   if (kPassDebug)
     printf ("passFile %s\n", fileName.c_str());
@@ -940,28 +1094,66 @@ void processLinker (cLinker& linker, const string& fileName, bool pass1) {
   ifstream objFileStream (fileName, ifstream::in);
 
   bool eom = false;
-  cObjRecord objRecord;
+  cObjectRecord objectRecord;
   while (!eom) {
-    eom = objRecord.loadRoFormat (objFileStream);
+    eom = objectRecord.loadRoFormat (objFileStream);
 
-    if (kObjFileDebug && pass1)
-      objRecord.dump();
+    if (kObjectFileDebug)
+      objectRecord.dump();
 
     if (!eom) {
-      switch (objRecord.getType()) {
-        case cObjRecord::eId:
-          objRecord.processId (linker, pass1);
+      switch (objectRecord.getType()) {
+        case cObjectRecord::eId:
+          objectRecord.processId (linker, true);
           break;
 
-        case cObjRecord::eEsd:
-          objRecord.processEsd (linker, pass1);
+        case cObjectRecord::eEsd:
+          objectRecord.processEsd (linker, true);
           break;
 
-        case cObjRecord::eObjectText:
-          objRecord.processText (linker, pass1);
+        case cObjectRecord::eObjectText:
           break;
 
-        case cObjRecord::eEnd:
+        case cObjectRecord::eEnd:
+          break;
+
+        default:
+          break;
+        }
+      }
+    }
+
+  objFileStream.close();
+  }
+//}}}
+//{{{
+void processLinker2 (cLinker& linker, const string& fileName, ofstream& stream) {
+
+  if (kPassDebug)
+    printf ("passFile %s\n", fileName.c_str());
+
+  ifstream objFileStream (fileName, ifstream::in);
+
+  bool eom = false;
+  cObjectRecord objectRecord;
+  while (!eom) {
+    eom = objectRecord.loadRoFormat (objFileStream);
+
+    if (!eom) {
+      switch (objectRecord.getType()) {
+        case cObjectRecord::eId:
+          objectRecord.processId (linker, false);
+          break;
+
+        case cObjectRecord::eEsd:
+          objectRecord.processEsd (linker, false);
+          break;
+
+        case cObjectRecord::eObjectText:
+          objectRecord.processText (linker, stream);
+          break;
+
+        case cObjectRecord::eEnd:
           break;
 
         default:
@@ -979,7 +1171,7 @@ int main (int numArgs, char* args[]) {
 
   cLinker linker;
 
-  // get command line args
+  // get commandLine args
   string cmdFileName;
   for (int i = 1; i < numArgs; i++)
     if (args[i][0] == '/')
@@ -998,7 +1190,7 @@ int main (int numArgs, char* args[]) {
 
   // get objFiles from .cmd file
   string line;
-  vector <string> objFiles;
+  vector <string> objectFiles;
   ifstream cmdFileStream (cmdFileName + ".cmd", ifstream::in);
   while (getline (cmdFileStream, line))
     if (line[0] == '/')
@@ -1008,16 +1200,16 @@ int main (int numArgs, char* args[]) {
     else if (line[0] == '#')
       processComment (line);
     else if (line[0] == '@')
-      processInclude (line, objFiles);
+      processInclude (line, objectFiles);
     else
-      processObjFile (line, objFiles);
+      processObjFile (line, objectFiles);
   cmdFileStream.close();
 
   linker.dumpOptions();
 
   // pass 1 - read symbols, accumulate section sizes
-  for (auto& objFile : objFiles)
-    processLinker (linker, objFile.c_str(), true);
+  for (auto& objectFile : objectFiles)
+    processLinker1 (linker, objectFile);
   linker.dumpSymbols();
 
   // allocate section sizes
@@ -1025,8 +1217,10 @@ int main (int numArgs, char* args[]) {
   linker.dumpSections();
 
   // pass 2 - resolve addresses and output .bin
-  for (auto& objFile : objFiles)
-    processLinker (linker, objFile.c_str(), false);
+  ofstream outFileStream (cmdFileName + ".sr", ofstream::out);
+  for (auto& objectFile : objectFiles)
+    processLinker2 (linker, objectFile, outFileStream);
+  cmdFileStream.close();
 
   return 0;
   }
