@@ -724,6 +724,8 @@ public:
   void processText (cLinker& linker, ofstream& stream) {
   // process text record, to out stream, pass 2 only
 
+    dump();
+
     uint32_t bitmap = getUint32();
     uint8_t curEsd = getUint8();
     linker.mCodeStart = linker.mOutAddrArray[curEsd];
@@ -735,15 +737,14 @@ public:
     uint8_t thisEsd = 0;
     while (getDataLeft() > 0) {
       if (bitmap & 0x80000000) {
-        //{{{  get rest of record
+        //{{{  relocation data
         uint8_t byte = getUint8();
         uint8_t numEsds = byte >> 5;
-        uint8_t offsetSize = byte & 0x07;
+        uint8_t offsetFieldLength = byte & 0x07;
+        bool longAddress = (byte >> 3) & 1;
 
         if (kOutDebug)
-          printf ("numEsds:%d offsetSize:%d\n", numEsds, offsetSize);
-
-        bool longWd = offsetSize & 0x08;
+          printf ("byte:%02x numEsds:%d offsetFieldLength:%d longAddress:%d\n", byte, numEsds, offsetFieldLength, longAddress);
 
         uint32_t add = 0;
         for (int i = 1; i <= numEsds; i++) {
@@ -751,7 +752,7 @@ public:
           if (kOutDebug)
             printf ("thisEsd:%d topEsd:%d\n", thisEsd, linker.mTopEsd);
           if (thisEsd > linker.mTopEsd) {
-            //{{{  foulup
+            //{{{  error, trying to use esd greater than topEsd
             // showModName;
             printf ("trying to use an undefined ESD %d of %d\n", thisEsd, linker.mTopEsd);
             }
@@ -763,32 +764,36 @@ public:
             add = add - linker.mEsdArray[thisEsd];
           }
 
+        // get offset, either byte or word, sign extend
         uint32_t offset = 0;
-        for (int i = 1; i <= offsetSize; i++)
+        for (int i = 1; i <= offsetFieldLength; i++)
           offset = (offset << 8) + getUint8();
 
-        switch (offsetSize) {
-          case 1: if (offset > 127)
-                    offset = offset | 0xFFFFFF00;
+        switch (offsetFieldLength) {
+          case 0: break;
+          case 1: if (offset & 0x80)
+                    offset = 0xFFFFFF00 | offset;
                   break;
-          case 2: if (offset > 32767)
-                    offset = offset | 0xFFFF0000;
+          case 2: if (offset & 0x8000)
+                    offset = 0xFFFF0000 | offset;
                    break;
-          default:;
+          case 4: break;
+          default: printf ("unexpected offsetFieldLength:%d\n", offsetFieldLength);
           }
         // printf ("ofFSET %08x + %08x = %08x\n", add, offset, add+offset);
 
         add = add + offset;
         if (numEsds == 0) {
-          //{{{  numEsds == 0
+          //{{{  not sure what this does
           if (offset & 0x01) {
             //showModName;
-            printf ("odd fix-up offset - assembler error %6x %d, %6x\n", offset, curEsd, linker.mCodeStart);
+            printf ("error - odd fix-up offset %8x %d, %8x\n", offset, curEsd, linker.mCodeStart);
             offset = offset + 1;
             }
 
           if (mCodeLen > 0)
             outputCode (stream);
+
           linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + mCodeLen*2 + offset;
 
           mCodeLen = 0;
@@ -796,35 +801,29 @@ public:
           }
           //}}}
         else {
-          if (!longWd) {
-            if ((add > 32767) || (add < -32768)) {
-              //{{{  foulup
-              //showModName;
-              printf ("Long address generated into word location:%6x\n", add);
-              }
-              //}}}
-            }
+          if (!longAddress && (add & 0xFFFF0000))
+            printf ("error - trying to put long address into word location:%8x\n", add);
 
           if (linker.mEsdSymbolArray [thisEsd] != nullptr) {
             // only need named symbols
             if (linker.mModName != linker.mEsdSymbolArray [thisEsd]->mModName) {
               //{{{  outside module
               //if history then
-              //  { address to be resolved LONGWORD only at present}
+              //  { address to be resolved longAddress only at present}
               //  addRes (esdSymbolArray [thisesd], linker.mCodeStart + mCodeLen*2, offset);
 
               //if debugInfo then
-              //  writeln ('sym ', longwd,
+              //  writeln ('sym ', longAddress,
               //           ' ', thisesd:2,
               //           ' ', esdSymbolArray [thisesd]^.symbolName,
               //           ' ', hex (add, 8, 8), ' = ', hex (esdArray[thisesd]),
-              //           ' + ', hex (offset, 4, 4), ';', hex (offsetSize, 1, 1),
+              //           ' + ', hex (offset, 4, 4), ';', hex (offsetFieldLength, 1, 1),
               //           ' at ', hex (linker.mCodeStart + mCodeLen * 2, 8, 8));
               }
               //}}}
 
             // generate resolved address
-            if (longWd)
+            if (longAddress)
               mCodeArray[++mCodeLen] = add >> 16;
             mCodeArray[++mCodeLen] = add;
             }
@@ -832,7 +831,7 @@ public:
         }
         //}}}
       else {
-        //{{{  add word of code to codeArray
+        //{{{  absolute code
         uint16_t value = getUint8() << 8;
         value |= getUint8();
 
@@ -857,18 +856,16 @@ public:
       printf ("end\n");
 
     else {
-      printf ("len:%d type:%d\n", mLength, (int)mType);
+      printf ("len:0x%x type:%d\n", mLength, (int)mType);
 
       // dump block
       for (int i = 0; i < mLength-1; i++) {
         if ((i % 32) == 0) // indent
           printf ("  %03x  ", i);
-
         printf ("%02x ", mBlock[i]);
         if ((i % 32) == 31)
           printf ("\n");
         }
-
       printf ("\n");
       }
     }
@@ -913,12 +910,10 @@ private:
   //}}}
   //{{{
   void outputPacket (ofstream& stream, uint32_t pos, uint32_t len) {
-  // output single packet of codeArray
+  // output packet of codeArray
 
-    mPos = pos;
-    mLen = len;
-    uint32_t codeStart = mCodeStart + mPos*2;
-    uint32_t packetLen = mLen*2 + 4; // this happens to be right for both
+    uint32_t codeStart = mCodeStart + pos*2;
+    uint32_t packetLen = len*2 + 4; // this happens to be right for both
 
     if (bin) {
       //{{{
@@ -1006,7 +1001,7 @@ private:
       // packet
       for (uint8_t i = 1; i <= len; i++) {
         wbyte (stream, (mCodeArray[i+pos]) >> 8);
-        wbyte (stream, mCodeArray[i+pos] & 0xFF);
+        wbyte (stream,  mCodeArray[i+pos] & 0xFF);
         }
 
       // packet end
@@ -1020,9 +1015,8 @@ private:
   void outputCode (ofstream& stream) {
   // output codeArray
 
-    uint32_t len = mCodeLen;
-
     mPos = 0;
+    uint32_t len = mCodeLen;
     while (len > mOutputMaxSize) {
       outputPacket (stream, mPos, mOutputMaxSize);
       mPos = mPos + mOutputMaxSize;
@@ -1044,8 +1038,6 @@ private:
   uint32_t mOutputMaxSize = 0;
 
   uint32_t mPos = 0;
-  uint32_t mLen = 0;
-
   uint32_t mCodeStart = 0;
   uint32_t mCodeLen = 0;
   array <uint32_t, 64> mCodeArray;
