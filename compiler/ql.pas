@@ -1925,6 +1925,8 @@ var
   var
     fileName, root, ext, fullFileName: string;
     section: integer;
+    numEsdRecords : integer;
+    numTxtRecords : integer;
 
     {<<<}
     function processRecord: boolean;
@@ -2364,10 +2366,16 @@ var
           processModuleId;
 
         '2':
+          begin
+          numEsdRecords := numEsdRecords + 1;
           processESD;
+          end;
 
         '3':
+          begin
+          numTxtRecords := numTxtRecords + 1;
           processText;
+          end;
 
         '4':
           begin
@@ -2400,6 +2408,9 @@ var
       else if ext = '.ro' then
         {<<<  .ro file}
         begin
+        numEsdRecords := 0;
+        numTxtRecords := 0;
+
         cmdFileNameString := fullFileName;
         reset (objFile, fullFileName);
 
@@ -2407,6 +2418,7 @@ var
           getObjRecord (objRecord);
         until processRecord;
 
+        Writeln (filename, ' num esdRecords:', numEsdRecords, ' numTxtRecords:', numTxtRecords);
         close (objFile);
         end
         {>>>}
