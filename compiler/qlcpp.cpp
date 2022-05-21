@@ -348,20 +348,21 @@ private:
 //{{{
 class cCode {
 public:
-  cCode (ofstream& stream) : mStream(stream), mOutputMaxSize (bin ? 512 : 64), mCodeLength(0) {}
-  ~cCode() = default;
-
   //{{{
-  void initCode() {
-    mCodeLength = 0;
-    }
+  cCode (const string& fileName) : mStream (fileName + ".sr", ofstream::out),
+                                   mOutputMaxSize (bin ? 512 : 64), mCodeLength(0) {}
   //}}}
   //{{{
-  void initLength() {
-    mCodeLength = 0;
+  virtual ~cCode() {
+    mStream.close();
     }
   //}}}
 
+  //{{{
+  void init() {
+    mCodeLength = 0;
+    }
+  //}}}
   //{{{
   uint32_t getLength() {
     return mCodeLength;
@@ -555,7 +556,7 @@ public:
   //}}}
 
 private:
-  ofstream& mStream;
+  ofstream mStream;
 
   uint32_t mOutputMaxSize = 0;
 
@@ -953,10 +954,8 @@ public:
     }
   //}}}
   //{{{
-  void processText (cLinker& linker, ofstream& stream) {
+  void processText (cLinker& linker, cCode& code) {
   // process text record, to out stream, pass 2 only
-
-    cCode code (stream);
 
     if (kOutDebug)
       dump();
@@ -968,7 +967,7 @@ public:
     if (kOutDebug)
       printf ("output bitmap:%08x curEsd:%d\n", bitmap, curEsd);
 
-    code.initCode();
+    code.init();
 
     uint8_t thisEsd = 0;
     while (getDataLeft() > 0) {
@@ -1033,7 +1032,7 @@ public:
 
           linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + code.getLength()*2 + offset;
 
-          code.initLength();
+          code.init();
           mCodeStart = linker.mOutAddrArray[curEsd];
           }
           //}}}
@@ -1192,7 +1191,7 @@ void processLinker1 (cLinker& linker, const string& fileName) {
   }
 //}}}
 //{{{
-void processLinker2 (cLinker& linker, const string& fileName, ofstream& stream) {
+void processLinker2 (cLinker& linker, const string& fileName, cCode& code) {
 
   int numEsdRecords = 0;
   int numTxtRecords = 0;
@@ -1220,7 +1219,7 @@ void processLinker2 (cLinker& linker, const string& fileName, ofstream& stream) 
 
         case cObjectRecord::eObjectText:
           numTxtRecords++;
-          objectRecord.processText (linker, stream);
+          objectRecord.processText (linker, code);
           break;
 
         case cObjectRecord::eEnd:
@@ -1290,15 +1289,12 @@ int main (int numArgs, char* args[]) {
 
   if (out) {
     // pass 2 - resolve addresses and output .bin
-    ofstream outFileStream (cmdFileName + ".sr", ofstream::out);
+    cCode code (cmdFileName);
 
     for (auto& objectFile : objectFiles)
-      processLinker2 (linker, objectFile, outFileStream);
+      processLinker2 (linker, objectFile, code);
 
-    cCode code (outFileStream);
     code.outputEnd();
-
-    cmdFileStream.close();
     }
 
   return 0;
