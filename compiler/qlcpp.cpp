@@ -346,14 +346,14 @@ private:
   };
 //}}}
 //{{{
-class cCode {
+class cOutput {
 public:
   //{{{
-  cCode (const string& fileName) : mStream (fileName + ".sr", ofstream::out),
+  cOutput (const string& fileName) : mStream (fileName + ".sr", ofstream::out),
                                    mOutputMaxSize (bin ? 512 : 64), mCodeLength(0) {}
   //}}}
   //{{{
-  virtual ~cCode() {
+  virtual ~cOutput() {
     mStream.close();
     }
   //}}}
@@ -530,7 +530,7 @@ public:
     }
   //}}}
   //{{{
-  void outputEnd() {
+  void end() {
 
     if (bin) {
       mOutputChecksum = 0;
@@ -954,7 +954,7 @@ public:
     }
   //}}}
   //{{{
-  void processText (cLinker& linker, cCode& code) {
+  void processText (cLinker& linker, cOutput& output) {
   // process text record, to out stream, pass 2 only
 
     if (kOutDebug)
@@ -967,7 +967,7 @@ public:
     if (kOutDebug)
       printf ("output bitmap:%08x curEsd:%d\n", bitmap, curEsd);
 
-    code.init();
+    output.init();
 
     uint8_t thisEsd = 0;
     while (getDataLeft() > 0) {
@@ -1028,11 +1028,11 @@ public:
             offset = offset + 1;
             }
 
-          code.outputCode (mCodeStart);
+          output.outputCode (mCodeStart);
 
-          linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + code.getLength()*2 + offset;
+          linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + output.getLength()*2 + offset;
 
-          code.init();
+          output.init();
           mCodeStart = linker.mOutAddrArray[curEsd];
           }
           //}}}
@@ -1060,25 +1060,25 @@ public:
 
             // generate resolved address
             if (longAddress)
-              code.addByte (add >> 16);
-            code.addByte (add);
+              output.addByte (add >> 16);
+            output.addByte (add);
             }
           }
         }
         //}}}
       else {
         //{{{  absolute code
-        code.addByte (getUint8());
-        code.addByte (getUint8());
+        output.addByte (getUint8());
+        output.addByte (getUint8());
         }
         //}}}
       bitmap = bitmap << 1;
       }
 
-    code.outputCode (mCodeStart);
+    output.outputCode (mCodeStart);
 
     // convert to bytes}
-    linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + (code.getLength() * 2);
+    linker.mOutAddrArray[curEsd] = linker.mOutAddrArray[curEsd] + (output.getLength() * 2);
     }
   //}}}
 
@@ -1191,7 +1191,7 @@ void processLinker1 (cLinker& linker, const string& fileName) {
   }
 //}}}
 //{{{
-void processLinker2 (cLinker& linker, const string& fileName, cCode& code) {
+void processLinker2 (cLinker& linker, const string& fileName, cOutput& output) {
 
   int numEsdRecords = 0;
   int numTxtRecords = 0;
@@ -1219,7 +1219,7 @@ void processLinker2 (cLinker& linker, const string& fileName, cCode& code) {
 
         case cObjectRecord::eObjectText:
           numTxtRecords++;
-          objectRecord.processText (linker, code);
+          objectRecord.processText (linker, output);
           break;
 
         case cObjectRecord::eEnd:
@@ -1289,12 +1289,12 @@ int main (int numArgs, char* args[]) {
 
   if (out) {
     // pass 2 - resolve addresses and output .bin
-    cCode code (cmdFileName);
+    cOutput output (cmdFileName);
 
     for (auto& objectFile : objectFiles)
-      processLinker2 (linker, objectFile, code);
+      processLinker2 (linker, objectFile, output);
 
-    code.outputEnd();
+    output.end();
     }
 
   return 0;
