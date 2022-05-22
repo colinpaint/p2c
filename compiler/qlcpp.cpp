@@ -1195,20 +1195,6 @@ private:
 //}}}
 
 //{{{
-void parseComment (const string& line) {
-
-  if (kCmdLineDebug)
-    printf ("parseComment %s\n", line.c_str());
-  }
-//}}}
-//{{{
-void parseInclude (const string& line, vector <cObjectFile>& objectFiles) {
-// extract include filename and add its contents to the objectFilesfile list
-
-  printf ("parseInclude %s not implented\n", line.c_str());
-  }
-//}}}
-//{{{
 void parseObjectFile (const string& line, vector <cObjectFile>& objectFiles) {
 
   if (kObjectFileDebug)
@@ -1225,6 +1211,39 @@ void parseObjectFile (const string& line, vector <cObjectFile>& objectFiles) {
     objectFiles.push_back (line.substr (0, foundTerminator) + ".ro");
   else
     objectFiles.push_back (line.substr (0, foundTerminator));
+  }
+//}}}
+//{{{
+void parseStream (ifstream& stream, vector <cObjectFile>& objectFiles, cLinker& linker) {
+
+  string line;
+  while (getline (stream, line))
+    if (line[0] == '/')
+      linker.parseOptions (line);
+    else if (line[0] == '@') {
+      //{{{  include
+      string includeFileName = line.substr (1, line.length()-1);
+      printf ("including %s\n", includeFileName.c_str());
+
+      ifstream includeStream (includeFileName + ".cmd", ifstream::in);
+      parseStream (includeStream, objectFiles, linker);
+      includeStream.close();
+      }
+      //}}}
+    else if (line[0] == '!') {
+      //{{{  comment
+      if (kCmdLineDebug)
+        printf ("comment %s\n", line.c_str());
+      }
+      //}}}
+    else if (line[0] == '#') {
+      //{{{  comment
+      if (kCmdLineDebug)
+        printf ("comment %s\n", line.c_str());
+      }
+      //}}}
+    else
+      parseObjectFile (line, objectFiles);
   }
 //}}}
 
@@ -1250,22 +1269,12 @@ int main (int numArgs, char* args[]) {
 
   printf ("using cmdFileName %s\n", cmdFileName.c_str());
 
-  // get objectFiles from .cmd file
-  string line;
   vector <cObjectFile> objectFiles;
-  ifstream cmdFileStream (cmdFileName + ".cmd", ifstream::in);
-  while (getline (cmdFileStream, line))
-    if (line[0] == '/')
-      linker.parseOptions (line);
-    else if (line[0] == '!')
-      parseComment (line);
-    else if (line[0] == '#')
-      parseComment (line);
-    else if (line[0] == '@')
-      parseInclude (line, objectFiles);
-    else
-      parseObjectFile (line, objectFiles);
-  cmdFileStream.close();
+
+  // get objectFiles from .cmd file
+  ifstream stream (cmdFileName + ".cmd", ifstream::in);
+  parseStream (stream, objectFiles, linker);
+  stream.close();
 
   linker.dumpOptions();
 
