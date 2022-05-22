@@ -133,8 +133,8 @@ public:
   //}}}
 
   //{{{
-  void processOptions (const string& line) {
-    mOptions.process (line);
+  void parseOptions (const string& line) {
+    mOptions.parseLine (line);
     }
   //}}}
 
@@ -203,7 +203,7 @@ private:
     //}}}
 
     //{{{
-    void process (const string& line) {
+    void parseLine (const string& line) {
 
       if (kOptionDebug)
         printf ("processOptions %s\n", line.c_str());
@@ -212,12 +212,12 @@ private:
       size_t start = 1;
       size_t found = line.find ('/', start);
       while (found != string::npos)  {
-        processToken (line.substr (start, found-start));
+        parseToken (line.substr (start, found-start));
         start = found + 1;
         found = line.find ('/', start);
         }
 
-      processToken (line.substr (start, found));
+      parseToken (line.substr (start, found));
       }
     //}}}
     //{{{
@@ -276,7 +276,7 @@ private:
     //}}}
 
     //{{{
-    void processToken (const string& token) {
+    void parseToken (const string& token) {
 
       mTokenIndex = 0;
       mToken = token;
@@ -559,14 +559,8 @@ private:
 //{{{
 class cObjectFile {
 public:
-  cObjectFile (const string& fileName) : mFileName(fileName), mType(eRo) {}
+  cObjectFile (const string& fileName) : mFileName(fileName), mFileType(eRo) {}
   virtual ~cObjectFile() = default;
-
-  //{{{
-  string getFileName() const {
-    return mFileName;
-    }
-  //}}}
 
   //{{{
   uint32_t getNumIdRecords() const  {
@@ -586,6 +580,125 @@ public:
   //{{{
   uint32_t getNumEndRecords() const  {
     return mNumEndRecords;
+    }
+  //}}}
+
+  //{{{
+  void pass1 (cLinker& linker) {
+
+    if (kPassDebug)
+      printf ("passFile %s\n", mFileName.c_str());
+
+    ifstream objectFileStream (mFileName.c_str(), ifstream::in | ifstream::binary);
+
+    bool eom = false;
+    while (!eom) {
+      eom = loadRecord (objectFileStream);
+
+      if (kObjectFileDebug)
+        dump();
+
+      if (!eom) {
+        switch (mRecordType) {
+          case eId:
+            incNumIdRecords();
+            parseId (linker, true);
+            break;
+
+          case eEsd:
+            incNumEsdRecords();
+            parseEsd (linker, true);
+            break;
+
+          case eObjectText:
+            incNumTxtRecords();
+            break;
+
+          case eEnd:
+            incNumEndRecords();
+            break;
+
+          default:
+            break;
+          }
+        }
+      }
+
+    objectFileStream.close();
+    }
+  //}}}
+  //{{{
+  void pass2 (cLinker& linker, cOutput& output) {
+
+    if (kPassDebug)
+      printf ("passFile %s\n", mFileName.c_str());
+
+    ifstream objectFileStream (mFileName.c_str(), ifstream::in | ifstream::binary);
+
+    bool eom = false;
+    while (!eom) {
+      eom = loadRecord (objectFileStream);
+
+      if (!eom) {
+        switch (mRecordType) {
+          case eId:
+            parseId (linker, false);
+            break;
+
+          case eEsd:
+            parseEsd (linker, false);
+            break;
+
+          case eObjectText:
+            parseText (linker, output);
+            break;
+
+          case eEnd:
+            break;
+
+          default:
+            break;
+          }
+        }
+      }
+
+    objectFileStream.close();
+    }
+  //}}}
+
+private:
+  enum eFileType { eRo, eRx };
+  enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
+
+  // load
+  //{{{
+  bool loadRecord (ifstream& stream) {
+  // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
+
+    mBlockIndex = 0;
+
+    if (mFileType == eRo) {
+      // load ro format record
+      mLength = stream.get();
+      uint8_t byte = stream.get();
+
+      if ((byte > '0') && (byte <= '4')) {
+        // recognised record type
+        mRecordType = (eRecordType)(byte - uint8_t('0'));
+        if (mRecordType < eEnd)
+          for (size_t i = 0; i < mLength-1; i++)
+            mBlock[i] = stream.get();
+
+        return mRecordType == eEnd;
+        }
+
+      else {
+        mRecordType = eNone;
+        return true;
+        }
+      }
+    else
+      return true;
     }
   //}}}
 
@@ -610,33 +723,7 @@ public:
     }
   //}}}
 
-private:
-  string mFileName;
-
-  enum eType { eRo, eRx };
-  eType mType;
-
-  uint32_t mNumIdRecords = 0;
-  uint32_t mNumEsdRecords = 0;
-  uint32_t mNumTxtRecords = 0;
-  uint32_t mNumEndRecords = 0;
-  };
-//}}}
-//{{{
-class cObject {
-public:
-  cObject() = default;
-  virtual ~cObject() = default;
-
-  enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
-
-  // gets
-  //{{{
-  eRecordType getType() {
-    return mType;
-    }
-  //}}}
-
+  // record gets
   //{{{
   int getDataLeft() {
     return mLength - mBlockIndex - 1;
@@ -692,56 +779,21 @@ public:
     }
   //}}}
 
-  // load
+  // parse
   //{{{
-  bool loadRoFormat (ifstream& stream) {
-  // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
-
-    mBlockIndex = 0;
-
-    mLength = stream.get();
-    uint8_t b = stream.get();
-
-    if ((b > '0') && (b <= '4')) {
-      // recognised record type
-      mType = (eRecordType)(b - uint8_t('0'));
-      if (mType < eEnd)
-        for (size_t i = 0; i < mLength-1; i++)
-          mBlock[i] = stream.get();
-
-      return mType == eEnd;
-      }
-
-    else {
-      mType = eNone;
-      return true;
-      }
-    }
-  //}}}
-
-  // process
-  //{{{
-  void processId (cLinker& linker, bool pass1) {
-
-    mTopEsd = 17;
+  void parseId (cLinker& linker, bool pass1) {
 
     string modName = getSymbolName();
     linker.setCurModName (modName);
 
     if (kPassDebug)
-      printf ("ModuleId - modName:%s\n", modName.c_str());
+      printf ("Id record - modName:%s\n", modName.c_str());
 
-    // we need to init these Esd values, in case of zero length sections
+    // init esd values in case of zero length sections
+    mTopEsd = 17;
+
     if (!pass1) {
-      //if modules then
-      //  write (moduleFile, modName, ':');
-      //  if files then
-      //    write (moduleFile, fileIdString, ':' );
-      //  end;
-
-      // unused Esd value
       mEsds[0].mAddress = 0;
-
       for (int section = 0; section < 16; section++) {
         mEsds[mTopEsd].mSymbol = nullptr;
         mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress + linker.mSections[section].mSbase;
@@ -751,8 +803,8 @@ public:
     }
   //}}}
   //{{{
-  void processEsd (cLinker& linker, bool pass1) {
-  // process External Symbol Definition record
+  void parseEsd (cLinker& linker, bool pass1) {
+  // parse External Symbol Definition record
 
     while (getDataLeft() > 0) {
       uint8_t byte = getUint8();
@@ -783,7 +835,7 @@ public:
           uint32_t size = getUint32();
 
           if (kPassDebug)
-            printf ("common data - section:%2d %8s size:%08x\n", (int)section, symbolName.c_str(), size);
+            printf ("commonSection:%2d %8s size:%08x\n", (int)section, symbolName.c_str(), size);
 
           if (pass1) {
             //{{{  pass1
@@ -846,7 +898,7 @@ public:
           uint32_t size = getUint32();
 
           if (kPassDebug)
-            printf ("section def - section:%2d size:%08x\n", (int)section, size);
+            printf ("relocatable section:%2d size:%08x\n", (int)section, size);
 
           if (pass1) {
             linker.mSections[section].mSectBase += size;
@@ -875,85 +927,40 @@ public:
           uint32_t address = getUint32();
 
           if (kPassDebug)
-            printf ("symbol xdef - section:%2d %8s address:%08x\n", (int)section, symbolName.c_str(), address);
+            printf ("symbol xDef - section:%2d %8s address:%08x\n", (int)section, symbolName.c_str(), address);
 
           if (pass1) {
-            //{{{  pass1
             bool symbolFound;
             cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
-
-            // !!! this isnt right yet !!!
-            if (symbol->mDefined && !symbol->mErrorFlagged) {
-              if (symbol->mHist) {
-                //if chat then
-                 //  writeln ('redefining ', symbolName);
-                }
-              else {
-                //doubledef(symbol)
-                }
-              }
-
-            else if (symbolFound) {
-              if (symbol->mHist) {
-                //if chat then
-                //  writeln ('redefining ',symbolName);
-                }
-              else {
-                //numUndefinedSymbols := numUndefinedSymbols - 1;
-                }
-              }
 
             symbol->mDefined = true;
             symbol->mModName = linker.getCurModName();
             symbol->mSection = section;
             symbol->mAddress = address + linker.mSections[section].mSectBase;
             }
-            //}}}
-          else {
-            //if usingHistory then
-            //  begin { symbol defintion, use to make patches on second pass }
-            //  b := findCreate (s, symbol, false); { find it }
-            //  if symbol^.resList <> nil then
-            //    begin
-            //    r := symbol^.resList;
-            //    repeat
-            //      begin
-            //      patch := symbol^.addr + baseaddr[symbol^.section] + r^.offset;
-            //      if debugInfo then
-            //        writeln ('patching ',hex (r^.addr, 6, 6), ' with ',
-            //                             hex (patch-r^.offset, 6, 6), ' + ', hex (r^.offset, 6, 6));
-            //      linker->mCodeStart := r^.addr;
-            //      codeArray [1] := mvr (mvr (patch));
-            //      codeArray [2] := patch;
-            //      mCodeLen := 2;
-            //      outputCode;
-            //      r := r^.next;
-            //      end until r = nil;
-            //    end;
-            }
+
           break;
           }
         //}}}
 
         case 6:         // xRef symbol to section xx - unexpected
-          printf ("xref to section:%d\n", int(section));
+          printf ("xRef to section:%d\n", int(section));
           [[fallthrough]];
         //{{{
         case  7: { // xRef symbol to any section
           string symbolName = getSymbolName();
 
           if (kPassDebug)
-            printf ("symbol xref - section:%2d %8s\n", (int)section, symbolName.c_str());
+            printf ("symbol xRef - section:%2d %8s\n", (int)section, symbolName.c_str());
 
           if (pass1) {
-            // pass1 action
             bool symbolFound;
             cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
             symbol->addReference (linker.getCurModName());
             }
 
           else {
-            // pass2 action
+            // pass2 action, symbol must have been created on pass1
             cSymbol* symbol = linker.findSymbol (symbolName);
             if (symbol) {
               mEsds[mTopEsd].mSymbol = symbol;
@@ -1012,8 +1019,8 @@ public:
     }
   //}}}
   //{{{
-  void processText (cLinker& linker, cOutput& output) {
-  // process text record, to out stream, pass 2 only
+  void parseText (cLinker& linker, cOutput& output) {
+  // parse text record, to out stream, pass 2 only
 
     if (kOutDebug)
       dump();
@@ -1140,11 +1147,11 @@ public:
   //{{{
   void dump() {
 
-    if (mType == eEnd)
+    if (mRecordType == eEnd)
       printf ("end\n");
 
     else {
-      printf ("len:0x%x type:%d\n", mLength, (int)mType);
+      printf ("len:0x%x type:%d\n", mLength, (int)mRecordType);
 
       // dump block
       for (int i = 0; i < mLength-1; i++) {
@@ -1159,13 +1166,22 @@ public:
     }
   //}}}
 
-private:
-  int mLength = 0;
-  eRecordType mType = eNone;
+  string mFileName;
 
+  eFileType mFileType;
+
+  uint32_t mNumIdRecords = 0;
+  uint32_t mNumEsdRecords = 0;
+  uint32_t mNumTxtRecords = 0;
+  uint32_t mNumEndRecords = 0;
+
+  // object record
+  int mLength = 0;
+  eRecordType mRecordType = eNone;
   int mBlockIndex = 0;
   array <uint8_t,256> mBlock = { 0 };
 
+  // esd
   //{{{
   struct sEsd {
     cSymbol* mSymbol;
@@ -1174,30 +1190,29 @@ private:
     };
   //}}}
   array <sEsd, 256> mEsds = {};
-
   uint8_t mTopEsd = 0;
   };
 //}}}
 
 //{{{
-void processComment (const string& line) {
+void parseComment (const string& line) {
 
   if (kCmdLineDebug)
-    printf ("processComment %s\n", line.c_str());
+    printf ("parseComment %s\n", line.c_str());
   }
 //}}}
 //{{{
-void processInclude (const string& line, vector <cObjectFile>& objectFiles) {
+void parseInclude (const string& line, vector <cObjectFile>& objectFiles) {
 // extract include filename and add its contents to the objectFilesfile list
 
-  printf ("processInclude %s not implented\n", line.c_str());
+  printf ("parseInclude %s not implented\n", line.c_str());
   }
 //}}}
 //{{{
-void processObjectFile (const string& line, vector <cObjectFile>& objectFiles) {
+void parseObjectFile (const string& line, vector <cObjectFile>& objectFiles) {
 
   if (kObjectFileDebug)
-    printf ("processLine %s\n", line.c_str());
+    printf ("parseLine %s\n", line.c_str());
 
   // find any trailing comma
   size_t foundTerminator = line.find (',');
@@ -1212,92 +1227,6 @@ void processObjectFile (const string& line, vector <cObjectFile>& objectFiles) {
     objectFiles.push_back (line.substr (0, foundTerminator));
   }
 //}}}
-//{{{
-void processLinker1 (cLinker& linker, cObjectFile& objectFile) {
-
-  if (kPassDebug)
-    printf ("passFile %s\n", objectFile.getFileName().c_str());
-
-  ifstream objectFileStream (objectFile.getFileName().c_str(), ifstream::in | ifstream::binary);
-
-  cObject object;
-
-  bool eom = false;
-  while (!eom) {
-    eom = object.loadRoFormat (objectFileStream);
-
-    if (kObjectFileDebug)
-      object.dump();
-
-    if (!eom) {
-      switch (object.getType()) {
-        case cObject::eId:
-          objectFile.incNumIdRecords();
-          object.processId (linker, true);
-          break;
-
-        case cObject::eEsd:
-          objectFile.incNumEsdRecords();
-          object.processEsd (linker, true);
-          break;
-
-        case cObject::eObjectText:
-          objectFile.incNumTxtRecords();
-          break;
-
-        case cObject::eEnd:
-          objectFile.incNumEndRecords();
-          break;
-
-        default:
-          break;
-        }
-      }
-    }
-
-  objectFileStream.close();
-  }
-//}}}
-//{{{
-void processLinker2 (cLinker& linker, cObjectFile& objectFile, cOutput& output) {
-
-  if (kPassDebug)
-    printf ("passFile %s\n", objectFile.getFileName().c_str());
-
-  ifstream objectFileStream (objectFile.getFileName().c_str(), ifstream::in | ifstream::binary);
-
-  cObject object;
-
-  bool eom = false;
-  while (!eom) {
-    eom = object.loadRoFormat (objectFileStream);
-
-    if (!eom) {
-      switch (object.getType()) {
-        case cObject::eId:
-          object.processId (linker, false);
-          break;
-
-        case cObject::eEsd:
-          object.processEsd (linker, false);
-          break;
-
-        case cObject::eObjectText:
-          object.processText (linker, output);
-          break;
-
-        case cObject::eEnd:
-          break;
-
-        default:
-          break;
-        }
-      }
-    }
-
-  objectFileStream.close();
-  }
-//}}}
 
 //{{{
 int main (int numArgs, char* args[]) {
@@ -1308,7 +1237,7 @@ int main (int numArgs, char* args[]) {
   string cmdFileName;
   for (int i = 1; i < numArgs; i++)
     if (args[i][0] == '/')
-      linker.processOptions (args[i]);
+      linker.parseOptions (args[i]);
     else
       cmdFileName = args[i];
 
@@ -1327,22 +1256,22 @@ int main (int numArgs, char* args[]) {
   ifstream cmdFileStream (cmdFileName + ".cmd", ifstream::in);
   while (getline (cmdFileStream, line))
     if (line[0] == '/')
-      linker.processOptions (line);
+      linker.parseOptions (line);
     else if (line[0] == '!')
-      processComment (line);
+      parseComment (line);
     else if (line[0] == '#')
-      processComment (line);
+      parseComment (line);
     else if (line[0] == '@')
-      processInclude (line, objectFiles);
+      parseInclude (line, objectFiles);
     else
-      processObjectFile (line, objectFiles);
+      parseObjectFile (line, objectFiles);
   cmdFileStream.close();
 
   linker.dumpOptions();
 
   // pass 1 - read symbols, accumulate section sizes
   for (auto& objectFile : objectFiles)
-    processLinker1 (linker, objectFile);
+    objectFile.pass1 (linker);
   linker.dumpSymbols();
 
   linker.allocCommonSectionAddresses();
@@ -1352,7 +1281,7 @@ int main (int numArgs, char* args[]) {
   if (out) {
     cOutput output (cmdFileName);
     for (auto& objectFile : objectFiles)
-      processLinker2 (linker, objectFile, output);
+      objectFile.pass2 (linker, output);
     }
 
   return 0;
