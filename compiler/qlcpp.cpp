@@ -673,11 +673,6 @@ private:
     virtual ~cObjectRecord() = default;
 
     enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
-    //{{{
-    eRecordType getRecordType() {
-      return mRecordType;
-      };
-    //}}}
 
     // load
     //{{{
@@ -707,6 +702,11 @@ private:
     //}}}
 
     // gets
+    //{{{
+    eRecordType getRecordType() {
+      return mRecordType;
+      };
+    //}}}
     //{{{
     int getDataLeft() {
       return mLength - mBlockIndex - 1;
