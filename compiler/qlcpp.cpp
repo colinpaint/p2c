@@ -48,15 +48,15 @@ public:
   virtual ~cSymbol() = default;
 
   //{{{
-  void addReference (const string& modName) {
-    mReferences.push_back (modName);
+  void addReference (const string& moduleName) {
+    mReferences.push_back (moduleName);
     }
   //}}}
 
   bool mDefined = false;
 
   string mName;
-  string mModName;
+  string mModuleName;
 
   uint8_t mSection = 0;
   uint32_t mAddress = 0;
@@ -78,13 +78,13 @@ public:
   virtual ~cLinker() = default;
 
   //{{{
-  string getCurModName() {
-    return mCurModName;
+  string getCurModuleName() {
+    return mCurModuleName;
     }
   //}}}
   //{{{
-  void setCurModName (const string& modName) {
-    mCurModName = modName;
+  void setCurModuleName (const string& moduleName) {
+    mCurModuleName = moduleName;
     }
   //}}}
 
@@ -325,7 +325,7 @@ private:
   map <string, cSymbol*> mSymbolMap;
   vector <cSymbol*> mCommonSymbols;
 
-  string mCurModName;
+  string mCurModuleName;
   };
 //}}}
 //{{{
@@ -649,6 +649,7 @@ public:
 
   //{{{
   void dump() {
+
     printf ("objectFile %s id:%d esd:%d text:%d end%d topEsd:%d\n",
             mFileName.c_str(), mNumIdRecords, mNumEsdRecords, mNumTxtRecords, mNumEndRecords, mTopEsd);
     };
@@ -761,11 +762,11 @@ private:
     //{{{
     void parseId (cObjectFile* objectFile, cLinker& linker, bool pass1) {
 
-      string modName = getSymbolName();
-      linker.setCurModName (modName);
+      string moduleName = getSymbolName();
+      linker.setCurModuleName (moduleName);
 
       if (kPassDebug)
-        printf ("Id record - modName:%s\n", modName.c_str());
+        printf ("Id record - module:%s\n", moduleName.c_str());
 
       // init esd values in case of zero length sections
       objectFile->mTopEsd = 17;
@@ -774,7 +775,8 @@ private:
         objectFile->mEsds[0].mAddress = 0;
         for (int section = 0; section < 16; section++) {
           objectFile->mEsds[objectFile->mTopEsd].mSymbol = nullptr;
-          objectFile->mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress + linker.mSections[section].mSbase;
+          objectFile->mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress +
+                                                  linker.mSections[section].mSbase;
           objectFile->mEsds[section+1].mOutAddress = objectFile->mEsds[section+1].mAddress;
           }
         }
@@ -796,8 +798,8 @@ private:
             uint32_t start = getUint32();
 
             if (pass1)
-              printf ("Absolute section modName:%s size:%08x start:%08x\n",
-                      linker.getCurModName().c_str(), size, start);
+              printf ("Absolute section module:%s size:%x start:%x\n",
+                      linker.getCurModuleName().c_str(), size, start);
             else {
               objectFile->mEsds[objectFile->mTopEsd].mSymbol = nullptr;
               objectFile->mEsds[objectFile->mTopEsd].mAddress = start;
@@ -819,27 +821,27 @@ private:
 
               bool found;
               cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
-              symbol->addReference (linker.getCurModName());
+              symbol->addReference (linker.getCurModuleName());
 
               if (symbol->mDefined) {
                 // check redefinition
                 if (size != symbol->mCommonSize) {
                   if (!symbol->mErrorFlagged && !symbol->mCommonSizeDefined) {
                     printf ("Label %s doubleDefined\n", symbolName.c_str());
-                    printf ("- common in %s\n", linker.getCurModName().c_str());
-                    printf ("- xDef in %s\n", symbol->mModName.c_str());
+                    printf ("- common in %s\n", linker.getCurModuleName().c_str());
+                    printf ("- xDef in %s\n", symbol->mModuleName.c_str());
                     symbol->mErrorFlagged = true;
                     }
                   else if (!symbol->mErrorFlagged) {
                     // check
                     printf ("Common area size clash - common %s\n ", symbolName.c_str());
-                    printf ("- in %s size:%d\n", linker.getCurModName().c_str(), int(size));
-                    printf ("- in %s size:%d\n", symbol->mModName.c_str(), int(symbol->mCommonSize));
+                    printf ("- in %s size:%d\n", linker.getCurModuleName().c_str(), int(size));
+                    printf ("- in %s size:%d\n", symbol->mModuleName.c_str(), int(symbol->mCommonSize));
                     symbol->mErrorFlagged = true;
                     }
 
                   if (symbol->mCommonSizeDefined && (size > symbol->mCommonSize)) {
-                    symbol->mModName = linker.getCurModName();
+                    symbol->mModuleName = linker.getCurModuleName();
                     symbol->mCommonSize = size;
                     symbol->mCommonSizeDefined = true;
                     }
@@ -847,7 +849,7 @@ private:
                 }
               else {
                 symbol->mDefined = true;
-                symbol->mModName = linker.getCurModName();
+                symbol->mModuleName = linker.getCurModuleName();
                 symbol->mSection = section;
                 symbol->mCommonSize = size;
                 linker.addCommonSymbol (symbol);
@@ -907,15 +909,15 @@ private:
               bool found;
               cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
               if (kPassDebug)
-                printf ("symbol xDef %s - section:%2d mod:%s %s symbol:%s address:%x\n",
+                printf ("symbol xDef %s - section:%2d module:%s %s symbol:%s address:%x\n",
                         found ? "redefined": "",
                         (int)section,
-                        linker.getCurModName().c_str(),
-                        found ? symbol->mModName.c_str() : "",
+                        linker.getCurModuleName().c_str(),
+                        found ? symbol->mModuleName.c_str() : "",
                         symbolName.c_str(), address);
 
               symbol->mDefined = true;
-              symbol->mModName = linker.getCurModName();
+              symbol->mModuleName = linker.getCurModuleName();
               symbol->mSection = section;
               symbol->mAddress = address + linker.mSections[section].mSectBase;
               }
@@ -937,7 +939,7 @@ private:
             if (pass1) {
               bool found;
               cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
-              symbol->addReference (linker.getCurModName());
+              symbol->addReference (linker.getCurModuleName());
               }
             else {
               // pass2
@@ -1010,7 +1012,7 @@ private:
       uint32_t codeStart = objectFile->mEsds[curEsd].mOutAddress;
 
       if (kOutDebug)
-        printf ("output bitmap:%08x curEsd:%d\n", bitmap, curEsd);
+        printf ("output bitmap:%x curEsd:%d\n", bitmap, curEsd);
 
       output.init();
 
@@ -1035,7 +1037,7 @@ private:
             if (thisEsd > objectFile->mTopEsd)
               //{{{  error, using esd greater than topEsd
               printf ("error - %s using esd:%d greater than topEsd:%d\n",
-                      linker.getCurModName().c_str(), thisEsd, objectFile->mTopEsd);
+                      linker.getCurModuleName().c_str(), thisEsd, objectFile->mTopEsd);
               //}}}
 
             if (i & 0x1)
@@ -1062,14 +1064,14 @@ private:
             }
 
           if (kOutDebug)
-            printf ("offset %08x + %08x = %08x\n", add, offset, add + offset);
+            printf ("offset %x + %x = %x\n", add, offset, add + offset);
 
           add = add + offset;
           if (numEsds == 0) {
             //{{{  not sure what this does
             if (offset & 0x01) {
               printf ("error - %s odd fix-up offset:%8x esd:%d, codeStart:%8x\n",
-                      linker.getCurModName().c_str(), offset, curEsd, codeStart);
+                      linker.getCurModuleName().c_str(), offset, curEsd, codeStart);
               offset = offset + 1;
               }
 
@@ -1086,7 +1088,7 @@ private:
 
             if (objectFile->mEsds [thisEsd].mSymbol != nullptr) {
               // only need named symbols
-              if (linker.getCurModName() != objectFile->mEsds[thisEsd].mSymbol->mModName) {
+              if (linker.getCurModuleName() != objectFile->mEsds[thisEsd].mSymbol->mModuleName) {
                 //{{{  outside module
                 //if history then
                 //  { address to be resolved longAddress only at present}
@@ -1119,7 +1121,7 @@ private:
         bitmap = bitmap << 1;
         }
 
-        objectFile->mEsds[curEsd].mOutAddress += output.outputCode (codeStart);
+      objectFile->mEsds[curEsd].mOutAddress += output.outputCode (codeStart);
       }
     //}}}
 
@@ -1131,7 +1133,7 @@ private:
         printf ("end\n");
 
       else {
-        printf ("len:0x%x type:%d\n", mLength, (int)mRecordType);
+        printf ("objectRecord length:0x%x type:%d\n", mLength, (int)mRecordType);
 
         // dump block
         for (int i = 0; i < mLength-1; i++) {
