@@ -42,72 +42,6 @@ constexpr bool download = false;
 constexpr bool escape = false;
 
 //{{{
-class cObjectFile {
-public:
-  cObjectFile (const string& fileName) : mFileName(fileName) {}
-  virtual ~cObjectFile() = default;
-
-  //{{{
-  string getFileName() const {
-    return mFileName;
-    }
-  //}}}
-
-  //{{{
-  uint32_t getNumIdRecords() const  {
-    return mNumIdRecords;
-    }
-  //}}}
-  //{{{
-  uint32_t getNumEsdRecords() const  {
-    return mNumEsdRecords;
-    }
-  //}}}
-  //{{{
-  uint32_t getNumTxtRecords() const  {
-    return mNumTxtRecords;
-    }
-  //}}}
-  //{{{
-  uint32_t getNumEndRecords() const  {
-    return mNumEndRecords;
-    }
-  //}}}
-
-  //{{{
-  void incNumIdRecords() {
-    mNumIdRecords++;
-    }
-  //}}}
-  //{{{
-  void incNumEsdRecords() {
-    mNumEsdRecords++;
-    }
-  //}}}
-  //{{{
-  void incNumTxtRecords() {
-    mNumTxtRecords++;
-    }
-  //}}}
-  //{{{
-  void incNumEndRecords() {
-    mNumEndRecords++;
-    }
-  //}}}
-
-private:
-  string mFileName;
-
-  enum eType { eUnknown, eRo, eRx };
-  eType mType = eUnknown;
-
-  uint32_t mNumIdRecords = 0;
-  uint32_t mNumEsdRecords = 0;
-  uint32_t mNumTxtRecords = 0;
-  uint32_t mNumEndRecords = 0;
-  };
-//}}}
-//{{{
 class cSymbol {
 public:
   cSymbol (const string& name) : mName(name) {}
@@ -622,6 +556,72 @@ private:
   uint32_t mCodeLength = 0; // code length in words
   int mOutputChecksum = 0;
   array <uint32_t, 64> mCodeArray;
+  };
+//}}}
+//{{{
+class cObjectFile {
+public:
+  cObjectFile (const string& fileName) : mFileName(fileName), mType(eRo) {}
+  virtual ~cObjectFile() = default;
+
+  //{{{
+  string getFileName() const {
+    return mFileName;
+    }
+  //}}}
+
+  //{{{
+  uint32_t getNumIdRecords() const  {
+    return mNumIdRecords;
+    }
+  //}}}
+  //{{{
+  uint32_t getNumEsdRecords() const  {
+    return mNumEsdRecords;
+    }
+  //}}}
+  //{{{
+  uint32_t getNumTxtRecords() const  {
+    return mNumTxtRecords;
+    }
+  //}}}
+  //{{{
+  uint32_t getNumEndRecords() const  {
+    return mNumEndRecords;
+    }
+  //}}}
+
+  //{{{
+  void incNumIdRecords() {
+    mNumIdRecords++;
+    }
+  //}}}
+  //{{{
+  void incNumEsdRecords() {
+    mNumEsdRecords++;
+    }
+  //}}}
+  //{{{
+  void incNumTxtRecords() {
+    mNumTxtRecords++;
+    }
+  //}}}
+  //{{{
+  void incNumEndRecords() {
+    mNumEndRecords++;
+    }
+  //}}}
+
+private:
+  string mFileName;
+
+  enum eType { eRo, eRx };
+  eType mType;
+
+  uint32_t mNumIdRecords = 0;
+  uint32_t mNumEsdRecords = 0;
+  uint32_t mNumTxtRecords = 0;
+  uint32_t mNumEndRecords = 0;
   };
 //}}}
 //{{{
