@@ -563,27 +563,6 @@ public:
   virtual ~cObjectFile() = default;
 
   //{{{
-  uint32_t getNumIdRecords() const  {
-    return mNumIdRecords;
-    }
-  //}}}
-  //{{{
-  uint32_t getNumEsdRecords() const  {
-    return mNumEsdRecords;
-    }
-  //}}}
-  //{{{
-  uint32_t getNumTxtRecords() const  {
-    return mNumTxtRecords;
-    }
-  //}}}
-  //{{{
-  uint32_t getNumEndRecords() const  {
-    return mNumEndRecords;
-    }
-  //}}}
-
-  //{{{
   void pass1 (cLinker& linker) {
 
     if (kPassDebug)
@@ -591,30 +570,31 @@ public:
 
     ifstream objectFileStream (mFileName.c_str(), ifstream::in | ifstream::binary);
 
+    cObjectRecord objectRecord;
     bool eom = false;
     while (!eom) {
-      eom = loadRecord (objectFileStream);
+      eom = objectRecord.loadRecord (objectFileStream);
 
       if (kObjectFileDebug)
-        dump();
+        objectRecord.dump();
 
       if (!eom) {
-        switch (mRecordType) {
-          case eId:
+        switch (objectRecord.getRecordType()) {
+          case cObjectRecord::eId:
             incNumIdRecords();
-            parseId (linker, true);
+            objectRecord.parseId (this, linker, true);
             break;
 
-          case eEsd:
+          case cObjectRecord::eEsd:
             incNumEsdRecords();
-            parseEsd (linker, true);
+            objectRecord.parseEsd (this, linker, true);
             break;
 
-          case eObjectText:
+          case cObjectRecord::eObjectText:
             incNumTxtRecords();
             break;
 
-          case eEnd:
+          case cObjectRecord::eEnd:
             incNumEndRecords();
             break;
 
@@ -635,25 +615,26 @@ public:
 
     ifstream objectFileStream (mFileName.c_str(), ifstream::in | ifstream::binary);
 
+    cObjectRecord objectRecord;
     bool eom = false;
     while (!eom) {
-      eom = loadRecord (objectFileStream);
+      eom = objectRecord.loadRecord (objectFileStream);
 
       if (!eom) {
-        switch (mRecordType) {
-          case eId:
-            parseId (linker, false);
+        switch (objectRecord.getRecordType()) {
+          case cObjectRecord::eId:
+            objectRecord.parseId (this, linker, false);
             break;
 
-          case eEsd:
-            parseEsd (linker, false);
+          case cObjectRecord::eEsd:
+            objectRecord.parseEsd (this, linker, false);
             break;
 
-          case eObjectText:
-            parseText (linker, output);
+          case cObjectRecord::eObjectText:
+            objectRecord.parseText (this, linker, output);
             break;
 
-          case eEnd:
+          case cObjectRecord::eEnd:
             break;
 
           default:
@@ -666,18 +647,45 @@ public:
     }
   //}}}
 
-private:
-  enum eFileType { eRo, eRx };
-  enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
-
-  // load
   //{{{
-  bool loadRecord (ifstream& stream) {
-  // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
+  void dump() {
+    printf ("objectFile %s id:%d esd:%d text:%d end%d topEsd:%d\n",
+            mFileName.c_str(), mNumIdRecords, mNumEsdRecords, mNumTxtRecords, mNumEndRecords, mTopEsd);
+    };
+  //}}}
 
-    mBlockIndex = 0;
+  // esd
+  //{{{
+  struct sEsd {
+    cSymbol* mSymbol;
+    uint32_t mAddress;
+    uint32_t mOutAddress;
+    };
+  //}}}
+  array <sEsd, 256> mEsds = {};
+  uint8_t mTopEsd = 0;
 
-    if (mFileType == eRo) {
+private:
+  //{{{
+  class cObjectRecord {
+  public:
+    cObjectRecord() = default;
+    virtual ~cObjectRecord() = default;
+
+    enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
+    //{{{
+    eRecordType getRecordType() {
+      return mRecordType;
+      };
+    //}}}
+
+    // load
+    //{{{
+    bool loadRecord (ifstream& stream) {
+    // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
+
+      mBlockIndex = 0;
+
       // load ro format record
       mLength = stream.get();
       uint8_t byte = stream.get();
@@ -691,15 +699,459 @@ private:
 
         return mRecordType == eEnd;
         }
-
       else {
         mRecordType = eNone;
         return true;
         }
       }
-    else
-      return true;
-    }
+    //}}}
+
+    // gets
+    //{{{
+    int getDataLeft() {
+      return mLength - mBlockIndex - 1;
+      }
+    //}}}
+    //{{{
+    uint8_t getUint8() {
+    // get 1 bytes to form uint8_t result
+
+      if (mBlockIndex >= mLength) {
+        printf ("error - cObject::getUint8 past end of record data\n");
+        return 0;
+        }
+
+      return mBlock[mBlockIndex++];
+      }
+    //}}}
+    //{{{
+    uint32_t getUint32() {
+    // get 4 bytes to form uint32_t result
+
+      uint32_t value = 0;
+      for (int i = 1; i <= 4; i++)
+        value = (value << 8) + getUint8();
+
+      return value;
+      }
+    //}}}
+    //{{{
+    string getSymbolName() {
+    // 10 bytes but only 8 have ascii chars, trailing spaces pad
+    // force upperCase
+
+      string name;
+      name.reserve (kActualSymbolNameLength);
+
+      // read maxSymbolNameLength, but only append to name up to first space in string
+      bool spaceFound = false;
+      for (int i = 0; i < kObjectSymbolNameLength; i++) {
+        char byte = getUint8();
+        if (byte == ' ')
+          spaceFound = true;
+        if (!spaceFound)
+          name = name + char(toupper (byte));
+        }
+
+      return name;
+      }
+    //}}}
+
+    // parse
+    //{{{
+    void parseId (cObjectFile* objectFile, cLinker& linker, bool pass1) {
+
+      string modName = getSymbolName();
+      linker.setCurModName (modName);
+
+      if (kPassDebug)
+        printf ("Id record - modName:%s\n", modName.c_str());
+
+      // init esd values in case of zero length sections
+      objectFile->mTopEsd = 17;
+
+      if (!pass1) {
+        objectFile->mEsds[0].mAddress = 0;
+        for (int section = 0; section < 16; section++) {
+          objectFile->mEsds[objectFile->mTopEsd].mSymbol = nullptr;
+          objectFile->mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress + linker.mSections[section].mSbase;
+          objectFile->mEsds[section+1].mOutAddress = objectFile->mEsds[section+1].mAddress;
+          }
+        }
+      }
+    //}}}
+    //{{{
+    void parseEsd (cObjectFile* objectFile, cLinker& linker, bool pass1) {
+    // parse External Symbol Definition record
+
+      while (getDataLeft() > 0) {
+        uint8_t byte = getUint8();
+        uint8_t section = byte & 0x0F;
+        uint8_t esdType = byte >> 4;
+
+        switch (esdType) {
+          //{{{
+          case  0: { // absolute section
+            uint32_t size = getUint32();
+            uint32_t start = getUint32();
+
+            if (pass1)
+              printf ("Absolute section modName:%s size:%08x start:%08x\n",
+                      linker.getCurModName().c_str(), size, start);
+            else {
+              objectFile->mEsds[objectFile->mTopEsd].mSymbol = nullptr;
+              objectFile->mEsds[objectFile->mTopEsd].mAddress = start;
+              objectFile->mEsds[objectFile->mTopEsd].mOutAddress = objectFile->mEsds[objectFile->mTopEsd].mAddress;
+              objectFile->mTopEsd++;
+              }
+
+            break;
+            }
+          //}}}
+          //{{{
+          case  1: { // common section xx
+            string symbolName = getSymbolName();
+            uint32_t size = getUint32();
+
+            if (pass1) {
+              if (kPassDebug)
+                printf ("commonSection:%2d %10s size:%x\n", (int)section, symbolName.c_str(), size);
+
+              bool found;
+              cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
+              symbol->addReference (linker.getCurModName());
+
+              if (symbol->mDefined) {
+                // check redefinition
+                if (size != symbol->mCommonSize) {
+                  if (!symbol->mErrorFlagged && !symbol->mCommonSizeDefined) {
+                    printf ("Label %s doubleDefined\n", symbolName.c_str());
+                    printf ("- common in %s\n", linker.getCurModName().c_str());
+                    printf ("- xDef in %s\n", symbol->mModName.c_str());
+                    symbol->mErrorFlagged = true;
+                    }
+                  else if (!symbol->mErrorFlagged) {
+                    // check
+                    printf ("Common area size clash - common %s\n ", symbolName.c_str());
+                    printf ("- in %s size:%d\n", linker.getCurModName().c_str(), int(size));
+                    printf ("- in %s size:%d\n", symbol->mModName.c_str(), int(symbol->mCommonSize));
+                    symbol->mErrorFlagged = true;
+                    }
+
+                  if (symbol->mCommonSizeDefined && (size > symbol->mCommonSize)) {
+                    symbol->mModName = linker.getCurModName();
+                    symbol->mCommonSize = size;
+                    symbol->mCommonSizeDefined = true;
+                    }
+                  }
+                }
+              else {
+                symbol->mDefined = true;
+                symbol->mModName = linker.getCurModName();
+                symbol->mSection = section;
+                symbol->mCommonSize = size;
+                linker.addCommonSymbol (symbol);
+                }
+              }
+            else {
+              // pass2
+              cSymbol* symbol = linker.findSymbol (symbolName);
+              if (!symbol)
+                printf ("error - common symbol not found on pass2 %s\n", symbolName.c_str());
+
+              objectFile->mEsds[objectFile->mTopEsd].mAddress = symbol->mAddress + linker.mSections[symbol->mSection].mBaseAddress;
+              objectFile->mEsds[objectFile->mTopEsd].mSymbol = symbol;
+              objectFile->mEsds[objectFile->mTopEsd].mOutAddress = objectFile->mEsds[objectFile->mTopEsd].mAddress;
+              objectFile->mTopEsd++;
+              }
+
+            break;
+            }
+          //}}}
+
+          case 2:         // standard relocatable section xx
+          //{{{
+          case  3: { // short address relocatable section xx
+            uint32_t size = getUint32();
+
+            if (kPassDebug)
+              printf ("relocatable section:%2d size:%x\n", (int)section, size);
+
+            if (pass1) {
+              linker.mSections[section].mSectBase += size;
+              if (linker.mSections[section].mSectBase & 1)
+                linker.mSections[section].mSectBase++;
+              }
+            else {
+              // pass2
+              objectFile->mEsds [objectFile->mTopEsd].mSymbol = nullptr;
+              objectFile->mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress + linker.mSections[section].mSbase;
+              objectFile->mEsds[section+1].mOutAddress = objectFile->mEsds[section+1].mAddress;
+
+              linker.mSections[section].mSbase += size;
+              if (linker.mSections[section].mSbase & 1)
+                linker.mSections[section].mSbase++;
+              }
+
+            break;
+            }
+          //}}}
+
+          case 4:         // xDef symbol in relocatble section xx
+          //{{{
+          case  5: { // xDef symbol in absolute section
+            string symbolName = getSymbolName();
+            uint32_t address = getUint32();
+
+            if (pass1) {
+              bool found;
+              cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
+              if (kPassDebug)
+                printf ("symbol xDef %s - section:%2d mod:%s %s symbol:%s address:%x\n",
+                        found ? "redefined": "",
+                        (int)section,
+                        linker.getCurModName().c_str(),
+                        found ? symbol->mModName.c_str() : "",
+                        symbolName.c_str(), address);
+
+              symbol->mDefined = true;
+              symbol->mModName = linker.getCurModName();
+              symbol->mSection = section;
+              symbol->mAddress = address + linker.mSections[section].mSectBase;
+              }
+
+            break;
+            }
+          //}}}
+
+          case 6:         // xRef symbol to section xx - unexpected
+            printf ("xRef to section:%d\n", int(section));
+            [[fallthrough]];
+          //{{{
+          case  7: { // xRef symbol to any section
+            string symbolName = getSymbolName();
+
+            if (kPassDebug)
+              printf ("symbol xRef - section:%2d %8s\n", (int)section, symbolName.c_str());
+
+            if (pass1) {
+              bool found;
+              cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
+              symbol->addReference (linker.getCurModName());
+              }
+            else {
+              // pass2
+              cSymbol* symbol = linker.findSymbol (symbolName);
+              if (symbol) {
+                objectFile->mEsds[objectFile->mTopEsd].mSymbol = symbol;
+                objectFile->mEsds[objectFile->mTopEsd].mAddress = symbol->mAddress + linker.mSections[symbol->mSection].mBaseAddress;
+                objectFile->mEsds[objectFile->mTopEsd].mOutAddress = objectFile->mEsds[objectFile->mTopEsd].mAddress;
+                objectFile->mTopEsd++;
+                }
+              else
+                printf ("error - xRef symbol not found in pass2 %s\n", symbolName.c_str());
+              }
+
+            break;
+            }
+          //}}}
+
+          //{{{
+          case  8: { // commandLineAddress in section - unexpected
+            if (kPassDebug)
+              printf ("command Line address section\n");
+
+            for (int i = 0; i < 15; i++)
+              getUint8();
+
+            break;
+            }
+          //}}}
+          //{{{
+          case  9: { // commandLineAddress in absolute section - unexpected
+            if (kPassDebug)
+              printf ("command Line address absolute section\n");
+
+            for (int i = 0; i < 5; i++)
+              getUint8();
+
+            break;
+            }
+          //}}}
+          //{{{
+          case 10: { // commandLineAddress in common section in section xx - unexpected
+            if (kPassDebug)
+              printf ("command Line address common section\n");
+
+            for (int i = 0; i < 15; i++)
+              getUint8();
+
+            break;
+            }
+          //}}}
+          //{{{
+          default:
+            if (pass1)
+              printf ("unknown EsdType %d\n", esdType);
+          //}}}
+          }
+        }
+      }
+    //}}}
+    //{{{
+    void parseText (cObjectFile* objectFile, cLinker& linker, cOutput& output) {
+    // parse text record, to out stream, pass 2 only
+
+      if (kOutDebug)
+        dump();
+
+      uint32_t bitmap = getUint32();
+      uint8_t curEsd = getUint8();
+      uint32_t codeStart = objectFile->mEsds[curEsd].mOutAddress;
+
+      if (kOutDebug)
+        printf ("output bitmap:%08x curEsd:%d\n", bitmap, curEsd);
+
+      output.init();
+
+      uint8_t thisEsd = 0;
+      while (getDataLeft() > 0) {
+        if (bitmap & 0x80000000) {
+          //{{{  relocation data
+          uint8_t byte = getUint8();
+          uint8_t numEsds = byte >> 5;
+          uint8_t offsetFieldLength = byte & 0x07;
+          bool longAddress = (byte >> 3) & 1;
+
+          if (kOutDebug)
+            printf ("byte:%02x numEsds:%d offsetFieldLength:%d longAddress:%d\n",
+                    byte, numEsds, offsetFieldLength, longAddress);
+
+          uint32_t add = 0;
+          for (int i = 1; i <= numEsds; i++) {
+            thisEsd = getUint8();
+            if (kOutDebug)
+              printf ("thisEsd:%d topEsd:%d\n", thisEsd, objectFile->mTopEsd);
+            if (thisEsd > objectFile->mTopEsd)
+              //{{{  error, using esd greater than topEsd
+              printf ("error - %s using esd:%d greater than topEsd:%d\n",
+                      linker.getCurModName().c_str(), thisEsd, objectFile->mTopEsd);
+              //}}}
+
+            if (i & 0x1)
+              add = add + objectFile->mEsds[thisEsd].mAddress;
+            else
+              add = add - objectFile->mEsds[thisEsd].mAddress;
+            }
+
+          // get offset, either byte or word, sign extend
+          uint32_t offset = 0;
+          for (int i = 1; i <= offsetFieldLength; i++)
+            offset = (offset << 8) + getUint8();
+
+          switch (offsetFieldLength) {
+            case 0: break;
+            case 1: if (offset & 0x80)
+                      offset = 0xFFFFFF00 | offset;
+                    break;
+            case 2: if (offset & 0x8000)
+                      offset = 0xFFFF0000 | offset;
+                     break;
+            case 4: break;
+            default: printf ("error - unexpected offsetFieldLength:%d\n", offsetFieldLength);
+            }
+
+          if (kOutDebug)
+            printf ("offset %08x + %08x = %08x\n", add, offset, add + offset);
+
+          add = add + offset;
+          if (numEsds == 0) {
+            //{{{  not sure what this does
+            if (offset & 0x01) {
+              printf ("error - %s odd fix-up offset:%8x esd:%d, codeStart:%8x\n",
+                      linker.getCurModName().c_str(), offset, curEsd, codeStart);
+              offset = offset + 1;
+              }
+
+            uint32_t codeBytes = output.outputCode (codeStart);
+            objectFile->mEsds[curEsd].mOutAddress = objectFile->mEsds[curEsd].mOutAddress + codeBytes + offset;
+
+            output.init();
+            codeStart = objectFile->mEsds[curEsd].mOutAddress;
+            }
+            //}}}
+          else {
+            if (!longAddress && (add & 0xFFFF0000))
+              printf ("error - trying to put long address into word location:%8x\n", add);
+
+            if (objectFile->mEsds [thisEsd].mSymbol != nullptr) {
+              // only need named symbols
+              if (linker.getCurModName() != objectFile->mEsds[thisEsd].mSymbol->mModName) {
+                //{{{  outside module
+                //if history then
+                //  { address to be resolved longAddress only at present}
+                //  addRes (esdSymbolArray [thisesd], codeStart + mCodeLen*2, offset);
+
+                //if debugInfo then
+                //  writeln ('sym ', longAddress,
+                //           ' ', thisesd:2,
+                //           ' ', esdSymbolArray [thisesd]^.symbolName,
+                //           ' ', hex (add, 8, 8), ' = ', hex (esdArray[thisesd]),
+                //           ' + ', hex (offset, 4, 4), ';', hex (offsetFieldLength, 1, 1),
+                //           ' at ', hex (codeStart + mCodeLen * 2, 8, 8));
+                }
+                //}}}
+
+              // generate resolved address
+              if (longAddress)
+                output.addCodeByte (add >> 16);
+              output.addCodeByte (add);
+              }
+            }
+          }
+          //}}}
+        else {
+          //{{{  absolute code
+          output.addCodeByte (getUint8());
+          output.addCodeByte (getUint8());
+          }
+          //}}}
+        bitmap = bitmap << 1;
+        }
+
+        objectFile->mEsds[curEsd].mOutAddress += output.outputCode (codeStart);
+      }
+    //}}}
+
+    // dump
+    //{{{
+    void dump() {
+
+      if (mRecordType == eEnd)
+        printf ("end\n");
+
+      else {
+        printf ("len:0x%x type:%d\n", mLength, (int)mRecordType);
+
+        // dump block
+        for (int i = 0; i < mLength-1; i++) {
+          if ((i % 32) == 0) // indent
+            printf ("  %03x  ", i);
+          printf ("%02x ", mBlock[i]);
+          if ((i % 32) == 31)
+            printf ("\n");
+          }
+        printf ("\n");
+        }
+      }
+    //}}}
+
+  private:
+    eRecordType mRecordType = eNone;
+    int mLength = 0;
+    int mBlockIndex = 0;
+    array <uint8_t,256> mBlock = { 0 };
+    };
   //}}}
 
   //{{{
@@ -723,496 +1175,18 @@ private:
     }
   //}}}
 
-  // record gets
-  //{{{
-  int getDataLeft() {
-    return mLength - mBlockIndex - 1;
-    }
-  //}}}
-  //{{{
-  uint8_t getUint8() {
-  // get 1 bytes to form uint8_t result
-
-    if (mBlockIndex >= mLength) {
-      printf ("error - cObject::getUint8 past end of record data\n");
-      return 0;
-      }
-
-    return mBlock[mBlockIndex++];
-    }
-  //}}}
-  //{{{
-  uint32_t getUint32() {
-  // get 4 bytes to form uint32_t result
-
-    uint32_t value = 0;
-    for (int i = 1; i <= 4; i++)
-      value = (value << 8) + getUint8();
-
-    return value;
-    }
-  //}}}
-  //{{{
-  string getSymbolName() {
-  // 10 bytes but only 8 have ascii chars, trailing spaces pad
-  // force upperCase
-
-    string name;
-    name.reserve (kActualSymbolNameLength);
-
-    // read maxSymbolNameLength, but only append to name up to first space in string
-    bool spaceTerminated = false;
-    for (int i = 0; i < kObjectSymbolNameLength; i++) {
-      char byte = getUint8();
-      if (byte == ' ')
-        spaceTerminated = true;
-
-      if (!spaceTerminated) {
-        if (i < kActualSymbolNameLength)
-          name = name + char(toupper (byte));
-        else
-          printf ("error - symbolName trailing space problem pos:%d value:%02x\n", i, byte);
-        }
-      }
-
-    return name;
-    }
-  //}}}
-
-  // parse
-  //{{{
-  void parseId (cLinker& linker, bool pass1) {
-
-    string modName = getSymbolName();
-    linker.setCurModName (modName);
-
-    if (kPassDebug)
-      printf ("Id record - modName:%s\n", modName.c_str());
-
-    // init esd values in case of zero length sections
-    mTopEsd = 17;
-
-    if (!pass1) {
-      mEsds[0].mAddress = 0;
-      for (int section = 0; section < 16; section++) {
-        mEsds[mTopEsd].mSymbol = nullptr;
-        mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress + linker.mSections[section].mSbase;
-        mEsds[section+1].mOutAddress = mEsds[section+1].mAddress;
-        }
-      }
-    }
-  //}}}
-  //{{{
-  void parseEsd (cLinker& linker, bool pass1) {
-  // parse External Symbol Definition record
-
-    while (getDataLeft() > 0) {
-      uint8_t byte = getUint8();
-      uint8_t section = byte & 0x0F;
-      uint8_t esdType = byte >> 4;
-
-      switch (esdType) {
-        //{{{
-        case  0: { // absolute section
-          uint32_t size = getUint32();
-          uint32_t start = getUint32();
-
-          if (pass1)
-            printf ("Absolute section size:%08x start:%08x\n", size, start);
-          else {
-            mEsds[mTopEsd].mSymbol = nullptr;
-            mEsds[mTopEsd].mAddress = start;
-            mEsds[mTopEsd].mOutAddress = mEsds[mTopEsd].mAddress;
-            mTopEsd++;
-            }
-
-          break;
-          }
-        //}}}
-        //{{{
-        case  1: { // common section xx
-          string symbolName = getSymbolName();
-          uint32_t size = getUint32();
-
-          if (kPassDebug)
-            printf ("commonSection:%2d %8s size:%08x\n", (int)section, symbolName.c_str(), size);
-
-          if (pass1) {
-            //{{{  pass1
-            bool symbolFound;
-            cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
-            symbol->addReference (linker.getCurModName());
-
-            if (!symbol->mDefined) {
-              symbol->mDefined = true;
-              symbol->mModName = linker.getCurModName();
-              symbol->mSection = section;
-              symbol->mCommonSize = size;
-              linker.addCommonSymbol (symbol);
-              }
-
-            else {
-              if (size != symbol->mCommonSize) {
-                if (!symbol->mErrorFlagged && !symbol->mCommonSizeDefined) {
-                  printf ("Label %s doubleDefined\n", symbolName.c_str());
-                  printf ("- common in %s\n", linker.getCurModName().c_str());
-                  printf ("- xDef in %s\n", symbol->mModName.c_str());
-                  symbol->mErrorFlagged = true;
-                  }
-
-                else if (!symbol->mErrorFlagged) {
-                  // check
-                  printf ("Common area size clash - common %s\n ", symbolName.c_str());
-                  printf ("- in %s size:%d\n", linker.getCurModName().c_str(), int(size));
-                  printf ("- in %s size:%d\n", symbol->mModName.c_str(), int(symbol->mCommonSize));
-                  symbol->mErrorFlagged = true;
-                  }
-
-                if (symbol->mCommonSizeDefined && (size > symbol->mCommonSize)) {
-                  symbol->mModName = linker.getCurModName();
-                  symbol->mCommonSize = size;
-                  symbol->mCommonSizeDefined = true;
-                  }
-                }
-              }
-            }
-            //}}}
-          else {
-            cSymbol* symbol = linker.findSymbol (symbolName);
-            if (!symbol)
-              printf ("error - pass2 loadt symbol\n");
-
-            mEsds[mTopEsd].mAddress = symbol->mAddress + linker.mSections[symbol->mSection].mBaseAddress;
-            mEsds[mTopEsd].mSymbol = symbol;
-            mEsds[mTopEsd].mOutAddress = mEsds[mTopEsd]. mAddress;
-            mTopEsd++;
-            }
-
-          break;
-          }
-        //}}}
-
-        case 2:         // standard relocatable section xx
-        //{{{
-        case  3: { // short address relocatable section xx
-          uint32_t size = getUint32();
-
-          if (kPassDebug)
-            printf ("relocatable section:%2d size:%08x\n", (int)section, size);
-
-          if (pass1) {
-            linker.mSections[section].mSectBase += size;
-            if (linker.mSections[section].mSectBase & 1)
-              linker.mSections[section].mSectBase++;
-            }
-
-          else {
-            mEsds [mTopEsd].mSymbol = nullptr;
-            mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress + linker.mSections[section].mSbase;
-            mEsds[section+1].mOutAddress = mEsds[section+1].mAddress;
-
-            linker.mSections[section].mSbase += size;
-            if (linker.mSections[section].mSbase & 1)
-              linker.mSections[section].mSbase++;
-            }
-
-          break;
-          }
-        //}}}
-
-        case 4:         // xDef symbol in relocatble section xx
-        //{{{
-        case  5: { // xDef symbol in absolute section
-          string symbolName = getSymbolName();
-          uint32_t address = getUint32();
-
-          if (kPassDebug)
-            printf ("symbol xDef - section:%2d %8s address:%08x\n", (int)section, symbolName.c_str(), address);
-
-          if (pass1) {
-            bool symbolFound;
-            cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
-
-            symbol->mDefined = true;
-            symbol->mModName = linker.getCurModName();
-            symbol->mSection = section;
-            symbol->mAddress = address + linker.mSections[section].mSectBase;
-            }
-
-          break;
-          }
-        //}}}
-
-        case 6:         // xRef symbol to section xx - unexpected
-          printf ("xRef to section:%d\n", int(section));
-          [[fallthrough]];
-        //{{{
-        case  7: { // xRef symbol to any section
-          string symbolName = getSymbolName();
-
-          if (kPassDebug)
-            printf ("symbol xRef - section:%2d %8s\n", (int)section, symbolName.c_str());
-
-          if (pass1) {
-            bool symbolFound;
-            cSymbol* symbol = linker.findCreateSymbol (symbolName, symbolFound);
-            symbol->addReference (linker.getCurModName());
-            }
-
-          else {
-            // pass2 action, symbol must have been created on pass1
-            cSymbol* symbol = linker.findSymbol (symbolName);
-            if (symbol) {
-              mEsds[mTopEsd].mSymbol = symbol;
-              mEsds[mTopEsd].mAddress = symbol->mAddress + linker.mSections[symbol->mSection].mBaseAddress;
-              mEsds[mTopEsd].mOutAddress = mEsds[mTopEsd].mAddress;
-              mTopEsd++;
-              }
-            else
-              printf ("internal check failure - lost symbol\n");
-            }
-
-          break;
-          }
-        //}}}
-
-        //{{{
-        case  8: { // commandLineAddress in section - unexpected
-          if (kPassDebug)
-            printf ("command Line address section\n");
-
-          for (int i = 0; i < 15; i++)
-            getUint8();
-
-          break;
-          }
-        //}}}
-        //{{{
-        case  9: { // commandLineAddress in absolute section - unexpected
-          if (kPassDebug)
-            printf ("command Line address absolute section\n");
-
-          for (int i = 0; i < 5; i++)
-            getUint8();
-
-          break;
-          }
-        //}}}
-        //{{{
-        case 10: { // commandLineAddress in common section in section xx - unexpected
-          if (kPassDebug)
-            printf ("command Line address common section\n");
-
-          for (int i = 0; i < 15; i++)
-            getUint8();
-
-          break;
-          }
-        //}}}
-        //{{{
-        default:
-          if (pass1)
-            printf ("unknown EsdType %d\n", esdType);
-        //}}}
-        }
-      }
-    }
-  //}}}
-  //{{{
-  void parseText (cLinker& linker, cOutput& output) {
-  // parse text record, to out stream, pass 2 only
-
-    if (kOutDebug)
-      dump();
-
-    uint32_t bitmap = getUint32();
-    uint8_t curEsd = getUint8();
-    uint32_t codeStart = mEsds[curEsd].mOutAddress;
-
-    if (kOutDebug)
-      printf ("output bitmap:%08x curEsd:%d\n", bitmap, curEsd);
-
-    output.init();
-
-    uint8_t thisEsd = 0;
-    while (getDataLeft() > 0) {
-      if (bitmap & 0x80000000) {
-        //{{{  relocation data
-        uint8_t byte = getUint8();
-        uint8_t numEsds = byte >> 5;
-        uint8_t offsetFieldLength = byte & 0x07;
-        bool longAddress = (byte >> 3) & 1;
-
-        if (kOutDebug)
-          printf ("byte:%02x numEsds:%d offsetFieldLength:%d longAddress:%d\n",
-                  byte, numEsds, offsetFieldLength, longAddress);
-
-        uint32_t add = 0;
-        for (int i = 1; i <= numEsds; i++) {
-          thisEsd = getUint8();
-          if (kOutDebug)
-            printf ("thisEsd:%d topEsd:%d\n", thisEsd, mTopEsd);
-          if (thisEsd > mTopEsd)
-            //{{{  error, using esd greater than topEsd
-            printf ("error - %s using esd:%d greater than topEsd:%d\n",
-                    linker.getCurModName().c_str(), thisEsd, mTopEsd);
-            //}}}
-
-          if (i & 0x1)
-            add = add + mEsds[thisEsd].mAddress;
-          else
-            add = add - mEsds[thisEsd].mAddress;
-          }
-
-        // get offset, either byte or word, sign extend
-        uint32_t offset = 0;
-        for (int i = 1; i <= offsetFieldLength; i++)
-          offset = (offset << 8) + getUint8();
-
-        switch (offsetFieldLength) {
-          case 0: break;
-          case 1: if (offset & 0x80)
-                    offset = 0xFFFFFF00 | offset;
-                  break;
-          case 2: if (offset & 0x8000)
-                    offset = 0xFFFF0000 | offset;
-                   break;
-          case 4: break;
-          default: printf ("error - unexpected offsetFieldLength:%d\n", offsetFieldLength);
-          }
-
-        if (kOutDebug)
-          printf ("offset %08x + %08x = %08x\n", add, offset, add + offset);
-
-        add = add + offset;
-        if (numEsds == 0) {
-          //{{{  not sure what this does
-          if (offset & 0x01) {
-            printf ("error - %s odd fix-up offset:%8x esd:%d, codeStart:%8x\n",
-                    linker.getCurModName().c_str(), offset, curEsd, codeStart);
-            offset = offset + 1;
-            }
-
-          uint32_t codeBytes = output.outputCode (codeStart);
-          mEsds[curEsd].mOutAddress = mEsds[curEsd].mOutAddress + codeBytes + offset;
-
-          output.init();
-          codeStart = mEsds[curEsd].mOutAddress;
-          }
-          //}}}
-        else {
-          if (!longAddress && (add & 0xFFFF0000))
-            printf ("error - trying to put long address into word location:%8x\n", add);
-
-          if (mEsds [thisEsd].mSymbol != nullptr) {
-            // only need named symbols
-            if (linker.getCurModName() != mEsds[thisEsd].mSymbol->mModName) {
-              //{{{  outside module
-              //if history then
-              //  { address to be resolved longAddress only at present}
-              //  addRes (esdSymbolArray [thisesd], codeStart + mCodeLen*2, offset);
-
-              //if debugInfo then
-              //  writeln ('sym ', longAddress,
-              //           ' ', thisesd:2,
-              //           ' ', esdSymbolArray [thisesd]^.symbolName,
-              //           ' ', hex (add, 8, 8), ' = ', hex (esdArray[thisesd]),
-              //           ' + ', hex (offset, 4, 4), ';', hex (offsetFieldLength, 1, 1),
-              //           ' at ', hex (codeStart + mCodeLen * 2, 8, 8));
-              }
-              //}}}
-
-            // generate resolved address
-            if (longAddress)
-              output.addCodeByte (add >> 16);
-            output.addCodeByte (add);
-            }
-          }
-        }
-        //}}}
-      else {
-        //{{{  absolute code
-        output.addCodeByte (getUint8());
-        output.addCodeByte (getUint8());
-        }
-        //}}}
-      bitmap = bitmap << 1;
-      }
-
-    mEsds[curEsd].mOutAddress += output.outputCode (codeStart);
-    }
-  //}}}
-
-  // dump
-  //{{{
-  void dump() {
-
-    if (mRecordType == eEnd)
-      printf ("end\n");
-
-    else {
-      printf ("len:0x%x type:%d\n", mLength, (int)mRecordType);
-
-      // dump block
-      for (int i = 0; i < mLength-1; i++) {
-        if ((i % 32) == 0) // indent
-          printf ("  %03x  ", i);
-        printf ("%02x ", mBlock[i]);
-        if ((i % 32) == 31)
-          printf ("\n");
-        }
-      printf ("\n");
-      }
-    }
-  //}}}
-
   string mFileName;
 
+  enum eFileType { eRo, eRx };
   eFileType mFileType;
 
   uint32_t mNumIdRecords = 0;
   uint32_t mNumEsdRecords = 0;
   uint32_t mNumTxtRecords = 0;
   uint32_t mNumEndRecords = 0;
-
-  // object record
-  int mLength = 0;
-  eRecordType mRecordType = eNone;
-  int mBlockIndex = 0;
-  array <uint8_t,256> mBlock = { 0 };
-
-  // esd
-  //{{{
-  struct sEsd {
-    cSymbol* mSymbol;
-    uint32_t mAddress;
-    uint32_t mOutAddress;
-    };
-  //}}}
-  array <sEsd, 256> mEsds = {};
-  uint8_t mTopEsd = 0;
   };
 //}}}
 
-//{{{
-void parseObjectFile (const string& line, vector <cObjectFile>& objectFiles) {
-
-  if (kObjectFileDebug)
-    printf ("parseLine %s\n", line.c_str());
-
-  // find any trailing comma
-  size_t foundTerminator = line.find (',');
-  if (foundTerminator == string::npos) // no comma, find any trailing cr in linux file i/o
-    foundTerminator = line.find ('\r');
-
-  // look for extension dot, assumes only one dot, !!! could search backwards !!!
-  size_t foundDot = line.find ('.');
-  if (foundDot == string::npos) // no dot, use default ext
-    objectFiles.push_back (line.substr (0, foundTerminator) + ".ro");
-  else
-    objectFiles.push_back (line.substr (0, foundTerminator));
-  }
-//}}}
 //{{{
 void parseStream (ifstream& stream, vector <cObjectFile>& objectFiles, cLinker& linker) {
 
@@ -1242,8 +1216,24 @@ void parseStream (ifstream& stream, vector <cObjectFile>& objectFiles, cLinker& 
         printf ("comment %s\n", line.c_str());
       }
       //}}}
-    else
-      parseObjectFile (line, objectFiles);
+    else {
+      //{{{  objectFileName
+      if (kObjectFileDebug)
+        printf ("objectFileName %s\n", line.c_str());
+
+      // find any trailing comma
+      size_t foundTerminator = line.find (',');
+      if (foundTerminator == string::npos) // no comma, find any trailing cr in linux file i/o
+        foundTerminator = line.find ('\r');
+
+      // look for extension dot, assumes only one dot, !!! could search backwards !!!
+      size_t foundDot = line.find ('.');
+      if (foundDot == string::npos) // no dot, use default ext
+        objectFiles.push_back (line.substr (0, foundTerminator) + ".ro");
+      else
+        objectFiles.push_back (line.substr (0, foundTerminator));
+      }
+      //}}}
   }
 //}}}
 
