@@ -152,7 +152,7 @@ public:
       if (symbol->mDefined)
         numUndefined++;
 
-    printf ("%d symbols undefined of %d\n", numUndefined, (int)mSymbolMap.size());
+    printf ("%d undefined symbols of total %d\n", numUndefined, (int)mSymbolMap.size());
     }
   //}}}
   //{{{
@@ -1271,11 +1271,12 @@ int main (int numArgs, char* args[]) {
 
   vector <cObjectFile> objectFiles;
 
-  // get objectFiles from .cmd file
+  // read option,objectFiles from .cmd file
   ifstream stream (cmdFileName + ".cmd", ifstream::in);
   parseStream (stream, objectFiles, linker);
   stream.close();
 
+  // show options
   linker.dumpOptions();
 
   // pass 1 - read symbols, accumulate section sizes
@@ -1283,10 +1284,11 @@ int main (int numArgs, char* args[]) {
     objectFile.pass1 (linker);
   linker.dumpSymbols();
 
+  // allocate sections
   linker.allocCommonSectionAddresses();
   linker.dumpSections();
 
-  // pass 2 - resolve addresses and output .bin
+  // pass 2 - resolve addresses, output .sr or .bin
   if (out) {
     cOutput output (cmdFileName);
     for (auto& objectFile : objectFiles)
