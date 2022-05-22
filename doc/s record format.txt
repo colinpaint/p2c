@@ -1,0 +1,126 @@
+S-RECORD FILE FORMAT
+
+An S-record file consists of a sequence of specially formatted ASCII character strings.  Several
+fi elds uJ thin these records have groups of characters that must  be interpreted as hexadec imal
+values of one to four bytes i n length.  An S-record  Wi1l  be 1ess  than  or equal to 70 bytes in
+length.  Since each S- record  requires  10  to  14 bytes in fixed overhead for the type, byte
+count, address  and  checksum fi elds, the vari ab1e length data fi e1d may be allocated up to 60
+bytes. This translates to 60 characters or 30 character pairs or bytes of data per data ecord from
+the user viewpoint.
+
+The  S -record  fi 1e output by the 1inker i s not in any part i cu1 ar order so the order of S
+-records uJ thin a fi 1e i s of no s igni fi cance.
+The general format of an S-record is:
+
+
+I Type  | Count |  Address   I   Data    | Cksum
+
+
+
+Size
+Field   (Bytes)
+Type     2
+Count     2
+Address   4 -8
+
+
+ASCII bytes, whose associated characters describe the type of record (S0, S1, S2, S3, S7, S8, or S9).
+
+ASCII  bytes whose associated characters, when pai red and interpreted as a byte va1ue, d1sp1ay
+the count  of  the  remaining  character  pairs  in the record .
+
+ASCII  bytes whose associated characters, when pai red and interpreted as a two to four byte value, 
+display the address where the data field is to be loaded into memory.
+
+Data
+0-60     ASCII  bytes  whose  associated  characters,  when paired  and  interpreted  as byte val
+ues, represent memory 1oadab1 e data or descr1ptlve lnformatl on .
+
+Cksum   2
+(Checksum) ASCII bytes whose associated characters, when paired and interpreted as a byte value,
+display the least significant byte of the one's complement of the sum of the byte values
+represented by the pairs of ASCII characters making up the count, the address, and the data fields.
+
+
+
+The "S0" Record
+
+The  type  of  record  field is "S0" ($5330).  The address field is unused and f\l1ed  with  zeros
+($30303030).  The user supp1 ies  the header information in the data fi e1 d ui th the interact i
+ve user command IDENT.  The subfi el ds are:
+
+
+
+Subfield mname ver
+rev
+
+Si ze (Bytes
+20
+2
+2
+
+Contents module name version number
+revision number
+
+description   0-36   text comment
+
+Each of the subfields is composed of ASCII bytes whose associated characters, when paired,
+represent  one  byte  hexadeciua1  values  for  the version and revi s i on numbers , or the
+hexadec ima1 values of the ASC I I characters compri s ng the module name and descri pti on speci
+fi ed ui th the IDENT command .
+
+If the IDENT command is not used, the filename portion of the output file the linker is creating is
+used as the module name; the version and revision numbers are l; and there is no description.
+
+The "Sl" Record
+  The type of record field is "Sl" (S5331). The address field is interpreted as
+  a 2-byte address .  The data fi e1 d 1 s composed of memory l oadab1 e data.
+
+The "S2" Record
+  The  type of record fi e1d i s "S2" ($5332) . The address fi e1d i s interpreted as a 3 -byte
+  address .  The data fi e1 d i s composed of memory l oadab1 e data.
+
+The "S3" Record
+  The type of record fi e1d i s "S3" ($5333) .  The address fi e1d i s  nterpreted as a 4-byte
+  address .  The data fi e1d i s composed of memory l oadabl e data.
+
+The "S7" , "S8", and "S9" Records
+  The  type  of  record fie1d  s "S7", "S8", and "S9" ($5337, $5338, and $5339) , respectively.  The
+  address field contains the starting execution address specified by the user with the interactive
+  user command ENTRY. The first entry point encountered in the object module's input is used, if an
+  ENTRY command is not specified.  
+  If no starting address is encountered, the beginning  address of the first segment is used.  
+  If none of these methods is used to specify the starting address, thls field is set to zeros.  
+  The address field  of  the  "S7",  "S8",  and "S9" records is four, three, and two bytes, respectively.
+  There is no data fie1d.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+77

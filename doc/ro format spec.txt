@@ -1,0 +1,462 @@
+Relocatable Object Module Storage Format
+
+The VERSAdos operating system stores relocatab1e object modules in sequentia1 fi1es  with
+fixed 1ength  records of 256 bytes. (Refer to the VERSAdos Data Management  Services  and
+Program Loader User's Nanual for information on the fi 1e format s supported by the operat ing sys
+tern. )
+
+8Jth1n  each  256-byte record a varlable number of varlab1e length re1ocatable object records
+are  stored.   Each one of these records consists of a 1-byte byte count fo1loued by the actual
+data of the relocatable record. The byte count indicates the number of data bytes that follow \n
+the record. The byte count  may  contain  any  value between 0 and 255, inc1usJve.  A byte count of
+zero  indicates  a  relocatable  object record with no data bytes (a record of this  type  is
+ignored  by  the  1inkage  editor).   Thus,  the length of one relocatable object record is limited
+to a total of 256 bytes; one byte for the byte count and a maximum of 255 data bytes.
+
+However,  this  does not mean that only one vary able length relocatable object record can be
+stored in one fixed length record.  Each 256-byte fixed length record is totally fi 11ed before
+continuing to the next 256-byte record.  Thus, it  i s  possi b1e  for  a varl able 1ength record
+to be di vided between two fixed length  records.  For  example,  suppose  the  flrst three
+relocatable object records  of  a  relocatable  object module contained 50, 150, and 200 bytes of
+data,  respectively.  The  first  two  records, a1ong with their byte counts, soul d  be stored
+uithin the first 202 bytes of the first 256-byte fixed-length record.  Thi s  would 1eave 54 bytes
+remaining in that record.  These 54 bytes would  be  fi11ed  with the byte count of the thi rd
+re1ocatabl e object record, fol1oxed  by  the  first 53 data bytes of that record.  The remaining
+147 data bytes  of  the  third  relocatable  object  record would then be stored at the beginning
+of the second 256-byte fixed length record.
+
+Any  space  not used In the 1ast 256-byte fixed l ength record of a eel ocatable object  riodul e
+file must be fi 11ed ui th binary zeros.  Thi s f\ 1l s out the rest of  the  file  with
+re1ocatable  object  records that have zero bytes of data (Chi ch are ignored by the 1 inkage edi
+tor) .
+
+Relocatable 0blect Record Format
+There are four basic types of relocatable object records. The record type is indicated by the first
+byte of data (the byte immediately after the byte count) ,  i n  the  record .  Thi s  byte  i s
+the ASC I I code of one of the digi ts between ” " and "4", incl us i ve.  The byte va1ues and the
+types of records are:
+¥a1ue of Fi rst
+
+  Data Byte
+1 ($31)
+2 ($32)
+3  (533)
+4  ($34)
+Record Type
+I dentl f1catl on Record
+External Symbol Deft ni I i on Record Object Text Record
+End Record
+
+
+The fornat s of these four record types 1 s di scus sed i n detai 1 i n the foll or i ng paragraphs
+.
+Identification Record fType  l}
+
+Each re1ocatab1e object module nust contain an identi fication record as the fi rst record in the
+module.  It 1 s thi s record that indicates the beginning of a re1ocatab1e  object module.  The
+identification record contains general i nformat i on about the ref ocatabl e object Modul e, such
+as i ts name, versi on and revision, what language processor was used to create the module, what
+source f11e  was used to create the modu1 e, the ti me and date the module was created, and a
+descri pti on of the modul e.  The format of an i denti fi cati on record i s:
+
+Bytes 1 1 | 1 | 10  I I 1 1 4 1 2  | 8 |  8  | 2 | 3  | 3  I 0-211
++----+---+-----+-+-+-+---+----+---+-----+---+----+----+- ----
+Fi e1d I Si ze 1 1 I*FI t••IVIRILI*01IUser|Cat I Fname | Ext|Time| Date|Descr
+
+Si ze
+Field   (Bytes)   Contents
+I             Record Type (ASC I I f3 J) .
+Fname    10    Module naae (ASC I I) .
+V       1     Nodul e versi on number (0-255) .
+R     1   Nodule revision number (0-255).
+L       1     Language processor type (ASC I I ):
+A (S41) - Assembler B ($42) - BASIC
+C (f43) - COBOL
+F ($46) - FORTRAN
+P ($50) - Pasca1
+
+
+VO1
+
+User Cat Fname
+4    Source file vo1ume name (ASC I I) .
+2     Source file user nunber (0-9999) .
+8     Source fi 1e catal og naae (ASC I I) .
+8   Source file fi 1enaue (ASC I I ) .
+Ext      2      Source f1 Ie extens i on (ASC I I ) .
+Time     3     Module creati on ti me (hhmms s) . (NOTE)
+Date   3   Module creation date (mmddyy). (NOTE)
+
+
+Descr    varles    Module  description  (ASCII).  Occupies remainder of
+1dentl fication record as 1nd1cated by record 1ength . day be 0-211 bytes (characters) 1 ong.
+
+(NOTE) Time and date are stored in a BCD format with two decimal digits per byte. For example, if
+the time of creation was 9:27:56, it would be stored in the identification record as S092756.
+
+Externa1  Symbol  Definition Record (Type 2)
+
+Each external symbol definition record contains a variable number of External Symbol Definitions
+(ESDs) and defines a relocatable section, a common section, an absolute section, an externally
+defined symbol, an externally referenced symbo1, or a command 1 ine address.  A 1-byte val ue at
+the beginning of the ESD indicates  the  type  of ESD within an external symbol definition record.
+The hlqh  order  nibble  of  the  byte  indicates the ESD type uhlle the low order ni bb1e of the
+byte indicates what secti on the ESD refers to.  The format of an external symbol definition record
+is:
+
+Bytes | 1  | 1 |   1   | far
+Fi e1d I ii ze | 2 | Typ/Sct | Data | Typ/Set | Data I    | Typ/Sct | Data
+
+Size
+Fi eJ d   (Bytes)  Constants
+2      1    Record type {ASCI I $32)
+Typ/Set    1    Typ (high n1bb1 e) = Type of ESD
+0 - Absol ute secti on
+1 - Common secti on (i n secti on Sct)
+
+2 - Standard relocatable section (section number Sct)
+
+3 - Short address re1ocatabl e secti on (secti on number Set)
+4 - External symbol defini ti on
+( in re1ocatabl e sect i on Sct)
+
+5 - External symbol delinjt i on ( in an absol ute sect i on)
+6 - Externa1 symbol reference (to secti on Set)
+7 - External symbol reference (to any secti on)
+
+8 - Command 11ne address ( in sect i on Set)
+9 - Command line address (in an absolute section)
+
+A - Command line address (in a common section in section Sct)
+Set (low ni bble) = Ref ocatab1 e secti on re ferr1ng to
+(0- 15)
+Data   Varles  Depends on Typ (see be1ou)
+
+Several ESD entries may be included in one ESD record. The following descriptions outline the
+contents of the Data field from the general ESD record format:
+
+
+
+
+Absolute section
+
+
+
+Common sect i on
+Bytes 1 1 1 4  1  4  I
+- - -+- - - -+- - - - -
+0/0 | SI ze | Start
+
+
+Bytes |  1  |  10  | 4
+1/Sct | Common | Si ze I
+
+
+
+Bytes
+Standard re1ocatabl e
+section
+1 | 4
+2/Sct Si e
++--- --+-- - -+
+
+
+
+
+Short address re1ocatabl e secti on
+
+
+
+XDEF ( in
+sect i on Set)
+
+
+
+XDEF (i n an
+absol ute sect1on)
+Bytes
+
+
+
+
+Bytes
+
+
+
+
+Bytes
+1 | 4
+3/Sct | Si ze
++- - - - -+- - - -+
+
+1  1 | 10 |  *  I
+|4/StXDEF|Address|
++-----+----+-------+
+
+1  1 10 I  *  I
+|5/O|XDEF|Address|
+
+
+
+KREF (to
+sect i on Set)
+
+
+XREF (to any
+section)
+
+Bytes | 1 | 10
+6/Set | XREF
++- - - - -+- - - -+
+
+Bytes | 1 1 10
++- - -+- - - -
+7/0 | XREF
+
+Bytes |  1  |  4   1   1
+Command 1i ne address   | 8/Sct | CL Adr | CL Lngth (i n secti on Sct)      +- - - --+- - - - - -+
+   +
+Bytes | 1 |  4  |  1
+Command 1i ne address   |9/0|CL Adr|CL Lngth
+( in an absol ute sect on) +- - -+    +     +
+Bytes |  I  |  10  |  4  |  1
+Command line address  |A/Sctl#L Co*l#L Adr|CL Lngth| (in a common section)  +-----+------+------+
++
+Si ze
+
+Field  (Bytes)
+Size     4
+Start     4
+Common   I0
+XDEF    10
+Address  4
+Contents
+Length of sect i on ( n bytes) .
+Start i ng address of absol ute sect i on. Name of common sect i on (ASC I I) .
+Name of XDEF symbo1 (ASC I I) .
+Address of symbol within its section (in 5/0 this is
+an absolute address).
+XREF    10   Name of XREF common symbol (ASCII).
+
+
+Cl Adr   4
+CL Lngth  1
+CL Com   10
+Address of command line within its section (in 9/0 this is an absolute address).
+MaXimum length of command line -1. (0-255 represents
+1-256. )
+Name of common sect1on that conta1ns the command 1i ne (ASC I I) .
+
+
+ESDs  have  a  restriction  that  all  ESDs  defining  externally  defined and externally
+referenced  symbols  (ESD  types 4-7) must appear before any other types of ESDs in  the modul e.
+
+Each secti on (re1ocatabl e, common, and absolute) and each external reference n a re1ocatabl e
+object module 1s ass igned an index so that they may be eas i1y referenced 1ater in the rel
+ocatab1e object module.  Thi s i ndex i s  an Externa1 Symbol Definition Index (ESDID). Since a
+module may contain only one of each type  of  relocatable  section  (sections  0-15),  the ESDID
+for  a relocatable secti on  i s  simp1y the section number plus 1.  Thus, the index for section 12
+1s  13.  However,  a  relocatab1e  object  module tray contain multiple common sections,  abso1ute
+sections, and external references.  Therefore, i ndi ces for these types of ESDs are assigned in
+increasing numerical order, starting at 17,  in  the order the ES0s are encountered 1n the module.
+Thus, the index of the  fi rst ESD of the type 0, 1, 6, or 7 i s 17; the index of the second ESD of
+those  types  1s  18; and so on.  A Pasca1-like algorithm for assigning ESDIDs when reading a
+re1ocatab1e object module i s:
+
+i := 17;
+WHILE reading ESDs DO BEGIN
+read an ESD of Typ/Set ; CASE Typ OF
+0, I , 6,7:   BEGIN
+ESDID := i ;
+i   := i + 1 END;
+2,3 :      ESDID  : - Sct + 1;
+4,5,8,9, 10:  (no ESDID as s1gned) ; END; (CASE)
+process the ESD
+END (WHILE)
+where:
+
+ESDID is the ESD index for the ESD that is currently being processed.
+80TE: ESDs  that descri be external 1y defined  symbol s  and command 1ine addresses are not
+assigned indices. This is because these types of ESDs do not need to be referred to later in the
+relocatable object module.
+
+New ESDIDs  are ass igned for each re1ocatabl e object module processed.  Thus, the ESDIDs  in  one
+module have no relation to the ESDIDs in another modul e. Each module  is  1imited  to a total of
+255 ESDIDs (numbered 1 through 255). Since  ESDIDs  1 through 16 always refer to the re1ocatabl e
+secti ons 0 through 15,  a rel ocatabl e  object modul e may contain at riost a total of 239 absol
+ute sections, common sections, and external references.
+
+Obiect Text Record (Type 3)
+Object text records deft ne the actual code and data to be put in the resul t ing load  module (or
+re1ocatabl e object module) .  Each object text record contains abso1ute  code a1ong xi th re1ocati
+on data for computing relocated code.  A bi t map  1s  empl oyed to lndi cate the data that 1s
+absolute code and the data that i s relocation data.  The format of an object text record i s:
+
+Bytes | l | l | 4 | l
+S i ze | 3 | Map | ESDID | Data
+
+S i ze
+FJe1d   ( Bytes)  Contents
+3        1     Record type (ASC I I $33) .
+Map   4  Bit map - each bit corresponds to one 16-bit word of absolute code or one set of
+relocatable data:
+0 - Abso1 ute code (16 bi ts each - word)
+1 - Re1 ocat i on data (1 to 12 bi ts)
+
+ESDID
+
+1  ESD index indicating the ESD for the section in which data from this record is to be placed.
+Data    vari es   Absol ute  code aJ ternat i ng uJ th ref ocati on data as per the bi t map.
+ESDID is a l-byte ESD index that indicates in what section the code generated
+from this object text record is to be located. The way it works is:
+
+A "proqram counter" 1s maintained for each section (relocatable, common, and absolute)  in  the
+re1ocatab1e object module being processed.  Each program counter 1 s ini ti al i zed to the
+starting address of the secti on i t represents.  then  an object text record \ s processed, the
+code generated from the record is placed at the address indicated by the program counter for the
+section whose ESO has the index indicated by ESDID. As code is generated, the program counter for
+the section into which the code is being placed is updated to indicate where the next code for that
+section should go.
+Data  1s  a  variable  length  fleld that can contain up to  32 16-b1t words of absol ute  code
+(code that does not need to be relocated) , or up to 32 sets of relocation  data,  or  any
+combination thereof.  The data field is interpreted as:
+
+The  highest  order (leftmost) bi t in the bi t map corresponds to the f1rst (1eftnost) e1ement in
+the data fi eJ d.  If  the highest order bi t in the bi t map  is  a  zero  then the first 16-bit
+word in  the data field is absolute code.  However,  if  the highest order bit  in the bit  nap is
+a 1,  then the
+
+li rst  data i tern 1n the data fi el d 1s ref ocat i on data.  The second h1ghest order  bi t  in
+the  bi t rrap corresponds to the next data i tern i n the data record in the same way, and so on.
+This processing of data proceeds unti1 data correspond ng to all  32 bi ts i n the b1t nap has been
+processed or the end  of  the  object  text  record  (as indicated by the record 1ength) is
+encountered, Chi chever comes first .
+
+As previously mentioned, a zero bit in the bit map indicates one 16-bit word of  absolute  code
+that does not need to be re1ocated.  The s word i s stored in the data fi e1d in two bytes in the
+exact form i t i s to appear 1n the resul t1ng l oad modul e (or re1ocatabl e object riodu1 e) .
+On the other hand, a 1 bit in the bit map indicates a set of relocation data in the data field. A
+set of relocation data is the data required to relocate a single 16-bit or a single 32-bit
+quantity. A set of relocation data is of variable length and can occupy from l to 12 bytes of data
+in the data field. The format of ref ocat i on data i s:
+
+Bytes | 1 | 0 to 7 1 0 to 4
++-- --+-- -- ----+-- ------
+F1 ag | ESDIDs | Offset
+
+Si ze
+Fi eld   ( Bytes}  Contents
+FJ ag      1    Indicates type of rel ocat i on data:
+bi ts 7-5 - IJumber of ESDIDs (0-7) bi t   4 - Reserved - must be 0 b1t   3 - Si ze of re1ocated
+data
+0 - 1 word (16 bits)
+1 - 2 words (32 bits)
+bi ts 2-0 - Offset fi e1d length  n bytes (0-4) ESDIDs   0 to 7   ESD i ndi ces invol ved i n eel
+ocati on (1 byte each) . Offset   0 to 4   Constant offset 1nvol ved  n re1ocat i on.
+
+The  purpose  of  relocation  data  is  to  instruct the linkage editor how to ca1cul ate  a
+re1ocated va1ue.  For each set of re1ocati on data, thi s re1ocated value i s ini t 1 at ized to
+zero.  The relocat 1on data i s interpreted as:
+
+Relocation data contains up to seven ESDIDs. Each ESDID in relocation data represents a numerical
+value. Typically, an ESDID will be the index of an ESD representing an external symbol reference.
+In that case, the nuoerica1  va1ue  associated with the ESDID 1s the address in the result module
+of the referenced symbo1 . However, an ESDID i n re1ocat i on data may a1so be the  index  of an
+ESD that represents a section (relocatable, common, or absol ute) . Here, the numeri ca1 va1ue
+associ ated ui th the ESDID
+
+
+i s  the  starting  address of the particu1ar secti on in the result module. The  numeri ca1 values
+associ ated with the fi rst, third, fi fth, and seventh ESDIDs  in  relocation  data  are  added
+to the relocated va1ue while the va1ues associ ated ui th the second, fourth, and s i xth ESDIDs
+are subtracted from  the re1ocated va1ue.  A zero ESDID in rel ocati on data indicates that there
+is no ESDID for that position and therefore, no corresponding numerical value to be added or
+subtracted.
+
+Re1 ocat i on  data  may  a1 so contain a constant offset that i s added to the re1ocated  value .
+Thi s offset may be from 0 to 4 bytes long and i s a1ways interpreted as a 2’s complement value
+(thus the value -l may be represented in one byte as $FF) .  An offset that i s 0 bytes 1ong
+indicates that there i s no constant offset .
+Once  a  relocated val ue has been ca1cul ated by adding and subtract 1ng the proper  ESDID  va1ues
+ and adding the constant offset, it  i s p1aced in the resul ting module i n the slze lndi cated by
+b1t 3 of the flag byte.  If  the s bit  i s off  (0) then the rel ocated va1ue •111 be put into the
+resul t modul e as  a  one-Word  16-bit) val ue.  If  the bit  is on (1), the relocated val ue
+•i 11 be pl aced into the resul t module as a two -word (32 -bi t) va1ue.
+
+Finall y, If  bi ts 7-5 of the f1ag byte 1ndi cate that there are no ESDIDs in the relocat ion
+data, then there riust be an offset.  Here, the offset (from
+1 to 4 bytes long) i s taken as a 2’s complement value to be added to the current program counter
+for the section in which code from this object text  record  i s  bet ng  p1 aced .  Later code for
+the same sect I on ui 11 be p1 aced  starting  at  the new  locati on.  Thi s  all ozs the re1ocat
+ing of
+program counters backward and forward for overwriting code that has
+a1ready been generated ( "fi x-ups" ) .
+End Record (Type 4)
+
+Thi s record i ndi cates the end of a re1ocatabl e object modul e and must be the l ast record i n
+every module .  It  a1 so contains in format i on about the starting execut i on address of the
+modu1 e.  The foraat of the end record i s:
+
+Bytes  | 1  | 1 | 1 |  ‹  I
++- - - -+- - -+- - -+- - - - - - -
+Si ze 1 4 | Sct | Address
+
+Size
+Fi e1d   ( Bytes§   Contents
+4       1     Record type (ASCII $34).
+Sct       1     Secti on in ah ch execut i on starts:
+0- 15 - Re1 ocatabl e secti on
+16 - Absol ute secti on
+17 - No starti ng address
+
+Address   4
+Starting execution address.
+
+If the value of Sct is between 0 and 15, inclusive, then Address is i nterpreted  as  bet ng
+re1ati ve to the start of the sect i on.  If  the value of Sct  i s 16, then Address 1s an absol
+ute address .  Finally, i f the val ue of Set i s  17,  then no starting execut i on address has
+been speci fi ed for  thi s module and address does not appear in the end record.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+68              MICROSYSTEMS
