@@ -97,14 +97,12 @@ public:
     }
   //}}}
   //{{{
-  cSymbol* findCreateSymbol (const string& symbolName, bool& symbolFound) {
+  cSymbol* findCreateSymbol (const string& symbolName, bool& found) {
 
     cSymbol* symbol = findSymbol (symbolName);
 
-    symbolFound = symbol != nullptr;
-    if (symbolFound)
-      printf ("symbol already defined %8s\n", symbolName.c_str());
-    else {
+    found = symbol != nullptr;
+    if (!found) {
       symbol = new cSymbol (symbolName);
       mSymbolMap.emplace (symbolName, symbol);
       }
