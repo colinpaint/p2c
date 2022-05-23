@@ -139,20 +139,24 @@ public:
   //}}}
 
   //{{{
-  void dumpOptions() {
-    mOptions.dump();
+  void incCommonDefs() {
+    mNumCommonDefs++;
     }
   //}}}
   //{{{
-  void dumpSymbols() {
+  void incXdefs() {
+    mNumXdefs++;
+    }
+  //}}}
+  //{{{
+  void incXrefs() {
+    mNumXrefs++;
+    }
+  //}}}
 
-    int numUndefined = 0;
-
-    for (auto const& [key, symbol] : mSymbolMap)
-      if (symbol->mDefined)
-        numUndefined++;
-
-    printf ("%d undefined symbols of total %d\n", numUndefined, (int)mSymbolMap.size());
+  //{{{
+  void dumpOptions() {
+    mOptions.dump();
     }
   //}}}
   //{{{
@@ -170,6 +174,19 @@ public:
       }
 
     printf ("          finish:%6x size:%6x\n", mBaseAddress, mBaseAddress - mOptions.getSectionBaseAddress(0));
+    }
+  //}}}
+  //{{{
+  void dumpSymbols() {
+
+    int numUndefined = 0;
+
+    for (auto const& [key, symbol] : mSymbolMap)
+      if (symbol->mDefined)
+        numUndefined++;
+
+    printf ("%d undefined symbols of total %d, commonDefs:%d, xDefs:%d, xRefs:%d\n",
+            numUndefined, (int)mSymbolMap.size(), mNumCommonDefs, mNumXdefs, mNumXrefs);
     }
   //}}}
 
@@ -319,13 +336,16 @@ private:
     string mToken;
     };
   //}}}
-
   cOptions mOptions;
 
   map <string, cSymbol*> mSymbolMap;
   vector <cSymbol*> mCommonSymbols;
 
   string mCurModuleName;
+
+  uint32_t mNumCommonDefs = 0;
+  uint32_t mNumXdefs = 0;
+  uint32_t mNumXrefs = 0;
   };
 //}}}
 //{{{
@@ -793,7 +813,10 @@ private:
       objectFile->mTopEsd = 17;
 
       if (!pass1) {
+        // set esd 0 info, not sure why???
         objectFile->mEsds[0].mAddress = 0;
+
+        // set common esd 1-16 from sections 0-15 info
         for (int section = 0; section < 16; section++) {
           objectFile->mEsds[objectFile->mTopEsd].mSymbol = nullptr;
           objectFile->mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress +
@@ -805,7 +828,7 @@ private:
     //}}}
     //{{{
     void parseEsd (cObjectFile* objectFile, cLinker& linker, bool pass1) {
-    // parse External Symbol Definition record
+    // parse ExternalSymbolDefinition record
 
       while (getBytesLeft() > 0) {
         uint8_t byte = getUint8();
@@ -837,6 +860,7 @@ private:
             uint32_t size = getUint32();
 
             if (pass1) {
+              linker.incCommonDefs();
               if (kPassDebug)
                 printf ("commonSection:%2d %10s size:%x\n", (int)section, symbolName.c_str(), size);
 
@@ -906,11 +930,13 @@ private:
                 linker.mSections[section].mSectBase++;
               }
             else {
-              // pass2
+              // pass2 - set esd info
               objectFile->mEsds [objectFile->mTopEsd].mSymbol = nullptr;
-              objectFile->mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress + linker.mSections[section].mSbase;
+              objectFile->mEsds[section+1].mAddress = linker.mSections[section].mBaseAddress +
+                                                      linker.mSections[section].mSbase;
               objectFile->mEsds[section+1].mOutAddress = objectFile->mEsds[section+1].mAddress;
 
+              // not sure why this is done again ???
               linker.mSections[section].mSbase += size;
               if (linker.mSections[section].mSbase & 1)
                 linker.mSections[section].mSbase++;
@@ -927,6 +953,8 @@ private:
             uint32_t address = getUint32();
 
             if (pass1) {
+              linker.incXdefs();
+
               bool found;
               cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
               if (kPassDebug)
@@ -948,7 +976,7 @@ private:
           //}}}
 
           case 6:         // xRef symbol to section xx - unexpected
-            printf ("xRef to section:%d\n", int(section));
+            printf ("xRef to specified section:%d\n", int(section));
             [[fallthrough]];
           //{{{
           case  7: { // xRef symbol to any section
@@ -958,14 +986,21 @@ private:
               printf ("symbol xRef - section:%2d %8s\n", (int)section, symbolName.c_str());
 
             if (pass1) {
+              linker.incXrefs();
+
+              // find, or create symbol undefined
               bool found;
               cSymbol* symbol = linker.findCreateSymbol (symbolName, found);
+
+              // add reference to symbol's references
               symbol->addReference (linker.getCurModuleName());
               }
+
             else {
               // pass2
               cSymbol* symbol = linker.findSymbol (symbolName);
               if (symbol) {
+                // set esd info
                 objectFile->mEsds[objectFile->mTopEsd].mSymbol = symbol;
                 objectFile->mEsds[objectFile->mTopEsd].mAddress = symbol->mAddress + linker.mSections[symbol->mSection].mBaseAddress;
                 objectFile->mEsds[objectFile->mTopEsd].mOutAddress = objectFile->mEsds[objectFile->mTopEsd].mAddress;
@@ -1170,8 +1205,8 @@ private:
     //}}}
 
   private:
-    eType mType = eNone;
     int mLength = 0;
+    eType mType = eNone;
     int mBlockIndex = 0;
     array <uint8_t,256> mBlock = { 0 };
     };
