@@ -568,33 +568,41 @@ public:
     if (kPassDebug)
       printf ("passFile %s\n", mFileName.c_str());
 
-    ifstream objectFileStream (mFileName.c_str(), ifstream::in | ifstream::binary);
+    ifstream stream (mFileName.c_str(), ifstream::in | ifstream::binary);
+    if (!stream.is_open()) {
+      //{{{  error, return
+      mErrorFlagged = true;
+      printf ("error - objectFile %s not found\n", mFileName.c_str());
+      return;
+      }
+      //}}}
 
-    cObjectRecord objectRecord;
+    cRecord record;
+
     bool eom = false;
     while (!eom) {
-      eom = objectRecord.loadRecord (objectFileStream);
+      eom = record.load (stream);
 
       if (kObjectFileDebug)
-        objectRecord.dump();
+        record.dump();
 
       if (!eom) {
-        switch (objectRecord.getRecordType()) {
-          case cObjectRecord::eId:
+        switch (record.getType()) {
+          case cRecord::eId:
             incNumIdRecords();
-            objectRecord.parseId (this, linker, true);
+            record.parseId (this, linker, true);
             break;
 
-          case cObjectRecord::eEsd:
+          case cRecord::eEsd:
             incNumEsdRecords();
-            objectRecord.parseEsd (this, linker, true);
+            record.parseEsd (this, linker, true);
             break;
 
-          case cObjectRecord::eObjectText:
+          case cRecord::eText:
             incNumTxtRecords();
             break;
 
-          case cObjectRecord::eEnd:
+          case cRecord::eEnd:
             incNumEndRecords();
             break;
 
@@ -604,37 +612,48 @@ public:
         }
       }
 
-    objectFileStream.close();
+    stream.close();
     }
   //}}}
   //{{{
   void pass2 (cLinker& linker, cOutput& output) {
 
+    if (mErrorFlagged)
+      return;
+
     if (kPassDebug)
       printf ("passFile %s\n", mFileName.c_str());
 
-    ifstream objectFileStream (mFileName.c_str(), ifstream::in | ifstream::binary);
+    ifstream stream (mFileName.c_str(), ifstream::in | ifstream::binary);
+    if (!stream.is_open()) {
+      //{{{  error, return
+      mErrorFlagged = true;
+      printf ("error - objectFile %s not found on pass2 but ok on pass1\n", mFileName.c_str());
+      return;
+      }
+      //}}}
 
-    cObjectRecord objectRecord;
+    cRecord record;
+
     bool eom = false;
     while (!eom) {
-      eom = objectRecord.loadRecord (objectFileStream);
+      eom = record.load (stream);
 
       if (!eom) {
-        switch (objectRecord.getRecordType()) {
-          case cObjectRecord::eId:
-            objectRecord.parseId (this, linker, false);
+        switch (record.getType()) {
+          case cRecord::eId:
+            record.parseId (this, linker, false);
             break;
 
-          case cObjectRecord::eEsd:
-            objectRecord.parseEsd (this, linker, false);
+          case cRecord::eEsd:
+            record.parseEsd (this, linker, false);
             break;
 
-          case cObjectRecord::eObjectText:
-            objectRecord.parseText (this, linker, output);
+          case cRecord::eText:
+            record.parseText (this, linker, output);
             break;
 
-          case cObjectRecord::eEnd:
+          case cRecord::eEnd:
             break;
 
           default:
@@ -643,7 +662,7 @@ public:
         }
       }
 
-    objectFileStream.close();
+    stream.close();
     }
   //}}}
 
@@ -668,35 +687,37 @@ public:
 
 private:
   //{{{
-  class cObjectRecord {
+  class cRecord {
   public:
-    cObjectRecord() = default;
-    virtual ~cObjectRecord() = default;
+    cRecord() = default;
+    virtual ~cRecord() = default;
 
-    enum eRecordType { eNone, eId, eEsd, eObjectText, eEnd };
+    enum eType { eNone, eId, eEsd, eText, eEnd };
 
     // load
     //{{{
-    bool loadRecord (ifstream& stream) {
-    // return true if no more, trying to use EOM shoyld use EOF for conactenated .ro
+    bool load (ifstream& stream) {
+    // load .ro format record
+    // - return true if EOM, should use EOF as well
 
       mBlockIndex = 0;
 
-      // load ro format record
       mLength = stream.get();
-      uint8_t byte = stream.get();
+      uint8_t header = stream.get();
 
-      if ((byte > '0') && (byte <= '4')) {
-        // recognised record type
-        mRecordType = (eRecordType)(byte - uint8_t('0'));
-        if (mRecordType < eEnd)
+      if ((header > '0') && (header <= '4')) {
+        // recognised header type ascii 1,2,3,4
+        mType = (eType)(header - uint8_t('0'));
+        if (mType != eEnd)
           for (size_t i = 0; i < mLength-1; i++)
             mBlock[i] = stream.get();
 
-        return mRecordType == eEnd;
+        return (mType == eEnd);
         }
+
       else {
-        mRecordType = eNone;
+        // unrecognised header type
+        mType = eNone;
         return true;
         }
       }
@@ -704,12 +725,12 @@ private:
 
     // gets
     //{{{
-    eRecordType getRecordType() {
-      return mRecordType;
+    eType getType() {
+      return mType;
       };
     //}}}
     //{{{
-    int getDataLeft() {
+    int getBytesLeft() {
       return mLength - mBlockIndex - 1;
       }
     //}}}
@@ -786,7 +807,7 @@ private:
     void parseEsd (cObjectFile* objectFile, cLinker& linker, bool pass1) {
     // parse External Symbol Definition record
 
-      while (getDataLeft() > 0) {
+      while (getBytesLeft() > 0) {
         uint8_t byte = getUint8();
         uint8_t section = byte & 0x0F;
         uint8_t esdType = byte >> 4;
@@ -1017,7 +1038,7 @@ private:
       output.init();
 
       uint8_t thisEsd = 0;
-      while (getDataLeft() > 0) {
+      while (getBytesLeft() > 0) {
         if (bitmap & 0x80000000) {
           //{{{  relocation data
           uint8_t byte = getUint8();
@@ -1129,11 +1150,11 @@ private:
     //{{{
     void dump() {
 
-      if (mRecordType == eEnd)
+      if (mType == eEnd)
         printf ("end\n");
 
       else {
-        printf ("objectRecord length:0x%x type:%d\n", mLength, (int)mRecordType);
+        printf ("record length:0x%x type:%d\n", mLength, (int)mType);
 
         // dump block
         for (int i = 0; i < mLength-1; i++) {
@@ -1149,7 +1170,7 @@ private:
     //}}}
 
   private:
-    eRecordType mRecordType = eNone;
+    eType mType = eNone;
     int mLength = 0;
     int mBlockIndex = 0;
     array <uint8_t,256> mBlock = { 0 };
@@ -1178,6 +1199,7 @@ private:
   //}}}
 
   string mFileName;
+  bool mErrorFlagged = false;
 
   enum eFileType { eRo, eRx };
   eFileType mFileType;
@@ -1198,12 +1220,16 @@ void parseStream (ifstream& stream, vector <cObjectFile>& objectFiles, cLinker& 
       linker.parseOptions (line);
     else if (line[0] == '@') {
       //{{{  include
-      string includeFileName = line.substr (1, line.length()-1);
-      printf ("including %s\n", includeFileName.c_str());
+      string includeFileName = line.substr (1, line.length()-1) + ".cmd";
+      printf ("including file %s\n", includeFileName.c_str());
 
-      ifstream includeStream (includeFileName + ".cmd", ifstream::in);
-      parseStream (includeStream, objectFiles, linker);
-      includeStream.close();
+      ifstream includeStream (includeFileName, ifstream::in);
+      if (!includeStream.is_open())
+        printf ("error - include file %s not found\n", includeFileName.c_str());
+      else {
+        parseStream (includeStream, objectFiles, linker);
+        includeStream.close();
+        }
       }
       //}}}
     else if (line[0] == '!') {
@@ -1265,6 +1291,12 @@ int main (int numArgs, char* args[]) {
 
   // read option,objectFiles from .cmd file
   ifstream stream (cmdFileName + ".cmd", ifstream::in);
+  if (!stream.is_open()) {
+    //{{{  error, return
+    printf ("error - cmd file %s not found\n", cmdFileName.c_str());
+    return 1;
+    }
+    //}}}
   parseStream (stream, objectFiles, linker);
   stream.close();
 
