@@ -9,6 +9,7 @@
 #include <map>
 
 #include <fstream>
+#include <iomanip>
 
 using namespace std;
 //}}}
@@ -21,7 +22,7 @@ constexpr bool kOutDebug = false;
 //}}}
 //{{{  const, enum
 // options, easier to use as globals
-enum eOption { eChat, eDebug, eMod, eMap, eBell, eXref, eCheck, eBin, eLastOption };
+enum eOption { eChat, eDebug, eMod, eMap, eBell, eXref, eCheck, eBin, eSr, eLastOption };
 constexpr size_t kNumOptions = eLastOption; // for enum arrays to play nice
 
 // sections
@@ -35,12 +36,12 @@ constexpr size_t kObjectSymbolNameLength = 10;
 constexpr uint32_t kDefaultStartAddress = 0x400;
 
 constexpr uint8_t esc = 0x1B;
+
+constexpr int kDumpWidth = 100;
 //}}}
-constexpr bool out = true;
 constexpr bool bin = false;
-constexpr bool download = false;
 constexpr bool escape = false;
-constexpr bool xref = true;
+constexpr bool download = false;
 
 //{{{
 class cSymbol {
@@ -78,6 +79,11 @@ public:
   cLinker() = default;
   virtual ~cLinker() = default;
 
+  //{{{
+  bool getEnabled (eOption option) {
+    return mOptions.getEnabled (option);
+    }
+  //}}}
   //{{{
   string getCurModuleName() {
     return mCurModuleName;
@@ -183,54 +189,95 @@ public:
     }
   //}}}
   //{{{
-  void dumpXrefs (const string& fileName) {
+  void dumpReferences (const string& fileName) {
 
     ofstream stream (fileName + ".xrf", ofstream::out);
 
-    for (auto const& [key, symbol] : mSymbolMap) {
-      stream.write ("Symbol ", 7);
-      stream.write (symbol->mName.c_str(), symbol->mName.length());
-      if (symbol->mDefined) {
-        stream.write (" defined by ", 11);
-        stream.write (symbol->mModuleName.c_str(), symbol->mModuleName.length());
+    // list undefined symbols
+    stream << "------------------------------------------------------------------" << endl;
+    for (auto const& [key, symbol] : mSymbolMap)
+      if (!symbol->mDefined) {
+        //{{{  list symbol
+        stream << setw (10) << symbol->mName.c_str() << " undefined";
         if (symbol->mReferences.empty())
-          stream.write ("not referenced", 15);
-        }
-      stream.write ("\n",1);
+          stream << endl;
 
-      if (!symbol->mReferences.empty()) {
-        int i = 0;
-        for (auto& symbolName : symbol->mReferences) {
-          if (i == 0)
-            stream.write ("  referenced by ", 17);
-          else if (!(i % 6))
-            stream.write ("                ", 17);
-
-          stream.write (symbolName.c_str(), symbolName.length());
-
-          if (!(++i % 6))
-            stream.write ("\n",1);
+        else {
+          stream << " usedBy";
+          int width = 10 + 10 + 7;
+          for (auto& symbolName : symbol->mReferences) {
+            if (!width) {
+              width = 10 + 10 + 7;
+              for (int i = 0; i < width; i++)
+                stream << ' ';
+              }
+            stream << setw(10) << symbolName;
+            width += 10;
+            if (width > kDumpWidth) {
+              stream << endl;
+              width = 0;
+              }
+            }
+          if (width)
+            stream << endl;
           }
-
-        if (i % 6)
-          stream.write ("\n",1);
         }
-      }
+        //}}}
+
+    // list defined used symbols
+    stream << "------------------------------------------------------------------" << endl;
+    for (auto const& [key, symbol] : mSymbolMap)
+      if (symbol->mDefined && !symbol->mReferences.empty()) {
+        //{{{  list symbol
+        stream << setw(10) << symbol->mName.c_str()
+                << " defined "
+                << setw(9) << symbol->mModuleName
+                << " usedBy";
+        int width = 10 + 9 + 9 + 7;
+
+        for (auto& symbolName : symbol->mReferences) {
+          if (!width) {
+            width = 10 + 9 + 9 + 7;
+            for (int i = 0; i < width; i++)
+              stream << ' ';
+            }
+          stream << setw(10) << symbolName;
+          width += 10;
+          if (width > kDumpWidth) {
+            stream << endl;
+            width = 0;
+            }
+          }
+        if (width)
+          stream << endl;
+        }
+        //}}}
+
+    // list defined but unused symbols
+    stream << "------------- defined but unused symbols -------------------------" << endl;
+    for (auto const& [key, symbol] : mSymbolMap)
+      if (symbol->mDefined && symbol->mReferences.empty())
+        stream << setw(10) << symbol->mName.c_str()
+               << " unused definedBy " << symbol->mModuleName << endl;
+    stream << "------------------------------------------------------------------" << endl;
 
     stream.close();
     }
   //}}}
   //{{{
-  void dump() {
+  void dumpSummary() {
 
-    int numUndefined = 0;
+    uint32_t numDefinedSymbols = 0;
+    uint32_t numUndefinedSymbols = 0;
 
     for (auto const& [key, symbol] : mSymbolMap)
-      if (symbol->mDefined)
-        numUndefined++;
+      symbol->mDefined ? numDefinedSymbols++: numUndefinedSymbols++;
 
-    printf ("%d undefined symbols of total %d, %d objectFiles, %d commonDefs, %d xDefs, %d xRefs\n",
-            numUndefined, (int)mSymbolMap.size(), mNumObjectFiles, mNumCommonDefs, mNumXdefs, mNumXrefs);
+    if (numUndefinedSymbols)
+      printf ("%d undefined symbols, ", numUndefinedSymbols);
+
+    printf ("%d symbols, %d objectFiles, %d commonDefs, %d xDefs, %d xRefs\n",
+            numDefinedSymbols, mNumObjectFiles, mNumCommonDefs, mNumXdefs, mNumXrefs);
     }
   //}}}
 
@@ -369,8 +416,8 @@ private:
     //}}}
 
     // const
-    const array <string, kNumOptions> kOptionNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin"};
-    const array <string, kNumOptions> kOptionAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   ""   };
+    const array <string, kNumOptions> kOptionNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin", "sr"};
+    const array <string, kNumOptions> kOptionAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   "",    ""  };
 
     // var
     array <bool, kNumOptions> mEnabled = { false };
@@ -1387,21 +1434,21 @@ int main (int numArgs, char* args[]) {
   // pass 1 - read symbols, accumulate section sizes
   for (auto& objectFile : objectFiles)
     objectFile.pass1 (linker);
-  linker.dump();
 
   // allocate sections
   linker.allocCommonSectionAddresses();
   linker.dumpSections();
+  linker.dumpSummary();
 
   // pass 2 - resolve addresses, output .sr or .bin
-  if (out) {
+  if (linker.getEnabled (eBin) || linker.getEnabled (eSr)) {
     cOutput output (cmdFileName);
     for (auto& objectFile : objectFiles)
       objectFile.pass2 (linker, output);
     }
 
-  if (xref)
-    linker.dumpXrefs (cmdFileName);
+  if (linker.getEnabled (eXref))
+    linker.dumpReferences (cmdFileName);
 
   return 0;
   }
