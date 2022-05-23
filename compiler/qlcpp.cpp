@@ -334,7 +334,7 @@ private:
     void dump() {
 
       printf ("options ");
-      for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
+      for (int optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
         if (mEnabled[optionIndex])
           printf ("%s ", kOptionNames [optionIndex].c_str());
       printf ("\n");
@@ -392,7 +392,7 @@ private:
       mToken = token;
 
       bool found = false;
-      for (int optionIndex = eChat; optionIndex <= eBin; optionIndex++)
+      for (int optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
         if ((token == kOptionNames[optionIndex]) ||(token == kOptionAltNames[optionIndex])) {
           mEnabled[optionIndex] = true;
           found = true;
@@ -471,7 +471,7 @@ public:
       }
 
     else
-      mStream.write ("S9030000FC\n", 11);
+      mStream << "S9030000FC" << endl;
 
     mStream.close();
     }
@@ -529,9 +529,9 @@ private:
   void writeByte (uint8_t b) {
 
     if ((b == esc) && escape)
-      mStream.put (b);
+      mStream << b;
 
-    mStream.put (b);
+    mStream << b;
     }
   //}}}
   //{{{
@@ -543,8 +543,7 @@ private:
       }
 
     else {
-      string s = toHex (b);
-      mStream.write (s.c_str(), s.length());
+      mStream << toHex (b);
       mOutputChecksum += b;
       }
     }
@@ -638,7 +637,7 @@ private:
       //}}}
     else {
       // packet start
-      mStream.write ("S2", 2);
+      mStream << "S2";
 
       mOutputChecksum = 0;
       writeCheckSummedByte (packetLength);
@@ -653,10 +652,8 @@ private:
         }
 
       // packet end
-      string s = toHex (0xFF - (mOutputChecksum & 0xFF));
-      mStream.write (s.c_str(), s.length());
-
-      mStream.put ('\n');
+      mStream << toHex (0xFF - (mOutputChecksum & 0xFF));
+      mStream << endl;
       }
     }
   //}}}
