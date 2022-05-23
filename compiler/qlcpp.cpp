@@ -22,7 +22,7 @@ constexpr bool kOutDebug = false;
 //}}}
 //{{{  const, enum
 // options, easier to use as globals
-enum eOption { eChat, eDebug, eMod, eMap, eBell, eXref, eCheck, eBin, eSr, eLastOption };
+enum eOption { eChat, eDebug, eMod, eMap, eBell, eXref, eCheck, eEscape, eBin, eSr, eLastOption };
 constexpr size_t kNumOptions = eLastOption; // for enum arrays to play nice
 
 // sections
@@ -39,10 +39,143 @@ constexpr uint8_t esc = 0x1B;
 
 constexpr int kDumpWidth = 100;
 //}}}
-constexpr bool bin = false;
-constexpr bool escape = false;
-constexpr bool download = false;
 
+//{{{
+class cOptions {
+public:
+  cOptions() {}
+  virtual ~cOptions() = default;
+
+  //{{{
+  bool getEnabled (eOption option) {
+    return mEnabled[option];
+    }
+  //}}}
+  //{{{
+  uint32_t getSectionBaseAddress (uint8_t section) {
+    return mSectionBaseAddress[section];
+    }
+  //}}}
+
+  //{{{
+  void parseLine (const string& line) {
+
+    if (kOptionDebug)
+      printf ("processOptions %s\n", line.c_str());
+
+    // parse into individual options, stripping out /
+    size_t start = 1;
+    size_t found = line.find ('/', start);
+    while (found != string::npos)  {
+      parseToken (line.substr (start, found-start));
+      start = found + 1;
+      found = line.find ('/', start);
+      }
+
+    parseToken (line.substr (start, found));
+    }
+  //}}}
+  //{{{
+  void dump() {
+
+    printf ("options ");
+    for (int optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
+      if (mEnabled[optionIndex])
+        printf ("%s ", kOptionNames [optionIndex].c_str());
+    printf ("\n");
+
+    for (int section = 0;  section <= 15; section++)
+      if (mSectionBaseAddress[section])
+        printf ("  section %d baseAddress:%06x\n", section, mSectionBaseAddress[section]);
+    }
+  //}}}
+
+private:
+  //{{{
+  char getCh() {
+    if (mTokenIndex < mToken.size())
+      return mToken[mTokenIndex++];
+    else // space if no more chars in token, easy to parse
+      return ' ';
+    }
+  //}}}
+  //{{{
+  uint32_t getHex() {
+
+    uint32_t value = 0;
+    while (true) {
+      char ch = getCh();
+      if ((ch >= '0') && (ch <= '9'))
+        value = (value << 4) + (ch - '0');
+      else if ((ch >= 'A') && (ch <= 'F'))
+        value = (value << 4) + ((ch - 'A') + 10);
+      else if ((ch >= 'a') && (ch <= 'f'))
+        value = (value << 4) + ((ch - 'a') + 10);
+      else
+        return value;
+      }
+    }
+  //}}}
+  //{{{
+  uint8_t getSection() {
+
+    uint8_t value = 0;
+    while (true) {
+      char ch = getCh();
+      if ((ch >= '0') && (ch <= '9'))
+        value = (value * 10) + (ch - '0');
+      else
+        return value;
+      }
+    }
+  //}}}
+
+  //{{{
+  void parseToken (const string& token) {
+
+    mTokenIndex = 0;
+    mToken = token;
+
+    bool found = false;
+    for (int optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
+      if ((token == kOptionNames[optionIndex]) ||(token == kOptionAltNames[optionIndex])) {
+        mEnabled[optionIndex] = true;
+        found = true;
+        break;
+        }
+
+    if (!found) {
+      // maybe section abase address
+      char ch = getCh();
+      if (ch == 'o') {
+        size_t section = getSection();
+        uint32_t address = getHex();
+        if ((section >= 0) && (section <= 15))
+          mSectionBaseAddress[section] = address;
+
+        if (kOptionDebug)
+          printf ("processOption section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
+        }
+      else
+        printf ("processOption - unrecognised option %s\n", token.c_str());
+      }
+    }
+  //}}}
+
+  // const
+  const array <string, kNumOptions> kOptionNames =   
+    { "chat", "debug", "mod", "map", "bell", "xref", "check", "esc", "bin", "sr"};
+  const array <string, kNumOptions> kOptionAltNames = 
+    { "cha",  "deb",   "",    "",    "",     "xrf",  "chk"  , ""   , ""   ,  ""  };
+
+  // var
+  array <bool, kNumOptions> mEnabled = { false };
+  array <uint32_t, kNumSections> mSectionBaseAddress = { 0 };
+
+  size_t mTokenIndex = 0;
+  string mToken;
+  };
+//}}}
 //{{{
 class cSymbol {
 public:
@@ -194,7 +327,7 @@ public:
     ofstream stream (fileName + ".xrf", ofstream::out);
 
     // list undefined symbols
-    stream << "------------------------------------------------------------------" << endl;
+    stream << "------------------- undefined symbols ----------------------------" << endl;
     for (auto const& [key, symbol] : mSymbolMap)
       if (!symbol->mDefined) {
         //{{{  list symbol
@@ -212,7 +345,7 @@ public:
                 stream << ' ';
               }
             stream << " " << symbolName;
-            width += symbolName.length() + 1;
+            width += (int)symbolName.length() + 1;
             if (width > kDumpWidth) {
               stream << endl;
               width = 0;
@@ -225,7 +358,7 @@ public:
         //}}}
 
     // list defined used symbols
-    stream << "------------------------------------------------------------------" << endl;
+    stream << "----------------- defined symbols --------------------------------" << endl;
     for (auto const& [key, symbol] : mSymbolMap)
       if (symbol->mDefined && !symbol->mReferences.empty()) {
         //{{{  list symbol
@@ -243,7 +376,7 @@ public:
             }
 
           stream << " " << symbolName;
-          width += symbolName.length() + 1;
+          width += (int)symbolName.length() + 1;
           if (width > kDumpWidth) {
             stream << endl;
             width = 0;
@@ -295,140 +428,6 @@ public:
   array <sSection, 16> mSections = {};
 
 private:
-  //{{{
-  class cOptions {
-  public:
-    cOptions() {}
-    virtual ~cOptions() = default;
-
-    //{{{
-    bool getEnabled (eOption option) {
-      return mEnabled[option];
-      }
-    //}}}
-    //{{{
-    uint32_t getSectionBaseAddress (uint8_t section) {
-      return mSectionBaseAddress[section];
-      }
-    //}}}
-
-    //{{{
-    void parseLine (const string& line) {
-
-      if (kOptionDebug)
-        printf ("processOptions %s\n", line.c_str());
-
-      // parse into individual options, stripping out /
-      size_t start = 1;
-      size_t found = line.find ('/', start);
-      while (found != string::npos)  {
-        parseToken (line.substr (start, found-start));
-        start = found + 1;
-        found = line.find ('/', start);
-        }
-
-      parseToken (line.substr (start, found));
-      }
-    //}}}
-    //{{{
-    void dump() {
-
-      printf ("options ");
-      for (int optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
-        if (mEnabled[optionIndex])
-          printf ("%s ", kOptionNames [optionIndex].c_str());
-      printf ("\n");
-
-      for (int section = 0;  section <= 15; section++)
-        if (mSectionBaseAddress[section])
-          printf ("  section %d baseAddress:%06x\n", section, mSectionBaseAddress[section]);
-      }
-    //}}}
-
-  private:
-    //{{{
-    char getCh() {
-      if (mTokenIndex < mToken.size())
-        return mToken[mTokenIndex++];
-      else // space if no more chars in token, easy to parse
-        return ' ';
-      }
-    //}}}
-    //{{{
-    uint32_t getHex() {
-
-      uint32_t value = 0;
-      while (true) {
-        char ch = getCh();
-        if ((ch >= '0') && (ch <= '9'))
-          value = (value << 4) + (ch - '0');
-        else if ((ch >= 'A') && (ch <= 'F'))
-          value = (value << 4) + ((ch - 'A') + 10);
-        else if ((ch >= 'a') && (ch <= 'f'))
-          value = (value << 4) + ((ch - 'a') + 10);
-        else
-          return value;
-        }
-      }
-    //}}}
-    //{{{
-    uint8_t getSection() {
-
-      uint8_t value = 0;
-      while (true) {
-        char ch = getCh();
-        if ((ch >= '0') && (ch <= '9'))
-          value = (value * 10) + (ch - '0');
-        else
-          return value;
-        }
-      }
-    //}}}
-
-    //{{{
-    void parseToken (const string& token) {
-
-      mTokenIndex = 0;
-      mToken = token;
-
-      bool found = false;
-      for (int optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
-        if ((token == kOptionNames[optionIndex]) ||(token == kOptionAltNames[optionIndex])) {
-          mEnabled[optionIndex] = true;
-          found = true;
-          break;
-          }
-
-      if (!found) {
-        // maybe section abase address
-        char ch = getCh();
-        if (ch == 'o') {
-          size_t section = getSection();
-          uint32_t address = getHex();
-          if ((section >= 0) && (section <= 15))
-            mSectionBaseAddress[section] = address;
-
-          if (kOptionDebug)
-            printf ("processOption section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
-          }
-        else
-          printf ("processOption - unrecognised option %s\n", token.c_str());
-        }
-      }
-    //}}}
-
-    // const
-    const array <string, kNumOptions> kOptionNames =    { "chat", "debug", "mod", "map", "bell", "xref", "check", "bin", "sr"};
-    const array <string, kNumOptions> kOptionAltNames = { "cha",  "deb",   "",    "",    "",     "xrf",  "chk",   "",    ""  };
-
-    // var
-    array <bool, kNumOptions> mEnabled = { false };
-    array <uint32_t, kNumSections> mSectionBaseAddress = { 0 };
-
-    size_t mTokenIndex = 0;
-    string mToken;
-    };
-  //}}}
   cOptions mOptions;
 
   map <string, cSymbol*> mSymbolMap;
@@ -446,14 +445,15 @@ private:
 class cOutput {
 public:
   //{{{
-  cOutput (const string& fileName) : mOutputMaxSize (bin ? 512 : 16) {
+  cOutput (const string& fileName, bool bin, bool escape)
+     : mBin(bin), mEscape(escape), mOutputMaxSize (bin ? 512 : 16) {
     mStream.open (fileName + ".sr", bin ? ofstream::out | ofstream::binary : ofstream::out);
     }
   //}}}
   //{{{
   virtual ~cOutput() {
 
-    if (bin) {
+    if (mBin) {
       writeByte (esc);
       writeByte (0);
 
@@ -528,7 +528,7 @@ private:
   //{{{
   void writeByte (uint8_t b) {
 
-    if ((b == esc) && escape)
+    if ((b == esc) && mEscape)
       mStream << b;
 
     mStream << b;
@@ -537,7 +537,7 @@ private:
   //{{{
   void writeCheckSummedByte (uint8_t b) {
 
-    if (bin) {
+    if (mBin) {
       writeByte (b);
       mOutputChecksum ^= b;
       }
@@ -555,7 +555,7 @@ private:
     uint32_t packetAddress = start + (pos * 2);
     uint32_t packetLength = (length * 2) + 4; // this happens to be right for both
 
-    if (bin) {
+    if (mBin) {
       //{{{  binary
       writeByte (esc);
       writeByte (0);
@@ -658,9 +658,11 @@ private:
     }
   //}}}
 
-  ofstream mStream;
-
+  const bool mBin;
+  const bool mEscape;
   const uint32_t mOutputMaxSize = 0;
+
+  ofstream mStream;
 
   uint32_t mCodeLength = 0; // code length in words
   int mOutputChecksum = 0;
@@ -1441,7 +1443,7 @@ int main (int numArgs, char* args[]) {
 
   // pass 2 - resolve addresses, output .sr or .bin
   if (linker.getEnabled (eBin) || linker.getEnabled (eSr)) {
-    cOutput output (cmdFileName);
+    cOutput output (cmdFileName, linker.getEnabled(eBin), linker.getEnabled(eEscape));
     for (auto& objectFile : objectFiles)
       objectFile.pass2 (linker, output);
     }
