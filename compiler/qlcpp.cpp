@@ -198,21 +198,21 @@ public:
     for (auto const& [key, symbol] : mSymbolMap)
       if (!symbol->mDefined) {
         //{{{  list symbol
-        stream << setw (10) << symbol->mName.c_str() << " undefined";
+        stream << setw (kObjectSymbolNameLength) << symbol->mName.c_str() << " undefined";
         if (symbol->mReferences.empty())
           stream << endl;
 
         else {
           stream << " usedBy";
-          int width = 10 + 10 + 7;
+          int width = kObjectSymbolNameLength + 10 + 7;
           for (auto& symbolName : symbol->mReferences) {
             if (!width) {
-              width = 10 + 10 + 7;
+              width = kObjectSymbolNameLength + 10 + 7;
               for (int i = 0; i < width; i++)
                 stream << ' ';
               }
-            stream << setw(10) << symbolName;
-            width += 10;
+            stream << " " << symbolName;
+            width += symbolName.length() + 1;
             if (width > kDumpWidth) {
               stream << endl;
               width = 0;
@@ -229,25 +229,27 @@ public:
     for (auto const& [key, symbol] : mSymbolMap)
       if (symbol->mDefined && !symbol->mReferences.empty()) {
         //{{{  list symbol
-        stream << setw(10) << symbol->mName.c_str()
-                << " defined "
+        stream << setw (kObjectSymbolNameLength) << symbol->mName.c_str()
+                << " definedBy"
                 << setw(9) << symbol->mModuleName
                 << " usedBy";
-        int width = 10 + 9 + 9 + 7;
+        int width = kObjectSymbolNameLength + 10  + 9 + 7;
 
         for (auto& symbolName : symbol->mReferences) {
           if (!width) {
-            width = 10 + 9 + 9 + 7;
+            width = kObjectSymbolNameLength + 10 + 9 + 7;
             for (int i = 0; i < width; i++)
               stream << ' ';
             }
-          stream << setw(10) << symbolName;
-          width += 10;
+
+          stream << " " << symbolName;
+          width += symbolName.length() + 1;
           if (width > kDumpWidth) {
             stream << endl;
             width = 0;
             }
           }
+
         if (width)
           stream << endl;
         }
@@ -257,7 +259,7 @@ public:
     stream << "------------- defined but unused symbols -------------------------" << endl;
     for (auto const& [key, symbol] : mSymbolMap)
       if (symbol->mDefined && symbol->mReferences.empty())
-        stream << setw(10) << symbol->mName.c_str()
+        stream << setw (kObjectSymbolNameLength) << symbol->mName.c_str()
                << " unused definedBy " << symbol->mModuleName << endl;
     stream << "------------------------------------------------------------------" << endl;
 
