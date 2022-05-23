@@ -40,6 +40,7 @@ constexpr bool out = true;
 constexpr bool bin = false;
 constexpr bool download = false;
 constexpr bool escape = false;
+constexpr bool xref = true;
 
 //{{{
 class cSymbol {
@@ -139,6 +140,11 @@ public:
   //}}}
 
   //{{{
+  void incObjectFiles() {
+    mNumObjectFiles++;
+    }
+  //}}}
+  //{{{
   void incCommonDefs() {
     mNumCommonDefs++;
     }
@@ -177,7 +183,45 @@ public:
     }
   //}}}
   //{{{
-  void dumpSymbols() {
+  void dumpXrefs (const string& fileName) {
+
+    ofstream stream (fileName + ".xrf", ofstream::out);
+
+    for (auto const& [key, symbol] : mSymbolMap) {
+      stream.write ("Symbol ", 7);
+      stream.write (symbol->mName.c_str(), symbol->mName.length());
+      if (symbol->mDefined) {
+        stream.write (" defined by ", 11);
+        stream.write (symbol->mModuleName.c_str(), symbol->mModuleName.length());
+        if (symbol->mReferences.empty())
+          stream.write ("not referenced", 15);
+        }
+      stream.write ("\n",1);
+
+      if (!symbol->mReferences.empty()) {
+        int i = 0;
+        for (auto& symbolName : symbol->mReferences) {
+          if (i == 0)
+            stream.write ("  referenced by ", 17);
+          else if (!(i % 6))
+            stream.write ("                ", 17);
+
+          stream.write (symbolName.c_str(), symbolName.length());
+
+          if (!(++i % 6))
+            stream.write ("\n",1);
+          }
+
+        if (i % 6)
+          stream.write ("\n",1);
+        }
+      }
+
+    stream.close();
+    }
+  //}}}
+  //{{{
+  void dump() {
 
     int numUndefined = 0;
 
@@ -185,8 +229,8 @@ public:
       if (symbol->mDefined)
         numUndefined++;
 
-    printf ("%d undefined symbols of total %d, commonDefs:%d, xDefs:%d, xRefs:%d\n",
-            numUndefined, (int)mSymbolMap.size(), mNumCommonDefs, mNumXdefs, mNumXrefs);
+    printf ("%d undefined symbols of total %d, %d objectFiles, %d commonDefs, %d xDefs, %d xRefs\n",
+            numUndefined, (int)mSymbolMap.size(), mNumObjectFiles, mNumCommonDefs, mNumXdefs, mNumXrefs);
     }
   //}}}
 
@@ -343,6 +387,7 @@ private:
 
   string mCurModuleName;
 
+  uint32_t mNumObjectFiles = 0;
   uint32_t mNumCommonDefs = 0;
   uint32_t mNumXdefs = 0;
   uint32_t mNumXrefs = 0;
@@ -609,21 +654,21 @@ public:
       if (!eom) {
         switch (record.getType()) {
           case cRecord::eId:
-            incNumIdRecords();
+            incIdRecords();
             record.parseId (this, linker, true);
             break;
 
           case cRecord::eEsd:
-            incNumEsdRecords();
+            incEsdRecords();
             record.parseEsd (this, linker, true);
             break;
 
           case cRecord::eText:
-            incNumTxtRecords();
+            incTxtRecords();
             break;
 
           case cRecord::eEnd:
-            incNumEndRecords();
+            incEndRecords();
             break;
 
           default:
@@ -1213,22 +1258,22 @@ private:
   //}}}
 
   //{{{
-  void incNumIdRecords() {
+  void incIdRecords() {
     mNumIdRecords++;
     }
   //}}}
   //{{{
-  void incNumEsdRecords() {
+  void incEsdRecords() {
     mNumEsdRecords++;
     }
   //}}}
   //{{{
-  void incNumTxtRecords() {
+  void incTxtRecords() {
     mNumTxtRecords++;
     }
   //}}}
   //{{{
-  void incNumEndRecords() {
+  void incEndRecords() {
     mNumEndRecords++;
     }
   //}}}
@@ -1295,11 +1340,12 @@ void parseStream (ifstream& stream, vector <cObjectFile>& objectFiles, cLinker& 
         objectFiles.push_back (line.substr (0, foundTerminator) + ".ro");
       else
         objectFiles.push_back (line.substr (0, foundTerminator));
+
+      linker.incObjectFiles();
       }
       //}}}
   }
 //}}}
-
 //{{{
 int main (int numArgs, char* args[]) {
 
@@ -1341,7 +1387,7 @@ int main (int numArgs, char* args[]) {
   // pass 1 - read symbols, accumulate section sizes
   for (auto& objectFile : objectFiles)
     objectFile.pass1 (linker);
-  linker.dumpSymbols();
+  linker.dump();
 
   // allocate sections
   linker.allocCommonSectionAddresses();
@@ -1353,6 +1399,9 @@ int main (int numArgs, char* args[]) {
     for (auto& objectFile : objectFiles)
       objectFile.pass2 (linker, output);
     }
+
+  if (xref)
+    linker.dumpXrefs (cmdFileName);
 
   return 0;
   }
