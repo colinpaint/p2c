@@ -1,5 +1,6 @@
 dpb
 runtime
+mon
 
 p68
 dumpToken
@@ -22,6 +23,7 @@ qlcpp
 *.tree
 *.cmd
 *.ro
+*.xro
 *.bin
 *.map
 *.xref
