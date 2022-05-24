@@ -374,7 +374,7 @@ public:
         //}}}
 
     // list defined used symbols
-    stream << "----------------- defined symbols --------------------------------" << endl;
+    stream << endl << "----------------- defined symbols --------------------------------" << endl;
     for (auto const& [key, symbol] : mSymbolMap)
       if (symbol->mDefined && !symbol->mReferences.empty()) {
         //{{{  list symbol
@@ -405,7 +405,7 @@ public:
         //}}}
 
     // list defined but unused symbols
-    stream << "------------- defined but unused symbols -------------------------" << endl;
+    stream << endl << "------------- defined but unused symbols -------------------------" << endl;
     for (auto const& [key, symbol] : mSymbolMap)
       if (symbol->mDefined && symbol->mReferences.empty())
         stream << setw (kObjectSymbolNameLength) << symbol->mName.c_str()
@@ -712,8 +712,7 @@ public:
 
     cRecord record;
     while (record.load (stream)) {
-
-      //if (kObjectFileDebug)
+      if (kObjectFileDebug)
         record.dump();
 
       switch (record.getHeader()) {
@@ -846,7 +845,7 @@ private:
         for (size_t i = 0; i < mLength-1; i++)
           if (stream.eof())
             return false;
-          else 
+          else
             mBlock[i] = stream.get();
         }
       else
@@ -916,17 +915,16 @@ private:
     //{{{
     void parseId (cObjectFile* objectFile, cLinker& linker, bool pass1) {
 
-      string moduleName = getSymbolName();
-      linker.setCurrentModuleName (moduleName);
+      linker.setCurrentModuleName (getSymbolName());
 
       if (kPassDebug)
-        printf ("Id record - module:%s\n", moduleName.c_str());
+        printf ("Id record - module:%s\n", linker.getCurrentModuleName().c_str());
 
       // init esd values in case of zero length sections
       objectFile->mTopEsd = 17;
 
       if (!pass1) {
-        // set esd 0 info, not sure why???
+        // pass2 - set esd 0 info, not sure why???
         objectFile->mEsds[0].mAddress = 0;
 
         // set common esd 1-16 from sections 0-15 info
@@ -1301,14 +1299,20 @@ private:
       printf ("record length:0x%x header:%c\n", mLength, mHeader);
 
       // dump block
-      for (int i = 0; i < mLength-1; i++) {
+      int i = 0;
+      while (i < mLength-1) {
         if ((i % 32) == 0) // indent
-          printf ("  %03x  ", i);
+          printf ("  %02x  ", i);
+        if ((i % 32) == 16)
+          printf (" ");
         printf ("%02x ", mBlock[i]);
         if ((i % 32) == 31)
           printf ("\n");
+        i++;
         }
-      printf ("\n");
+
+      if (i % 32)
+        printf ("\n");
       }
     //}}}
 
