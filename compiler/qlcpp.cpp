@@ -61,7 +61,7 @@ public:
   void parseLine (const string& line) {
 
     if (kOptionDebug)
-      printf ("processOptions %s\n", line.c_str());
+      printf ("parseOptions %s\n", line.c_str());
 
     // parse into individual options, stripping out /
     size_t start = 1;
@@ -79,14 +79,14 @@ public:
   void dump() {
 
     printf ("options ");
-    for (int optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
+    for (uint8_t optionIndex = eChat; optionIndex < eLastOption; optionIndex++)
       if (mEnabled[optionIndex])
         printf ("%s ", kOptionNames [optionIndex].c_str());
     printf ("\n");
 
-    for (int section = 0;  section <= 15; section++)
+    for (uint8_t section = 0;  section <= 15; section++)
       if (mSectionBaseAddress[section])
-        printf ("  section %d baseAddress:%06x\n", section, mSectionBaseAddress[section]);
+        printf ("  section %2d baseAddress:%06x\n", section, mSectionBaseAddress[section]);
     }
   //}}}
 
@@ -154,10 +154,10 @@ private:
           mSectionBaseAddress[section] = address;
 
         if (kOptionDebug)
-          printf ("processOption section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
+          printf ("parseOption section %s sectionNum:%2d address:%6x\n", token.c_str(), (int)section, address);
         }
       else
-        printf ("processOption - unrecognised option %s\n", token.c_str());
+        printf ("parseOption - unrecognised option %s\n", token.c_str());
       }
     }
   //}}}
@@ -647,7 +647,7 @@ private:
 
       // packet
       for (uint8_t i = 0; i < length; i++) {
-        writeCheckSummedByte ((mCodeArray[i+pos]) >> 8);
+        writeCheckSummedByte (mCodeArray[i+pos] >> 8);
         writeCheckSummedByte (mCodeArray[i+pos] & 0xFF);
         }
 
@@ -666,7 +666,7 @@ private:
 
   uint32_t mCodeLength = 0; // code length in words
   int mOutputChecksum = 0;
-  array <uint32_t, 64> mCodeArray;
+  array <uint16_t, 64> mCodeArray;
   };
 //}}}
 //{{{
@@ -1472,6 +1472,7 @@ int main (int numArgs, char* args[]) {
     for (auto& objectFile : objectFiles)
       objectFile.pass2 (linker, output);
     }
+  printf ("pass2 done\n");
 
   if (linker.getEnabled (eXref))
     linker.dumpReferences (cmdFileName);
